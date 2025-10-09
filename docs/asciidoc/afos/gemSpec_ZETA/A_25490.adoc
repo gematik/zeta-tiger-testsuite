@@ -1,0 +1,4 @@
+[#A_25490]
+==== A_25490 - PDP - Sicherheitsmeldung bei Änderungen und Aktualisierung
+
+Der PDP MUSS sicherstellen, dass bei Aktualisierung und Änderungen der Policies oder PIP-Daten eine Sicherheitsmeldung an das Security Monitoring automatisiert übermittelt wird.

@@ -1,0 +1,6 @@
+[#TA_A_27266_02]
+===== TA_A_27266_02 - Protected Resource Metadata Well-known - schemakonforme Antwort
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27266>>.*
+
+Das Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.

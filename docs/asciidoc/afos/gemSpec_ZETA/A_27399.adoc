@@ -1,0 +1,6 @@
+[#A_27399]
+==== A_27399 - PDP Datenbank - Löschfristen
+
+Die Komponente PDP Datenbank MUSS konfigurierbare Inaktivitäts-Löschfristen für User- und Client-Daten haben und die Daten nach Ablauf der Fristen löschen.
+Der Default-Wert beträgt 1 Jahr.
+Die Session-Daten MÜSSEN automatisch gelöscht werden, wenn der Zeitpunkt session_expiry erreicht ist.

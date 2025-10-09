@@ -1,0 +1,4 @@
+[#A_26925]
+==== A_26925 - ZETA/ASL: ZETA/ASL-Client, Verarbeitung von Fehlermeldungen
+
+Ein ZETA/ASL-Client MUSS die Fehlermeldungen nach A_26924-* verarbeiten können.

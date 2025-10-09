@@ -1,0 +1,16 @@
+[#TA_A_27007_28]
+===== TA_A_27007_28 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 405 Method Not Allowed
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **HTTP Proxy** |
++++[...]+++
+**405 Method Not Allowed**: Die verwendete HTTP Methode wird nicht unterstützt für den Endpunkt.
++++[...]+++
+|===
++++[...]+++"

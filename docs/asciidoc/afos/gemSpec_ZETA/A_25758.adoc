@@ -1,0 +1,4 @@
+[#A_25758]
+==== A_25758 - ZETA Client - Erfassung Kontaktinformation für Offband-Verifikation
+
+Der mobile ZETA Client MUSS vom Benutzer eine strukturell valide Kontaktinformation (E-Mailadresse, Telefonnummer) abfragen und für eine Offband-Verifikation (Trust on First Use) an den Endpunkt des Authorization Servers übertragen.

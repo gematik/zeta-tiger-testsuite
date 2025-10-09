@@ -1,0 +1,4 @@
+[#A_26487]
+==== A_26487 - PEP HTTP Proxy -Skalierbarkeit
+
+Die Komponente PEP HTTP Proxy MUSS horizontal skalierbar sein, sodass mit jedem zusätzlichen Pod mindestens 75% der Leistung eines einzigen Pods verfügbar werden.

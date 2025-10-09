@@ -1,0 +1,354 @@
+= TGR Methoden — Referenz (Deutsch ↔ Englisch)
+
+____
+
+Diese Datei dokumentiert die in der TIGER-Testumgebung verfügbaren *TGR (Tiger Glue / TGR)*
+-Schritte in ihrer deutschen Formulierung, ihre englischen Entsprechungen und Beispiel-Verwendung. +
+Ziel: Entwickler:innen und Testautor:innen sollen TGR-Steps direkt aus den Feature-Dateien nutzen können, ohne eigene Glue-Klassen zu schreiben.
+
+____
+
+'''
+
+== Inhaltsverzeichnis
+
+* <<kurzueberblick--hinweise-zur-benutzung,1) Kurzüberblick &amp; Hinweise zur Benutzung>>
+* <<mappingstabelle-haeufige-steps,2) Mappingstabelle (häufige Steps)>>
+* <<detaillierte-methoden-syntax-parameter-beispiele,3) Detaillierte Methoden (Syntax, Parameter, Beispiele)>>
+** <<server-management,3.1 Server-Management>>
+** <<requests-senden,3.2 Requests senden>>
+** <<recorded-messages--requests-finden--filtern,3.3 Recorded messages / Requests finden &amp; filtern>>
+** <<assertions--pruefungen,3.4 Assertions / Prüfungen>>
+** <<utilities,3.5 Utilities>>
+** <<externaljar--jar-start-optionen-kurz,3.6 externalJar / Jar-Start-Optionen (Kurz)>>
+** <<performance,3.7 Performance (Roundtrip)>>
+* <<beispiele-vollstaendige-szenarios-deutsch,4) Beispiele — vollständige Szenarios (Deutsch)>>
+** <<minimaler-flow-client---guard---testfachdienst,4.1 Minimaler Flow (Client -&gt; Guard -&gt; Testfachdienst)>>
+** <<beispiel-post-mit-body--header,4.2 Beispiel: POST mit Body &amp; Header>>
+* <<best-practices--troubleshooting,5) Best Practices &amp; Troubleshooting>>
+* <<wie-neue-tgr-steps-dokumentiert-werden-sollen,6) Wie neue TGR-Steps dokumentiert werden sollen>>
+'''
+
+[[kurzueberblick--hinweise-zur-benutzung]]
+== 1) Kurzüberblick &amp; Hinweise zur Benutzung
+
+* *TGR*-Steps sind Helfer, die vom Tiger-Runner / Tiger-Glue zur Verfügung gestellt werden.
+Viele Schritte gibt es in einer englischen und einer deutschen Variante; verwende die Formulierung, die eurem Teamstil entspricht.
+* Platzhalter wie `${free.port.1}` oder `${tiger.ports.name}` kommen typischerweise aus `tiger.yaml`
+und werden zur Laufzeit aufgelöst.
+* Verwende *`active: false`* in `tiger.yaml` für Server, die nur bei Bedarf (per TGR) gestartet werden.
+* Wo möglich: nutze TGR-Schritte statt eigener Java-Glue-Logik — das reduziert Boilerplate und erhöht Lesbarkeit.
+'''
+
+[[mappingstabelle-haeufige-steps]]
+== 2) Mappingstabelle (häufige Steps)
+
+[cols="<,>,<"]
+|===
+|Deutsch (Beispiel) |Englisch |Zweck / Kurz
+
+|`TGR starte Server "name"` |`TGR start server "name"` |Startet einen in `tiger.yaml` definierten Server (wartet auf Healthcheck)
+|`TGR stoppe Server "name"` |`TGR stop server "name"` |Stoppt einen Server
+|`TGR sende eine leere GET-Anfrage an "url"` |`TGR send empty GET request to "url"` |Sendet eine GET-Anfrage ohne Body
+|`TGR sende eine POST-Anfrage an "url" mit Body:` |`TGR send POST request to "url" with body:` |Sendet POST mit Body-Text/JSON
+|`TGR finde die letzte Anfrage` |`TGR find last request` |Filtert die zuletzt aufgezeichnete Request-Nachricht
+|`TGR finde die letzte Anfrage mit Pfad "/path"` |`TGR find last request with path "/path"` |Filtert zuletzt aufgezeichnete Request mit Pfad
+|`TGR prüfe aktuelle Antwort mit Attribut "$.responseCode" stimmt überein mit "200"` |`TGR current response with attribute "$.responseCode" matches "200"` |Assertion auf die aktuelle (letzte) Response
+|`TGR prüfe aktuelle Anfrage mit Attribut "$.requestLine.method" stimmt überein mit "GET"` |`TGR current request with attribute "$.requestLine.method" matches "GET"` |Assertion auf Attribute der aktuellen Request
+|`TGR lösche aufgezeichnete Nachrichten` |`TGR clear recorded messages` |Leert das Request/Response-Log von Zion/Tiger
+|`TGR setze Anfrage Timeout auf 20 Sekunden` |`TGR set request wait timeout to 20 seconds` |Setzt das Wait-Timeout für asynchrone Suche/Waits
+|===
+
+____
+
+Hinweis: Die exakte Schreibweise kann je nach Tiger-Version leicht variieren.
+Nutze die hier angegebenen Formulierungen als Canonical-Referenz in diesem Projekt.
+
+____
+
+[[detaillierte-methoden-syntax-parameter-beispiele]]
+== 3) Detaillierte Methoden (Syntax, Parameter, Beispiele)
+
+[[server-management]]
+=== 3.1 Server-Management
+
+==== TGR starte Server "serverName"
+
+* *Zweck:* Startet den in `tiger.yaml` konfigurierten Server `serverName`.
+Wartet standardmäßig auf den konfigurierten `healthcheckUrl` oder bis `startupTimeoutSec` abläuft.
+* *Parameter:* `serverName` (String — muss exakt dem Key in `servers:` entsprechen)
+* *Beispiel:*
+
+[source,gherkin]
+----
+Given TGR starte Server "testfachdienst"
+----
+
+*Hinweis:* Wenn `active: false` gesetzt ist, startet dieser Step den Server trotzdem.
+
+==== TGR stoppe Server "serverName"
+
+* *Zweck:* Stoppt den Server.
+* *Beispiel:*
+
+`gherkin When TGR stoppe Server "testfachdienst" `
+
+==== `TGR serverstatus von "serverName" ist "UP"` (optional)
+
+* *Zweck:* Prüft, ob der Server erreichbar ist (Health = UP).
+Manche Tiger-Versionen bieten spezifische Status-Checks.
+* *Alternative:* `TGR sende eine leere GET-Anfrage an "http://localhost:${port}/actuator/health"` + assertion.
+
+[[requests-senden]]
+=== 3.2 Requests senden
+
+==== TGR sende eine leere GET-Anfrage an "url"
+
+* *Zweck:* Sendet eine GET ohne Body.
+* *Beispiel:*
+
+`gherkin When TGR sende eine leere GET-Anfrage an "http://localhost:${free.port.3}/fetch"
+`
+
+==== TGR sende eine POST-Anfrage an "url" mit Body:
+
+* *Zweck:* Sendet POST mit einem Body (inline JSON oder Text).
+* *Beispiel:*
+
+`gherkin When TGR sende eine POST-Anfrage an "http://localhost:${port}/api/data" mit Body:
+"""
+{ "name": "Alice", "age": 30 } """ ` * *Headers:* Manche Implementationen erlauben auch zusätzliche Headers via Tabelle:
+
+[source,gherkin]
+----
+And TGR sende eine POST-Anfrage an "..." mit Header:
+| Content-Type | application/json |
+----
+
+==== TGR sende eine GET-Anfrage an "url" mit Header:
+
+* *Beispiel:*
+
+`gherkin When TGR sende eine GET-Anfrage an "http://..." mit Header:
+| Authorization | Bearer DUMMYTOKEN | `
+
+[[recorded-messages--requests-finden--filtern]]
+=== 3.3 Recorded messages / Requests finden &amp; filtern
+
+==== TGR finde die letzte Anfrage
+
+* *Zweck:* Greift auf die zuletzt aufgezeichnete Anfrage im Tiger/Zion Log zu.
+Macht sie zur `current request/response`-Kontextbasis.
+* *Beispiel:*
+
+`gherkin Then TGR finde die letzte Anfrage ` * *Erweiterung mit Pfad-Filter:*
+
+`gherkin When TGR finde die letzte Anfrage mit Pfad "/achelos_testfachdienst/hellozeta" `
+
+==== TGR finde die erste Anfrage mit Pfad "..."
+
+* Analog zur letzten Anfrage, nur die erste Treffer wird gewählt.
+
+==== Hinweise zu Filtern
+
+* Pfad-Matching kann Regex enthalten (z. B. `"/api/v[0-9]+/.*"`).
+* Je nach Tiger-Version sind zusätzliche Filter möglich: Methode, Header, Query-Parameter.
+
+[[assertions--pruefungen]]
+=== 3.4 Assertions / Prüfungen
+
+==== TGR prüfe aktuelle Antwort mit Attribut "<jsonPath>" stimmt überein mit "<regex>"
+
+* *Zweck:* Prüft das Attribut der aktuellen Antwort (JSONPath) gegen Regex.
+* *Beispiel:*
+
+`gherkin
+Then TGR prüfe aktuelle Antwort mit Attribut "$.responseCode" stimmt überein mit "200"
+And TGR prüfe aktuelle Antwort im Knoten "$.body" stimmt überein mit ".*Hello.*"
+`
+* *Bemerkung:* Für Statuscode kannst du auch `$.responseCode` oder `$.status` je nach Implementierung nutzen.
+
+==== TGR prüfe aktuelle Anfrage mit Attribut "$.requestLine.method" stimmt überein mit "GET"
+
+* *Zweck:* Assertion auf die aktuell gefundene Anfrage.
+
+==== TGR current response matches JSON:
+
+* Manche Implementierungen bieten direkte JSON-Equality/Schema-Checks:
+
+`gherkin Then TGR prüfe aktuelle Antwort entspricht JSON:
+"""
+{ "msg": "Hello from Testfachdienst!" } """ `
+
+[[utilities]]
+=== 3.5 Utilities
+
+==== TGR lösche aufgezeichnete Nachrichten
+
+* *Zweck:* Entfernt alle bisherigen aufgezeichneten Requests/Responses — nützlich als Clear-Slate vor Flow-Triggern.
+* *Beispiel:*
+
+`gherkin Given TGR lösche aufgezeichnete Nachrichten `
+
+==== TGR setze Anfrage Timeout auf X Sekunden
+
+* *Zweck:* Setzt das Maximum, wie lange TGR auf asynchrone Ereignisse / neu aufgezeichnete Messages warten soll.
+* *Beispiel:*
+
+`gherkin Given TGR setze Anfrage Timeout auf 20 Sekunden `
+
+==== `TGR warte X Sekunden` (falls verfügbar)
+
+* Simpler Wait / Sleep Step für Debugging.
+
+[[performance]]
+=== 3.7 Performance (Roundtrip)
+
+==== TGR roundtrip time is under {ms}
+
+* Zweck: Prüft die Dauer (Roundtrip / Antwortzeit) der aktuellen TGR-Request/Response.
+Nutzt die von Tiger/TGR gehaltene „current request/response“ und liest deren Dauer (getDuration/…) oder berechnet sie aus Start/End-Zeitstempeln.
+* Varianten:
+
+`gherkin Then TGR roundtrip time is under 500 ms Dann TGR Roundtrip Zeit ist unter 500 ms `
+
+* Hinweise:
+- Dieser Schritt erwartet, dass zuvor ein „current message“-Kontext gesetzt wurde, z. B. über
+`TGR finde die letzte Anfrage`.
+- Implementierung ist robust gegenüber unterschiedlichen Tiger-Versionen (Reflexion über getDuration(), getDurationMillis(), oder Start/End-Zeitstempel).
+
+[[externaljar--jar-start-optionen-kurz]]
+[[timingglue-steps]]
+==== TimingGlue: Nachrichten loggen und Antwortzeit anzeigen
+
+Die folgenden projektspezifischen Schritte werden in der Klasse `de.gematik.zeta.steps.TimingGlue` bereitgestellt und helfen beim Untersuchen von aufgezeichneten RBEL-Nachrichten sowie beim Messen von Antwortzeiten.
+
+• Deutsch: `Dann logge alle Nachrichten`  | Englisch: `Then log all messages`
+- Zweck: Loggt eine strukturierte Übersicht aller aufgezeichneten RBEL-Nachrichten (Korrelations-UUIDs, ggf.
+Latenz pro Request/Response-Paar).
+Nützlich zur schnellen Diagnose in Testläufen.
+- Vorbedingung: RBEL-Nachrichten wurden bereits aufgezeichnet (z. B. durch vorherige Anfragen).
+- Beispiel:
+
+[source,gherkin]
+----
+Then log all messages
+----
+
+• Deutsch: `Dann gebe die Antwortzeit vom aktuellen Nachrichtenpaar aus`
+| Englisch: `Then show response time of current message pair`
+- Zweck: Ermittelt die Dauer zwischen aktueller Request- und Response-Nachricht und schreibt sie zusätzlich als Custom-Block in den Serenity-Report (Titel: "Current response time").
+- Vorbedingung: Ein „current request/response“-Kontext ist gesetzt (z. B. via `TGR finde die letzte Anfrage`).
+- Beispiel:
+
+[source,gherkin]
+----
+Then show response time of current message pair
+----
+
+=== 3.6 externalJar / Jar-Start-Optionen (Kurz)
+
+* Wenn `tiger.yaml` eine `externalJar`-Node definiert, kann diese mit `TGR starte Server "name"` hochgefahren werden (sofern `active: false` oder nicht gestartet).
+Typische Optionen:
+
+* `source: - local: ./build/libs/your.jar`
+
+* `externalJarOptions.arguments: - "--server.port=${free.port.1}" - "--spring.profiles.active=test"`
+* `healthcheckUrl` muss auf Health-Endpoint zeigen (z. B. `/actuator/health`), damit TGR/Tiger weiß, wann der JAR-Server bereit ist.
+'''
+
+[[beispiele-vollstaendige-szenarios-deutsch]]
+== 4) Beispiele — vollständige Szenarios (Deutsch)
+
+[[minimaler-flow-client---guard---testfachdienst]]
+=== 4.1 Minimaler Flow (Client -&gt; Guard -&gt; Testfachdienst)
+
+[source,gherkin]
+----
+Feature: Ping Flow
+
+  Scenario: Client fordert Resource über Guard an
+    Given TGR setze Anfrage Timeout auf 20 Sekunden
+    And TGR lösche aufgezeichnete Nachrichten
+
+    # Starten der Services nur bei Bedarf
+    Given TGR starte Server "testfachdienst"
+    And TGR starte Server "zionGuard"
+    And TGR starte Server "zionClient"
+
+    # Health-Check
+    When TGR sende eine leere GET-Anfrage an "http://localhost:${free.port.1}/actuator/health"
+    Then TGR finde die letzte Anfrage
+    And TGR prüfe aktuelle Antwort im Knoten "$.body.status" stimmt überein mit "UP"
+
+    # Trigger flow
+    When TGR sende eine leere GET-Anfrage an "http://localhost:${free.port.3}/fetch"
+    Then TGR finde die letzte Anfrage
+    And TGR prüfe aktuelle Antwort mit Attribut "$.responseCode" stimmt überein mit "200"
+    And TGR prüfe aktuelle Antwort im Knoten "$.body" stimmt überein mit ".*Hello.*"
+
+    # Verify Guard made backend call
+    When TGR finde die letzte Anfrage mit Pfad "/achelos_testfachdienst/hellozeta"
+    Then TGR prüfe aktuelle Anfrage mit Attribut "$.requestLine.method" stimmt überein mit "GET"
+
+    # cleanup (optional if you rely on After-Hook)
+    When TGR stoppe Server "zionClient"
+    And TGR stoppe Server "zionGuard"
+    And TGR stoppe Server "testfachdienst"
+----
+
+[[beispiel-post-mit-body--header]]
+=== 4.2 Beispiel: POST mit Body &amp; Header
+
+[source,gherkin]
+----
+Scenario: POST with JSON body
+  Given TGR starte Server "zionClient"
+  When TGR sende eine POST-Anfrage an "http://localhost:${free.port.3}/submit" mit Header:
+    | Content-Type | application/json |
+  And TGR sende eine POST-Anfrage an "http://localhost:${free.port.3}/submit" mit Body:
+    """
+    { "value": 123 }
+    """
+  Then TGR finde die letzte Anfrage
+  And TGR prüfe aktuelle Anfrage mit Attribut "$.requestLine.method" stimmt überein mit "POST"
+----
+
+'''
+
+[[best-practices--troubleshooting]]
+== 5) Best Practices &amp; Troubleshooting
+
+* *Server-Namen müssen exakt übereinstimmen* mit `tiger.yaml` (case-sensitive).
+* *Arbeitsverzeichnis des TestEnvManager / Runner*: Achte darauf, dass `tiger.yaml` im Working Directory liegt oder der Runner den korrekten Pfad lädt.
+* *Nutze `active: false`* → starte Server per TGR → vermeidet Port-Locks bei wiederholtem Testlauf (insb.
+Windows).
+* *Healthcheck konfigurieren* in `tiger.yaml` für `externalJar` und `startupTimeoutSec` erhöhen, falls Start länger dauert.
+* *Clear recorded messages* zwingend nutzen, bevor du einen Flow triggerst, wenn du Reihenfolgen prüfen willst.
+* *Regex in Assertions*: Verwende einfache, robuste Regex (z. B. `.*Hello.*`), statt exakte JSON-Strings, wenn die Antwort leicht variieren kann.
+* *Logs prüfen*: Tiger schreibt Server-Logs in `target/serverLogs/...` (oder `build/`-Äquivalent).
+Nutze diese beim Debug.
+'''
+
+[[wie-neue-tgr-steps-dokumentiert-werden-sollen]]
+== 6) Wie neue TGR-Steps dokumentiert werden sollen
+
+. Wenn ihr neue TGR-Glues/Wrapper (deutsch) hinzufügt, erweitere diese Datei unter einem eigenen Abschnitt `# Erweiterte TGR-Steps`.
+. Füge pro Step diese Informationen hinzu:
+* Deutsche Phrase (Feature-Syntax)
+* Englische Entsprechung (falls vorhanden)
+* Parameterliste (Pflicht/Optional)
+* Beispiel (Gherkin)
+* Erwartete Nebenwirkungen / Vorbedingungen (z. B. `tiger.yaml` Eintrag erforderlich)
+. Commit-Guideline: Änderungen an `docs/tgr_methods.md` müssen in PR erklärt werden (warum neuer Step nötig).
+'''
+
+== Änderungshistorie / Versionierung
+
+* Versioniere diese Datei bei größeren Änderungen (z. B. `v1.0`, `v1.1`) und dokumentiere inkompatible Änderungen in `CHANGELOG.md`.
+'''
+
+*Schlussbemerkung*
+
+Diese Referenz ist das zentrale Nachschlagewerk in eurem Repository für alle TGR-Steps in deutschen Feature-Files.
+Ergänzungen, Korrekturen und Erweiterungen bitte per Merge-Request mit kurzem Use-Case-Beispiel.

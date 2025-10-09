@@ -1,0 +1,6 @@
+[#TA_A_27798_03]
+===== TA_A_27798_03 - Service Discovery - Protected Resource Well-known - schemakonform
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+
+Das Protected Resource Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.

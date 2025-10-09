@@ -1,0 +1,4 @@
+[#TA_A_25767_02]
+===== TA_A_25767_02 - DPoP für Authentifizierung
+
+"Das ZETA Client MUSS [...] **DPoP [RFC9449]** zur Authentifizierung unterstützen."

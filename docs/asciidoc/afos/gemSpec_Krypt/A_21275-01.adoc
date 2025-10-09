@@ -1,0 +1,9 @@
+[#A_21275-01]
+==== A_21275-01 - TLS-Verbindungen, zulässige Hashfunktionen bei Signaturen im TLS-Handshake
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, MÜSSEN sicherstellen, dass
+
+* sie im Rahmen der Erstellung und Prüfung von digitalen Signaturen im Rahmen des TLS-Handshakes ausschließlich folgende kryptographisch geeignete Hashfunktionen verwenden:
+* SHA-256, SHA-384, SHA-512 [FIPS-180-4]
+* SHA3-256, SHA3-384, SHA3-512 [FIPS-202]
+* sie dabei mindestens SHA-256 unterstützen, (Bitte die Umsetzungshinweise in Bezug auf die "signature_algorithms"-Extension in gemSpec_Krypt#A_21275-* beachten.)

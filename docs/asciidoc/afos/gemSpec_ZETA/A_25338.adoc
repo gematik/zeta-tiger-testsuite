@@ -1,0 +1,9 @@
+[#A_25338]
+==== A_25338 - ZETA Client - Identifikation mittels product_id
+
+Der ZETA Client MUSS bei der SM(C)-B Authentifizierung mit DPoP in der JWT-Assertion unter"urn:telematik:client-self-assessment" die Client-Daten gemäß
+[client-instance.yaml] eintragen.
+Dabei MUSS die von der gematik für das Clientsystem ausgestellteproduct_id nach [A_25337] und eine selbst festgelegte Versionskennzeichnung nach folgendem Schema verwendet werden:
+
+* <product_id> gemäß Registrierung bei der gematik mit Länge maximal 20 Zeichen, Zeichenvorrat [0-9a-zA-Z\-],
+* <product_version> gemäß Produktidentifikation mit Länge 1-20 Zeichen, Zeichenvorrat [0-9a-zA-Z\-\.].

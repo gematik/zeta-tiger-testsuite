@@ -1,0 +1,8 @@
+[#TA_A_26587_02]
+===== TA_A_26587_02 - Operation retrieve für Session-Daten
+
+"Die Komponente PDP Datenbank MUSS Schnittstellen anbieten, sodass
+
+* der Authorization Server die Operationen create, **retrieve**, update und delete für **Session**\-Daten ausführen kann,
+
+[...]"

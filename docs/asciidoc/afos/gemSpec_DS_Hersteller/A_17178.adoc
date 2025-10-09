@@ -1,0 +1,4 @@
+[#A_17178]
+==== A_17178 - Produktentwicklung: Basisschutz gegen OWASP Top 10 Risiken
+
+Hersteller von Produkten der TI MÜSSEN für die von ihnen angebotenen Produkte der TI gewährleisten, dass das Produkt resistent bezüglich der im aktuellen und den beiden vorherigen OWASP Top 10 Report(s) ausgewiesenen Risiken ist.

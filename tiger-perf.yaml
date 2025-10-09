@@ -1,0 +1,67 @@
+servers:
+  testfachdienst:
+    hostname: testfachdienst
+    type: externalJar
+    source:
+      - local:testfachdienst-0.0.1-SNAPSHOT.jar
+    externalJarOptions:
+      arguments:
+        - --server.port=${free.port.0}
+    healthcheckUrl: "http://localhost:${free.port.0}/achelos_testfachdienst/actuator/health"
+    startupTimeoutSec: 30
+
+  pepEgressProxy:
+    hostname: pepEgressProxy
+    type: tigerProxy
+    tigerProxyConfiguration:
+      adminPort: ${free.port.1}
+      proxyPort: ${free.port.2}
+      proxyRoutes:
+        - from: "/achelos_testfachdienst/hellozeta"
+          to: "http://localhost:${free.port.0}/achelos_testfachdienst/hellozeta"
+      fileSaveInfo:
+        writeToFile: true
+        filename: "target/gates/egress.tgr"
+        clearFileOnBoot: true
+
+  zetaGuard:
+    hostname: zetaGuard
+    type: tigerProxy
+    dependsUpon: testfachdienst, pepEgressProxy
+    tigerProxyConfiguration:
+      proxyPort: ${free.port.3}
+      proxyRoutes:
+        - from: "/achelos_testfachdienst/hellozeta"
+          to:   "http://localhost:${free.port.2}/achelos_testfachdienst/hellozeta"
+
+  pepIngressProxy:
+    hostname: pepIngressProxy
+    type: tigerProxy
+    tigerProxyConfiguration:
+      adminPort: ${free.port.4}
+      proxyPort: 9080 #${free.port.5}
+      proxyRoutes:
+        - from: "/achelos_testfachdienst/hellozeta"
+          to: "http://localhost:${free.port.3}/achelos_testfachdienst/hellozeta"
+        - from: "/auth/realms/zeta-guard/protocol/openid-connect/token"
+          to: "https://zeta.example.org/auth/realms/zeta-guard/protocol/openid-connect/token"
+#      modifications:
+#        - condition: "true"
+#          targetElement: "$.header['Host']"
+#          replacementValue: "zeta.example.org"
+      fileSaveInfo:
+        writeToFile: true
+        filename: "target/gates/ingress.tgr"
+        clearFileOnBoot: true
+
+#tigerProxy:
+#  adminPort: ${free.port.6}
+#  proxyPort: ${free.port.7}
+#  activateRbelParsing: true
+#  trafficEndpoints:
+#    - http://localhost:${free.port.4}  # pepIngressProxy admin port
+#    - http://localhost:${free.port.1}  # pepEgressProxy admin port
+#  modifications:
+#    # a condition that needs to be fulfilled for the modification to be applied
+#    # (uses JEXL grammar)
+

@@ -1,0 +1,42 @@
+[#A_25739]
+==== A_25739 - PDP, Open Policy Agent Instanzen
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+Tabelle #: OPA - Konfiguration
+
+Konfiguration Aktive OPA Instanz Simulations-OPA Instanz services:
+- name: <service name> url: <PIP und PAP service> <service name> Innerhalb der OPA Konfiguration verwendeter Service Name.
+
+<PIP und PAP service> Download-Endpunkt des PIP und PAP Servicees entsprechend der verwendeten Umgebung Default:
+Produktions-Instanz: https://pip-pap.ti-dienste.de
+<https://pip-pap.ti-dienste.de>
+Referenz-Instanz: https://pip-pap-ref.ti-dienste.de
+<https://pip-pap-ref.ti-dienste.de>
+Test-Instanz: https://pip-pap-test.ti-dienste.de
+<https://pip-pap-test.ti-dienste.de> wie aktive OPA Instanz bundles:
+authz:
+service: <service name> resource: <path> persist: true <path> Der Pfad wird wie in [pip-pap-service.yaml] beschrieben angegeben.
+Durch das labellatest wird die neueste bundle.tar.gz Datei für die aktive OPA Instanz heruntergeladen.
+Default:
+/policies/<TI service>/latest <path> Durch das label latest-sim wird die neueste bundle.tar.gz Datei für die Simulations-Instanz der Policy Engine heruntergeladen.
+Default:
+/policies/<TI service>/latest-sim bundles:
+authz:
+polling:
+min_delay_seconds: <min> max_delay_seconds: <max> <min> Minimale Zeit bis zum nächsten Polling.
+Default: 300 <max> Maximale Zeit bis zum nächsten Polling.
+Default: 320 wie aktive OPAInstanz bundles:
+authz:
+signing:
+keyid: <PIP_and_PAP_key> scope: read <PIP_and_PAP_key> Die keyid des Schlüssels, mit dem die OPA Bundles signiert sind.
+
+wie aktive OPA Instanz decision_logs:
+service: <service name> resource: ${DL_REMOTE_URL}
+reporting:
+min_delay_seconds: <min> max_delay_seconds: <max> ${DL_REMOTE_URL}
+Die URL des Remote Servers, zu dem die decision logs gesendet werden.
+Dieser Parameter wird per environment Variable übergeben, sodass jeder Anbieter des ZETA Guard bei Bedarf seinen eigenen Server angeben kann, der die decision logs empfängt.
+<min> Minimale Verzögerung bis zum nächsten Versand.
+Default: 300 <max> Maximale Verzögerung bis zum nächsten Versand.
+Default: 360 wie aktive OPA Instanz

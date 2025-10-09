@@ -1,0 +1,5 @@
+== Einleitung
+
+Dieser Testplan beschreibt die Prüfaktivitäten zur Verifikation und Validierung der *Zero Trust Access (ZETA)*-Architektur gemäß der Spezifikation *gemSpec_ZETA V1.1.0*.
+Der Plan folgt dem IEEE-829-Schema und ist risikobasiert gemäß ISO/IEC/IEEE 29119.
+Ziel ist der Nachweis der Erfüllung funktionaler und nicht-funktionaler Anforderungen (Sicherheit, Datenschutz, Performance, Interoperabilität).

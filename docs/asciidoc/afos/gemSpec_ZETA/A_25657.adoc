@@ -1,0 +1,4 @@
+[#A_25657]
+==== A_25657 - PDP - Authentication über sektoralen IDP
+
+Der PDP Authorization Server MUSS die Nutzer über sektorale IDPs authentifizieren können.

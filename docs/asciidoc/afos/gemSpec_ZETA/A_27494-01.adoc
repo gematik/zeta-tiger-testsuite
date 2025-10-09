@@ -1,0 +1,15 @@
+[#A_27494-01]
+==== A_27494-01 - Telemetrie-Daten Service, Custom Collector für Selbstauskunft
+
+Der Telemetrie-Daten Service MUSS einen Custom Collector (oder einen Collector mit einem Custom Processor) für die Selbstauskunft des Resource Servers implementieren.
+Die Selbstauskunft des Resource Servers erfolgt für jede eigenständige Instanz als OTLP Log Record.
+Der OTLP Log Record für die Selbstauskunft ist wie folgt definiert:
+Body: "Selbstauskunft".
+Attributes:
+
+* product_name – Name des Produkts
+* product_version – Aktuelle Produktversion
+* producttype_version – Version des Produkt-Typs
+* configuration_version – Konfigurationsversion
+* pod_name – Name des Pods/der Instanz des Resource Servers
+* timestamp – Der Zeitpunkt der Erstellung des Log Records (wird automatisch gesetzt).

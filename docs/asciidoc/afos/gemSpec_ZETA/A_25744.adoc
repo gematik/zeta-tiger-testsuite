@@ -1,0 +1,4 @@
+[#A_25744]
+==== A_25744 - ZETA Guard - Datenschutzkonformes Logging und Monitoring
+
+ZETA Guard MUSS die für den Betrieb des Zero Trust erforderlichen Logging- und Monitoring-Informationen in solcher Art und Weise erheben und verarbeiten, dass mit technischen Mitteln ausgeschlossen ist, dass dem Anbieter eines TI2.0 Dinestes vertrauliche oder zurProfilbildung geeignete Daten zur Kenntnis gelangen.

@@ -1,0 +1,10 @@
+[#A_26973]
+==== A_26973 - PDP Authorization Server - Nutzer-Daten aus id_token
+
+Die Komponente Authorization Server MUSS im Falle der OIDC Authentifizierung für Versicherte alle Claims aus dem id_token gemäß [gemSpec_IDP_Sek] auslesen und als Nutzer-Daten gemäß [user-info.yaml] in der PDP Datenbank speichern.
+Dabei gilt das folgende Mapping für die Pflicht-Nutzer-Daten.
+
+ Tabelle #: id_token_Nutzer-Daten 
+
+id_token claims (gemäß [gemSpec_IDP_Sek]) Nutzer-Daten gemäß [user-info.yaml]
+Beschreibung urn:telematik:claims:id identifier für Versicherte der unveränderliche Anteil der KVNR urn:telematik:claims:profession professionOID OID für Versicherte

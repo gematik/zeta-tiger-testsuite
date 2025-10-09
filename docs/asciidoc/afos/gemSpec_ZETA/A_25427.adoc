@@ -1,0 +1,4 @@
+[#A_25427]
+==== A_25427 - Hersteller Clientsystem Android - Google Cloud Projekt
+
+Der Hersteller eines Clientsystems für eine Android-basierte Betriebsumgebung MUSS ein Google Cloud Projekt führen oder einegleichwertige alternative Plattformattestierung verwenden, um Nachweise über dieClientintegrität einer jeden Clientsysteminstallation beziehen zu können.

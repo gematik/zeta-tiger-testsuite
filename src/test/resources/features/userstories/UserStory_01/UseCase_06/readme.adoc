@@ -1,0 +1,21 @@
+[#UC_01_06]
+===== UseCase_01_06: Client registrierung stationaer SC 400
+//A_27007 -ZETA Client - HTTP Statuscodes
+//400 Bad Request: Fehlerhafte Anfrage, z.B. ungültige oder
+//unvollständige Clientdaten. Der Client sollte die übermittelten
+//Registrierungsdaten überprüfen und mögliche Fehler beheben,
+//bevor er erneut versucht, sich zu registrieren.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

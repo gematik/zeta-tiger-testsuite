@@ -1,0 +1,30 @@
+[appendix]
+[#_anforderungen_mappingreferenz]
+== Anforderungen (Mapping/Referenz)
+
+Nachfolgend ist die Traceability-Matrix eingebunden.
+
+include::../tables/traceability_matrix.adoc[]
+
+[appendix]
+== Vorlagen
+
+include::../../../src/test/resources/features/userstories/Use_Case_Template.adoc[]
+
+[appendix]
+=== Testprotokoll-Vorlage
+
+// TODO: Vorlage verlinken/einfügen
+
+[appendix]
+=== Fehlerbericht-Vorlage
+
+// TODO: Vorlage verlinken/einfügen
+
+[appendix]
+
+include::../afos/readme.adoc[]
+
+[appendix]
+
+include::../testaspekte/readme.adoc[]

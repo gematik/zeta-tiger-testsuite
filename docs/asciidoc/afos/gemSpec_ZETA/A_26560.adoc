@@ -1,0 +1,4 @@
+[#A_26560]
+==== A_26560 - PEP HTTP Proxy - Weiterleitungskonfiguration
+
+Der PEP HTTP Proxy MUSS es ermöglichen, dass Regeln für die Weiterleitung von Request URLs an die URLs von Resource Servern konfiguriert werden können.

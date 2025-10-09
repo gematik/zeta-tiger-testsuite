@@ -1,0 +1,32 @@
+[#A_26935]
+==== A_26935 - ZETA/ASL-Protokoll: ZETA/ASL-Server: Nachricht 2
+
+Ein ZETA/ASL-Server MUSS die beiden öffentlichen Schlüssel aus Nachricht 1 (vgl.
+A_26932-*) prüfen (korrekte ECC-Kurve ("crv":"P-256"), öffentlicher Punkt liegt auf der Kurve P-256 [FIPS-186-5], der öffentliche ML-KEM-768-Schlüssel ist valide [FIPS-203]).
+Er MUSS für ECDH und ML-KEM-768 jeweils die KEM-Encapsulate-Funktion verwenden und erhält dabei zwei Geheimnisse (ss_e_ecdh, ss_e_mlkem768) und zwei Ciphertexte (ECDH_ct, ML-KEM-768_ct).
+Er MUSS für die beiden Geheimnisse zusammenfügen: ss_e = ss_e_ecdh || ss_e_mlkem768 und das Ergebnis mittels der HKDF [RFC-5869] auf Basis von SHA-256 verwenden (info = '' (leere Zeichenkette)), um 64 Byte abzuleiten.
+Die ersten 32 Byte (=256 Bit) heißen K1_c2s und die letzten 32 Byte heißen K1_s2c.
+
+Mit dem Schlüssel K1_s2c mittels AES/CGM (vgl.
+A_26934-*) MÜSSEN die "signierten öffentlichen ZETA/ASL-Schlüssel" (vgl.
+A_26921-*) verschlüsselt werden.
+Das Ergebnis (vgl.
+A_26934-*) heißt aed_ciphertext_msg_2.
+
+Er MUSS folgende Datenstruktur erzeugen:
+{
+"MessageType" : "M2", "ECDH_ct" : ... analog ECDH_PK aus A_26932-* ..., "ML-KEM-768_ct" : ML-KEM-768-Ciphertext analog [FIPS-203], "AEAD_ct" : aead_ciphertext_msg_2 }
+
+Diese Datenstruktur MUSS er mittels CBOR [RFC-CBOR] serialisieren.
+Diese Bytefolge ist Nachricht 2.
+
+Er MUSS eine ID erzeugen, kodiert aus der Zeichenmenge A-Za-z0-9-/ die maximal 200 Zeichen lang ist.
+Die ID MUSS mit "/" (Slash) beginnen und MUSS ein gültiger URL-Pfadname sein.
+Diese ID MUSS es ZETA/ASL-Server ermöglichen, den aktuellen Handshake entsprechend zuzuordnen bei Eintreffen der Nachricht-3 des ZETA/ASL-Clients, der diese ID mitsendet.
+Der ZETA/ASL-Server kann die Struktur der ID selbst definieren.
+Ein ZETA/ASL-Client MUSS die ID als opake Zeichenkette behandeln.
+Er MUSS die Nachricht 2 inkl.
+ID an die HTTPS-Schnittstelle des Fachdienstes übergeben.
+Das Aktensystem (bzw. die äußere HTTPS-Schnittstelle) MUSS als Antwort auf den HTTPS-Request, über den die Nachricht 1 eingetroffen ist, die Nachricht 2 als Antwort im Response-Body senden.
+Der zu verwendende Mime-Type MUSS "application/cbor" (HTTP Content-Type) für die Response sein.
+Im Response-Header MUSS mit der HTTP-Header-Variable "ZETA-ASL-CID" die ID aufgeführt werden.

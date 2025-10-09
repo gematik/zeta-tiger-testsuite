@@ -1,0 +1,5 @@
+[#TA_A_26489_01]
+===== TA_A_26489_01 - PDP Authorization Server - Requests unter Last innerhalb von 0,2 Sekunden
+
+"Die Komponente PDP Authorization Server MUSS bei einem Deployment in eine Cloud Umgebung ermöglichen, dass eingehende
+Requests unter Last innerhalb von 0,2 Sekunden bearbeitet und beantwortet werden."

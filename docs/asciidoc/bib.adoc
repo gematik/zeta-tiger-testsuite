@@ -1,0 +1,7 @@
+[bibliography]
+== Literatur
+
+* [[[RFC8693]]] M. Jones, A. Nadalin, B. Campbell, C. Mortimore, T. Bradley:
+*OAuth 2.0 Token Exchange (RFC 8693)*, Januar 2020.
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc8693
+(zuletzt abgerufen am 17. September 2025).

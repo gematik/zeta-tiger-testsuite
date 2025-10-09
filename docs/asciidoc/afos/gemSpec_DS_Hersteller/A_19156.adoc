@@ -1,0 +1,4 @@
+[#A_19156]
+==== A_19156 - Durchführung automatisierter Sicherheitstests
+
+Der Hersteller eines Produkts MUSS während der Entwicklung des Produktes automatisierte Sicherheitstests durchführen.

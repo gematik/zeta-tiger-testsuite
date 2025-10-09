@@ -1,0 +1,6 @@
+[#A_26681]
+==== A_26681 - ZETA Client - Umsetzen eines ZETA/ASL-Kanals
+
+Der ZETA Client MUSS einen ZETA/ASL-Kanal (Client-Seite) umsetzen können.
+Das Access Token und das DPoP Token müssen außerhalb der Verschlüsselung des ZETA/ASL-Kanals transportiert werden.
+Wenn ein ZETA/ASL-Kanal verwendet und ein PoPP Token im Request transportiert wird, dann MUSS das PoPP Token durch den ZETA/ASL-Kanal geschützt transportiert werden.

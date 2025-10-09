@@ -1,0 +1,4 @@
+[#GS-A_4946-01]
+==== GS-A_4946-01 - Produktentwicklung: sichere Programmierung
+
+Hersteller von Produkten der TI MÜSSEN für die von ihnen angebotenen Produkte der TI gewährleisten, dass bei der Entwicklung der Produkte Secure Coding Guidelines angewendet werden; d. h., in einschlägigen Fachkreisen anerkannte, erprobte und bewährte Regeln sicherer Programmierung befolgt wurden.

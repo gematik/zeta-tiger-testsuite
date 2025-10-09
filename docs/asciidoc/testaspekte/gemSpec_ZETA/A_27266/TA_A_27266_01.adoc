@@ -1,0 +1,6 @@
+[#TA_A_27266_01]
+===== TA_A_27266_01 - Protected Resource Metadata Well-known - Bereitstellung unter spezifischer URI
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27266>>.*
+
+Die Komponente HTTP Proxy MUSS ein Well-known JSON Dokument bereitstellen.

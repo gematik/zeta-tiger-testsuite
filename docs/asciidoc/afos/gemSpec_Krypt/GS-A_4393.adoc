@@ -1,0 +1,4 @@
+[#GS-A_4393]
+==== GS-A_4393 - Algorithmus bei der Erstellung von Hashwerten von Zertifikaten oder öffentlichen Schlüsseln
+
+Alle Produkttypen, die Fingerprints eines öffentlichen Schlüssels oder eines Zertifikates erstellen, MÜSSEN den Hash-Algorithmus SHA-256 [FIPS-180-4] dafür verwenden.

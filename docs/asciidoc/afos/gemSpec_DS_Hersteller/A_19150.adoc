@@ -1,0 +1,4 @@
+[#A_19150]
+==== A_19150 - Umsetzung Sicherheitstestplan
+
+Der Hersteller eines Produktes MUSS seinen Testplan für Sicherheitstests umsetzen und der gematik bei jeder Veröffentlichung einer neuen Produktversion einen Testbericht zur Verfügung stellen.

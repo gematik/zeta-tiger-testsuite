@@ -1,0 +1,5 @@
+[#A_26668]
+==== A_26668 - ZETA Guard - Rate Limit
+
+Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein Rate Limit konfigurierbar einstellen können.
+Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (X-Rate-Limit-Limit (das erlaubte Limit), X-Rate-Limit-Remaining (verbleibende Anfragen) und X-Rate-Limit-Reset (Zeitpunkt, an dem das Limit zurückgesetzt wird)).

@@ -1,0 +1,4 @@
+[#A_26947]
+==== A_26947 - PEP Datenbank - Zugriff nur für den PEP HTTP Proxy
+
+Die Komponente PEP Datenbank MUSS Zugriffe ausschließlich für den PEP HTTP Proxy gewähren.

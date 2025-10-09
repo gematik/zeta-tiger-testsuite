@@ -1,0 +1,4 @@
+[#TA_A_25760_03]
+===== TA_A_25760_03 - PDP Authorization Server - OAuth2 Schnittstellen - Refresh-Token konform
+"[...]
+Der Authorization Server MUSS am Token Endpunkt *REFRESH_TOKEN* entsprechend [*RFC6749*] ausstellen können. *[\<=]*""

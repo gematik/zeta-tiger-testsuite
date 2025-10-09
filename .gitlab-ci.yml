@@ -1,0 +1,82 @@
+stages:
+  - lint
+  - docs
+  - test
+  - pages
+
+lint:
+  stage: lint
+  image: maven:3.9.11-eclipse-temurin-21
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  script:
+    - mvn checkstyle:checkstyle
+  artifacts:
+    paths:
+      - target/checkstyle-result.xml
+    when: always
+  cache:
+    paths:
+      - .m2/repository
+  allow_failure: false
+
+docs:
+  stage: docs
+  image: uwebarthel/asciidoctor:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - mkdir -p docs
+    - |
+      asciidoctor \
+        -r asciidoctor-diagram \
+        -a data-uri \
+        -a imagesdir=. \
+        -a imagesoutdir=docs \
+        -a puppeteer-config=docs/puppeteer-config.json \
+        -D docs \
+        docs/asciidoc/Testplan_ZETA.adoc
+    - |
+      asciidoctor-pdf \
+        -r asciidoctor-diagram \
+        -a puppeteer-config=docs/puppeteer-config.json \
+        -D docs \
+        docs/asciidoc/Testplan_ZETA.adoc
+  artifacts:
+    paths:
+      - docs/Testplan_ZETA.pdf
+      - docs/Testplan_ZETA.html
+    expire_in: 1 week
+  allow_failure: true
+
+test:
+  stage: test
+  image: maven:3.9.11-eclipse-temurin-21
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  script:
+    - mvn --batch-mode clean verify
+  artifacts:
+    reports:
+      junit: target/site/serenity/*.xml
+    paths:
+      - target/site/serenity
+    expire_in: 1 week
+  cache:
+    paths:
+      - .m2/repository
+
+pages:
+  stage: pages
+  image: busybox:stable
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - echo "Publishing Serenity report"
+  pages:
+    publish: target/site/serenity
+    expire_in: 1 week

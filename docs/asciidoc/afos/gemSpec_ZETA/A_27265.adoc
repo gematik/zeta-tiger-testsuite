@@ -1,0 +1,4 @@
+[#A_27265]
+==== A_27265 - PEP HTTP Proxy - unveränderte Weiterleitung von Host Header und Request Zeile
+
+Der PEP HTTP Proxy MUSS den Host Header und die Request Zeile unverändert an den Resource Server weiterleiten.

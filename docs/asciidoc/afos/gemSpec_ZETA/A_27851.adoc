@@ -1,0 +1,4 @@
+[#A_27851]
+==== A_27851 - ZETA Guard - Rückwärtskompatibilität
+
+Der Hersteller des ZETA Guard MUSS sicher stellen, dass bei Änderungen an den öffentlichen Schnittstellen keine Breaking-Changes eingeführt werden, bei gleichzeitiger Wahrung der Rückwärtskompatibilität für alle aktiv unterstützten Releases.

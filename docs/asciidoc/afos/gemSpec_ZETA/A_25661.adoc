@@ -1,0 +1,5 @@
+[#A_25661]
+==== A_25661 - PDP Authorization Server - Umsetzung der Policy Decision
+
+Die Komponente Authorization Server MUSS die Zugriffs-Entscheidung eines PDP mittels der Ausgabe eines Access und eines Refresh Tokens umsetzen bzw. eine Zugriffsverweigerung mit einem HTTP-Statuscode 403 quittieren.
+Die Claims im Access und im Refresh Token MÜSSEN zur Entscheidung der Policy Engine für die angefragten Claims passen.

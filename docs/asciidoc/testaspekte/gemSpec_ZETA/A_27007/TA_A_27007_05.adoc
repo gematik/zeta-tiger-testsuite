@@ -1,0 +1,15 @@
+[#TA_A_27007_05]
+===== TA_A_27007_05 - ZETA Client - HTTP Statuscodes - Authentifizierung - Client Assertion - 429 Too Many Requests
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **Authentifizierung mit Client Assertion JWT** |
+**429 Too Many Requests**: Zu viele Anfragen innerhalb eines bestimmten Zeitraums (Rate Limiting). Der Client sollte die Anzahl der Anfragen reduzieren und eine geeignete Wartezeit (Retry-After Header beachten) einhalten, bevor er die Anfrage erneut sendet.
++++[...]+++
+|===
++++[...]+++"

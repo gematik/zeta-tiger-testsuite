@@ -1,0 +1,6 @@
+[#A_26480]
+==== A_26480 - PEP HTTP Proxy - Umsetzen eines ZETA/ASL-Kanals
+
+Die Komponente HTTP Proxy MUSS einen ZETA/ASL-Kanal (Server-Seite) umsetzen können.
+Die Verwendung des ZETA/ASL-Kanals MUSS durch Konfiguration ein- und ausschaltbar sein.
+In der Default-Einstellung ist der ZETA/ASL-Kanal ausgeschaltet.

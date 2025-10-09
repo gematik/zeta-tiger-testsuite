@@ -1,0 +1,4 @@
+[#A_25799]
+==== A_25799 - ZETA Guard-Komponenten - Protokollierung von Health Check Ergebnissen
+
+Die Komponenten des ZETA Guard MUSS die Ergebnisse der Health Checks protokollieren, um eine Historie ihrer Betriebszustände und eventuell aufgetretener Probleme zu erhalten.

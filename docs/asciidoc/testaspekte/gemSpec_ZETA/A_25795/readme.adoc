@@ -1,0 +1,19 @@
+==== Testaspekte für die Anforderung A_25795
+
+Folgende Testaspekte testen <<A_25795>>.
+
+include::TA_A_25795_01.adoc[]
+
+include::TA_A_25795_02.adoc[]
+
+include::TA_A_25795_03.adoc[]
+
+include::TA_A_25795_04.adoc[]
+
+include::TA_A_25795_05.adoc[]
+
+include::TA_A_25795_06.adoc[]
+
+include::TA_A_25795_07.adoc[]
+
+include::TA_A_25795_08.adoc[]

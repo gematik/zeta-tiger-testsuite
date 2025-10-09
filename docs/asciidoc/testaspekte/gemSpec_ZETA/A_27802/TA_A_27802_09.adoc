@@ -1,0 +1,11 @@
+[#TA_A_27802_09]
+===== TA_A_27802_09 - ZETA Guard - Spezifische Prüfungen für DPoP Token - Nonce
+
+Der ZETA Guard MUSS bei der Prüfung von JWT folgende Prüfschritte durchführen:
+
+...
+
+**Spezifische Prüfungen für DPoP Token:**
+
+* Typ: Prüfen, dass der JWT-Typ dpop+jwt ist.
+* Nonce: Die **Nonce muss geprüft werden**.

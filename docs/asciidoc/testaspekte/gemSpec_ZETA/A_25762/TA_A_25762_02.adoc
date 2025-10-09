@@ -1,0 +1,8 @@
+[#TA_A_25762_02]
+===== TA_A_25762_02 - Nutzerauthentifizierung zentraler IDP (SmartCardIDP für kartengebundene Identitäten)
+
+"Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
+
+* Authentifizierung des Nutzers gegenüber dem **zentralen IDP**\-Dienst der TI gemäß [gemSpec_IDP_Dienst] (**SmartCardIDP für kartengebundene Identitäten**).
+
+[...]"

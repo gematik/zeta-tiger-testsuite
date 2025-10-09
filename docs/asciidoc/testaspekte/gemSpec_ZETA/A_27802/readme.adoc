@@ -1,0 +1,27 @@
+==== Testaspekte für die Anforderung A_27802
+
+Folgende Testaspekte testen <<A_27802>>.
+
+include::TA_A_27802_01.adoc[]
+
+include::TA_A_27802_02.adoc[]
+
+include::TA_A_27802_03.adoc[]
+
+include::TA_A_27802_04.adoc[]
+
+include::TA_A_27802_05.adoc[]
+
+include::TA_A_27802_06.adoc[]
+
+include::TA_A_27802_07.adoc[]
+
+include::TA_A_27802_08.adoc[]
+
+include::TA_A_27802_09.adoc[]
+
+include::TA_A_27802_10.adoc[]
+
+include::TA_A_27802_11.adoc[]
+
+include::TA_A_27802_12.adoc[]

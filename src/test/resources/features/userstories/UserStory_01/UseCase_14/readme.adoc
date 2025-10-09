@@ -1,0 +1,20 @@
+[#UC_01_14]
+==== UseCase_01_14: Client ressource anfrage fachdienst SC 400
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 400 Bad Request: Ungültige Anfrage an den Proxy.Der Client
+// sollte die Anfrage überprüfen und sicherstellen, dass sie korrekt
+// formatiert und vollständig ist, bevor er sie erneut sendet.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

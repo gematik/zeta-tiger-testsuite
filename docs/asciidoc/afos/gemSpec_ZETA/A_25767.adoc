@@ -1,0 +1,5 @@
+[#A_25767]
+==== A_25767 - ZETA Client - Clientkey in JWT
+
+Das ZETA Client MUSS Private Key JWT [RFC7521] und [RFC7523] sowie DPoP
+[RFC9449] zur Authentifizierung unterstützen.

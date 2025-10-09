@@ -1,0 +1,4 @@
+[#TA_A_26640_03]
+===== TA_A_26640_03 - ZETA Guard - HTTP Protokoll-Version HTTP/3
+
+Die Komponente Ingress [...] SOLL HTTP/3 unterstützen.

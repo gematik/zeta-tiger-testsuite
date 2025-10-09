@@ -1,0 +1,11 @@
+[#A_26936]
+==== A_26936 - ZETA/ASL-Protokoll: ZETA/ASL-Client: Erhalt von Nachricht 2
+
+Ein ZETA/ASL-Client MUSS die für Nachricht 2 erzeugten Datenobjekte nach A_26935-* verarbeiten können.
+Er MUSS prüfen, ob
+
+* im HTTP-Response-Header die Variable "ZETA-ASL-CID" enthalten ist, falls nicht Abbruch.
+* der Wert der Variable eine Bytefolge ist, dessen Länge maximal 200 Byte lang ist und die nur die Zeichen A-Za-z0-9-/ enthält und mit "/" (Slash) beginnt.
+Falls nicht Abbruch.
+Er MUSS den Wert als Pfad für das Versenden der Nachricht 3 (vgl.
+A_26937) und aller weiteren Nachrichten - also auch nach dem erfolgreichen Handshake - im Kontext dieser Verbindung verwenden.

@@ -1,0 +1,4 @@
+[#GS-A_4387]
+==== GS-A_4387 - TLS-Verbindungen, nicht Version 1.0
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, DÜRFEN NICHT die TLS-Version 1.0 unterstützen.

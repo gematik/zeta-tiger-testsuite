@@ -1,0 +1,4 @@
+[#A_26517]
+==== A_26517 - ZETA Guard - Unterstützung von mTLS
+
+ZETA Guard MUSS die Konfiguration und Nutzung von mTLS unterstützen.

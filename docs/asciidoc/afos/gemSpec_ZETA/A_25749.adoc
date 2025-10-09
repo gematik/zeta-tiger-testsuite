@@ -1,0 +1,9 @@
+[#A_25749]
+==== A_25749 - PDP Client-Registrierung - Nutzer Protokollierung
+
+Die Komponente Authorization Server MUSS ein Nutzerprotokoll führen und die folgenden Anwendungsfälle für den Nutzer protokollieren:
+* Client hinzufügen
+* Client löschen
+* Client umbenennen
+* E-Mail-Adresse hinzufugen
+* E-Mail-Adresse aktualisieren

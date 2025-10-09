@@ -1,0 +1,5 @@
+[#GS-A_4367]
+==== GS-A_4367 - Zufallszahlengenerator
+
+Alle Produkttypen, die Zufallszahlen generieren, MÜSSEN die Anforderungen aus
+[BSI-TR-03116-1#3.8 Erzeugung von Zufallszahlen] erfüllen.

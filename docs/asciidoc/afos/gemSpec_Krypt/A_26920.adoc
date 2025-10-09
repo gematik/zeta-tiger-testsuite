@@ -1,0 +1,5 @@
+[#A_26920]
+==== A_26920 - ZETA/ASL mindestens HTTP-Version 1.1
+
+Ein ZETA/ASL-Server MUSS an seinen HTTPS-Schnittstellen, i. S. v.
+Schnittstellen, die ein ZETA/ASL-Client anspricht, mindestens HTTP Version 1.1 unterstützen.

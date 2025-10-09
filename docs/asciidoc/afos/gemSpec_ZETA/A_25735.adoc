@@ -1,0 +1,4 @@
+[#A_25735]
+==== A_25735 - Clientsystem - Aktivierung Push-Benachrichtigung
+
+Das Clientsystem MUSS dem Nutzer die Möglichkeit geben, Push-Benachrichtigungen für Aktivitäten über registrierte Clients und Neuregistrierungen für diesen Nutzer zu aktivieren.

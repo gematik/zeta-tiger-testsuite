@@ -1,0 +1,6 @@
+[#TA_A_26662_01]
+===== TA_A_26662_01 - ZETA Guard - HTTP fehlerdetails
+
+Der ZETA Guard MUSS bei Beantwortung eines Requests mit einem HTTP Fehler ein JSON
+Object ergänzen, das den Fehler beschreibt. Das JSON Object MUSS gemäß
+[zeta-error.yaml] aufgebaut sein.

@@ -1,0 +1,4 @@
+[#A_25769]
+==== A_25769 - ZETA Client - Client Credentials sicher generieren und schützen
+
+Das ZETA Client auf mobilem Gerät mit Apple- oder Android-basierter Betriebsumgebung MUSS die Generierung der Client-Credentials derart generieren und speichern, dass ein Kopieren und Exportieren der Schlüssel verhindert wird.

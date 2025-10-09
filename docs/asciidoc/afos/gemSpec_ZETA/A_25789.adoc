@@ -1,0 +1,4 @@
+[#A_25789]
+==== A_25789 - ZETA Guard-Komponenten - Schnelle Rollback-Durchführung
+
+Die Komponenten des ZETA Guard MUSS Rollbacks schnell und ohne manuelle Eingriffe durchführen können.

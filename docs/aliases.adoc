@@ -1,0 +1,42 @@
+include::../docs/afos/readme_aliases.adoc[]
+// Automatisch generierte Aliase zu allen .adoc-Dateien in src/ und docs/
+// Dieses File wird vom Skript generate_aliases.py erzeugt.
+
+:tgr_methods: xref:tgr_methods.adoc[tgr_methods]
+:tgr_methods-include: tgr_methods.adoc
+:afos_readme: xref:afos\readme.adoc[afos_readme]
+:afos_readme-include: afos\readme.adoc
+:readme_aliases: xref:afos\readme_aliases.adoc[readme_aliases]
+:readme_aliases-include: afos\readme_aliases.adoc
+:A_26640: xref:afos\gemSpec_ZETA\A_26640.adoc[A_26640]
+:A_26640-include: afos\gemSpec_ZETA\A_26640.adoc
+:Testplan_ZETA: xref:asciidoc\Testplan_ZETA.adoc[Testplan_ZETA]
+:Testplan_ZETA-include: asciidoc\Testplan_ZETA.adoc
+:testaspekte_readme: xref:testaspekte\readme.adoc[testaspekte_readme]
+:testaspekte_readme-include: testaspekte\readme.adoc
+:TA_A_26640_01: xref:testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_01.adoc[TA_A_26640_01]
+:TA_A_26640_01-include: testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_01.adoc
+:TA_A_26640_02: xref:testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_02.adoc[TA_A_26640_02]
+:TA_A_26640_02-include: testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_02.adoc
+:TA_A_26640_03: xref:testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_03.adoc[TA_A_26640_03]
+:TA_A_26640_03-include: testaspekte\gemSpec_ZETA\A_26640\TA_A_26640_03.adoc
+:features_readme: xref:..\src\test\resources\features\readme.adoc[features_readme]
+:features_readme-include: ..\src\test\resources\features\readme.adoc
+:userstories_readme: xref:..\src\test\resources\features\userstories\readme.adoc[userstories_readme]
+:userstories_readme-include: ..\src\test\resources\features\userstories\readme.adoc
+:ping_testfachdienst_readme: xref:..\src\test\resources\features\userstories\ping_testfachdienst\readme.adoc[ping_testfachdienst_readme]
+:ping_testfachdienst_readme-include: ..\src\test\resources\features\userstories\ping_testfachdienst\readme.adoc
+:ping_zeta_client_readme: xref:..\src\test\resources\features\userstories\ping_zeta_client\readme.adoc[ping_zeta_client_readme]
+:ping_zeta_client_readme-include: ..\src\test\resources\features\userstories\ping_zeta_client\readme.adoc
+:ping_zeta_guard_readme: xref:..\src\test\resources\features\userstories\ping_zeta_guard\readme.adoc[ping_zeta_guard_readme]
+:ping_zeta_guard_readme-include: ..\src\test\resources\features\userstories\ping_zeta_guard\readme.adoc
+:smoke_readme: xref:..\src\test\resources\features\userstories\smoke\readme.adoc[smoke_readme]
+:smoke_readme-include: ..\src\test\resources\features\userstories\smoke\readme.adoc
+:UserStory_01_readme: xref:..\src\test\resources\features\userstories\UserStory_01\readme.adoc[UserStory_01_readme]
+:UserStory_01_readme-include: ..\src\test\resources\features\userstories\UserStory_01\readme.adoc
+:UseCase_01_readme: xref:..\src\test\resources\features\userstories\UserStory_01\UseCase_01\readme.adoc[UseCase_01_readme]
+:UseCase_01_readme-include: ..\src\test\resources\features\userstories\UserStory_01\UseCase_01\readme.adoc
+:UseCase_02_readme: xref:..\src\test\resources\features\userstories\UserStory_01\UseCase_02\readme.adoc[UseCase_02_readme]
+:UseCase_02_readme-include: ..\src\test\resources\features\userstories\UserStory_01\UseCase_02\readme.adoc
+:UseCase_03_readme: xref:..\src\test\resources\features\userstories\UserStory_01\UseCase_03\readme.adoc[UseCase_03_readme]
+:UseCase_03_readme-include: ..\src\test\resources\features\userstories\UserStory_01\UseCase_03\readme.adoc

@@ -1,0 +1,9 @@
+[#A_25783]
+==== A_25783 - ZETA Client - Anweisungen aus HTTP Response Status Codes und Header folgen
+
+Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben derResource Server und Zero Trust-APIs auswerten und den Anweisungen daraus folgen und insbesondere
+
+* eine Step-Up- oder erneute Authentifizierung des Nutzers,
+* eine Re-Autorisierung und erneute Attestation der Client-Instanz,
+* eine Anzeige der Warnungen aufgrund der Policy-Entscheidungen und
+* ein Replay-Nonce umsetzen.

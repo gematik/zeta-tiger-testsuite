@@ -1,0 +1,7 @@
+[#A_26493]
+==== A_26493 - PEP HTTP Proxy - Umgang mit JWKS des Popp Servers
+
+Die Komponente HTTP Proxy MUSS, falls nach Ablauf der Gültigkeitsdauer für heruntergeladene JWKS des Popp Servers, kein neues JWKS heruntergeladen werden kann,
+
+* das bestehende JWKS des Popp Servers für eine weitere Gültigkeitsdauer nutzen und
+* einen Fehler für das Monitoring-System des Anbieters generieren.

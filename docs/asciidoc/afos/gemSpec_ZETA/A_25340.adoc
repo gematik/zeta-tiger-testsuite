@@ -1,0 +1,22 @@
+[#A_25340]
+==== A_25340 - ZETA Client- Zertifikatsprüfung
+
+Der ZETA Client MUSS alle Zertifikate, die es aktiv verwendet (bspw.
+TLS-Verbindungsaufbau), auf Integrität und Authentizität prüfen.
+Falls ein Zertifikat ungültig ist, so MUSS der ZETA Client die von dem Zertifikat und den darin enthaltenen Attributen (bspw. öffentliche Schlüssel) abhängenden Arbeitsabläufe ablehnen.
+Der ZETA Client MUSS alle öffentlichen Schlüssel, die es verwenden will, auf eine positiv verlaufene Zertifikatsprüfung zurückführen können.
+
+Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Der ZETA Client MUSS den Common Name (CN) oder Subject Alternative Name (SAN) des Zertifikats mit dem erwarteten Hostnamen vergleichen.
+* Der Client MUSS die Gültigkeitsdauer des Zertifikats (Nicht vor und Nicht nach) überprüfen.
+* Die Gültigkeit des Zertifikats MUSS basierend auf dem Zertifikatsvertrauenspfad (Root-CA, Intermediate-CAs) geprüft werden.
+Der ZETA Client MUSS die Root-Zertifikate, die von den Mitgliedern des [CAB-Forum]
+ausgestellt werden, als Vertrauensanker standardmäßig unterstützen.
+Dies impliziert:
+
+* Eine Standard-Liste von [CAB-Forum] Root-Zertifikaten MUSS im ZETA Client enthalten sein.
+* Das Root-Zertifikat der TI Komponenten PKI MUSS in der Liste der Root-Zertifikate enthalten sein.
+* Die Liste der Root-Zertifikate MUSS durch weitere Root-Zertifikate der TI erweiterbar sein.
+* Der ZETA Client MUSS diese Liste automatisch und regelmäßig aktualisieren.
+* Der Client MUSS eine Überprüfung dieser Root-Zertifikate auf ihre Gültigkeit und Revokation ermöglichen (z.B. über eine CRL oder OCSP).

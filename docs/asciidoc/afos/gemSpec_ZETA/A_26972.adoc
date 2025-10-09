@@ -1,0 +1,14 @@
+[#A_26972]
+==== A_26972 - PDP Authorization Server - Nutzer-Daten aus der SM(C)-B
+
+Die Komponente Authorization Server MUSS im Falle der SM(C)-B Authentifizierung die folgenden Daten aus dem SM(C)-B Zertifikat auslesen und als Nutzer-Daten gemäß [user-info.yaml] in der PDP Datenbank speichern:
+
+ Tabelle #: SM(C)-B_Nutzer-Daten 
+
+SM(C)-B Daten (C.HCI.OSIG gemäß [gemSpec_PKI]) Nutzer-Daten gemäß
+[user-info.yaml] Beschreibung Extension Admission, registrationNumber identifier Telematiik-ID Eindeutige ID der Organisation des Gesundheitswesens subject, commonName commonName Wird übernommen, wenn im Zertifikat vorhanden.
+„Kurzname“ der Institution, so wie sie sich auf dem Anschriftenfeld findet.
+Extension Admission, professionOID professionOID OID der Institution gemäß
+[gemSpec_OID#GS-A_4443-*]
+subject, organizationName organizationName Wird übernommen, wenn im Zertifikat vorhanden.
+Name der Organisation/Einrichtung des Gesundheitswesens

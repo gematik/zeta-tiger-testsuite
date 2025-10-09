@@ -1,0 +1,10 @@
+[#A_25670]
+==== A_25670 - PIP und PAP - Bereitstellung Download-Endpunkt
+
+Der PIP und PAP Service MUSS Download-Endpunkte für OPA Bundles gemäß OpenAPI Spezifikation [pip-pap-service.yaml] Version 1.0.0 in den folgenden Instanzen bereitstellen:
+Produktions-Instanz: https://pip-pap.ti-dienste.de
+<https://pip-pap.ti-dienste.de>
+Referenz-Instanz: https://pip-pap-ref.ti-dienste.de
+<https://pip-pap-ref.ti-dienste.de>
+Test-Instanz: https://pip-pap-test.ti-dienste.de
+<https://pip-pap-test.ti-dienste.de>.

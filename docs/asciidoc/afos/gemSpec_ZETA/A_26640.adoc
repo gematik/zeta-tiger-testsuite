@@ -1,0 +1,4 @@
+[#A_26640]
+==== A_26640 - ZETA Guard - HTTP Protokoll-Versionen
+
+Die Komponente Ingress MUSS das HTTP Protokoll in den Versionen HTTP/1.1, HTTP/2 und SOLL HTTP/3 unterstützen.

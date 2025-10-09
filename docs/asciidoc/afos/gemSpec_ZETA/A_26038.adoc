@@ -1,0 +1,10 @@
+[#A_26038]
+==== A_26038 - PDP, Konfigurations-Parameter
+
+Der PDP MUSS die folgenden Konfigurations-Parameter unterstützen.
+
+ Tabelle #: PDP - Konfigurations-Parameter 
+
+Konfigurations-Parameter Default Wert Beschreibung as-fqdn n/a FQDN des PDP Authorization Servers scopes_supported vom PDP Authorization Server unterstützte scope Werte Minimal müssen die Zero Trust-scope-Werte unterstützt werden:
+- zero:register
+- zero:manage Zusätzliche scope Werte ergeben sich aus dem Bedarf des Dienstes, der durch den ZETA Guard geschützt wird.

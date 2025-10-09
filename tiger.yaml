@@ -1,0 +1,17 @@
+# minimum viable test environment specification
+# default local Tiger Proxy
+tigerProxy:
+# no server nodes
+servers: { }
+
+lib:
+#  activateWorkflowUi: true # default is false
+#  trafficVisualization: true # default is false
+#  runTestsOnStart: false # default is true
+
+additionalConfigurationFiles:
+  - filename: defaults.yaml
+  - filename: demoData.yaml
+    baseKey: demo
+  - filename: tiger-${environment}.yaml
+    baseKey: tiger

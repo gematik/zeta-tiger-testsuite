@@ -1,0 +1,4 @@
+[#A_25663]
+==== A_25663 - PDP Authorization Server - Token-Binding an Client-Registrierung
+
+Die Komponente Authorization Server MUSS auszugebende Access Token und Refresh Token über den Mechanismus OAuth 2.0 Demonstrating Proof of Possession (DPoP) gemäß [RFC9449] an die registrierte Client-Instanz binden, indem im Token-Binding-Claimcnf die Angabe der Clientidentifikation als " jkt" eineindeutig referenziert wird.

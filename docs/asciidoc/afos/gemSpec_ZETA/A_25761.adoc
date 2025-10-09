@@ -1,0 +1,4 @@
+[#A_25761]
+==== A_25761 - ZETA Client - Nutzerauthentifizierung mittels etablierter Standards
+
+Der ZETA Client MUSS die Mechanismen OAuth Authorization Code Flow mit OpenID Connect und OpenID Federation (Auswahl des zuständigen sektoralen IDP) oder OAuth2 Token Exchange mitprivate_key_jwt Client Authentifizierung unterstützen.

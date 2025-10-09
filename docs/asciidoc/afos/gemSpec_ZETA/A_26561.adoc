@@ -1,0 +1,4 @@
+[#A_26561]
+==== A_26561 - PEP HTTP Proxy - Caching
+
+Der PEP HTTP Proxy MUSS so konfiguriert werden können, dass Caching von Inhalten der Response möglich ist.

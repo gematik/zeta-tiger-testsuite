@@ -1,0 +1,6 @@
+[#TA_A_27798_01]
+===== TA_A_27798_01 - Service Discovery - Protected Resource Well-known Endpunkt bereitstellen
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+
+Der ZETA Guard MUSS das Protected Resource Well-known JSON Dokument für die Service Discovery bereitstellen.

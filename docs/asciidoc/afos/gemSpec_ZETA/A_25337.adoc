@@ -1,0 +1,5 @@
+[#A_25337]
+==== A_25337 - Hersteller Clientsystem - Registrierung für product_id
+
+Der Hersteller eines Clientsystems MUSS sich über einen organisatorischen Prozess bei der gematik für die Nutzung von Diensten, für welche Token abgerufen werden sollen, registrieren.
+Der Hersteller eines Clientsystems bekommt dabei eine "product_id" zugewiesen, die in jeder Instanz des Clientsystems verwendet werden MUSS.

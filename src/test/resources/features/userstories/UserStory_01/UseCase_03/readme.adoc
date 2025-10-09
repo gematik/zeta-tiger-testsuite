@@ -1,0 +1,117 @@
+[#UC_01_03]
+==== UseCase_01_03: Client ressource anfrage fachdienst SC 200
+
+.UseCase_01_03
+[cols="1,1a",options="autowidth"]
+|===
+
+| *Titel:* | UseCase_01_03: Client ressource anfrage fachdienst SC 200
+
+| Akteur: |
+
+*MA einer LEI*: Mitarbeiter (MA) einer Leistungserbringerinstitution (LEI)
+
+| weitere Akteure: |
+
+- *ZC*: ZETA Client
+- *PEP-Proxy*: Policy Enforcement Point Proxy (HTTP Proxy)
+- *PDP-AS*: PDP Authorization Server (AS)
+- *PDP-DB*: PDP Datenbank
+- *Service*: Fachdienst
+
+| Auslöser: |
+Ein MA eines Leistungserbringers möchte über den ZETA Client eine geschützte Ressource abrufen und benutzen.
+
+| Kurzbeschreibung: |
+Der ZETA Client stellt mit einem Access Token eine Anfrage an den ZETA Guard. Dieser überprüft die Gültigkeit des Tokens und leitet die Anfrage bei erfolgreicher Prüfung an den Fachdienst weiter. Der Client erhält daraufhin die angeforderte Ressource.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert eine
+client_id inkl. zugehörigem Schlüsselpaar.
+Der Client verfügt über eine bestehende Session mit zugehörigem Access- und Refresh-Token.
+
+| Nebenbedingung: |
+
+- keine Bereitstellung von *PoPP-Token* für Ressourcenanfrage notwendig. <<A_25669>>
+- Weiterleitung der *Client-Daten* an Fachdienst ist deaktiviert. <<A_26492>>
+- Es wird *HTTP/3* verwendet <<A_26641>> <<A_26640>>
+
+| Ablauf: |
+
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client (ZC).
+2. ZC erstellt einen *DPoP Nachweis*.
+3. ZC ruft die Ressource am PEP-Proxy auf:
+- `GET /resource`
+- `Authorization: DPoP ... (Access Token)`
+- `DPoP .... (DPoP token)`
+4. PEP-Proxy prüft das *Access Token*.
+5. PEP-Proxy prüft den *DPoP Nachweis*.
+6. PEP-Proxy ruft zusätzliche und noch nicht gecachte *Datensätze von der PDP-DB* ab.
+- *User-Info*
+- optional: *ZETA-Client-Data*
+7. PDP-DB liefert `200 OK` mit den angeforderten Daten.
+8. PEP-Proxy erzeugt zusätzliche HTTP-Header:
+
+* *ZETA-User-Info*:
+** Format: `Base64-URL kodierte JSON Struktur des User-Info Inhalts`
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/user-info.yaml[user-info.yaml]
+
+* optional *ZETA-PoPP-Token-Content*:
+** Format: `Base64-URL kodierte JSON Struktur des PoPP Token Inhalts. Der PoPP Header enthält das PoPP Token. +
+Optional: Wird nur gesetzt, wenn im Request ein PoPP Header enthalten ist.`
+** Schema: `PoPP Token Payload`
+
+* optional *ZETA-Client-Data*:
+** Format: `Base64-URL kodierte JSON Struktur der Client-Daten. +
+Optional: Wird nur gesetzt, wenn die Konfiguration des HTTP Proxy für die URL des Requests die Weiterleitung der Client-Daten festlegt.`
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/client-instance.yaml[client-instance.yaml]
+9. PEP-Proxy leitet die Anfrage an den Fachdienst weiter:
+* `GET /resource`-Anfrage
+** mit vorhandenen HTTP header
+** zusätzlich erstellte PEP HTTP Header als JSON
+10. Fachdienst antwortet mit `200 OK` und der angeforderten Ressource.
+11. PEP-Proxy gibt die Antwort `200 OK` und Ressource zurück an den ZC.
+12. ZC liefert die Ressource an den MA.
+
+| Nachbedingung: |
+Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25660_02>>
+* <<TA_A_25767_02>>
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    autonumber
+    actor MA as MA eines LEI
+    participant ZC as ZETA Client
+    participant PEP-Proxy as PEP HTTP Proxy
+    participant PDP-AS as PDP Authorization Server (AS)
+    participant PDP-DB as PDP Datenbank
+    participant Service as Fachdienst
+
+    MA->>+ZC: Abruf geschützter Ressource
+	ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-Proxy: GET /resource
+
+
+	PEP-Proxy->>PEP-Proxy: Verifiziere AccessToken
+	PEP-Proxy->>PEP-Proxy: Verifiziere DPoP Nachweis
+	PEP-Proxy->>+PDP-DB: Anfrage von Nutzer-Daten, ggf. weitere
+	PDP-DB->>-PEP-Proxy: 200 OK, Daten für Header
+	PEP-Proxy->>PEP-Proxy: Erzeugen zusätzlicher Header
+	PEP-Proxy->>+Service: Weiterleiten GET /Ressource
+	Service-->>-PEP-Proxy: 200 OK, Ressource
+	PEP-Proxy-->>-ZC: 200 OK, Ressource
+	ZC-->>-MA: Ressource
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

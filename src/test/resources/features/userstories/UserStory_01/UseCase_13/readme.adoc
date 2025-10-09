@@ -1,0 +1,20 @@
+[#UC_01_13]
+===== UseCase_01_13: Client ressource anfrage fachdienst SC 301
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 301 Moved Permanently: Permanente Weiterleitung der Anfrage
+// durch den Proxy. Der Client sollte die neue URL speichern und
+// zukünftige Anfragen an diese Adresse senden.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

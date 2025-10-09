@@ -1,0 +1,16 @@
+[#TA_A_27007_29]
+===== TA_A_27007_29 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 502 Bad Gateway
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **HTTP Proxy** |
++++[...]+++
+**502 Bad Gateway**: Der Proxy hat eine ungültige Antwort vom Upstream-Server erhalten. Der Client sollte die Anfrage später erneut senden, da der Fehler auf einem Problem des Upstream-Servers beruhen könnte. Gegebenenfalls kann der Nutzer informiert werden.
++++[...]+++
+|===
++++[...]+++"

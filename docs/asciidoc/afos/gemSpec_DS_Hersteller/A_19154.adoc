@@ -1,0 +1,4 @@
+[#A_19154]
+==== A_19154 - Durchführung einer Bedrohungsanalyse
+
+Der Hersteller eines Produktes MUSS eine Bedrohungsanalyse durchführen und Maßnahmen gegen die identifizierten Bedrohungen implementieren.

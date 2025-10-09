@@ -1,0 +1,48 @@
+// encoding: UTF-8
+
+= Testplan ZETA
+achelos GmbH
+:doctype: book
+:lang: de
+:title-page:
+:title-logo-image: image::achelos_logo.svg[align=center,alt="Logo achelos"]
+:table-caption: Tabelle
+:appendix-caption: Anhang
+:toc-title: Inhaltsverzeichnis
+:toc: left
+:toclevels: 2
+:sectids:
+:sectnums:
+:sectanchors:
+:sectlinks:
+:icons: font
+:source-highlighter: rouge
+:imagesdir: images
+:diagram-format: svg
+:mermaid-config: mermaid-config.json
+
+:project-name: ZETA-Testsuite
+:revnumber: 0.1.0
+:revdate: 2025-09-29
+
+include::afos/readme_aliases.adoc[]
+
+include::chapters/00_glossar.adoc[]
+
+include::chapters/01_testplan_identifier.adoc[]
+
+include::chapters/02_referenzen.adoc[]
+
+include::chapters/03_einleitung.adoc[]
+
+include::chapters/04_definierte_user_stories.adoc[]
+
+include::chapters/05_zu_testende_merkmale.adoc[]
+
+include::chapters/06_nicht_zu_testende_merkmale.adoc[]
+
+include::chapters/07_testumgebungen.adoc[]
+
+include::bib.adoc[]
+
+include::chapters/99_anhang.adoc[]

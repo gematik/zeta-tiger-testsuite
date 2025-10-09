@@ -1,0 +1,8 @@
+[#A_25751]
+==== A_25751 - PDP Client-Registrierung - Anwendungsfälle nur für registrierte mobile Clients
+
+Nach der erfolgreichen Registrierung des ersten mobilen Clients (Gerät/App Kombination), MUSS die Komponente Authorization Server sicherstellen, dass die folgenden Anwendungsfälle nur von einem registrierten mobilen Client durchgeführt werden können:
+* Client löschen
+* Client umbenennen
+* E-Mail-Adresse hinzufügen
+* E-Mail-Adresse aktualisieren

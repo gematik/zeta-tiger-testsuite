@@ -1,0 +1,19 @@
+[#UC_01_18]
+===== UseCase_01_18: Client ressource anfrage fachdienst SC 405
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 405 Method Not Allowed: Die verwendete HTTP Methode wird
+// nicht unterstützt für den Endpunkt.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

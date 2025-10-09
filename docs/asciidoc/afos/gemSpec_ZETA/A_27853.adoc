@@ -1,0 +1,4 @@
+[#A_27853]
+==== A_27853 - ZETA Guard, Responses mit Header ZETA-API-Version
+
+Alle ZETA Guard Komponenten MÜSSEN an ihren Endpunkten in den Responses den Header ZETA-API-Versionangeben, der die exakte SemVer-Version der ausführenden Instanz angibt.

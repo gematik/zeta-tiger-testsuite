@@ -1,0 +1,6 @@
+[#A_27266]
+==== A_27266 - PEP HTTP Proxy - Protected Resource Metadata Well-known
+
+Die Komponente HTTP Proxy MUSS gemäß [RFC9728] und [opr -well-known.yaml] ein Well-known JSON Dokument wie folgt bereitstellen, damit Clients die notwendigen Informationen zur Interaktion mit dem Resource Server finden können.
+GET /.well-known/oauth-protected-resource Host: <FQDN des Resource Servers> Das Well-known JSON Dokument MUSS mit dem Schema
+[opr-well-known.yaml] validiert werden können.

@@ -1,0 +1,4 @@
+[#A_25784]
+==== A_25784 - ZETA Guard-Komponenten - Download von Aktualisierungen im Hintergrund
+
+Die Komponenten des ZETA Guard MÜSSEN in der Lage sein, Aktualisierungen im Hintergrund herunterzuladen, ohne den laufenden Betrieb zu beeinträchtigen.

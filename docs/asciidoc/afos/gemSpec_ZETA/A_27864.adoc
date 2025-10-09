@@ -1,0 +1,4 @@
+[#A_27864]
+==== A_27864 - ZETA Guard - Egress
+
+Der ZETA Guard MUSS eine Funktion implementieren, die durchsetzt, dass nur erlaubte Verbindungen, zu Endpunkten außerhalb des ZETA Guard, aufgebaut werden.

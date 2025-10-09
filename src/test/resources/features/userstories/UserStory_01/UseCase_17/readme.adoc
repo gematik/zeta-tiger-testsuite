@@ -1,0 +1,19 @@
+[#UC_01_17]
+===== UseCase_01_17: Client ressource anfrage fachdienst SC 404
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 404 Not Found: Die angeforderte Ressource wurde nicht
+// gefunden.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

@@ -1,0 +1,5 @@
+[#A_25660]
+==== A_25660 - PDP Authorization Server - Session Management mittels Access Token und Refresh Token
+
+Die Komponente Authorization Server MUSS ein Session Management mittels OAuth2 und Ausgabe, Verwaltung und Entzug von Access und Refresh Token gemäß
+[RFC6749#1.5] unterstützen.

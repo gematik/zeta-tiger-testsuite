@@ -1,0 +1,20 @@
+[#GS-A_5016]
+==== GS-A_5016 - Symmetrische Verschlüsselung binärer Daten
+
+Produkttypen, die die symmetrische Verschlüsselung binärer Daten durchführen, MÜSSEN die folgenden Vorgaben berücksichtigen:
+
+ * 
+Als symmetrische Block-Chiffre muss AES [FIPS-197] mit einer Schlüssellänge 
+von 256 Bit im Galois/Counter Mode (GCM) gemäß [NIST-SP-800-38D] mit der 
+Tag-Länge von 128 Bit verwendet werden.
+
+ * 
+Die IVs dürfen sich bei gleichem Schlüssel nicht wiederholen (vgl. 
+[NIST-SP-800-38D#S.25] und [BSI-TR-02102-1#S.24]). Der IV soll eine Bitlänge 
+von 96 Bit besitzen, seine Länge muss mindestens 96 Bit sein. Es wird empfohlen 
+den IV zufällig zu wählen (vgl. [gemSpec_Krypt#GS-A_4367]).
+
+ * 
+Hinweis: Im Normalfall ist davon auszugehen, dass für die Sicherung der In
+tegrität und Authentizität der übertragenen Daten zudem noch eine Signatur der 
+zu verschlüsselnden Daten notwendig ist.

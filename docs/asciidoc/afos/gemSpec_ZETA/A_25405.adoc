@@ -1,0 +1,4 @@
+[#A_25405]
+==== A_25405 - ZETA Guard - Angriffen entgegenwirken
+
+ZETA Guard MUSS Maßnahmen zur Schadensreduzierung und -verhinderung von Angriffen umsetzen.

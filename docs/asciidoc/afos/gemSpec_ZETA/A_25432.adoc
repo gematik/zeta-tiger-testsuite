@@ -1,0 +1,11 @@
+[#A_25432]
+==== A_25432 - ZETA Client - Ablauf Clientregistrierung
+
+Der mobile ZETA Client MUSS, sofern es an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, in dem es
+
+* den/die Benutzer:in mittels OpenID Connect authentifiziert,
+
+* kryptografische Client-Credentials lokal generiert,
+* die generierten Credentials sowie die Clientintegrität attestiert und
+* eine zusätzliche Benutzerbestätigung mittels One-Time-Passwort (gemäß [
+TR-03107-1]) über einen zweiten Kommunikationsweg (z. B. E-Mailbestätigung) startet.

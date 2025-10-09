@@ -1,0 +1,4 @@
+[#A_25421]
+==== A_25421 - Security Monitoring - Empfang von Missbrauchserkennung auf Resource Server-Ebene
+
+Falls der Resource Server eine Missbrauchserkennung durchführt, MUSS ZETA Guard sicherstellen, dass das Security Monitoring solche Missbrauchssignale von demResource Server empfangen und verarbeitet werden kann.

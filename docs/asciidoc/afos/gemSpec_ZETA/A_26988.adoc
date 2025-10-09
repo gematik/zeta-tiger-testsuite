@@ -1,0 +1,4 @@
+[#A_26988]
+==== A_26988 - Telemetrie-Daten Service - Fehlermeldungen
+
+Alle Komponenten des ZETA Guard MÜSSEN ihre Fehlermeldungen so bereitstellen, dass der Telemetrie-Daten Service die Fehlermeldungen sammeln und an einen Monitoring Service weiterleileiten kann.

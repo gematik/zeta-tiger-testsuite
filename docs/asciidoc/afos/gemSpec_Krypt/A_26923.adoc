@@ -1,0 +1,7 @@
+[#A_26923]
+==== A_26923 - ZETA/ASL: ZETA/ASL-Client Prüfbasis Zertifikatsprüfung
+
+Ein ZETA/ASL-Client MUSS als Prüfbasis eine Root-Version (X.509-Root-TI-Zeritifikat), die mindestens 2 Jahre alt ist, verwenden oder die TSL.
+Der ZETA/ASL-Client MUSS die Operation nach A_26922-* verwenden, um die für die Zertifikatsprüfung von A_26921-* notwendigen Zertifikate zu beziehen.
+Die bezogenen Zertifikatsdaten MUSS der ZETA/ASL-Client lokal (zeitlich unbegrenzt) vorhalten (Caching).
+Bei Erhalt einer Nachricht 2 (A_26935-*) MUSS er zunächst prüfen, ob er die für die Zertifikatsprüfung notwendigen Zertifikate im lokalen Cache vorrätig hat, und falls ja MUSS er diese verwenden.

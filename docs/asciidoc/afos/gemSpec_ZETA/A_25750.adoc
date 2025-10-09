@@ -1,0 +1,8 @@
+[#A_25750]
+==== A_25750 - PDP Client-Registrierung - Nutzer über sicherheitsrelevante Ereignisse informieren
+
+Die Komponente Authorization Server MUSS sicherstellen, dass der Nutzer bei folgenden Anwendungsfällen informiert wird:
+* Client hinzufügen
+* Client löschen
+* Client umbenennen
+* E-Mail-Adresse aktualisieren

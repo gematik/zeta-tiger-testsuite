@@ -1,0 +1,4 @@
+[#A_26490]
+==== A_26490 - PDP Authorization Server - Skalierbarkeit
+
+Die Komponente PDP Authorization Server MUSS horizontal skalierbar sein, sodass mit jedem zusätzlichen Pod mindestens 75% der Leistung eines einzigen Pods verfügbar werden.

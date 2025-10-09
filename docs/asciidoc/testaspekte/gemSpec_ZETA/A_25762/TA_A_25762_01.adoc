@@ -1,0 +1,8 @@
+[#TA_A_25762_01]
+===== TA_A_25762_01 - Nutzerauthentifizierung sektoraler IDP (GesundheitsID)
+
+"Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
+
+* Authentifizierung des Nutzers gegenüber einem **Sektoralen IDP der IDP Föderation** gemäß [gemSpec_IDP_Sek] (**GesundheitsID**)
+
+[...]"

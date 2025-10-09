@@ -1,0 +1,4 @@
+[#A_26479-01]
+==== A_26479-01 - ZETA Guard - Ordnungsgemäße Änderung von Konfigurationen
+
+Der Anbieter eines TI2.0 Dienstes MUSS durch technische und organisatorische Mittel sicherstellen, dass eine Änderung der Konfiguration des ZETA Guards und die Änderungen von Feature Flags des ZETA Guards nur unter 4-Augen erfolgen kann.

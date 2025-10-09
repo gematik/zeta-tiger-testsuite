@@ -1,0 +1,5 @@
+[#TA_A_25733_02]
+===== TA_A_25733_02 - De-Registrierung einzelner Clients
+
+"Der ZETA Client MUSS dem Nutzer eine Übersicht aller beim Clientregistrierungsdienst registrierten Clients darstellen und die **Möglichkeit zur De-Registrierung** einzelner Clients anbieten.
+"

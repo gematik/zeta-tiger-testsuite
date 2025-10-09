@@ -1,0 +1,19 @@
+[#UC_01_05]
+===== UseCase_01_05: Client authentisierung und autorisierung refresh token without attest SC 200
+
+Dies soll ein Use Case darstellen, welche die authentisierung des Zeta-Clients (siehe link:{gemSpec_ZETA}#A_25762[A_25762 -ZETA Client - Nutzerauthentifizierung - Unterstützung etablierter
+Identitäten und Dienste] ) und anschließend eine autorisierung für eine Ressource vornimmt.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

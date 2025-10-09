@@ -1,0 +1,4 @@
+[#A_25794]
+==== A_25794 - ZETA Guard-Komponenten - Implementierung von Health Checks
+
+Die Komponenten des ZETA Guard MUSS Health Checks implementieren, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.

@@ -1,0 +1,4 @@
+[#GS-A_2525-01]
+==== GS-A_2525-01 - Hersteller: Schließen von Schwachstellen
+
+Hersteller von Produkten der TI MÜSSEN die gematik direkt und unverzüglich über neu gemeldete Software- oder Hardware-Schwachstellen in ihren Produkten informieren und das weitere Vorgehen mit der gematik abstimmen, um die Auswirkungen unverzüglich auf das mögliche Minimum zu reduzieren und die Schwachstelle schnellstmöglich komplett zu schließen.
