@@ -1,0 +1,5 @@
+[#TA_A_28144_02]
+===== TA_A_28144 - PDP Authorisation Server - Länge der Nonce
+
+"Der ZETA Guard MUSS am Endpunkt GET /nonce einen **128 Bit langen** base64url kodierten **Zufallswert** ausgeben."
+

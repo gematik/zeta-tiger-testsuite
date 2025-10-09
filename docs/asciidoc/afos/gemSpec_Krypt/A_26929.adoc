@@ -1,0 +1,7 @@
+[#A_26929]
+==== A_26929 - ZETA/ASL: ZETA/ASL-Server, Verschlüsselungszähler
+
+Ein ZETA/ASL-Server MUSS sicherstellen, dass der Schlüssel K2_s2c_app_data als Attribut einen 64-Bit-Zähler besitzt.
+Dieser Zähler MUSS initial 0 sein.
+Ein ZETA/ASL-Server MUSS sicherstellen, dass bei jeder Verwendung des Schlüssels bei der Verschlüsselung einer Nachricht der Zähler um eins erhöht wird.
+Der erste verwendete Zählerwert ist also 1. Es spielt dabei keine Rolle, ob die Nachricht (Chiffrat) ggf. nicht übermittelt werden konnte, der Zähler MUSS bei jeder neuen Nutzung um eins erhöht werden.

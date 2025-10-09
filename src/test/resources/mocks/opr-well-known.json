@@ -1,0 +1,8 @@
+{
+  "issuer": "http://zetaGuard",
+  "authorization_servers": ["http://zetaGuard"],
+  "resource": "http://zetaGuard",
+  "zeta_asl_use": "required",
+  "scopes_supported": ["openid", "offline_access"],
+  "dpop_signing_alg_values_supported": ["ES256"]
+}

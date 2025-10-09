@@ -1,0 +1,9 @@
+[#TA_A_26587_14]
+===== TA_A_26587_14 - PEP HTTP Proxy - retrieve für User-Daten & Client-Daten
+
+"Die Komponente PDP Datenbank MUSS Schnittstellen anbieten, sodass [...]
+
+* der **PEP HTTP Proxy** die Operation **retrieve für User-Daten** und optional im gleichen Request für **Client-Daten** ausführen kann.
+Anhand des Parameters jti aus dem Access Token des Requests MUSS der HTTP Proxy die User- und Client-Daten der zugehörigen Session aus der Datenbank abfragen können.
+
+[...]"

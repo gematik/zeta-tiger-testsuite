@@ -1,0 +1,6 @@
+[#A_25404]
+==== A_25404 - ZETA Guard - Angriffe erkennen
+
+ZETA Guard MUSS Maßnahmen zur Erkennung, Kategorisierung und Protokollierung bzw.
+Meldung von Angriffen umsetzen.
+Die Kategorisierung von Angriffen MUSS nach "CAPEC: OWASP Related Patterns"[CAPEC OWASP] erfolgen.

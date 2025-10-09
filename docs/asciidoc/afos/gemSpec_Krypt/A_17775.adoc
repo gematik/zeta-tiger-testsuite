@@ -1,0 +1,4 @@
+[#A_17775]
+==== A_17775 - TLS-Verbindungen Reihenfolge Ciphersuiten (ECC-Migration)
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen und in der Rolle TLS-Server agieren, SOLLEN die Reihenfolge der Ciphersuiten in der Liste "cipher_suites" aus dem TLS-ClientHello bei der Auswahl der Ciphersuite befolgen.

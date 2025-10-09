@@ -1,0 +1,4 @@
+[#A_25406]
+==== A_25406 - ZETA Guard - Eingabe Validierung von Operationen
+
+ZETA Guard MUSS sicherstellen, dass alle Daten und Parameter, die über eine API kommuniziert werden, sicherheitstechnisch validiert werden.

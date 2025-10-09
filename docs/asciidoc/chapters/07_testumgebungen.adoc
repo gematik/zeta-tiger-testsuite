@@ -1,0 +1,43 @@
+== Testumgebungen
+
+Die Idee ist, hier alle definierten und zu nutzenden Umgebungen aufzuführen.
+Die einzelnen genutzten Umgebung werden dann dementsprechend mit sogenannten Tiger Konfigurationsdateien genutzt.
+
+=== Kubernetes Cloud
+
+Die erste Testumgebung beschreibt das (produktive) Cloud-Deployment auf dem Kubernetes Cluster der akquinet.
+Hier sind alle drei Komponenten (ZETA-Client, ZETA-Guard und Testfachdienst) ansprechbar und ohne dazwischenliegenden Tiger Proxies.
+Dabei ist noch zu erwähnen, dass die Kommunikation zwischen ZETA-Guard und Testfachdienst nicht in der Testsuite mitgelesen werden kann, da die Testsuite nur durch den ZETA-Guard erreichbar ist.
+
+Die Konfigurationsdatei für die Testsuite sieht folgendermaßen aus:
+
+[source,yaml]
+----
+include::../../../tiger-cloud.yaml[]
+----
+
+Das Architekturdiagramm dazu ist wie folgt:
+
+[mermaid]
+....
+C4Context
+    title ZETA tiger-cloud Setup
+
+    System_Ext(ts, "Tiger Testsuite", "(achelos)")
+
+    Boundary(k8s, "Kubernetes Cluster (akquinet)") {
+        Boundary(clientProxy, "ZETA-Client") {
+            System(client, "ZETA-Client", "(HTTP-Proxy)")
+            Component(sdk, "ZETA SDK")
+        }
+      System(guard, "ZETA-Guard", "(akquinet)")
+      System(tfd, "Testfachdienst", "(achelos)")
+    }
+
+    Rel(ts, guard, "HTTP")
+    Rel(ts, client, "HTTP")
+    Rel(guard, tfd, "HTTP")
+    Rel(client, sdk, "Interner Aufruf")
+    Rel(sdk, guard, "HTTP")
+....
+

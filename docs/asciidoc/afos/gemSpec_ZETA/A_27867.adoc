@@ -1,0 +1,5 @@
+[#A_27867]
+==== A_27867 - PDP Authorization Server - Session Management in der PDP Datenbank
+
+Die Komponente Authorization Server SOLL die Session-Daten gemäß
+[session.yaml] und die User-Daten gemäß [user-info.yaml] in der PDP Datenbank verwalten.

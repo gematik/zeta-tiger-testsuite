@@ -1,0 +1,12 @@
+[#A_26931]
+==== A_26931 - ZETA/ASL: ZETA/ASL-Client, Response entschlüsseln/auswerten
+
+Ein ZETA/ASL-Client MUSS bei Erhalt einer Antwort gemäß A_26930-* auf einen Request gemäß A_26927-* folgendes prüfen:
+* Ist die Länge der Datenstruktur (erweiterte Chiffrat) mindestens 72 Byte lang.
+* Ist die "PU/nonPU" Byte korrekt, i. sS v. korrekte Umgebung, in der auch der ZETA/ASL-Client arbeitet.
+* Ist das Request/Response-Byte gleich 2.
+* Hat der Response-Counter den von Client erwarteten Wert.
+* Ist die KeyID bekannt.
+Ergibt eine der Prüfungen ein nicht-positives Ergebnis, MUSS der Client die Verarbeitung der Response abbrechen.
+Er MUSS das Chiffrat mit dem mit der KeyID verbundenen Schlüssel K2_s2c_app_data mittels AES/GCM entschlüsseln und dabei den Header als "Additional Associated Data" in die Entschlüsselung mit einfließen lassen.
+Ergibt die Entschlüsselung das Symbol "FAIL", so MUSS er die Verarbeitung des Chiffrats/Response abbrechen.

@@ -1,0 +1,14 @@
+[#TA_A_27802_02]
+===== TA_A_27802_02 - ZETA Guard - Payload-Überprüfung - Ablaufdatum
+
+Der ZETA Guard MUSS bei der Prüfung von JWT folgende Prüfschritte durchführen:
+
+...
+
+**Payload-Überprüfung:**
+
+* **Ablaufdatum** (exp): prüfen, um abgelaufene Tokens sofort abzulehnen.
+* Audience (aud): prüfen, ob das Token für den beabsichtigten Empfänger bestimmt ist.
+* Issuer (iss): Sicherstellen, dass der Aussteller dem erwarteten Aussteller entspricht.
+
+...

@@ -1,0 +1,5 @@
+[#A_25653]
+==== A_25653 - PDP Client-Registrierung - Umsetzung der Client Policy
+
+Die Komponente Authorization Server MUSS die zulässigen Clients entsprechend der Konfiguration oder Policy (über PDP-Decision) ermitteln und nur diese gemäß der festgelegten Client Policy registrieren.
+Clients, die die geforderten Parameter der Client Policy nicht unterstützen bzw. nicht das geforderte Niveau erreichen, MÜSSEN abgelehnt werden.

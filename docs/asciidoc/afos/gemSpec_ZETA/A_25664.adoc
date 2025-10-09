@@ -1,0 +1,4 @@
+[#A_25664]
+==== A_25664 - PDP Authorization Server - Token Laufzeit gemäß Policy
+
+Die Komponente Authorization Server MUSS die Laufzeit der ausgegebenen Token entsprechend der Festlegungen aus der getroffenen Zugriffsentscheidung der Policy Engine setzen.

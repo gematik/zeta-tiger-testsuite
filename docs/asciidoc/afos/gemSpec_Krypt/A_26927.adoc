@@ -1,0 +1,46 @@
+[#A_26927]
+==== A_26927 - ZETA/ASL: ZETA/ASL-Client: Request erzeugen/verschlüsseln
+
+Ein ZETA/ASL-Client MUSS einen inneren HTTP-Request als Klartext erzeugen.
+
+ Er MUSS den Klartext mittels AES/GCM und dem Schlüssel K2_c2s_app_data 
+verschlüsseln (siehe AAD weiter unten).
+ Dafür wird ein 32-Bit Zufallswert a erzeugt. Nach A_26926-* wird der mit 
+K2_c2s_app_data verbundene Zähler um eins erhöht. Es wird der IV mit IV=a || 
+Zähler erzeugt (dessen Länge ist damit 96-Bit). Dieser IV wird für die 
+AES/GCM-Verschlüsselung verwendet.
+
+ Er MUSS einen Request-Counter pflegen, der verbunden ist mit der KeyID. Für 
+jeden Request MUSS der ZETA/ASL-Client diesen Request-Counter erhöhen, bei 
+Empfang einer Antwort ist es dem Client möglich, die Response zum zuvor 
+gestellten Request sicher zuzuordnen (vgl. A_26931-*, vgl. Erläuterungen zu 
+A_26927-*).
+
+ Es wird folgender Header erzeugt: 
+
+Name Länge Beschreibung bzw.
+Vorgabe des Werts Version (=0x02) 1 Byte Versionsnummer, wird auf den Wert 2 gesetzt PU/nonPU 1 Byte Wird das Chiffrat in der PU erzeugt, so MUSS der Wert 1 sein.
+Anderenfalls hat das Byte den Wert 0.
+Response/Request 1 Byte Für eine Nachricht des ZETA/ASL-Clients an einen ZTA/ASL-Server wird der Wert auf 1 gesetzt.
+In der Kodierung des Response-Chiffrats hat dieses Byte den Wert 2, was markiert, dass es sich um eine Response handelt.
+Request-Counter 8 Byte Eindeutige Zählernummer für diesen Request Für jeden neuen Request wird vom Client dieser Wert um eins erhöht.
+Die Zählernummer wird vom Client in Network-Byte-Order (= Big-Endian) kodiert.
+KeyID 32 Byte KeyID aus dem Handshake (vgl.
+A_26937-*) Dieser Header stellt die "Additional Associated Data" dar, die in die Berechnung des Authentication-Tag bei der AES/GCM-Verschlüsselung einfließen MÜSSEN.
+Der Authentication-Tag MUSS 128 Bit lang sein.
+
+ Das erweitere Chiffrat (also inkl. Header) MUSS folgende Struktur haben: 
+
+Name Länge Beschreibung bzw.
+Vorgabe des Werts Version (=0x02) 1 Byte Versionsnummer, wird auf den Wert 2 gesetzt PU/nonPU 1 Byte Wird das Chiffrat in der PU erzeugt, so MUSS der Wert 1 sein.
+Anderenfalls hat das Byte den Wert 0.
+Response/Request 1 Byte Für eine Nachricht des ZETA/ASL-Clients an einen ZETA/ASL-Server wird der Wert auf 1 gesetzt.
+In der Kodierung des Response-Chiffrats wird es auf den Wert 2 gesetzt, was markiert, dass es sich um eine Response handelt.
+Request-Counter 8 Byte Eindeutige Zählernummer für diesen Request Für jeden neuen Request wird vom Client dieser Wert um eins erhöht.
+Die Zählernummer wird vom Client in Network-Byte-Order (= Big-Endian) kodiert.
+KeyID 32 Byte KeyID aus dem Handshake (vgl.
+A_26937-*) IV 12 Byte (= 96 Bit) IV für die AES/GCM-Verschlüsselung (32 Bit Zufall + 64 Bit Verschlüsselungszähler, s. o. in A_26927-*) CT variabel eigentliche AES/GCM-Chiffrat, dessen Länge gleich der Länge des Klartextes ist GMAC-Wert 16 Byte (= 128 Bit) Authentication-Tag, der während der AES/GCM-Verschlüsselung inkl.
+der Associated Data (Daten aus der Header-Tabelle, s. o.) berechnet wird.
+Der ZETA/ASL-Client MUSS diese Datenstruktur per HTTP-POST an den ZETA/ASL-Server senden und als URL-Pfadnamen dabei den Wert der ZETA/ASL-CID (vgl.
+A_26936-*) verwenden.
+Dabei MUSS er den Media-Type ' application/octet-stream' (HTTP Content-Type) verwenden.

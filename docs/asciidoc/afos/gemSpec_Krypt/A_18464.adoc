@@ -1,0 +1,4 @@
+[#A_18464]
+==== A_18464 - TLS-Verbindungen, nicht Version 1.1
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, DÜRFEN NICHT die TLS-Version 1.1 [RFC-4346] unterstützen.

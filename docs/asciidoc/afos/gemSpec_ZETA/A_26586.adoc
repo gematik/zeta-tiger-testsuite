@@ -1,0 +1,5 @@
+[#A_26586]
+==== A_26586 - PDP Authorization Server - Session- und Nutzer-Daten
+
+Die Komponente Authorization Server MUSS nach jeder vollständigen und erfolgreichen Authentifizierung Session-Daten in der Datenbank des PDP speichern.
+Die Session-Daten und Nutzer-Daten MÜSSEN bei Anfragen des Authorization-Servers an die Policy Engine im Request mit übergeben werden.

@@ -1,0 +1,54 @@
+= Jira-YouTrack Ticket Flow für die Test-Entwicklung
+
+Die Verzahnung der Entwicklung von EY und Akquinet mit unserer Testentwicklung soll sicherstellen, dass wir immer die Tests entwickeln, die von der Entwicklung bei den Projektpartnern als nächstes benötigt werden.
+
+Um fehleranfällige manuelle Arbeit zu minimieren wird eine automatisierte Verknüpfung von Jira, welches bei den Projekt-Partnern im Einsatz ist und dem bei uns verwendeten YouTrack über Webhooks benötigt.
+
+Ziel ist es, dass wir von Implementierung-Tickets aus dem Jira-Backlog Test-Tickets ableiten, diese nach YouTrack pushen. In YouTrack können wir diesen Test-Tickets Testaspekte zuordnen, diese implementieren und bei beim Schließen der Test-Tickets den Status nach Jira pushen und im Implementierungs-Ticket die relevante Test-Config hinterlegen.
+
+Der Workflow könnte folgendermaßen abgebildet werden:
+
+[mermaid]
+....
+flowchart TD
+%% Lanes
+subgraph JI[Jira]
+A[Dev-Ticket erstellt]:::manual
+B[Jira Test-Ticket<br>manuell anlegen<br>Link: **is tested by** zum Dev-Ticket]:::manual
+C[Jira Automation:<br>**Send web request**<br>Push nach YouTrack]:::auto
+D[Jira Test-Ticket<br>Status aktualisieren: Done]:::auto
+E[Jira Dev-Ticket<br>Status/Feld aktualisieren<br>Status: Ready to Test, Feld: Test-Tag XYZ]:::auto
+end
+
+subgraph YT[YouTrack]
+F[YouTrack Test-Ticket<br>angelegt durch Push]:::auto
+G[AFos für Test-Ticket<br>identifizieren und priorisieren]:::manual
+H[Zugehörige Test-Aspekt-<br>Tickets identifizieren]:::manual
+I[YouTrack Testaspekt-Tickets<br> mit YouTrack Test-Ticket verlinken]:::manual
+J[Test Ticket<br>in YouTrack = Done]:::auto
+K[Testaspekt-Tickets implementieren<br>In Progress/Failed/Done]:::manual
+L[YouTrack Workflow:<br>Webhook -> Jira<br>jiraKey, newStatus, ytUrl]:::auto
+M{Alle Testaspekte <br>eines Test Tickets<br>in YouTrack = Done?}:::decision
+end
+
+%% Hauptfluss
+A --> B
+B -- Trigger: Issue created/updated --> C
+C -- REST ➜ /api/issues --> F
+F --> G --> H --> I
+I --> K --> M -- Ja--> J
+M -- Nein --> K
+J --> L
+L -- Webhook --> D
+L -- Webhook --> E
+
+%% Klassen
+classDef manual fill:#fff3cd,stroke:#f0ad4e,stroke-width:1px,color:#333;
+classDef auto fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#0b7285;
+classDef decision fill:#f8f9fa,stroke:#343a40,stroke-width:1px,color:#343a40;
+....
+
+Offene Punkte, die bei den Projekt-Partnern liegen:
+
+* Webhooks im Jira von EY müssen noch abgeklärt werden
+* EY wird AFO-Tickets im Jira von EY anlegen

@@ -1,0 +1,4 @@
+[#A_25403]
+==== A_25403 - ZETA Guard - Schutzmaßnahmen gegen die OWASP Top 10 Risiken
+
+ZETA Guard MUSS geeignete technische Maßnahmen zum Schutz vor den Risiken in der aktuellen Version der [OWASP-Top-10-Risiken] umsetzen.

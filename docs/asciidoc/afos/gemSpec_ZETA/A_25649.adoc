@@ -1,0 +1,4 @@
+[#A_25649]
+==== A_25649 - PDP Authorization Server - Regelmäßige Wiederholung der Attestation
+
+Die Komponente Authorization Server SOLL die Client-Attestierung für jede neue Session verlangen.

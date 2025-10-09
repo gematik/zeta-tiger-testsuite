@@ -1,0 +1,16 @@
+[#TA_A_27007_07]
+===== TA_A_27007_07 - ZETA Client - HTTP Statuscodes - Authentifizierung - OIDC - 200 OK
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **Authentifizierung mit OIDC und Authorization Code Flow** |
++++[...]+++
+**200 OK**: Erfolgreiche Authentifizierung und Autorisierung. Der Client kann mit der gewünschten Operation fortfahren, z.B. Zugriff auf geschützte Ressourcen.
++++[...]+++
+|===
++++[...]+++"

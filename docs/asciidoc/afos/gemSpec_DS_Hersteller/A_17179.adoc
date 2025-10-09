@@ -1,0 +1,4 @@
+[#A_17179]
+==== A_17179 - Auslieferung aktueller zusätzlicher Softwarekomponenten
+
+Hersteller von Produkten der TI, die zu ihrem Produkt ein Installationspaket mit zusätzlichen Softwarekomponenten ausliefern, MÜSSEN im Falle von Sicherheitsaktualisierungen dieser zusätzlichen Softwarekomponenten unverzüglich die gepatchten Softwareversionen als Aktualisierung an die Nutzer des Produktes ausliefern.

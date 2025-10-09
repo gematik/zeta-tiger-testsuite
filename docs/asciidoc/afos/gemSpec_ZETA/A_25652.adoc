@@ -1,0 +1,5 @@
+[#A_25652]
+==== A_25652 - ZETA Guard - Notification Service
+
+Der ZETA Guard Notification Service MUSS Push-Notifications über die von App-Anbietern bereitgestellten Push-Gateways unterstützen, um die Notifications an bestimmte oder alle registrierte Clients eines Anwenders verschicken zu können.
+Der Notification Service MUSS gemäß [ gemF_PushNotification] die Push Konfigurationen von ZETA Clients registrieren und verwalten können und MUSS die vom Resource Server empfangenen Notification Events an die dafür registrierten Push Gateways der Clients weiterleiten.

@@ -1,0 +1,4 @@
+[#GS-A_5526]
+==== GS-A_5526 - TLS-Renegotiation-Indication-Extension
+
+Alle Produkttypen, die das TLS-Protokoll verwenden, SOLLEN den RFC 5746 (TLS-Renegotiation-Indication-Extension [RFC-5746]) unterstützen.

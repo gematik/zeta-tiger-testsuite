@@ -1,0 +1,18 @@
+[#A_17124-03]
+==== A_17124-03 - TLS-Verbindungen (ECC-Migration)
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
+
+* Zur Authentifizierung MUSS eine X.509-Identität gemäß
+[gemSpec_Krypt#GS-A_4359-*] verwendet werden.
+
+* Als Ciphersuiten MÜSSEN TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xC0,0x2B) und TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (0xC0,0x2C) unterstützt werden.
+
+* Falls der Produkttyp in der Rolle als TLS-Client agiert, so MUSS er die eben genannten Ciphersuiten gegenüber evtl. ebenfalls von ihm unterstützen RSA-basierte Ciphersuiten (vgl.
+GS-A_4384-*) bevorzugen (in der Liste "cipher_suites" beim ClientHello vorne an stellen, vgl. [RFC-5246#7.4.1.2 Client Hello]).
+
+* Beim ephemeren Elliptic-Curve-Diffie-Hellman-Schlüsselaustausch (vgl.
+"ECDHE" im Namen der Cipher-Suites) MÜSSEN die Kurven P-256 und P-384
+[FIPS-186-5] unterstützt werden.
+Es SOLLEN die Kurven brainpoolP256r1 und brainpoolP384r1 (vgl. [RFC-5639] und [RFC-7027]) unterstützt werden.
+Andere Kurven als in A_17124-* aufgeführt DÜRFEN NICHT verwendet werden.

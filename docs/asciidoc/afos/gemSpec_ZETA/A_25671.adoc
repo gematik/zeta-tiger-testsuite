@@ -1,0 +1,4 @@
+[#A_25671]
+==== A_25671 - PIP und PAP - TLS am Download-Endpunkt
+
+Der PIP und PAP Service MUSS sich beim TLS-Verbindungsaufbau am Download-Endpunkt gegenüber Clients mit einem Extended Validation TLS-Zertifikat eines TSP gemäß [CAB-Forum] authentisieren.

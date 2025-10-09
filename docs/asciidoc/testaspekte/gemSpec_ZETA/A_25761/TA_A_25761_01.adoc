@@ -1,0 +1,4 @@
+[#TA_A_25761_01]
+===== TA_A_25761_01 - Nutzerauthentifizierung mittels OAuth Authorization Code Flow(OIDC)
+
+"Der ZETA Client MUSS die Mechanismen **OAuth Authorization Code Flow mit OpenID Connect und OpenID Federation** (Auswahl des zuständigen sektoralen IDP) [...] unterstützen."

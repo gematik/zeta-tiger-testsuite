@@ -1,0 +1,4 @@
+[#A_26590]
+==== A_26590 - PEP HTTP Proxy - Client-Daten
+
+Wenn die Request-Weiterleitung mit Client-Daten konfiguriert wurde und der Request ein gültiges Access Token hat, dann MUSS die Komponente HTTP Proxy die Client-Daten anhand des Parameterssub des Access Token aus der PDP Datenbank abfragen und als neuen HTTP HeaderZETA-Client-Data in den Request eintragen, bevor der Request an den Resource Server weitergeleitet wird.

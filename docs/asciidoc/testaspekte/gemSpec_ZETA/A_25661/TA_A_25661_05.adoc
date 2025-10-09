@@ -1,0 +1,3 @@
+[#TA_A_25661_05]
+===== TA_A_25661_05 -PDP Authorization Server - Umsetzung der Policy Decision - Refresh-Token Claims korrekt
+"[...] Die **Claims** im Access und im **Refresh** **Token** MÜSSEN zur Entscheidung der Policy Engine für die **angefragten Claims passen.**[\<=]"

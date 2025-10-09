@@ -1,0 +1,10 @@
+[#A_27496]
+==== A_27496 - Zeta Guard-Komponenten - Aufbereitung von Client Daten zum Monitoring
+
+Die Komponenten des ZETA Guard MÜSSEN zu jedem Schnittstellenaufruf an den Resource-Server mindestens folgende Informationen aus der PDP Datenbank - und dem Request des Aufrufers verarbeiten und protokollieren, damit eine anschließende Zusammenführung von Monitoring-Daten aus verschiedenen Quellen (siehe [A_27494*]) im Telemetrie-Daten-Service ermöglicht werden kann.
+
+Diese Daten umfassen mindestens:
+
+* product_id - aus dem Token Self-Assessment des aufrufenden Clientsystems
+* product_version - aus dem Token Self-Assessment des aufrufenden Clientsystems
+* professionOID - aus dem SM-B Zertifikat des aufrufenden Clientsystems

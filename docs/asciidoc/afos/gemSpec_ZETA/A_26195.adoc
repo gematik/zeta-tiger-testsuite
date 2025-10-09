@@ -1,0 +1,4 @@
+[#A_26195]
+==== A_26195 - PEP HTTP Proxy - Unterstützung Websocket
+
+Die Komponente HTTP Proxy MUSS das WebSocket-Protokoll unterstützen.

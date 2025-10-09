@@ -1,0 +1,25 @@
+=== Testaspekte aus gemSpec_ZETA
+
+include::A_25660/readme.adoc[]
+
+include::A_25733/readme.adoc[]
+
+include::A_25761/readme.adoc[]
+
+include::A_25762/readme.adoc[]
+
+include::A_25767/readme.adoc[]
+
+include::A_25795/readme.adoc[]
+
+include::A_26587/readme.adoc[]
+
+include::A_26640/readme.adoc[]
+
+include::A_27802/readme.adoc[]
+
+include::A_27266/readme.adoc[]
+
+include::A_27798/readme.adoc[]
+
+include::A_28144/readme.adoc[]

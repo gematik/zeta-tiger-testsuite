@@ -1,0 +1,80 @@
+{
+  "status" : "UP",
+  "components" : {
+    "PEP" : {
+      "status" : "UP",
+      "components" : {
+        "HTTP_Proxy" : {
+          "status" : "UP",
+          "details" : {
+            "version" : "1.0.0",
+            "uptime": "00364030570333",
+            "lastTransaction" : "2025-09-19T12:22:41Z"
+          }
+        },
+        "DB" : {
+          "status" : "DOWN",
+          "output" : "can contain a plain error message, omitted for up states",
+          "details" : {
+            "version" : "1.0.1",
+            "database" : "H2",
+            "validationQuery" : "isValid()"
+          }
+        }
+      }
+    },
+    "PDP" : {
+      "status" : "UP",
+      "components" : {
+        "Authorization_Server": {
+          "status" : "UP",
+          "details" : {
+            "version" : "1.0.2"
+          }
+        },
+        "DB" : {
+          "status" : "UP",
+          "details" : {
+            "version" : "1.0.3"
+          }
+        },
+        "Policy_Engine" : {
+          "status" : "UP",
+          "details" : {
+            "version" : "1.0.4"
+          }
+        }
+      }
+    },
+    "Notification_Service" : {
+      "status" : "UP",
+      "details" : {
+        "version" : "1.0.5"
+      }
+    },
+    "Management_Service" : {
+      "status" : "UP",
+      "details" : {
+        "version" : "1.0.6"
+      }
+    },
+    "Telemetrie-Daten_Service" : {
+      "status" : "UP",
+      "details" : {
+        "version" : "1.0.7"
+      }
+    },
+    "Ingress" : {
+      "status" : "UP",
+      "details" : {
+        "version" : "1.0.8"
+      }
+    },
+    "Egress" : {
+      "status" : "UP",
+      "details" : {
+        "version" : "1.0.9"
+      }
+    }
+  }
+}

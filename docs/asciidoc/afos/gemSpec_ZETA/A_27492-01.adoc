@@ -1,0 +1,4 @@
+[#A_27492-01]
+==== A_27492-01 - ZETA Guard, OpenTelemetry Unterstützung
+
+Die ZETA Guard Komponenten HTTP Proxy, Authorization Server, Policy Engine und Notification Service MÜSSEN für alle Endpunkte Telemetrie-Daten an den Telemetrie-Daten Service senden, sodass dort Daten zur Performance, Last und Fehlersituationen sowie Daten über die Nutzer und Clients generiert werden können.

@@ -1,0 +1,44 @@
+[#Smoke_Test]
+=== Proof of Concept / Smoke Test
+
+Dies soll eine User Story darstellen, welche das PoC abprüfen soll und zeigen soll, dass die Komponenten schon untereinander kommunizieren können und auch funktionieren.
+Diese User Story soll als Smoke-Test definiert werden, sodass immer weitere Funktionalitäten iterativ dazukommen und dadurch abgeprüft werden können.
+
+[mermaid]
+....
+sequenceDiagram
+    participant ZC as ZETA Client
+    participant ZG as ZETA Guard
+    participant TF as Testfachdienst
+    ZC ->>+ ZG: Request Resource
+    ZG ->>+ TF: Forward Request
+    TF -->>- ZG: Return Resource Data
+    ZG -->>- ZC: Return Resource Data
+....
+
+'''
+
+Diese User Story deckt folgende Testaspekte ab:
+
+* <<TA_A_26640_01>>
+
+'''
+
+Der ZETA-Client baut eine Verbindung zum ZETA-Guard auf.
+
+Diese Verbindung benutzt HTTP/1.1 (<<TA_A_26640_01>>).
+
+Der ZETA-Guard leitet den Request an den Testfachdienst weiter.
+
+Der Testfachdienst bearbeitet den Request und schickt die geforderte Resource zurück.
+
+Die Resource wird vom ZETA Guard an den ZETA Client weitergeleitet.
+
+'''
+
+==== Feature Datei zu dieser User Story
+
+[%linenums,source,feature]
+----
+include::smoke.feature[]
+----

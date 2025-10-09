@@ -1,0 +1,4 @@
+[#A_27401]
+==== A_27401 - PDP Policy Engine - Decision Eigenschaften
+
+Die PDP Policy Engine MUSS Decision-Anfragen mit einem JSON Objekt nach dem Schema [pdp-decision.yaml] beantworten.

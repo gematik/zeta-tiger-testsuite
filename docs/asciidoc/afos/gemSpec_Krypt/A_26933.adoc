@@ -1,0 +1,4 @@
+[#A_26933]
+==== A_26933 - ZETA/ASL-Protokoll: ZETA/ASL-Server: Erhalt von Nachricht 1
+
+Eine ZETA/ASL-Server MUSS die für Nachricht 1 erzeugten Datenobjekte nach A_26932-* verarbeiten können.

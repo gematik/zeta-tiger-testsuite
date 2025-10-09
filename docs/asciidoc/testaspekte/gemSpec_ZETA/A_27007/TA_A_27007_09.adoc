@@ -1,0 +1,16 @@
+[#TA_A_27007_09]
+===== TA_A_27007_09 - ZETA Client - HTTP Statuscodes - Authentifizierung - OIDC - 400 Bad Request
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **Authentifizierung mit OIDC und Authorization Code Flow** |
++++[...]+++
+**400 Bad Request**: Fehlerhafte Anfrage, z.B. fehlende oder ungültige Parameter (z.B. falscher "redirect_uri", "client_id"). Der Client sollte die Anfrageparameter überprüfen und sicherstellen, dass alle erforderlichen Parameter korrekt sind. Eine erneute Anfrage kann nötig sein.
++++[...]+++
+|===
++++[...]+++"

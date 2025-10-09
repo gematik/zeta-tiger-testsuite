@@ -1,0 +1,4 @@
+[#A_26269]
+==== A_26269 - PDP - Tamper-Proof Protokollierung von Administrationsaktivitäten
+
+Der PDP MUSS ein "Tamper-Proof" Audit-Log von allen administrativen Vorgängen umsetzen.

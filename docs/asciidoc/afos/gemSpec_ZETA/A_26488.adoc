@@ -1,0 +1,4 @@
+[#A_26488]
+==== A_26488 - PEP HTTP Proxy - Last
+
+Die Komponente PEP HTTP Proxy MUSS pro Pod mehr als 300 Websocket Verbindungen und mehr als 300 Requests pro Sekunde unterstützen können.

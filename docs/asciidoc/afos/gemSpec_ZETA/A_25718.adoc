@@ -1,0 +1,4 @@
+[#A_25718]
+==== A_25718 - ZETA Guard - Bereitstellung Security-KPIs
+
+ZETA Guard MUSS sicherstellen, dass die Security-KPIs in automatisch bereitgestellt werden.

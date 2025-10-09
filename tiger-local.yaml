@@ -1,0 +1,154 @@
+servers:
+  testfachdienst:
+    type: externalJar
+    source:
+      - local:testfachdienst-0.0.1-SNAPSHOT.jar
+    healthcheckUrl: "http://localhost:${free.port.0}/achelos_testfachdienst/actuator/health"
+    startupTimeoutSec: 20
+    externalJarOptions:
+      arguments:
+        - --server.port=${free.port.0}
+
+  zetaClient:
+    type: zion
+    zionConfiguration:
+      serverPort: ${free.port.1}
+      mockResponses:
+        client:
+          request:
+            path: "/proxy/achelos_testfachdienst"
+          nestedResponses:
+            helloZeta:
+              request:
+                method: GET
+                path: "/hellozeta"
+              backendRequests:
+                callZetaGuard:
+                  url: "http://zetaGuard/achelos_testfachdienst/hellozeta"
+                  method: GET
+                  assignments:
+                    backendBody: "$.body"
+              response:
+                statusCode: 200
+                body: "${backendBody}"
+
+  zetaGuard:
+    type: zion
+    dependsUpon: testfachdienst
+    zionConfiguration:
+      serverPort: ${free.port.2}
+      mockResponses:
+        helloWorld:
+          request:
+            method: GET
+            path: "/hello"
+          response:
+            statusCode: 200
+            body: "{'message':'Hallo vom ZETA Guard Zion-Mockserver!'}"
+        resource:
+          request:
+            path: "/achelos_testfachdienst"
+          nestedResponses:
+            helloZeta:
+              request:
+                method: GET
+                path: "/hellozeta"
+              backendRequests:
+                callTestfachdienst:
+                  url: "http://testfachdienst/achelos_testfachdienst/hellozeta"
+                  method: GET
+                  assignments:
+                    backendBody: "$.body"
+              response:
+                statusCode: 200
+                body: "${backendBody}"
+        # Access Token schema validation A_26944
+        accessToken:
+          request:
+            method: POST
+            url: ".*/token"
+          nestedResponses:
+            evilClient:
+              importance: 10
+              requestCriterions:
+                - "$.body.client_id == 'evil_client'"
+              response:
+                statusCode: 400
+                headers:
+                  Content-Type: application/json
+                bodyFile: "src/test/resources/mocks/zeta-error-400-evil_client.json"  # HTTP Error 400
+            evilHeader:
+              importance: 12
+              requestCriterions:
+                - "$.header.x-evil-header == 'true'"
+              response:
+                statusCode: 403
+                headers:
+                  Content-Type: application/json
+                bodyFile: "src/test/resources/mocks/zeta-error-403-evil_header.json"  # HTTP Error 403
+            correctToken:
+              importance: 0
+              response:
+                statusCode: 200
+                headers:
+                  Content-Type: application/json
+                bodyFile: "src/test/resources/mocks/access-token-response.json"   # Mock Access Token A_26944
+        # Protected Resource well-known (opr) A_27266, A_27798
+        wellKnownOpr:
+          request:
+            method: GET
+            path: "/achelos_testfachdienst/.well-known/oauth-protected-resource"
+          response:
+            statusCode: 200
+            headers:
+              Content-Type: application/json
+            bodyFile: "src/test/resources/mocks/opr-well-known.json"
+        # Wrong request which returns zeta-error-object A_26662
+        errorRequest:
+          request:
+            method: GET
+            path: "/.well-known/oauth-protected-resource-error"
+          response:
+            statusCode: 404
+            headers:
+              Content-Type: application/json
+            bodyFile: "src/test/resources/mocks/zeta-error-object.json"
+        # Authorization Server well-known (as) A_27798
+        wellKnownAs:
+          request:
+            method: GET
+            #path: "/.well-known/oauth-authorization-server"
+            # Der String in path wird nicht als regulärer Ausdruck ausgewertet, in url aber durchaus
+            url: ".*/\\.well-known/oauth-authorization-server$"
+          response:
+            statusCode: 200
+            headers:
+              Content-Type: application/json
+            bodyFile: "src/test/resources/mocks/as-well-known.json"
+        nonce:
+          request:
+            method: GET
+            path: "/nonce"
+          response:
+            statusCode: 200
+            body: 'QUJDREVGMDEyMzQ1Njc4OQ'
+        # Health Check Response A_25795
+        healthCheck_pep_httpProxy:
+          request:
+            method: GET
+            path: "/mocked2/actuator/health/PEP/httpProxy"
+          response:
+            statusCode: 200
+            headers:
+              Content-Type: application/json
+            bodyFile: "src/test/resources/mocks/healthCheck-single-component-answer.json"
+        # Health Check Response A_25794/A_25796
+        healthCheck:
+          request:
+            method: GET
+            path: "/mocked/actuator/health"
+          response:
+            statusCode: 200
+            headers:
+              Content-Type: application/json
+            bodyFile: "src/test/resources/mocks/healthCheck-zetaGuard-answer.json"

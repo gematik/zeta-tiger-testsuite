@@ -1,0 +1,211 @@
+[#UC_01_10]
+==== UseCase_01_10: Client authentisierung und autorisierung software attest SC 400
+
+.UseCase_01_10
+[cols="1,1a",options="autowidth"]
+|===
+
+| *Titel:* | Client authentisierung und autorisierung software attest SC 400
+
+| Akteur: |
+
+*MA einer LEI*: Mitarbeiter (MA) einer Leistungserbringerinstitution (LEI)
+
+| weitere Akteure: |
+
+- *ZC*: ZETA Client
+- *KTG*: Konnektor / TI-Gateway
+- *SMC*: SM( C )-B (Smartcard)
+- *PHP*: PEP HTTP Proxy
+- *PDP-AS*: PDP Authorization Server (AS)
+- *TF*: Testfachdienst
+
+| Auslöser: | Ein MA eines Leistungserbringers möchte auf einen Fachdienst zugreifen und muss sich dafür authentisieren und autorisieren.
+
+| Kurzbeschreibung: |
+Nach erfolgreicher Registrierung besitzt der ZETA Client eine client_id und ein
+zugehöriges Schlüsselpaar. Um auf einen Fachdienst zugreifen zu können, benötigt der
+Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients
+verwenden dafür den Token Exchange Flow. +
+Der Token-Austausch mittels Software-Attestierung schlägt in diesem Use Case fehl (HTTP-Status-Code 400), aufgrund einer fehlerhaften JWT-Assertion (z.B. falsches Format oder fehlende Claims).
+
+| Vorbedingung: | Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert bereits eine
+client_id inkl. zugehörigem Schlüsselpaar.
+Der Client hat keine bestehende Session (kein gültiges Refresh Token)
+
+| Nebenbedingung: |
+- Es wird *HTTP/1.1* verwendet <<A_26640>>
+
+| Ablauf: |
+1. MA startet *Authentisierung/Autorisierung-Prozess* über den ZETA Client (ZC).
+2. ZC fordert bei PDP-AS eine Nonce an:
+- `GET /nonce` (HTTP/1.1)
+3. PDP-AS liefert `200 OK` mit einer neuen Nonce zurück.
+4. ZC erstellt ein *DPoP Key Pair* (sitzungsbasiert).
+- Zweck: Bindung für den späteren Token-Austausch.
+
+5. ZC berechnet eine *attestation challenge*:
+- Hash aus *Public Client Instance Key Hash* und Nonce.
+- `attestation_challenge = HASH(pubKeyHash + nonce)`
+
+6. ZC erstellt ein *Client Statement* mit *posture-software*.
+
+.client_statement:
+[source,txt]
+----
+- sub
+- product_id
+- product_version
+- posture (containing attestation_challenge etc.)
+- attestation-info
+----
+
+[start=7]
+7. ZC erstellt ein *Client Assertion JWT*.
+
+.Client Assertion JWT Claims (with Attestation):
+[source,json]
+----
+{
+"iss": "<client_id>",
+"sub": "<client_id>",
+"aud": "<AS_Token_Endpoint_URL>",
+"exp": "...",
+"jti": "...",
+// Embed the client_statement
+"urn:gematik:params:oauth:client-attestation:software":
+  {
+    "attestation_data": "<Base64(client_statement)>",
+    "client_statement_format": "client-statement"
+  }
+}
+(sig by Client_Instance_Private_Key)
+----
+[start=8]
+. ZC erstellt ein *SMC-B Access Token* (JWT).
+
+.SMC-B Access Token Claims:
+[source,json]
+----
+{
+"iss": "<client_id>",// Issuer is the client
+"sub": "<Telematik-ID from SMC-B>",// Subject is the institution
+"aud": "[<Resource_Server_Endpoint_URL>]",// Audience is the Resource Server
+"exp": "...",// Short-lived
+"iat": "...",
+"jti": "...",
+"scope": "..." // As required for the Resource Server access
+}
+----
+
+[start=9]
+. ZC initiiert eine *External Authenticate*-Anfrage beim Konnektor (KTG):
+- Übermittlung des JWT-Hash.
+. KTG reicht den Hash an die SMC-B weiter.
+. SMC-B signiert den Hash.
+. KTG liefert die *JWT-Signatur* zurück an ZC.
+
+. ZC fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+. ZC erstellt ein [.underline]#fehlerhaftes# *DPoP Proof JWT* für den Token-Austausch.
+- Enthält Claims für den Token Request.
+
+.DPoP Proof JWT Claims (for Token Exchange):
+[source,json]
+----
+{
+"typ": "dpop+jwt",
+"alg": "ES256",
+"jwk": { ... }
+}.{
+"jti": "..."
+"htm": "POST","htu": "<AS_Token_Endpoint_URL>",
+"nonce": "<nonce from AS>", // Binding to AS
+"iat": "..."
+}.(sig by DPoP_Private_Key)
+----
+
+[start=15]
+. ZC sendet ein *Token Request* (<<RFC8693, RFC 8693>>, HTTP/1.1) an PDP-AS:
+- Enthält `DPoP: signed_dpop_jwt`.
+
+.Token Exchange Request Body:
+[source,txt]
+----
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<SM(C)-B_Access_Token>
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<Client_Assertion_JWT>...
+----
+
+[start=16]
+. PDP-AS validiert den Request:
+- Client Assertion
+- Attestation
+- DPoP Proof
+- Subject Token
+
+. PDP-AS antwortet mit `400 Bad Request` und stellt keine Token bereit.
+
+. ZC meldet an MA: *„Access not granted (validation error)“*.
+
+| Nachbedingung:  | Der stationäre ZETA-Client erhält kein Access-Token für den Zugriff auf die geschützte Ressource des Fachdienstes.
+
+| Abgedeckte Testaspekte: |
+
+* <<TA_A_27007_02>>
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    autonumber
+        actor MA as MA eines LEI
+        participant ZC as ZETA Client
+        participant KTG as Konnektor/<br/>TI-Gateway
+        participant SMC as SM(C)-B
+        participant PDP-AS as PDP Authorization<br/>Server (AS)
+
+    MA->>+ZC: Starte Prozess
+
+    opt 1. Vorbereitung
+        ZC->>+PDP-AS: HTTP/1.1 GET /nonce
+        PDP-AS-->>ZC: 200 OK new-nonce: nonce
+        ZC->>ZC: Erstelle DPoP Schlüsselpaar
+        ZC->>ZC: Attestierungs-Challenge berechnen
+    end
+
+    opt 2. Erstellen des Client Statement
+        ZC->>ZC: Erstellen Client Statement (posture-software)
+        ZC->>ZC: Erzeuge Client Assertion (JWT)
+    end
+
+    opt 3. SMC-B Signatur holen
+        ZC->>ZC: Erstellen von SMC-B Access Token (JWT)
+        ZC->>+KTG: External Authenticate<br/>(JWT-Hash)
+        KTG->>+SMC: Signiere (Hash)
+        SMC-->>-KTG: Signatur
+        KTG->>-ZC: JWT-Signatur
+    end
+
+    opt 4. DPoP Proof erstellen
+        ZC->>ZC: Hinzufügen von JWT-Signature<br/>zu SMC-B Access Token
+        ZC->>ZC: Erstellen von "fehlerhaftem" DPoP Proof JWT<br/>für Token Exchange
+    end
+
+    opt 5. Validierung & Token-Ausgabe
+        ZC->>PDP-AS: HTTP/1.1 POST /token (RFC 8693) DPoP: signed_dpop_jwt
+        PDP-AS-->>PDP-AS: Validiere Request
+        PDP-AS-->>-ZC: 400 Bad Request
+        ZC-->>-MA: "Zugriff nicht gewährt (Validierungsfehler)"
+    end
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

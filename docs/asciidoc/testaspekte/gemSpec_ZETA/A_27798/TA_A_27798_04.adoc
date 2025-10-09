@@ -1,0 +1,6 @@
+[#TA_A_27798_04]
+===== TA_A_27798_04 - Service Discovery - Authorization Server Well-known - schemakonform
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+
+Das Authorization Server Well-known JSON Dokument MUSS mit dem Schema [as-well-known.yaml] validiert werden können.

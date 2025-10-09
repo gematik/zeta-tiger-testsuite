@@ -1,0 +1,4 @@
+[#A_26491]
+==== A_26491 - PDP Authorization Server - Last
+
+Die Komponente PDP Authorization Server MUSS pro Pod über alle Endpunkte zusammen mehr als 300 Requests pro Sekunde unterstützen können.

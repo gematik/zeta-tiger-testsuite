@@ -1,0 +1,48 @@
+[#UC_01_12]
+===== UseCase_01_12: Client authentisierung und autorisierung software attest SC 403
+
+.UseCase_01_12
+[cols="1,1a",options="autowidth"]
+|===
+
+| *Titel:* | Client authentisierung und autorisierung software attestation SC 403
+
+| Akteur: |
+*MA einer LEI*: Mitarbeiter (MA) einer Leistungserbringerinstitution (LEI)
+
+| weitere Akteure: |
+
+- *ZC*: ZETA Client
+- *KTG*: Konnektor / TI-Gateway
+- *SMC*: SM( C )-B (Smartcard)
+- *PHP*: PEP HTTP Proxy
+- *PDP-AS*: PDP Authorization Server (AS)
+- *TF*: Testfachdienst
+
+
+|===
+
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 403 Forbidden: Der Client hat keine Berechtigung, auf die
+// angeforderte Ressource zuzugreifen, obwohl er authentifiziert
+// ist. Der Client darf keine weiteren Versuche unternehmen und
+// soll den Nutzer entsprechend informieren.
+
+'''
+
+| Abgedeckte Testaspekte: |
+
+* <<TA_A_25661_03>>
+* <<TA_A_26662_01>>
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+include::Client_authentisierung_und_autorisierung_software_attest_SC_403.feature[]
+----

@@ -1,0 +1,4 @@
+[#A_19147]
+==== A_19147 - Sicherheitstestplan
+
+Der Hersteller eines Produktes MUSS einen Testplan für Sicherheitstests erstellen und auf Verlangen der gematik zur Verfügung stellen.

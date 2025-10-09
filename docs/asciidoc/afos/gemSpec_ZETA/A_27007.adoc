@@ -1,0 +1,4 @@
+[#A_27007]
+==== A_27007 - ZETA Client - HTTP Statuscodes
+
+Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.

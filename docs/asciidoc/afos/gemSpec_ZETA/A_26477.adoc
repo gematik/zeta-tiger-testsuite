@@ -1,0 +1,12 @@
+[#A_26477]
+==== A_26477 - PEP HTTP Proxy - PoPP Token Validierung
+
+Die Komponente HTTP Proxy MUSS so konfiguriert werden können, dass pro Endpunkt des Resource Servers der Request HeaderPoPP verlangt und das PoPP Token validiert wird.
+Zusätzlich MUSS die Konfiguration pro Endpunkt unterstützen, dass die Dauer der Gültigkeit des PoPP Token in Sekunden seit Ausstellung und nach Ausstellungszeitpunkt und Prüfzeitpunkt innerhalb des gleichen Quartals eingestellt werden kann.
+Wenn ein Request für einen Endpunkt des Resource Servers empfangen wird, der kein PoPP Header enthält und das Vorhandensein des PoPP Headers wird verlangt, dann MUSS der HTTP Proxy den Request mit HTTP Code400 Bad Request beantworten.
+Insbesondere MUSS die Signatur des PoPP Servers gültig sein.
+Die Signatur des PoPP Tokens ist gültig, wenn sie mathematisch gültig ist und die Signatur vom PoPP Server erstellt wurde.
+Der HTTP Proxy MUSS ein vorhandenes und noch gültiges JWKS des PoPP Servers verwenden oder das JWKS des PoPP Servers herunterladen, um anhand der im JWKS enthaltenen Schlüssel die Signatur des PoPP Tokens zu prüfen.
+Der claim actorId des PoPP Token MUSS mit dem Attribut identifier aus den zum Access Token gehörenden Nutzer-Daten übereinstimmen.
+Vor Ablauf der Gültigkeit MUSS der HTTP Proxy ein neues JWKS des PoPP Servers herunterladen.
+Wenn die Signatur des PoPP Tokens ungültig ist oder eine der anderen Prüfungen nicht erfolgreich war, dann MUSS der Request mit HTTP Code403 Forbidden beantwortet werden.

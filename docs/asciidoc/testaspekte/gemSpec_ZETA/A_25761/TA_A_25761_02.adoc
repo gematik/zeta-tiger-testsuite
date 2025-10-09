@@ -1,0 +1,4 @@
+[#TA_A_25761_02]
+===== TA_A_25761_02 - Nutzerauthentifizierung mittels OAuth2 Token Exchange(jwt/DPop)
+
+"Der ZETA Client MUSS [...] **OAuth2 Token Exchange mit private_key_jwt** Client Authentifizierung unterstützen."

@@ -1,0 +1,4 @@
+[#A_25656]
+==== A_25656 - PDP - Entity Statement
+
+Der PDP Authorization Server MUSS die Redirect-URLs aller zulässigen Clients als erlaubte Redirect-URLs im Entity Statement ausweisen.

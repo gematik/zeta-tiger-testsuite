@@ -1,0 +1,4 @@
+[#A_26104]
+==== A_26104 - ZETA Guard-Komponenten - Protokollieren von Änderungen
+
+Die Komponenten des ZETA Guard MUSS jede Änderung pro tokollieren, einschließlich des Zeitpunkts der Änderung und des Administrators, der die Änderung vorgenommen hat.

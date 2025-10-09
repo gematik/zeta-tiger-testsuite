@@ -1,0 +1,7 @@
+[#A_18467]
+==== A_18467 - TLS-Verbindungen, Version 1.3
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, KÖNNEN die TLS-Version 1.3 [RFC-8446] unterstützen, falls sie
+
+* dabei nur nach [BSI-TR-02102-2] empfohlene Verbindungskonfigurationen (Handshake-Modi, (EC)DH-Gruppen, Signaturverfahren, Ciphersuiten etc.) verwenden, und
+* mindestens die Ciphersuite "TLS_AES_128_GCM_SHA256" dabei unterstützen.

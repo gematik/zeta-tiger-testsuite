@@ -1,0 +1,8 @@
+[#TA_A_26491_01]
+===== TA_A_26491_01 - PDP Authorization Server - mehr als 300 Verbindungen und Requests pro Sekunde
+
+"Die Komponente PDP Authorization Server MUSS pro Pod über alle Endpunkte zusammen mehr als 300 Requests pro Sekunde
+unterstützen können.
+
+Hinweis: Anfragen an abhängige Dienste im Hintergrund, um einen Request vollständig zu bearbeiten (z.B. OCSP), werden
+bei den Bearbeitungszeiten mit berücksichtigt, jedoch nicht dem abfragenden Dienst zur Last gelegt."

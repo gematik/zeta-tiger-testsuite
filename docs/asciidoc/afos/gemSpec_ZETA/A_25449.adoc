@@ -1,0 +1,4 @@
+[#A_25449]
+==== A_25449 - PDP- Nutzeridentität nur von einem zugelassenem IDP
+
+Der PDP MUSS sicherstellen, dass nur Nutzeridentitäten von einem zugelassenen IDP akzeptiert werden.

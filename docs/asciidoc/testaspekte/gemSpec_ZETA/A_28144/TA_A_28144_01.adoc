@@ -1,0 +1,4 @@
+[#TA_A_28144_01]
+===== TA_A_28144_01 PDP Authorisation Server - Endpunkt GET /nonce vorhanden
+
+"Der ZETA Guard MUSS am **Endpunkt GET /nonce** einen 128 Bit langen base64url kodierten Zufallswert ausgeben."

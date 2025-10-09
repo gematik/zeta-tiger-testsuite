@@ -1,0 +1,4 @@
+[#A_25336]
+==== A_25336 - Hersteller Clientsystem - Regelmäßige Updates
+
+Der Hersteller eines Clientsystems MUSS, solange das Produkt nicht abgekündigt ist, dem Benutzer regelmäßig (z. B. quartalsweise) Updates für das Clientsystem bereitstellen, um das Clientsystem dauerhaft auf dem Stand der Technik zu halten und Sicherheitslücken zu schließen.

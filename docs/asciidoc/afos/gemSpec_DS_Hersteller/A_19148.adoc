@@ -1,0 +1,4 @@
+[#A_19148]
+==== A_19148 - Sicherheits- und Datenschutzkonzept
+
+Der Hersteller eines Produktes MUSS die Sicherheits- und Datenschutzmaßnahmen für sein Produkt in einem Sicherheits- und Datenschutzkonzept dokumentieren und auf Verlangen der gematik zur Verfügung stellen.

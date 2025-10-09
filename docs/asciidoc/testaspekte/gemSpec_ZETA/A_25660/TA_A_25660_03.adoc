@@ -1,0 +1,12 @@
+[#TA_A_25660_03]
+===== TA_A_25660_03 - Session Management - Entzug AccessToken
+
+"Die Komponente Authorization Server MUSS ein Session Management mittels OAuth2 und Ausgabe, Verwaltung und **Entzug** von **Access** und Refresh Token gemäß [RFC6749#1.5] unterstützen."
+
+(Siehe auch: A_26064 - Access Token bei Monitoring-Signalen sperren)
+
+Hinweis:
+
+Prüfung ob einer Session noch ein aktiver Access Token zugeordnet ist, wird aus Performance Gründen maximal beim Ersten Request an den HTTP Proxy überprüft.
+(Sticky Sessions / Caching)
+

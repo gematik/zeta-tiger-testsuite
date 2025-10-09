@@ -1,0 +1,6 @@
+[#GS-A_2330-02]
+==== GS-A_2330-02 - Hersteller: Schwachstellen-Management
+
+Hersteller von Produkten der TI MÜSSEN präventive Maßnahmen zur Erkennung und Analyse von technischen Hard- oder Softwareschwachstellen („vulnerabilities“) ihres Produktes wie auch zur Bewertung und Implementierung von Sicherheitsupdates durchführen.
+Hierzu gehört insbesondere auch, dass sich der Hersteller aktiv und kontinuierlich über Schwachstellen in eingesetzten Hard- und Softwarekomponenten von Dritten informiert.
+Dies ist auch für Anteile des Produktes sicherzustellen, die von Drittherstellern stammen.

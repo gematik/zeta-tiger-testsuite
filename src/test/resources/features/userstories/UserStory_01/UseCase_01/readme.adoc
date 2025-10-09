@@ -1,0 +1,148 @@
+[#UC_01_01]
+==== UseCase_01_01: Client initiale registrierung stationaer SC_201
+
+.UseCase_01_01
+[cols="1,1a",options="autowidth"]
+|===
+
+| *Titel:* | Client initiale registrierung stationaer SC 201
+
+| Akteur: |
+
+*MA einer LEI*: Mitarbeiter (MA) einer Leistungserbringerinstitution (LEI)
+
+| weitere Akteure: |
+- *MA* -  Mitarbeiter eines Leistungserbringers (LEI)
+- *L* -   Leistungserbringer-Institution
+- *ZC* -  ZETA Client
+- *PHP* - PEP HTTP Proxy
+- *KTG* - Konnektor / TI-Gateway
+- *PDP-AS* - PDP Authorization Server
+- *PDP-DB* - PDP Datenbank
+- *PDP-PE* - PDP Policy Engine
+
+| Auslöser: | Ein MA eines Leistungserbringers registriert einen ZETA Client erstmalig in der Client-Registry des ZETA Guard.
+
+| Kurzbeschreibung: | Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte
+Ressourcen zugreifen möchte.
+Dieser Prozess ist zweistufig und findet einmalig pro ZETA Guard-Instanz
+statt.
+
+| Vorbedingung: | Stationärer ZETA Client ist noch nicht beim ZETA Guard registriert.
+
+| Nebenbedingung: |
+- Es wird *HTTP/1.1* verwendet <<A_26640>>
+
+| Ablauf: |
+[start=1]
+1. MA startet Abfrage des *Service Directorys*.
+2. MA startet *initiale Registrierung* im ZETA Client.
+3. ZC generiert ein *Client Instance Key Pair*.
+4. ZC sendet eine *Dynamic Client Registration (DCR)* an den PDP-AS (`POST /register HTTP/1.1`), mit:
+
+.DCR-Request
+[source,json]
+----
+{
+"client_name": "myClient",
+"grant_types": [
+"urn:ietf:params:oauth:grant-type:token-exchange",
+"refresh_token"
+],
+"jwks": {
+"keys": [<Client_Instance_Public_Key_JWK>]
+},
+"token_endpoint_auth_method": "private_key_jwt"
+}
+----
+[start=5]
+5. PDP-AS erzeugt eine neue `client_id`.
+6. PDP-AS legt im PDP-DB einen *Client Placeholder* an (`state: pending_attestation`).
+
+.Store Client Placeholder:
+[source,txt]
+----
+- client_id
+- client_name
+- public_key_jwks
+- ...
+- state: pending_attestation
+----
+[start=7]
+7. PDP-DB bestätigt die Speicherung.
+8. PDP-AS gibt eine *201 Created Response* mit `client_id` zurück an ZC, ZC meldet Ergebnis an MA.
+
+.DCR Response Body:
+[source,json]
+----
+{
+"client_id": "<client_id>",
+"client_id_issued_at": "<timestamp>",
+"..." :  "..."
+}
+----
+
+| Nachbedingung:  | Der stationäre ZETA-Client besitzt eine client_id und ein zugehöriges Schlüsselpaar.
+
+| Abgedeckte Testaspekte: |
+
+* <<TA_A_25733_01>>
+* <<TA_A_25795_01>>
+* <<TA_A_25795_02>>
+* <<TA_A_25795_03>>
+* <<TA_A_25795_04>>
+* <<TA_A_25795_05>>
+* <<TA_A_25795_06>>
+* <<TA_A_25795_07>>
+* <<TA_A_25795_08>>
+* <<TA_A_26587_01>>
+* <<TA_A_26587_05>>
+* <<TA_A_26587_09>>
+* <<TA_A_26640_01>>
+* <<TA_A_27266_01>>
+* <<TA_A_27266_02>>
+* <<TA_A_27798_01>>
+* <<TA_A_27798_02>>
+* <<TA_A_27798_03>>
+* <<TA_A_27798_04>>
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    autonumber
+    actor MA as MA eines LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-AS as PDP Authorization Server (AS)
+    participant PDP-DB as PDP Database
+
+    MA->>+ZC: MA startet Abfrage des Service Directorys.
+    ZC->>PEP-HP: GET /.well-known/oauth-protected-resource Host: <RS-FQDN> HTTP/1.1
+    PEP-HP->>ZC: 200 OK, JSON body with well-known JSON document (RFC9728)
+    ZC->>ZC: Update Resource Server and ZETA Guard Configuration
+    ZC->>PDP-AS: GET /.well-known/oauth-authorization-server Host: <AuthS-FQDN> HTTP/1.1
+    PDP-AS->>ZC: 200 OK, JSON body with well-known JSON document (RFC8414)
+
+    ZC->>ZC: Update Authorization Server Configuration
+    ZC->>MA: Response: ZETA Client Config updated
+
+    MA->>+ZC: initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register HTTP/1.1
+    PDP-AS->>PDP-AS: Generiere client_id
+    PDP-AS->>+PDP-DB: Speichere Client-Platzhalter
+    PDP-DB->>-PDP-AS: Client-Platzhalter erstellt
+    PDP-AS->>-ZC: 201 Created: Client erfolgreich registriert
+    ZC->>-MA: Client ist initial registriert
+....
+
+[.lead]
+
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+include::Client_initiale_registrierung_stationaer_SC_201.feature[]
+----

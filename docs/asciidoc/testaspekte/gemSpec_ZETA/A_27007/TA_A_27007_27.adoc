@@ -1,0 +1,16 @@
+[#TA_A_27007_27]
+===== TA_A_27007_27 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 404 Not Found
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **HTTP Proxy** |
++++[...]+++
+**404 Not Found**: Die angeforderte Ressource wurde nicht gefunden.
++++[...]+++
+|===
++++[...]+++"

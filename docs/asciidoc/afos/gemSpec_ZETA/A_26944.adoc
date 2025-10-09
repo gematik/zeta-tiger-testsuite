@@ -1,0 +1,5 @@
+[#A_26944]
+==== A_26944 - PDP Authorization Server - Access Token Inhalt
+
+Die Komponente Authorization Server MUSS Access Token mit Attributen gemäß
+[access-token.yaml] ausstellen.

@@ -1,0 +1,4 @@
+[#A_25790]
+==== A_25790 - ZETA Guard-Komponenten - Aktivierung/Deaktivierung von Funktionen in Echtzeit
+
+Die Komponenten des ZETA Guard MUSS Funktionen oder Verhaltensweisen zur Laufzeit durch Feature-Flags aktivieren oder deaktivieren können, ohne dass ein Neustart erforderlich ist.

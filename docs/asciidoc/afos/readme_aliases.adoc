@@ -1,0 +1,5 @@
+:gemSpec_ZETA: https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/gemSpec_ZETA_V1.1.0/
+:gemSpec_Krypt: https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.40.2/
+:gemVZ_Afo_ZETA_Guard: https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.1.0_V1.0.0/
+
+

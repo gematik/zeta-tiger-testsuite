@@ -1,0 +1,4 @@
+[#A_25786]
+==== A_25786 - ZETA Guard-Komponenten - Abschluss von Transaktionen vor Aktualisierung
+
+Die Komponenten des ZETA Guard MUSS sicherstellen, dass alle aktuellen Transaktionen und Anfragen abgeschlossen oder ordnungsgemäß übernommen werden, bevor ein Update finalisiert wird.

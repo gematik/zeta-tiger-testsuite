@@ -1,0 +1,4 @@
+[#TA_A_25760_02]
+===== TA_A_25760_02 - PDP Authorization Server - OAuth2 Schnittstellen - Nutzung von PKCE
+"Der PDP Authorization Server MUSS eine OAuth2 Schnittstelle gemäß [RFC6749] und [**RFC7636**] implementieren.
+Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. *[\<=]*"

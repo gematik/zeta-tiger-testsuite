@@ -1,0 +1,6 @@
+[#TA_A_27798_02]
+===== TA_A_27798_02 - Service Discovery - Authorization Server Well-known Endpunkt bereitstellen
+
+*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+
+Der ZETA Guard MUSS das Authorization Server Well-known JSON Dokument für die Service Discovery bereitstellen.

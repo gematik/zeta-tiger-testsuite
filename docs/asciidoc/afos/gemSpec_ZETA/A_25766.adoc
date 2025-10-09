@@ -1,0 +1,4 @@
+[#A_25766]
+==== A_25766 - ZETA Client - Client Credentials in TI Qualität
+
+Der ZETA Client MUSS die Client-Credentials im Form von kryptografischen Schlüsseln gemäß der Festlegungen in [gemSpec_Krypt] (Verfahren, Algorithmen, Schlüssellängen etc.) unterstützen.

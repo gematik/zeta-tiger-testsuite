@@ -1,0 +1,6 @@
+== Zu testende Merkmale
+
+Nachfolgend eine initiale Zuordnung der User Stories und Use Cases zu konkreten Testaspekten.
+
+include::../tables/features_table.adoc[]
+

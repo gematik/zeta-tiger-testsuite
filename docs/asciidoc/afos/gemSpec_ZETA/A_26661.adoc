@@ -1,0 +1,4 @@
+[#A_26661]
+==== A_26661 - ZETA Guard - HTTP Statuscodes
+
+Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.

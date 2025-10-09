@@ -1,0 +1,16 @@
+[#A_27725]
+==== A_27725 - ZETA Guard, Telemetrie-Daten Service, Status Codes
+
+Der Telemetrie-Daten Service im ZETA Guard MUSS im Parameter http.status einen HTTP-Statuscode gemäß Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes übermitteln.
+
+ Tabelle #: Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes
+
+HTTP-Statuscodes Name der Statuscodegruppe Beschreibung
+
+1xx INFORMATIONAL Der Server hat die Anfrage erhalten und befindet sich in der Bearbeitung.
+2xx SUCCESSFUL Die Operation wurde erfolgreich durchgeführt.
+
+3xx REDIRECTION Der Client muss zusätzliche Maßnahmen ergreifen, um die Anfrage abzuschließen.
+4xx CLIENT_ERROR Ein Client-seitiger Fehler verhindert die erfolgreiche Durchführung der Operation.
+
+5xx SERVER_ERROR Ein Server-seitiger Fehler verhindert die erfolgreiche Durchführung der Operation.

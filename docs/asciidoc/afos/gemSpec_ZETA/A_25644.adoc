@@ -1,0 +1,8 @@
+[#A_25644]
+==== A_25644 - PDP Client-Registrierung mit Attestation
+
+Die Komponente Authorization Server MUSS die Clients/Apps bei der Registrierung über folgende Mechanismen attestieren:
+* Android Key ID Attestation (für Google-Android Clients)
+* Apple DCAppAttest.
+* Client signiertes Client Assertion JWT (mit TPM Attestation oder Software Attestation für Windows und Linux Clients)
+* Client-Zertifikat plus Client Assertion JWT (für Dienst-zu-Dienst Kommunikation)

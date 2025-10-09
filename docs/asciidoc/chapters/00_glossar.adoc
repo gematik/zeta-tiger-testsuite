@@ -1,0 +1,7 @@
+[glossary]
+== Glossar
+
+[glossary]
+TM:: Testmanager
+PM:: Produktmanager
+PMO:: Product Management Office

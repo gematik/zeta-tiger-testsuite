@@ -1,0 +1,15 @@
+[#TA_A_27007_21]
+===== TA_A_27007_21 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 200 OK
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **HTTP Proxy** |
+**200 OK**: Anfrage erfolgreich durch den Proxy weitergeleitet. Der Client kann die angeforderte Ressource wie gewohnt verwenden.
++++[...]+++
+|===
++++[...]+++"

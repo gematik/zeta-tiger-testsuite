@@ -1,0 +1,4 @@
+[#A_26939]
+==== A_26939 - ZETA/ASL-Protokoll: ZETA/ASL-Server: Erhalt von Nachricht 3
+
+Ein ZETA/ASL-Server MUSS die für Nachricht 3 erzeugten Datenobjekte nach A_26937-* verarbeiten können.

@@ -1,0 +1,10 @@
+[#A_27798]
+==== A_27798 - ZETA Guard, Service Discovery
+
+Der ZETA Guard MUSS die Well JSON Dokumente für die Service Discovery gemäß AbbildungAbb_Service_Discovery bereitstellen.
+Das Protected Resource Well-known JSON Dokument MUSS mit dem Schema
+[opr-well-known.yaml] validiert werden können.
+Das Authorization Server Well-known JSON Dokument MUSS mit dem Schema
+[as-well-known.yaml] validiert werden können.
+
+ Abbildung #: Abb_Service_Discovery

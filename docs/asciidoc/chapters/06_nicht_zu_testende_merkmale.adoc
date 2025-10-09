@@ -1,0 +1,7 @@
+== Nicht zu testende Merkmale
+
+Folgende Aspekte sind in der aktuellen Iteration nicht Bestandteil der Testdurchführung. Jedes Element enthält die Begründung und – sofern vorhanden – die geplante Verschiebung.
+
+> [!NOTE]
+> w.i.p.
+

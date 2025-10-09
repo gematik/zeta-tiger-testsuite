@@ -1,0 +1,4 @@
+[#A_25445]
+==== A_25445 - PEP - Zugriffsentscheidung nur über PDP
+
+Der PEP MUSS sicherstellen, dass Zugriffe auf den Resource Server nur durch eine positive Zugriffsentscheidung vom PDP möglich sind.

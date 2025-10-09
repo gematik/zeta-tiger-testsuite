@@ -1,0 +1,4 @@
+[#A_25650]
+==== A_25650 - PDP Client Registrierung - TI-Identität in Attestation
+
+Die Komponente Authorization Server MUSS den registrierten Client an eine TI-Identität (KVNR oder TelematikID, festgestellt während der Authentifizierung) binden.

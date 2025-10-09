@@ -1,0 +1,4 @@
+[#A_25800]
+==== A_25800 - ZETA Guard-Komponenten - Benachrichtigung bei Fehlern
+
+Die Komponenten des ZETA Guard MUSS im Falle eines fehlgeschlagenen Health Checks oder der Erkennung eines kritischen Zustandes automatisch eine Benachrichtigung an ein vordefiniertes Management- oder Monitoring-System senden.

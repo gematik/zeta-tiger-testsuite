@@ -1,0 +1,21 @@
+[#UC_01_16]
+===== UseCase_01_16: Client ressource anfrage fachdienst SC 403
+//A_27007 -ZETA Client - HTTP Statuscodes
+// 403 Forbidden: Zugriff auf die angeforderte Ressource durch den
+// Proxy verweigert. Der Client darf keine weiteren Anfragen an
+// diese Ressource senden und soll den Nutzer über die fehlende
+// Berechtigung informieren.
+
+'''
+
+'''
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[%linenums,source,feature]
+----
+// include::UseCase_ab_cd.feature[]
+----

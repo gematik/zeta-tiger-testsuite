@@ -1,0 +1,4 @@
+[#A_25771]
+==== A_25771 - PDP - Automatisierte Prüfung nach Policy-Aktualisierungen
+
+Der PDP muss alle 5 Minuten prüfen, ob Aktualisierungen der installierten und verwendeten Policy/PIP-Daten vorhanden sind.

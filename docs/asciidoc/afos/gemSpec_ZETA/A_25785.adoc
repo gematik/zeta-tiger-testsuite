@@ -1,0 +1,4 @@
+[#A_25785]
+==== A_25785 - ZETA Guard-Komponenten - Nahtloser Übergang zu neuen Versionen
+
+Die Komponenten des ZETA Guard MUSS einen Mechanismus bieten, der einen nahtlosen Übergang zu neuen Versionen oder Patches ermöglicht, ohne die Verfügbarkeit für Endbenutzer zu unterbrechen.

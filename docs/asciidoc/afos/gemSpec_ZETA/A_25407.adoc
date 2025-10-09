@@ -1,0 +1,4 @@
+[#A_25407]
+==== A_25407 - ZETA Guard - Sicherheitstechnische Validierung von Policy und Konfigurationen
+
+ZETA Guard MUSS sicherstellen, dass alle Daten und Parameter, die von einer Konfigurationsdatei oder Policy gelesen werden, sicherheitstechnisch validiert werden.

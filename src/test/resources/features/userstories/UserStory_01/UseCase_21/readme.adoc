@@ -1,0 +1,76 @@
+[cols="1,9"]
+|===
+
+
+|Titel:| *UseCase_01_21: Client_ressource_anfrage_Performance_SC_200*
+
+|Akteur:|
+mehrere MA eines Leistungserbringers
+
+|Auslöser:|
+Mehrere MA eines Leistungserbringers #
+- fragen parallel beim Zeta Guard eine Ressource an
+
+|Kurzbeschreibung:|
+Das System ZETA Guard wird mit parallelen Anfragen mehrerer Nutzer belastet.
+Jeder Nutzer tritt mit einem gültigen Access-Token an den Zeta Guard heran und fordert Ressourcen beim Fachdienst an.
+Die Anfragen werden von Zeta Guard im angemessenen Zeitrahmen beantwortet.
+
+|Vorbedingung:|
+Die ZETA Clients sind alle registriert und authentisiert.
+Es liegt eine Authorisierung in Form eines Access Tokens für jede Ressource vor.
+Die optionale zusätzliche Verschlüsselung der Daten per ZETA/ASL wird nicht genutzt.
+
+|Ablauf: a|
+. Die Nutzer fordern über den ZETA Client eine geschützte Ressource an.
+. Die ZETA Clients senden eine HTTP-GET /_resource_-Anfrage an den ZETA Guard (PEP) und fügen das Access Token im Authorization-Header hinzu.
+. Der PEP prüft die Anfragen und leitet sie zusammen mit den Access Tokens an den Resource Server weiter.
+. Der Resource Server validiert die Access Tokens und stellt die Ressourcen bereit. Er antwortet mit HTTP_OK und den entsprechenden Antwortdaten an den PEP.
+. Der PEP empfängt die Daten und leitet die Antworten zurück an die ZETA Clients.
+. Die ZETA Clients geben die erhaltenen Ressourcen an die Nutzer zurück.
+
+|Nebenbedingung:|
+Das Access Token darf nicht abgelaufen oder ungültig sein.
+
+|Nachbedingung:|
+Die Nutzer haben die zeitnah Ressourcen erhalten. Als Statuscode komme HTTP_OK zurück.
+
+
+|Hinweis:|
+Zur Erhöhung der Testabdeckung soll die Kommunikation für diesen Use Case über HTTP/1.1 (siehe {TA_A_26640_01}) erfolgen.
+
+|Testaspekte: a|
+* {TA_A_26486_01}
+
+* {TA_A_26488_01}
+
+* {TA_A_26489_01}
+
+* {TA_A_26491_01}
+|===
+
+[mermaid]
+....
+%%{init: { 'sequence': {'commentAlign': 'left'} }}%%
+sequenceDiagram
+    actor User as Mehrere Nutzer
+    participant Client as ZETA Client
+    participant PEP as ZETA Guard (PEP)
+    participant Resource as Resource Server
+    autonumber
+
+    User ->> Client: Ressource anfragen
+    Client ->> PEP: GET /resource<br/>Authorization: Bearer AccessToken
+    PEP ->> Resource: Weiterleitung GET /resource<br/>inkl. AccessToken
+    Resource ->> PEP: 200 OK<br/>Antwortdaten
+    PEP ->> Client: 200 OK<br/>Antwortdaten
+    Client ->> User: Erhalt der Ressource
+....
+
+// Hinweis Retrieve Client Data dient nur der Überprüfung, Status == active
+
+==== Feature-Datei zu diesem Use Case:
+[%linenums, source, feature]
+----
+
+----

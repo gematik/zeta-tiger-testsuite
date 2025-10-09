@@ -1,0 +1,13 @@
+[#A_26964]
+==== A_26964 - ZETA Guard - OCSP Stapling
+
+Komponenten innerhalb des ZETA Guards (inkl.
+Ingress), die von außen kommende TLS Verbindungen oder ZETA/ASL terminieren, SOLLEN OCSP-Stapling [RFC6066]
+verwenden.
+Das OCSP Abfrageintervall MUSS das Minimum aus dynamic_validity_period und max_allowed_validity_period sein, wenn NextUpdate in der OCSP Response angegeben ist.
+Anderenfalls MUSS das OCSP Abfrageintervall gleich max_allowed_validity_period sein.
+Dabei gilt:
+dynamic_validity_period = (percentage_of_validity_period * (NextUpdate - ThisUpdate)) / 100 Die Werte für max_allowed_validity_period (default Wert = 1 Tag) und percentage_of_validity_period (default Wert = 60%) MÜSSEN konfigurierbar sein.
+Die jeweils letzte OCSP Response MUSS im Cache gespeichert und für OCSP Stapling verwendet werden.
+Es MUSS eine Warnung bereitgestellt werden, wenn eine OCSP Abfrage fehlschlägt.
+Sollte vom entsprechenden OCSP Responder trotz regelmäßigen Versuchens keine OCSP Response bezogen werden können, so MUSS die jüngste zur Verfügung stehende OCSP Response verwendet werden und es MUSS mit exponential Backoff weiter probiert werden.

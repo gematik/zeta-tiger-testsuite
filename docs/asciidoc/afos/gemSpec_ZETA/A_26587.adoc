@@ -1,0 +1,9 @@
+[#A_26587]
+==== A_26587 - PDP Datenbank - Schnittstellen
+
+Die Komponente PDP Datenbank MUSS Schnittstellen anbieten, sodass
+
+* der Authorization Server die Operationen create, retrieve, update und delete für Session-Daten ausführen kann,
+* der Authorization Server die Operationen create, retrieve, update und delete für Session-, User- und Client-Daten ausführen kann,
+* der PEP HTTP Proxy die Operation retrieve für User-Daten und optional im gleichen Request für Client-Daten ausführen kann.
+Anhand des Parametersjti aus dem Access Token des Requests MUSS der HTTP Proxy die User- und Client-Daten der zugehörigen Session aus der Datenbank abfragen können.

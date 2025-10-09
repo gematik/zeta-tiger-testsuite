@@ -1,0 +1,8 @@
+[#A_25762]
+==== A_25762 - ZETA Client - Nutzerauthentifizierung - Unterstützung etablierter Identitäten und Dienste
+
+Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
+
+* Authentifizierung des Nutzers gegenüber einem Sektoralen IDP der IDP Föderation gemäß [gemSpec_IDP_Sek] (GesundheitsID)
+* Authentifizierung des Nutzers gegenüber dem zentralen IDP-Dienst der TI gemäß [gemSpec_IDP_Dienst] (SmartCardIDP für kartengebundene Identitäten).
+* Authentifizierung des Nutzers mittels SM(C)-B signiertem Client Assertion JWT und DPoP gemäß [RFC7523] und [RFC9449].

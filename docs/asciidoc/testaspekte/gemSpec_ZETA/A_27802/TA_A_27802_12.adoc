@@ -1,0 +1,14 @@
+[#TA_A_27802_12]
+===== TA_A_27802_12 - ZETA Guard, JWT Prüfung - OCSP Caching
+
+"Der ZETA Guard MUSS bei der Prüfung von JWT folgende Prüfschritte durchführen:
+
+*[...]*
+
+*Spezifische Prüfungen für TI-Zertifikate:*
+
+* Ablaufdatum des Zertifikats: Sicherstellen, dass das Zertifikat noch gültig ist.
+* **Widerrufsstatus des Zertifikats (OCSP)**: Prüfen, ob das Zertifikat nicht widerrufen wurde. **Die OCSP Response** wird für eine konfigurierbare Dauer **zwischengespeichert**, um zu häufige OCSP Anfragen zu verhindern. **Die Dauer soll der Gültigkeitsdauer des Refresh Token entsprechen.**
+* Vertrauenswürdigkeit der Zertifikatskette: Sicherstellen, dass die Kette zu einer vertrauenswürdigen Root-CA führt.
+
+*[...]*"

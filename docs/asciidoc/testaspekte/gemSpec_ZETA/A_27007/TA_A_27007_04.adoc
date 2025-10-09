@@ -1,0 +1,16 @@
+[#TA_A_27007_04]
+===== TA_A_27007_04 - ZETA Client - HTTP Statuscodes - Authentifizierung - Client Assertion - 403 Forbidden
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **Authentifizierung mit Client Assertion JWT** |
++++[...]+++
+**403 Forbidden**: Der Client hat keine Berechtigung, auf die angeforderte Ressource zuzugreifen, obwohl er authentifiziert ist. Der Client darf keine weiteren Versuche unternehmen und soll den Nutzer entsprechend informieren.
++++[...]+++
+|===
++++[...]+++"

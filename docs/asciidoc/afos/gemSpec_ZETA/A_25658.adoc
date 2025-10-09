@@ -1,0 +1,4 @@
+[#A_25658]
+==== A_25658 - PDP - Authentication über SmartCard IDP
+
+Der PDP Authorization Server MUSS die Nutzer über den zentralen IDP-Dienst (SmartCard-IDP) authentifizieren können.

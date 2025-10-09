@@ -1,0 +1,4 @@
+[#A_25788]
+==== A_25788 - ZETA Guard-Komponenten - Unterstützung von Rollbacks
+
+Die Komponenten des ZETA Guard MUSS die Fähigkeit besitzen, zu einer stabilen Vorversion zurückzukehren, sollte eine Aktualisierung fehlerhaft sein oder abgebrochen werden müssen.

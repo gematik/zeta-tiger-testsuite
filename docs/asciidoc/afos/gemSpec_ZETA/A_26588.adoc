@@ -1,0 +1,5 @@
+[#A_26588]
+==== A_26588 - PDP Datenbank - Konfiguration
+
+Die Komponente PDP Datenbank MUSS so konfigurierbar sein, dass für alle Attribute der Client-Daten eingestellt werden kann, welche Attribute an den PEP HTTP Proxy ausgegeben werden.
+Die default Einstellung ist, dass die Attribute platform, product_name und product_version sowie aus dem Objekt posture die Attribute system_name, system_version und device_model ausgegeben werden.

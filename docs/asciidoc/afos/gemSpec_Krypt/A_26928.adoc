@@ -1,0 +1,19 @@
+[#A_26928]
+==== A_26928 - ZETA/ASL: ZETA/ASL-Server: Request entschlüsseln/auswerten
+
+Ein Request erreicht den ZETA/ASL-Server über eine HTTPS-Schnittstelle.
+Im äußeren Request nimmt der ZETA/ASL-Server das Routing mittels der Verbindungs-ID (URL-Pfadname, A_26936-* und A_26927-*) und/oder der KeyID im Header des Chiffrats vor.
+
+Ein ZETA/ASL-Server MUSS bei Erhalt eines Chiffrat nach A_26927-* folgendes prüfen.
+
+* Ist die Länge der Datenstruktur mindestens 72 Byte lang.
+* Ist die "PU/nonPU" Byte korrekt, i. S. v. korrekte Umgebung, in der auch der ZETA/ASL-Server arbeitet.
+* Ist das Request/Response-Byte gleich 1.
+* Ist die KeyID bekannt.
+Sollte eine dieser Prüfungen oder eine weitere der folgenden Prüfungen ein nicht-positives Prüfergebnis ergeben, so MUSS der ZETA/ASL-Server die Verarbeitung des Requests abbrechen und mit einer Fehlermeldung (vgl.
+A_26924-*) dem Client antworten.
+
+Der ZETA/ASL-Server MUSS den mit der KeyID verbundenen Schlüssel K2_c2s_app_data für die Entschlüsselung des Chiffrats verwenden und dabei analog A_26927-* den Header als "Additional Associated Data" mit in die Entschlüsselung einfließen lassen.
+Ergibt die Entschlüsselung das Symbol "FAIL", so MUSS Abbruch und Fehlermeldung (vgl.
+A_26924-*) erfolgen.
+Der ZETA/ASL-Server MUSS den Request-Counter-Wert speichern, der für die Antwort (A_26930-*) benötigt wird.

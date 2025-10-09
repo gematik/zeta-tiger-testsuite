@@ -1,0 +1,4 @@
+[#A_25733]
+==== A_25733 - ZETA Client - Clientverwaltung und manuelle De-Registrierung
+
+Der ZETA Client MUSS dem Nutzer eine Übersicht aller beim Clientregistrierungsdienst registrierten Clients darstellen und die Möglichkeit zur De-Registrierung einzelner Clients anbieten.

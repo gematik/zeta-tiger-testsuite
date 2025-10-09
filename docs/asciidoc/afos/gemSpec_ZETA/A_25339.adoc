@@ -1,0 +1,4 @@
+[#A_25339]
+==== A_25339 - ZETA Client - Exponential Backoff
+
+Der ZETA Client SOLL bei Server-seitigen Fehlermeldungen, die auf eine Überlastung des Zielsystems schließen lassen (z. B. HTTP-status 5xx, 429 - too many requests etc.), erneute Verbindungsversuche nach dem Prinzip des Exponential Backoffs [ExpBack] durchführen.

@@ -1,0 +1,5 @@
+[#A_25667]
+==== A_25667 - PEP HTTP Proxy - Verifikation Access Token Binding
+
+Die Komponente HTTP Proxy MUSS das Access Token Binding über den Mechanismus OAuth 2.0 Demonstrating Proof of Possession (DPoP) gemäß
+[RFC9449] verifizieren; d. h. der Claim "jkt" im Access Token MUSS eindeutig der Angabe im DPoP-Token entsprechen.

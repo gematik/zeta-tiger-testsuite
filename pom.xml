@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>de.gematik.zeta</groupId>
+  <artifactId>testsuite</artifactId>
+  <version>0.1.3</version>
+
+  <!-- Profiles: Ein großes asciidoc-enabled-Profil + kleine OS-Override-Profile -->
+  <profiles>
+
+    <!-- Haupt-Profil: enthält frontend + asciidoctor; opt-in via -Pasciidoc-enabled -->
+    <profile>
+      <id>asciidoc-enabled</id>
+
+      <properties>
+        <!-- mmdc Wrapper (Unix-like). Windows wird durch OS-Profil überschrieben -->
+        <mmdc.cmd>${project.build.directory}/node_modules/.bin/mmdc</mmdc.cmd>
+      </properties>
+
+      <build>
+        <plugins>
+          <!-- Node/Yarn/Mermaid -->
+          <plugin>
+            <groupId>com.github.eirslett</groupId>
+            <artifactId>frontend-maven-plugin</artifactId>
+            <version>${version.frontend.maven.plugin}</version>
+            <executions>
+              <execution>
+                <id>install node and yarn</id>
+                <phase>initialize</phase>
+                <goals>
+                  <goal>install-node-and-yarn</goal>
+                </goals>
+                <configuration>
+                  <nodeVersion>${version.node}</nodeVersion>
+                  <yarnVersion>${version.yarn}</yarnVersion>
+                  <installDirectory>${project.build.directory}</installDirectory>
+                </configuration>
+              </execution>
+              <execution>
+                <id>yarn install</id>
+                <phase>initialize</phase>
+                <goals>
+                  <goal>yarn</goal>
+                </goals>
+                <configuration>
+                  <arguments>install --frozen-lockfile --silent --cwd ${project.basedir}/docs --modules-folder ${project.build.directory}/node_modules</arguments>
+                  <installDirectory>${project.build.directory}</installDirectory>
+                  <workingDirectory>${project.build.directory}</workingDirectory>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Asciidoctor mit Diagram- und PDF-Unterstützung -->
+          <plugin>
+            <groupId>org.asciidoctor</groupId>
+            <artifactId>asciidoctor-maven-plugin</artifactId>
+            <version>${version.asciidoctor.maven.plugin}</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctorj</artifactId>
+                <version>${version.asciidoctorj}</version>
+              </dependency>
+              <dependency>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctorj-diagram</artifactId>
+                <version>${version.asciidoctorj.diagram}</version>
+              </dependency>
+              <dependency>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctorj-pdf</artifactId>
+                <version>${version.asciidoctorj.pdf}</version>
+              </dependency>
+            </dependencies>
+
+            <executions>
+              <execution>
+                <id>generate-html-doc</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>process-asciidoc</goal>
+                </goals>
+                <configuration>
+                  <backend>html5</backend>
+                  <outputDirectory>${project.build.directory}/docs/html</outputDirectory>
+                  <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
+                  <attributes>
+                    <!-- Inline images (including Mermaid SVGs) into HTML -->
+                    <data-uri>true</data-uri>
+                    <!-- Resolve image references relative to output -->
+                    <imagesdir>.</imagesdir>
+                    <!-- Place generated diagram images next to the HTML so links resolve -->
+                    <imagesoutdir>${project.build.directory}/docs/html</imagesoutdir>
+                    <!-- Allow reading local files referenced by image macros if needed -->
+                    <allow-uri-read>true</allow-uri-read>
+                  </attributes>
+                </configuration>
+              </execution>
+              <execution>
+                <id>generate-pdf-doc</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>process-asciidoc</goal>
+                </goals>
+                <configuration>
+                  <backend>pdf</backend>
+                  <outputDirectory>${project.build.directory}/docs/pdf</outputDirectory>
+                  <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
+                </configuration>
+              </execution>
+            </executions>
+
+            <configuration>
+              <attributes>
+                <mmdc>${mmdc.cmd}</mmdc>
+                <diagram-cachedir>${project.build.directory}/docs/diagram-cache</diagram-cachedir>
+                <puppeteer-config>docs/puppeteer-config.json</puppeteer-config>
+              </attributes>
+              <requires>
+                <require>asciidoctor-diagram</require>
+              </requires>
+              <sourceDirectory>docs/asciidoc</sourceDirectory>
+            </configuration>
+          </plugin>
+
+        </plugins>
+      </build>
+
+    </profile>
+
+    <!-- Kleines OS-Profil: Windows-spezifisches mmdc (überschreibt Property aus asciidoc-enabled) -->
+    <profile>
+      <id>os-windows</id>
+      <activation>
+        <os>
+          <family>Windows</family>
+        </os>
+      </activation>
+      <properties>
+        <mmdc.cmd>${project.build.directory}\\node_modules\\.bin\\mmdc.cmd</mmdc.cmd>
+      </properties>
+    </profile>
+
+    <!-- Kleines OS-Profil: Unix-spezifisches mmdc (falls nötig; default in asciidoc-enabled bereits unix) -->
+    <profile>
+      <id>os-unix</id>
+      <activation>
+        <os>
+          <family>unix</family>
+        </os>
+      </activation>
+      <properties>
+        <mmdc.cmd>${project.build.directory}/node_modules/.bin/mmdc</mmdc.cmd>
+      </properties>
+    </profile>
+
+  </profiles>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+
+    <version.maven.failsafe>3.5.3</version.maven.failsafe>
+    <version.maven.surefire>3.5.3</version.maven.surefire>
+    <version.maven.compiler>3.13.0</version.maven.compiler>
+    <version.maven.enforcer>3.5.0</version.maven.enforcer>
+    <version.tiger>4.0.9</version.tiger>
+    <version.maven.checkstyle>3.6.0</version.maven.checkstyle>
+    <version.asciidoctor.maven.plugin>3.2.0</version.asciidoctor.maven.plugin>
+    <version.asciidoctorj.diagram>3.0.1</version.asciidoctorj.diagram>
+    <version.asciidoctorj.pdf>2.3.19</version.asciidoctorj.pdf>
+    <version.asciidoctorj>3.0.0</version.asciidoctorj>
+    <version.frontend.maven.plugin>1.15.1</version.frontend.maven.plugin>
+    <version.node>v22.18.0</version.node>
+    <version.yarn>v1.22.22</version.yarn>
+  </properties>
+
+  <!-- Zentrale Plugin-Versionsverwaltung befindet sich im Build-Abschnitt weiter unten -->
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>de.gematik.test</groupId>
+        <artifactId>tiger-bom</artifactId>
+        <version>${version.tiger}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>de.gematik.test</groupId>
+      <artifactId>tiger-test-lib</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.gematik.test</groupId>
+      <artifactId>tiger-zion</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>de.gematik.test</groupId>
+      <artifactId>tiger-testenv-mgr</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>10.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.gematik</groupId>
+      <artifactId>tiger-cloud-extension</artifactId>
+      <version>${version.tiger}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${version.maven.compiler}</version>
+          <configuration>
+            <release>${maven.compiler.release}</release>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${version.maven.surefire}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${version.maven.failsafe}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>${version.maven.checkstyle}</version>
+        </plugin>
+        <plugin>
+          <groupId>com.github.eirslett</groupId>
+          <artifactId>frontend-maven-plugin</artifactId>
+          <version>${version.frontend.maven.plugin}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.asciidoctor</groupId>
+          <artifactId>asciidoctor-maven-plugin</artifactId>
+          <version>${version.asciidoctor.maven.plugin}</version>
+        </plugin>
+        <plugin>
+          <groupId>de.gematik.test</groupId>
+          <artifactId>tiger-maven-plugin</artifactId>
+          <version>${version.tiger}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>${version.maven.enforcer}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <!-- Enforcer: Java/Maven-Versionen und Konsistenz prüfen -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.9,)</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Tiger Testsuite -->
+      <plugin>
+        <groupId>de.gematik.test</groupId>
+        <artifactId>tiger-maven-plugin</artifactId>
+        <version>${version.tiger}</version>
+        <executions>
+          <execution>
+            <phase>generate-test-sources</phase>
+            <id>generate-tiger-drivers</id>
+            <goals>
+              <goal>generate-drivers</goal>
+              <goal>attach-tiger-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>generate-tiger-report</id>
+            <goals>
+              <goal>generate-serenity-reports</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Integration Tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${version.maven.failsafe}</version>
+        <configuration>
+          <failIfNoTests>false</failIfNoTests>
+          <includes>
+            <include>**/Driver*IT.java</include>
+          </includes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Checkstyle -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${version.maven.checkstyle}</version>
+        <configuration>
+          <configLocation>google_checks.xml</configLocation>
+          <consoleOutput>true</consoleOutput>
+          <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
+          <outputFileFormat>xml</outputFileFormat>
+          <failOnViolation>true</failOnViolation>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <linkXRef>false</linkXRef>
+          <violationSeverity>warning</violationSeverity>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

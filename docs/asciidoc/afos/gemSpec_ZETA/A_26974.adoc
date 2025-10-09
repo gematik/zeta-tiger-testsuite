@@ -1,0 +1,5 @@
+[#A_26974]
+==== A_26974 - PEP HTTP Proxy - Fehler vom Resource Server
+
+Die Komponente HTTP Proxy MUSS die Response vom Resource Server als Fehler des HTTP Proxy werten, wenn der Resource Server den Response HeaderZETA-Cause: Proxy gesetzt hat (der Resource Server hat einen Fehler im Request festgestellt und vermutet die Ursache beim HTTP Proxy) und DARF diese Response nicht an den Client weiterleiten.
+Der entsprechende Request des Clients MUSS in diesem Fall mit HTTP 500 beantwortet werden.

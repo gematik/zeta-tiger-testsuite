@@ -1,0 +1,4 @@
+[#A_27261]
+==== A_27261 - ZETA Guard, Telemetrie-Daten Service, Protokoll
+
+Der Telemetrie-Daten Service im ZETA Guard MUSS zur Weitergabe der Daten das OpenTelemetry Protokoll (OTLP) über gRPC oder über HTTP/JSON verwenden.

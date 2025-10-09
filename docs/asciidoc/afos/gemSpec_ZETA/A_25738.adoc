@@ -1,0 +1,10 @@
+[#A_25738]
+==== A_25738 - PDP Client-Registrierung - Telemetrie
+
+Die Komponente Authorization Server MUSS in den Telemetrie-Daten zu jeder versuchten Clientregistrierung folgende Parameter ohne einen Nutzerbezug protokollieren:
+
+* Clientparameter (Betriebssystem(-version), Patchlevel, Geolocation etc.) gemäß Clienteattestierung
+* verwendeter Faktor für Offband-Verifikation (E-Mail)
+* Zeitstempel Registrierung, Zeitpunkt Offband-Bestätigung
+* verwendeter Faktor der Nutzerauthentifizierung (SmartCard, Digitale Identität)
+* Status/Ergebnis des Registrierungsversuchs

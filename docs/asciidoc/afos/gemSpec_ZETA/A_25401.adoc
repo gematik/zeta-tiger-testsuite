@@ -1,0 +1,4 @@
+[#A_25401]
+==== A_25401 - ZETA Guard - Darstellung der Voraussetzungen für sicheren Betrieb des Produkts im Betriebshandbuch
+
+Der Hersteller des ZETA Guards MUSS für sein Produkt im dazugehörigen Betriebshandbuch leicht ersichtlich darstellen, welche Voraussetzungen vom Anbieter und der Betriebsumgebung erfüllt werden müssen, damit ein sicherer Betrieb des Produktes gewährleistet werden kann.

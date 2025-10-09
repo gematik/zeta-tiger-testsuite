@@ -1,0 +1,4 @@
+[#A_26486]
+==== A_26486 - PEP HTTP Proxy - Performance
+
+Die Komponente PEP HTTP Proxy MUSS bei einem Deployment in eine Cloud Umgebung ermöglichen, dass eingehende Requests unter Last innerhalb von 0,1 Sekunden geprüft und bei erfolgreicher Prüfung weitergeleitet werden.

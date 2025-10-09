@@ -1,0 +1,4 @@
+[#A_25486]
+==== A_25486 - PDP - Abbruch durch Anomalie Signale
+
+Falls das Security Monitoring eine Anomalie beim Zugriff eines Clients per Shared Signals signalisiert, MUSS der PDP Authorization Server das Access Token des Clients annullieren und damit die aktuelle fachliche Operation abbrechen.

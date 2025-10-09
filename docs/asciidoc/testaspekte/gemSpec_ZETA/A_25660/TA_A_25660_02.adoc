@@ -1,0 +1,10 @@
+[#TA_A_25660_02]
+===== TA_A_25660_02 - Session Management - Verwaltung AccessToken
+
+"Die Komponente Authorization Server MUSS ein Session Management mittels OAuth2 und Ausgabe, **Verwaltung** und Entzug von **Access** und Refresh Token gemäß [RFC6749#1.5] unterstützen."
+
+Siehe auch:
+
+**Kurzbeschreibung der Komponenten und Schnittstellen** *"(11):
+
+Der HTTP Proxy fragt Nutzer- und Client-Daten anhand eines Claims aus dem Access Token aus der PDP Datenbank ab, um diese Daten per Custom Header im Request (1) dem Resource Server zu übergeben (12)."*

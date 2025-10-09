@@ -1,0 +1,21 @@
+[#A_26922]
+==== A_26922 - ZETA/ASL: Verfügbarmachung des AUT-ZETA/ASL-Zertifikats plus Prüfkette
+
+Ein ZETA/ASL-Server MUSS über an seinen Webschnittstellen mittels eines äußeren HTTPS-Requests per HTTP-GET unter dem Pfadnamen /CertData.<SHA-256-Hashwert-Hex-[0-9a-f]>-Versionszahl (a-f kleingeschrieben) folgende Datenstruktur zur Verfügung stellen:
+
+{
+"cert": DER-kodiertes-AUT-ZETA/ASL-Zertifikat, "ca" : DER-kodiertes-Komponenten-PKI-CA-aus-dem-"cert"-kommt, "rca_chain" : [Cross-Zertifikat-1, ..., Cross-Zertifikat-n], }
+
+ Die Versionszahl MUSS eine natürliche Zahl sein, beginnend mit 1, die es 
+trotz A_26923-* erlaubt, Fehler in den Daten zu korrigieren (siehe Erläuterung 
+nach A_26922-*).
+
+ Diese Datenstruktur MUSS per CBOR [RFC-CBOR] serialisiert/kodiert werden und 
+per Mime-Type "application/cbor" [RFC-CBOR] (HTTP Content-Type) an den 
+ZETA/ASL-Client als Response auf den GET-Request gesendet werden.
+
+ In "rca_chain" MÜSSEN alle Cross-Zertifikate in chronologischer Ordnung von 
+RCA7 ausgehend aufgeführt werden, bis die Root-Schlüssel (Cross-Zertifikat) 
+erreicht werden, mit denen das "ca"-Zertifikat bestätigt (signiert) wurde; d. 
+h., sozusagen eine einfach verkettete Liste von Cross-Zertifikaten 
+chronologisch aufsteigend.

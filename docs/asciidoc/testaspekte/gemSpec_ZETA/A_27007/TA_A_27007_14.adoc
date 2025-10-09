@@ -1,0 +1,15 @@
+[#TA_A_27007_14]
+===== TA_A_27007_14 - ZETA Client - HTTP Statuscodes - Clientregistrierung - 201 Created
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
++++[...]+++
+[caption=]
+.Tabelle 5: ZT_HTTP_Statuscodes
+[options="header"]
+|===
+| **Endpunkte** | **HTTP Statuscodes** 
+| **Clientregistrierung** |
+**201 Created**: Client erfolgreich registriert. Der Client sollte die Registrierungsdaten sicher speichern und mit der weiteren Interaktion fortfahren.
++++[...]+++
+|===
++++[...]+++"

@@ -1,0 +1,4 @@
+[#GS-A_5035]
+==== GS-A_5035 - Nichtverwendung des SSL-Protokolls
+
+Alle Produkttypen, die Daten über Datenleitungen übertragen wollen, DÜRFEN NICHT das SSL-Protokoll unterstützen.

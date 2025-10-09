@@ -1,0 +1,4 @@
+[#A_25795]
+==== A_25795 - ZETA Guard-Komponenten - Automatische Antwort auf Health Check Anfragen
+
+Die Komponenten des ZETA Guard MUSS automatisch auf Health Check Anfragen antworten können, um ihre Funktionalität und Verfügbarkeit zu bestätigen.

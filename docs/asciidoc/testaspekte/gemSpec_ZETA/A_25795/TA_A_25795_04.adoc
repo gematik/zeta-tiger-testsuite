@@ -1,0 +1,7 @@
+[#TA_A_25795_04]
+===== TA_A_25795_04 - ZETA Guard-Komponenten - Automatische Antwort auf Health Check Anfragen - PDP Datenbank
+
+"Die Komponenten des ZETA Guard MUSS **automatisch auf Health Check Anfragen antworten** können, um ihre Funktionalität und Verfügbarkeit zu bestätigen."
+
+Ergänzend: Hier geht es darum, dass Endpunkte bereitstehen, welche die Anfragen automatisch beantworten.
+Inhaltliche Prüfung erfolgt in <<A_25796>>.

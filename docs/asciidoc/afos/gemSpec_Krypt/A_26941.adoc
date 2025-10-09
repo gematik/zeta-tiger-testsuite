@@ -1,0 +1,11 @@
+[#A_26941]
+==== A_26941 - ZETA/ASL-Protokoll: ASL/ZT-Client: Erhalt von Nachricht 4
+
+Ein ZETA/ASL-Client MUSS die für Nachricht 4 erzeugten Datenobjekte nach A_26940-* verarbeiten können.
+
+Er MUSS die Nachrichten 1, 2 und 3 konkatenieren und den SHA-256-Hashwert erzeugen.
+Dies ist der Transskript-Hashwert.
+Er MUSS mittels K2_s2c_key_confirmation das Chiffrat "AEAD_ct_key_confirmation" entschlüsseln (vgl.
+A_26934-*).
+Der erhaltene Klartext ist der gesendete Transskript-Server-Hashwert.
+Schlägt die Entschlüsselung fehl oder wird eine Ungleichheit zwischen eben berechneten Transskript-Hashwert und gesendeten Transskript-Server-Hashwert (Klartext des Chiffrats) festgestellt, MUSS er den Handshake mit einem Fehler abbrechen.

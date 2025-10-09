@@ -1,0 +1,4 @@
+[#A_26639]
+==== A_26639 - ZETA Guard - Unterstützung Websocket
+
+Die Komponente Ingress MUSS das WebSocket-Protokoll unterstützen.

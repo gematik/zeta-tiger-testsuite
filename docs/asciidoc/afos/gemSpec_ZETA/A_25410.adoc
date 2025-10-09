@@ -1,0 +1,4 @@
+[#A_25410]
+==== A_25410 - ZETA Guard - Verbot von Werbe- und Usability-Tracking
+
+ZETA Guard DARF im Produktivbetrieb ein Werbe- und Usability-Tracking NICHT verwenden.

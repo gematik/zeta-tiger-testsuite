@@ -1,0 +1,5 @@
+[#A_17322]
+==== A_17322 - TLS-Verbindungen nur zulässige Ciphersuiten und TLS-Versionen (ECC-Migration)
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, MÜSSEN sicherstellen, dass sie nur (durch andere Anforderungen) zugelassene TLS-Ciphersuiten bzw.
+TLS-Versionen anbieten bzw. verwenden.

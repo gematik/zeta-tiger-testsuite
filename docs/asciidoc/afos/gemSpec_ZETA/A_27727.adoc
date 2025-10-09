@@ -1,0 +1,4 @@
+[#A_27727]
+==== A_27727 - ZETA Guard, Telemetrie-Daten Service, Default-Wert des Lieferintervalls
+
+Der Telemetrie-Daten Service im ZETA Guard MUSS standardmäßig ein Lieferintervall von einer Minute eingestellt haben.
