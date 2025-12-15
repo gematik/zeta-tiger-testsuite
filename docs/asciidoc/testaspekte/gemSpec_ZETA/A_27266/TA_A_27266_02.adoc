@@ -1,6 +1,10 @@
 [#TA_A_27266_02]
-===== TA_A_27266_02 - Protected Resource Metadata Well-known - schemakonforme Antwort
+===== TA_A_27266_02 - PEP HTTP Proxy - Protected Resource Metadata Well-known - schemakonforme Antwort
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27266>>.*
+"Die Komponente HTTP Proxy MUSS [...] ein Well-known JSON Dokument wie folgt bereitstellen, [...]
+Das Well-known JSON Dokument **MUSS mit dem Schema [opr-well-known.yaml] validiert werden können**.
+**[<=]"**
 
-Das Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.
+siehe auch:
+
+<https://raw.githubusercontent.com/gematik/zeta/main/src/schemas/opr-well-known.yaml>

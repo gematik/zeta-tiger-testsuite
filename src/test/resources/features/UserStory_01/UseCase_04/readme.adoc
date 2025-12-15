@@ -1,0 +1,299 @@
+[#UC_01_04]
+== UseCase_01_04: Client registrierung stationaer SC 403
+
+.UseCase_01_04
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client registrierung stationaer SC 403
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *Konnektor / TI-Gateway*
+- *PDP Authorization Server*
+- *PDP Datenbank*
+- *PDP Policy Engine*
+
+| Auslöser: |
+Ein MA einer LEI registriert einen stationären ZETA Client in der Client-Registry des ZETA Guard und stößt direkt im Anschluss den ersten Token Exchange an.
+
+| Kurzbeschreibung: |
+Der ZETA Client führt die Service-Discovery durch, registriert sich per Dynamic Client Registration und initiiert danach den Token Exchange Flow mit Software-Attestierung. Die Policy Engine verweigert den Zugriff, sodass der PDP Authorization Server den Prozess mit ``403 Forbidden`` beendet und keine Tokens bereitstellt.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist noch nicht beim ZETA Guard registriert.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+1. Der MA startet im ZETA Client die Abfrage des *Service Directorys*.
+2. Der ZETA Client ruft den well-known Endpunkt des Resource Servers auf:
+- ``GET /.well-known/oauth-protected-resource Host: <RS-FQDN>``
+3. Der Resource Server antwortet mit ``200 OK`` und liefert das well-known JSON Dokument (<<RFC9728, RFC 9728>>).
+4. Der ZETA Client aktualisiert seine Konfiguration für den Resource Server und den ZETA Guard.
+5. Der ZETA Client ruft den well-known Endpunkt des Authorization Servers auf:
+- ``GET /.well-known/oauth-authorization-server Host: <AuthS-FQDN>``
+6. Der Authorization Server antwortet mit ``200 OK`` und liefert das well-known JSON Dokument (<<RFC8414, RFC 8414>>).
+7. Der ZETA Client aktualisiert seine Konfiguration für den Authorization Server.
+8. Der ZETA Client meldet dem MA, dass die Konfiguration überprüft und aktualisiert wurde.
+9. Der MA startet die *initiale Registrierung* im ZETA Client.
+10. Der ZETA Client generiert ein *Client Instance Key Pair*.
+11. Der ZETA Client sendet eine *Dynamic Client Registration (DCR)* an den PDP Authorization Server (``POST /register``), mit:
++
+.DCR-Request
+[source,json]
+----
+{
+"client_name": "myClient",
+"grant_types": [
+"urn:ietf:params:oauth:grant-type:token-exchange",
+"refresh_token"
+],
+"jwks": {
+"keys": [<Client_Instance_Public_Key_JWK>]
+},
+"token_endpoint_auth_method": "private_key_jwt"
+}
+----
++
+
+12. Der PDP Authorization Server erzeugt eine neue ``client_id``.
+13. Der PDP Authorization Server legt in der PDP Datenbank einen *Client Placeholder* an (``state: pending_attestation``).
++
+.Store Client Placeholder:
+[source,txt]
+----
+- client_id
+- client_name
+- public_key_jwks
+- ...
+- state: pending_attestation
+----
++
+
+14. Die PDP Datenbank bestätigt die Speicherung.
+15. Der PDP Authorization Server gibt eine *201 Created Response* mit ``client_id`` zurück an den ZETA Client.
++
+.DCR Response Body:
+[source,json]
+----
+{
+"client_id": "<client_id>",
+"client_id_issued_at": "<timestamp>",
+"..." :  "..."
+}
+----
++
+
+16. Der ZETA Client meldet die positive *initiale Registrierung* des Clients an den MA.
+
+17. Der MA startet zur Aktivierung der Client-Registrierung und zur Anfrage einer Berechtigung den *Authentisierungs-/Autorisierungs-Prozess* im ZETA Client.
+18. Der ZETA Client fordert beim PDP Authorization Server eine *Nonce* an:
+- ``GET /nonce``
+19. Der PDP Authorization Server liefert ``200 OK`` mit einer neuen Nonce zurück.
+20. Der ZETA Client erstellt ein *DPoP Key Pair* (sitzungsbasiert).
+- Zweck: Bindung für den späteren Token-Austausch.
+
+21. Der ZETA Client berechnet eine *attestation challenge*:
+- Hash aus *Public Client Instance Key Hash* und Nonce.
+- ``attestation_challenge = HASH(pubKeyHash + nonce)``
+
+22. Der ZETA Client erstellt ein *Client Statement* mit *posture-software*.
++
+.client_statement:
+[source,txt]
+----
+- sub
+- product_id
+- product_version
+- posture (containing attestation_challenge etc.)
+- attestation-info
+----
++
+
+23. Der ZETA Client erstellt ein *Client Assertion JWT*.
++
+.Client Assertion JWT Claims (with Attestation):
+[source,json]
+----
+{
+"iss": "<client_id>",
+"sub": "<client_id>",
+"aud": "<AS_Token_Endpoint_URL>",
+"exp": "...",
+"jti": "...",
+// Embed the client_statement
+"urn:gematik:params:oauth:client-attestation:software":
+  {
+    "attestation_data": "<Base64(client_statement)>",
+    "client_statement_format": "client-statement"
+  }
+}
+(sig by Client_Instance_Private_Key)
+----
++
+
+24. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
++
+.SMC-B Access Token Claims:
+[source,json]
+----
+{
+"iss": "<client_id>",// Issuer is the client
+"sub": "<Telematik-ID from SMC-B>",// Subject is the institution
+"aud": "[<Resource_Server_Endpoint_URL>]",// Audience is the Resource Server
+"exp": "...",// Short-lived
+"iat": "...",
+"jti": "...",
+"scope": "..." // As required for the Resource Server access
+}
+----
++
+
+25. Der ZETA Client initiiert eine *External Authenticate*-Anfrage beim Konnektor / TI-Gateway:
+- Übermittlung des JWT-Hash.
+26. KTG reicht den Hash an die SMC-B weiter.
+27. SMC-B signiert den Hash.
+28. KTG liefert die *JWT-Signatur* zurück an ZETA Client.
+
+29. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+30. Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
+- Enthält Claims für den Token Request.
++
+.DPoP Proof JWT Claims (for Token Exchange):
+[source,json]
+----
+{
+"typ": "dpop+jwt",
+"alg": "ES256",
+"jwk": { ... }
+}.{
+"jti": "..."
+"htm": "POST","htu": "<AS_Token_Endpoint_URL>",
+"nonce": "<nonce from AS>", // Binding to AS
+"iat": "..."
+}.(sig by DPoP_Private_Key)
+----
++
+
+31. Der ZETA Client sendet einen *Token Request* (<<RFC8693, RFC 8693>>) an den PDP Authorization Server:
+- Enthält ``DPoP: signed_dpop_jwt``.
++
+.Token Exchange Request Body:
+[source,txt]
+----
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<SMC-B_Access_Token>
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<Client_Assertion_JWT>...
+----
++
+
+32. Der PDP Authorization Server validiert den Request:
+- Client Assertion
+- Attestation
+- DPoP Proof
+- Subject Token
+33. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
+- ``POST /v1/data/authz`` mit Input-Parametern.
+34. Die PDP-PE antwortet mit ``403 Forbidden`` <<A_25661>>
+35. Der PDP Authorization Server generiert *Fehlermeldung*.
+36. Der PDP Authorization Server liefert ``403 Forbidden`` und Fehlermeldung als JSON Object an ZETA Client zurück. <<A_26662>>
+37. Der ZETA Client meldet dem MA: *„Registrierung fehlgeschlagen“*.
+
+| Nachbedingung: |
+Der stationäre ZETA Client besitzt kein gültiges Access- oder Refresh-Token.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25748_01>>
+* <<TA_A_25748_02>>
+* <<TA_A_25752_01>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_17>>
+
+|===
+
+[#usecase_01_04_sequence]
+[mermaid,usecase-01-04-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant KTG as Konnektor/<br>TI-Gateway
+    participant SMC as SMC-B
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-AS as PDP Authorization<br>Server
+    participant PDP-DB as PDP Datenbank
+    participant PDP-PE as PDP Policy Engine
+
+    MA->>+ZC: MA startet Abfrage des Service Directorys.
+    ZC->>+PEP-HP: GET /.well-known/oauth-protected-resource Host: <RS-FQDN>
+    PEP-HP-->>-ZC: 200 OK, JSON body with well-known JSON document (RFC9728)
+    ZC->>ZC: Aktualisierung von Konfiguration für Resource Server und ZETA Guard
+    ZC->>+PDP-AS: GET /.well-known/oauth-authorization-server Host: <AuthS-FQDN>
+    PDP-AS-->>-ZC: 200 OK, JSON body with well-known JSON document (RFC8414)
+
+    ZC->>ZC: Aktualisierung von Konfiguration für Authorisation Server
+    ZC-->>-MA: ZETA Client Konfiguration aktualisiert
+
+    MA->>+ZC: Teil1: initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register
+    PDP-AS->>PDP-AS: Generiere client_id
+    PDP-AS->>+PDP-DB: Speichere Client-Platzhalter
+    PDP-DB-->>-PDP-AS: Client-Platzhalter erstellt
+    PDP-AS-->>-ZC: 201 Created: Client erfolgreich registriert
+    ZC-->>-MA: Client ist initial registriert
+
+	MA->>+ZC: Teil1: Aktivierung der Registrierung (erster Token exchange)
+
+    opt 1. Vorbereitung
+        ZC->>+PDP-AS:  GET /nonce
+        PDP-AS-->>ZC: 200 OK new-nonce: nonce
+        ZC->>ZC: Erstelle DPoP Schlüsselpaar
+        ZC->>ZC: Attestierungs-Challenge berechnen
+    end
+
+    opt 2. Erstellen des Client Statement
+        ZC->>ZC: Erstellen Client Statement (posture-software)
+        ZC->>ZC: Erzeuge Client Assertion (JWT)
+    end
+
+    opt 3. SMC-B Signatur holen
+        ZC->>ZC: Erstellen von SMC-B Access Token (JWT)
+        ZC->>+KTG: External Authenticate<br>(JWT-Hash)
+        KTG->>+SMC: Signiere (Hash)
+        SMC-->>-KTG: Signatur
+        KTG-->>-ZC: JWT-Signatur
+    end
+
+    opt 4. DPoP Proof erstellen
+        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Access Token
+        ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
+    end
+
+    opt 5. Validierung & Ablehnung
+        ZC->>PDP-AS: POST /token (RFC 8693) DPoP: signed_dpop_jwt
+        PDP-AS-->>PDP-AS: Validiere Request
+        PDP-AS->>+PDP-PE: POST /v1/data/authz
+        PDP-PE-->>-PDP-AS: 403 Forbidden
+        PDP-AS->>PDP-AS: Erzeuge Fehlermeldung als JSON Objekt
+        PDP-AS-->>-ZC: 403 Forbidden, sowie Fehlermeldung
+        ZC-->>-MA: "Registrierung fehlgeschlagen"
+    end
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// TODO: Feature-Datei wird ergänzt, sobald vorhanden
+----

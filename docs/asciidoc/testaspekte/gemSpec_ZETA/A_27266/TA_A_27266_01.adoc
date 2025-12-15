@@ -1,6 +1,20 @@
 [#TA_A_27266_01]
-===== TA_A_27266_01 - Protected Resource Metadata Well-known - Bereitstellung unter spezifischer URI
+===== TA_A_27266_01 - PEP HTTP Proxy - Protected Resource Metadata Well-known - Bereitstellung unter spezifischer URI
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27266>>.*
+"Die Komponente **HTTP Proxy MUSS** gemäß [RFC9728] und [opr-well-known.yaml] **ein Well-known JSON Dokument** wie folgt bereitstellen,
 
-Die Komponente HTTP Proxy MUSS ein Well-known JSON Dokument bereitstellen.
++++[...]+++
+**GET /.well-known/oauth-protected-resource**
+**Host: <FQDN des Resource Servers>**
++++[...]+++
+**[<=]**
+
+Anfragen an URI 'https://<Fachdienst>/.well-known/oauth-protected-resource' werden durch Proxy unterstützt.
+
+
+
+siehe auch:
+
+<https://datatracker.ietf.org/doc/html/rfc9728/#section-3.1>
+
+<https://datatracker.ietf.org/doc/html/rfc9728/#section-3.2>

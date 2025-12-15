@@ -1,5 +1,0 @@
-[#A_25402]
-==== A_25402 - ZETA Guard - Schutz der transportierten Daten
-
-ZETA Guard MUSS sicherstellen, dass die Vertraulichkeit und Integrität der transportierten Daten gewährleistet ist.
-Alle Endpunkte des ZETA Guards MÜSSEN TLS gesichert sein.

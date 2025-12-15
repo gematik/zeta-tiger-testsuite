@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_26281
+
+Folgende Testaspekte testen <<A_26281>>.
+
+include::TA_A_26281_01.adoc[]
+
+include::TA_A_26281_02.adoc[]
+

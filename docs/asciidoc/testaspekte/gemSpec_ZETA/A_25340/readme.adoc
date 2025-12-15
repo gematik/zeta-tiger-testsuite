@@ -1,0 +1,22 @@
+==== Testaspekte für die Anforderung A_25340
+
+Folgende Testaspekte testen <<A_25340>>.
+
+include::TA_A_25340_01.adoc[]
+
+include::TA_A_25340_02.adoc[]
+
+include::TA_A_25340_03.adoc[]
+
+include::TA_A_25340_04.adoc[]
+
+include::TA_A_25340_05.adoc[]
+
+include::TA_A_25340_06.adoc[]
+
+include::TA_A_25340_07.adoc[]
+
+include::TA_A_25340_08.adoc[]
+
+include::TA_A_25340_09.adoc[]
+

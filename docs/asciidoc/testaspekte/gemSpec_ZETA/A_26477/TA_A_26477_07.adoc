@@ -1,0 +1,11 @@
+[#TA_A_26477_07]
+===== TA_A_26477_07 - PEP HTTP Proxy - PoPP Token Validierung - Update des JWKS
+
+"[...]
+Insbesondere MUSS die Signatur des PoPP Servers gültig sein. Die Signatur des PoPP Tokens ist gültig, wenn sie mathematisch gültig ist und die Signatur vom PoPP Server erstellt wurde. Der HTTP Proxy MUSS ein vorhandenes und noch gültiges JWKS des PoPP Servers verwenden oder das JWKS des PoPP Servers herunterladen, um anhand der im JWKS enthaltenen Schlüssel die Signatur des PoPP Tokens zu prüfen.
+
+[...]
+
+**Vor Ablauf der Gültigkeit** MUSS der HTTP Proxy ein neues **JWKS** des PoPP Servers herunterladen.
+
+[...]**[<=]"**

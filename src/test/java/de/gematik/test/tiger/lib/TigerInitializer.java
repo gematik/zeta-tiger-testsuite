@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.test.tiger.lib;
 
 import de.gematik.rbellogger.util.RbelAnsiColors;
@@ -46,6 +47,11 @@ public class TigerInitializer {
   private static final AtomicBoolean NAMESPACES_REGISTERED = new AtomicBoolean();
   private static RuntimeException tigerStartupFailedException;
 
+  /**
+   * Copied method.
+   *
+   * @param runnable the runnable
+   */
   public void runWithSafelyInitialized(Runnable runnable) {
     synchronized (STARTUP_MUTEX) {
       if (!TigerDirector.isInitialized()) {
@@ -59,6 +65,9 @@ public class TigerInitializer {
     runnable.run();
   }
 
+  /**
+   * Copied method.
+   */
   private synchronized void initializeTiger() {
     if (tigerStartupFailedException != null) {
       return;
@@ -88,6 +97,9 @@ public class TigerInitializer {
         Ansi.colorize("Tiger version: " + getTigerVersionString(), RbelAnsiColors.GREEN_BRIGHT));
   }
 
+  /**
+   * Copied method.
+   */
   public String getTigerVersionString() {
     Properties properties = new Properties();
     try (InputStream inputStream = TigerInitializer.class.getResourceAsStream(

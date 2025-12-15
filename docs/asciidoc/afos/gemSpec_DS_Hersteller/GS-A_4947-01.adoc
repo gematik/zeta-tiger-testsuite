@@ -1,4 +1,0 @@
-[#GS-A_4947-01]
-==== GS-A_4947-01 - Produktentwicklung: Schutz der Vertraulichkeit und Integrität
-
-Hersteller von Produkten der TI MÜSSEN für die von ihnen angebotenen Produkte der TI gewährleisten, dass sie in einer Entwicklungsumgebung entwickelt werden, für die technische und organisatorische Maßnahmen zum Schutz der Vertraulichkeit und Integrität der Produkte getroffen werden.

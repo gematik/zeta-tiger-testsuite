@@ -1,0 +1,4 @@
+[#TA_A_25794_06]
+===== TA_A_25794_06 - ZETA Guard-Komponenten - Implementierung von Health Checks - Notification Service
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

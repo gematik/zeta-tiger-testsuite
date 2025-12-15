@@ -1,9 +1,0 @@
-[#A_19163]
-==== A_19163 - Rechte der gematik zur sicherheitstechnischen Prüfung des Produktes
-
-Der Hersteller eines Produktes MUSS zusichern, dass die gematik oder ein von ihr zur Geheimhaltung verpflichteter Bevollmächtigter berechtigt sind,
-
-* Sicherheitsprüfungen (z.B. Whitebox oder Blackbox Pentest) seines Produktes durchzuführen (hiervon unbenommen ist das Recht der gematik, eine anlasslose Sicherheitsprüfung durchzuführen),
-* im Rahmen einer Sicherheitsprüfung die konkrete Umsetzung der an das Produkt gestellten Anforderungen zu überprüfen.
-Der Hersteller MUSS dies im gleichen Maße für Unterauftragnehmer zusichern.
-Die Kosten, die dem Hersteller durch diese Mitwirkungspflichten entstehen, trägt der Hersteller selbst.

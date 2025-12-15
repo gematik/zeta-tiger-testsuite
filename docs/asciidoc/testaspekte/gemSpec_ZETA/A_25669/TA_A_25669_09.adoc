@@ -1,0 +1,22 @@
+[#TA_A_25669_09]
+===== TA_A_25669_09 - PEP HTTP Proxy - Zusätzliche HTTP-Header - ZETA-Client-Data nicht einfügen
+
+Die Komponente HTTP Proxy MUSS die HTTP Requests mit allen HTTP-Headern an das Resource Backend weiterleiten und dabei die folgenden zusätzlichen HTTP-Header einsetzen.
+
+Tabelle 6: PEP HTTP Proxy - Zusätzliche HTTP-Header
+
+|===
+
+| **HTTP-Header** | **Format** | **Schema** | **Größe (max. geschätzt)** |
+| --- | --- | --- | --- |
+| ZETA-User-Info | Base64-URL kodierte JSON Struktur des User-Info Inhalts | [user-info.yaml] | 350 Byte |
+| ZETA-PoPP-Token-Content | Base64-URL kodierte JSON Struktur des PoPP Token Inhalts. Der PoPP Header enthält das PoPP Token.+++<br />+++Optional: Wird nur gesetzt, wenn im Request ein PoPP Header enthalten ist. | PoPP Token Payload | 450 Byte |
+| **ZETA-Client-Data** | Base64-URL kodierte JSON Struktur der Client-Daten+++<br />+++Optional: Wird **nur gesetzt**, wenn die Konfiguration des HTTP Proxy für die URL des Requests die Weiterleitung der Client-Daten festlegt. | [client-instance.yaml] | 2500 Byte |
+
+|===
+
+Gleichnamige HTTP-Header aus dem ursprünglichen HTTP-Request MÜSSEN **entfernt** bzw. überschrieben werden. **[<=]**
+
+
+
+*Hinweis: Die Schema-Dateien sind in [GitHub ZETA Schemas] festgelegt.*

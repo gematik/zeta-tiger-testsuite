@@ -1,4 +1,0 @@
-[#A_25451]
-==== A_25451 - PDP - Integritätsprüfung der Policies
-
-Der PDP MUSS in der Policy Engine sicherstellen, dass Policies vom gematik PIP und PAP Service nur nach einer positiven Integritätsprüfung importiert werden können.

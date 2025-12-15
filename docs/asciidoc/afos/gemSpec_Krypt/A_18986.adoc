@@ -1,6 +1,0 @@
-[#A_18986]
-==== A_18986 - Fachdienst-interne TLS-Verbindungen
-
-Alle Produkttypen, die Übertragungen mittels TLS durchführen, die nur innerhalb ihres Produkttypen verlaufen (bspw. ePA-Aktensystem interne TLS-Verbindungen zwischen dem Zugangsgateway und der Komponente Authentisierung), KÖNNEN für diese TLS-Verbindungen neben den in GS-A_4384-* und ggf.
-A_17124-* festgelegten TLS-Vorgaben ebenfalls alle weiteren in
-[TR-02102-2] empfohlenen TLS-Versionen und TLS-Ciphersuiten mit den jeweiligen in [TR-02102-2] dafür aufgeführten Domainparametern (Kurven, Schlüssellängen etc.) verwenden.

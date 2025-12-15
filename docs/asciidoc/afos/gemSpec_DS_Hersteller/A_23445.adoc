@@ -1,4 +1,0 @@
-[#A_23445]
-==== A_23445 - Beteiligung der Hersteller am Coordinated Vulnerability Disclosure Programm
-
-Hersteller von Produkten der TI MÜSSEN das Coordinated Vulnerability Disclosure Programm der gematik aktiv durch ihre Beteiligung unterstützen.

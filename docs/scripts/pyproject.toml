@@ -1,0 +1,32 @@
+[project]
+name = "testsuite-docs-tools"
+version = "0.1.0"
+description = "Python utilities supporting the docs toolchain for the testsuite project."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Test Suite Team" }
+]
+dependencies = [
+    "pandas>=2.3.3",
+    "openpyxl>=3.1.5",
+    "requests>=2.32.5",
+    "pytablewriter>=1.2.1",
+    "pydowndoc[bin]>=2.1.2",
+]
+
+[project.scripts]
+update-testaspects = "testsuite_docs.update_testaspects:main"
+fetch-youtrack-testaspects = "testsuite_docs.fetch_youtrack_testaspects:main"
+traceability = "testsuite_docs.traceability.__main__:main"
+generate-cucumber-methods = "testsuite_docs.generate_cucumber_methods:main"
+serenity-sync-readme = "testsuite_docs.serenity_readme:main"
+generate-zeta-afos = "testsuite_docs.zeta_afos:main"
+
+[build-system]
+requires = ["setuptools>=80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = true
+required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

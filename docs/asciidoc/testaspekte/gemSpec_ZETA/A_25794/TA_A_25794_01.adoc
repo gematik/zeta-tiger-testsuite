@@ -1,0 +1,4 @@
+[#TA_A_25794_01]
+===== TA_A_25794_01 - ZETA Guard-Komponenten - Implementierung von Health Checks - HTTP Proxy
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

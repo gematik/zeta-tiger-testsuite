@@ -1,0 +1,10 @@
+==== Testaspekte für die Anforderung A_25338
+
+Folgende Testaspekte testen <<A_25338>>.
+
+include::TA_A_25338_01.adoc[]
+
+include::TA_A_25338_02.adoc[]
+
+include::TA_A_25338_03.adoc[]
+

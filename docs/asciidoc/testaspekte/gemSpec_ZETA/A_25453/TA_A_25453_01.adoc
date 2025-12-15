@@ -1,0 +1,4 @@
+[#TA_A_25453_01]
+===== TA_A_25453_01 - PDP - Transparenz der installierte Policies
+
+"Der PDP MUSS sicherstellen, dass die **gematik zu jeder Zeit feststellen kann**, welche **Policies und welche Policy-Versionen** im PDP installiert sind.[<=]"

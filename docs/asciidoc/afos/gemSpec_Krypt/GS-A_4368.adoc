@@ -1,5 +1,0 @@
-[#GS-A_4368]
-==== GS-A_4368 - Schlüsselerzeugung
-
-Alle Produkttypen, die Schlüssel erzeugen, MÜSSEN die Anforderungen aus
-[BSI-TR-03116-1#3.9 Schlüsselerzeugung] erfüllen.

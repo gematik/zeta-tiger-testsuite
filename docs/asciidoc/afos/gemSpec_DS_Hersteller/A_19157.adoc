@@ -1,4 +1,0 @@
-[#A_19157]
-==== A_19157 - Dokumentierter Plan zur Sicherheitsschulung für Entwickler
-
-Der Hersteller eines Produktes MUSS einen Schulungsplan zur regelmäßigen Schulung von Entwicklern in sicherer Entwicklung und Secure-Coding-Techniken dokumentieren und umsetzen.

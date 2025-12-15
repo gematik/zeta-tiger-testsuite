@@ -1,0 +1,4 @@
+[#TA_A_25796_24]
+===== TA_A_25796_24 - ZETA Guard-Komponenten - Bereitstellung von Zustandsinformationen - Ingress - Betriebszeit
+
+"Die Komponenten des ZETA Guard MUSS **detaillierte Zustandsinformationen als Teil ihrer Health Check Antworten** bereitstellen, **einschließlich** - aber nicht beschränkt auf - **Betriebszeit**, letzte erfolgreiche Transaktion und eventuelle Fehlerzustände. **[<=]"**

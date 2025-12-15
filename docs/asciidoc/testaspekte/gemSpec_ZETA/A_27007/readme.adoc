@@ -1,6 +1,6 @@
 ==== Testaspekte für die Anforderung A_27007
 
-Diese Testaspekte testen <<A_27007>>.
+Folgende Testaspekte testen <<A_27007>>.
 
 include::TA_A_27007_01.adoc[]
 
@@ -65,3 +65,4 @@ include::TA_A_27007_30.adoc[]
 include::TA_A_27007_31.adoc[]
 
 include::TA_A_27007_32.adoc[]
+

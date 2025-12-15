@@ -1,4 +1,0 @@
-[#A_25412]
-==== A_25412 - ZETA Guard - Zusätzliche Verschlüsselung bei der Persistierung
-
-Unabhängig davon, ob die Daten schon verschlüsselt vorliegen, MUSS ZETA Guard seine Daten bei der Persistierung verschlüsseln.

@@ -1,0 +1,22 @@
+==== Testaspekte für die Anforderung A_25669
+
+Folgende Testaspekte testen <<A_25669>>.
+
+include::TA_A_25669_01.adoc[]
+
+include::TA_A_25669_02.adoc[]
+
+include::TA_A_25669_03.adoc[]
+
+include::TA_A_25669_04.adoc[]
+
+include::TA_A_25669_05.adoc[]
+
+include::TA_A_25669_06.adoc[]
+
+include::TA_A_25669_07.adoc[]
+
+include::TA_A_25669_08.adoc[]
+
+include::TA_A_25669_09.adoc[]
+

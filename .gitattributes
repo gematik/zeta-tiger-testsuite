@@ -1,1 +1,58 @@
-*.adoc text working-tree-encoding=UTF-8
+# Default to UTF-8 text with LF endings for everything that isn't explicitly overridden.
+* text=auto eol=lf working-tree-encoding=UTF-8
+
+# Project sources and configs.
+*.adoc       text working-tree-encoding=UTF-8
+*.md         text working-tree-encoding=UTF-8
+*.txt        text working-tree-encoding=UTF-8
+*.java       text working-tree-encoding=UTF-8
+*.kt         text working-tree-encoding=UTF-8
+*.groovy     text working-tree-encoding=UTF-8
+*.xml        text working-tree-encoding=UTF-8
+*.json       text working-tree-encoding=UTF-8
+*.yaml       text working-tree-encoding=UTF-8
+*.yml        text working-tree-encoding=UTF-8
+*.properties text working-tree-encoding=UTF-8
+*.feature    text working-tree-encoding=UTF-8
+*.csv        text working-tree-encoding=UTF-8
+*.sql        text working-tree-encoding=UTF-8
+*.py         text working-tree-encoding=UTF-8
+*.js         text working-tree-encoding=UTF-8
+*.ts         text working-tree-encoding=UTF-8
+*.css        text working-tree-encoding=UTF-8
+*.scss       text working-tree-encoding=UTF-8
+*.html       text working-tree-encoding=UTF-8
+*.iml        text working-tree-encoding=UTF-8
+*.gradle     text working-tree-encoding=UTF-8
+*.sh         text eol=lf
+
+# Windows launcher scripts stay CRLF because tools expect it.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets and archives.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.jar   binary
+*.war   binary
+*.ear   binary
+*.gz    binary
+*.tgz   binary
+*.bz2   binary
+*.xz    binary
+*.7z    binary
+*.tar   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+
+# Vendored Apache JMeter distribution contains mixed encodings and CRLF terminators.
+tools/apache-jmeter-5.6.3/** binary

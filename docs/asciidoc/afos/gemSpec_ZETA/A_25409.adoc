@@ -1,4 +1,0 @@
-[#A_25409]
-==== A_25409 - ZETA Guard - Privacy by Design
-
-ZETA Guard MUSS sicherstellen, dass bei Konfigurationsmöglichkeiten die datenschutzfreundlichere Option vorausgewählt ist.

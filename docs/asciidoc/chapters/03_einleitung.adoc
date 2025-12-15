@@ -1,5 +1,47 @@
 == Einleitung
 
-Dieser Testplan beschreibt die Prüfaktivitäten zur Verifikation und Validierung der *Zero Trust Access (ZETA)*-Architektur gemäß der Spezifikation *gemSpec_ZETA V1.1.0*.
+Dieser Testplan beschreibt die Prüfaktivitäten zur Verifikation und Validierung der *Zero Trust Access (ZETA)*-Architektur gemäß den Prüfvorschriften:
+
+-  https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.1.0_V1.0.0/["Verzeichnis von Anforderungen Prüfvorschrift Zero Trust Access (ZETA) Guard"]
+*gemVZ_Afo_ZETA_Guard_1.1.0_V1.0.0*,
+
+- https://gemspec.gematik.de/docs/gemProdT/gemProdT_ZETA_PIP_PAP/gemProdT_ZETA_PIP_PAP_PTV_1.0.0-0_V1.0.0/["Produkttypsteckbrief Prüfvorschrift Zero Trust Access (ZETA) PIP und PAP Service"]
+*gemProdT_ZETA_PIP_PAP_PTV_1.0.0-0_V1.0.0*.
+
 Der Plan folgt dem IEEE-829-Schema und ist risikobasiert gemäß ISO/IEC/IEEE 29119.
 Ziel ist der Nachweis der Erfüllung funktionaler und nicht-funktionaler Anforderungen (Sicherheit, Datenschutz, Performance, Interoperabilität).
+
+Die Anforderungen aus den Prüfvorschriften bilden die Grundlage für die Testentwicklung.
+Darauf basierend werden User Stories erstellt, die relevante Interaktionen mit dem System bündeln und die zugehörigen Use Cases zusammenführen.
+Die Testaspekte werden aus den Anforderungen abgeleitet und den Use Cases zugeordnet, um die Abbildung der ursprünglichen Anforderungen sicherzustellen.
+Anschließend werden sie in den Feature-Dateien als ausführbare Testszenarien umgesetzt.
+
+[#einleitung_overview_01]
+[mermaid,einleitung_overview_01,svg]
+....
+flowchart TD
+    A[EvT Anforderungen] --> B[Testaspekte]
+    C[User Stories] --> D[Use Cases]
+    B --> D
+    D --> E[Feature-Datei]
+....
+
+=== User Stories
+Die im Testplan definierten User Stories beschreiben aus Anwendersicht typische, ganzheitliche Interaktionen mit dem System.
+Sie bilden den fachlichen Rahmen für die später detailliert beschriebenen Use Cases und geben einen verständlichen Überblick über die wesentlichen Abläufe und Varianten aus Nutzersicht.
+
+=== Use Cases
+Die Use Cases beschreiben, wie Nutzer typischerweise mit dem System interagieren, und geben einen Überblick über die wesentlichen Abläufe auf einer abstrakten Ebene.
+Sie legen typische Abläufe und mögliche Varianten fest, ohne jede denkbare Bedingung oder Parametrisierung vollständig auszudefinieren.
+Zur vollständigen Abdeckung aller relevanten Anforderungen können Use Cases daher mehrfach mit unterschiedlichen Parametern oder Systemzuständen durchlaufen werden.
+Die technische Konkretisierung erfolgt in den zugehörigen Feature-Dateien. Dort werden die Testlogik und die relevanten Varianten als ausführbare Szenarien beschrieben.
+
+*Hinweis:* In den Use-Case-Diagrammen werden ``critical``-Boxen verwendet.
+Diese Boxen haben keine semantische Bedeutung. Sie dienen nur zur besseren Abgrenzung funktionaler Sequenzen.
+
+=== Testaspekte
+Die im Testplan verwendeten Testaspekte werden aus den in der Gematik-Spezifikation definierten Anforderungen abgeleitet und im Rahmen der eigenverantwortlichen Tests (EvT) nachgewiesen.
+Sie stellen die fachliche Zerlegung der Anforderungen aus den Prüfvorschriften in einzelne prüfbare Aspekte dar.
+Jeder Testaspekt wird einem oder mehreren Use Cases zugeordnet, um seine Relevanz im jeweiligen fachlichen Kontext eindeutig abzubilden.
+Die technische Umsetzung erfolgt in den Feature-Dateien, in denen die Testaspekte als präzise ausführbare Szenarien formuliert werden.
+Dadurch ist sichergestellt, dass jeder Aspekt einer Anforderung durch mindestens einen Test abgedeckt und vollständig verifiziert wird.

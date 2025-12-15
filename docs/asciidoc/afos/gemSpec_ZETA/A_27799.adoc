@@ -1,6 +1,0 @@
-[#A_27799]
-==== A_27799 - ZETA Guard, Client-Registrierung für stationäre Clients
-
-Der ZETA Guard MUSS die Client-Registrierung für stationäre Clients gemäß AbbildungAbb_Client_Registrierung bereitstellen.
-
- Abbildung #: Abb_Client_Registrierung

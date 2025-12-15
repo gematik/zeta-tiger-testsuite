@@ -1,0 +1,13 @@
+[#TA_A_25340_03]
+===== TA_A_25340_03 - Gültigkeit Zertifikat "nicht nach"
+
+"Der ZETA Client MUSS alle Zertifikate, die es aktiv verwendet (bspw. TLS-Verbindungsaufbau), auf Integrität und Authentizität prüfen. Falls ein Zertifikat ungültig ist, so MUSS der ZETA Client die von dem Zertifikat und den darin enthaltenen Attributen (bspw. öffentliche Schlüssel) abhängenden Arbeitsabläufe ablehnen.
+Der ZETA Client MUSS alle öffentlichen Schlüssel, die es verwenden will, auf eine positiv verlaufene Zertifikatsprüfung zurückführen können.
+
+Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
++++[...]+++
+
+* Der Client MUSS die Gültigkeitsdauer des Zertifikats ([...] **Nicht nach**) überprüfen.
+
+[...]"

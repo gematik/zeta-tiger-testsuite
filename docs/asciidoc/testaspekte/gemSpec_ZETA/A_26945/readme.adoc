@@ -1,0 +1,6 @@
+==== Testaspekte für die Anforderung A_26945
+
+Folgende Testaspekte testen <<A_26945>>.
+
+include::TA_A_26945_01.adoc[]
+

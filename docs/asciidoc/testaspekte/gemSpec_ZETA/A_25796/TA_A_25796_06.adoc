@@ -1,0 +1,4 @@
+[#TA_A_25796_06]
+===== TA_A_25796_06 - ZETA Guard-Komponenten - Bereitstellung von Zustandsinformationen - PEP Datenbank - Fehlerzustände
+
+"Die Komponenten des ZETA Guard MUSS **detaillierte Zustandsinformationen als Teil ihrer Health Check Antworten** bereitstellen, **einschließlich** - aber nicht beschränkt auf - Betriebszeit, letzte erfolgreiche Transaktion und **eventuelle Fehlerzustände.** **[<=]"**

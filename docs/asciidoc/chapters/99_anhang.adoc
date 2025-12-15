@@ -2,29 +2,85 @@
 [#_anforderungen_mappingreferenz]
 == Anforderungen (Mapping/Referenz)
 
-Nachfolgend ist die Traceability-Matrix eingebunden.
+Die nachfolgenden Diagramme visualisieren zuerst die Beziehungen zwischen Anforderungen, Testaspekten und Use Cases sowie die aktuelle Testabdeckung.
+Danach folgt die vollständige Traceability-Matrix.
+
+=== Vernetzung von Anforderungen, Testaspekten und Use Cases
+
+In der Übersicht werden alle Anforderungen (linke Knoten) mit ihren Testaspekten (mittlere Knoten) und – sofern vorhanden – den zugehörigen Use Cases (rechte Knoten) verknüpft.
+Ein Pfeil markiert, dass für die Quelle ein Testaspekt modelliert bzw. durch einen Use Case abgedeckt ist.
+Fehlt eine Verbindung, existiert entweder kein Testaspekt oder noch kein Use Case zur Ausführung.
+
+[mermaid,traceability-overview,svg]
+....
+include::../diagrams/traceability-overview.mmd[]
+....
+
+=== Testabdeckung der Anforderungen
+
+Das Kreisdiagramm gruppiert alle Anforderungen nach dem aktuellen Abdeckungsstatus.
+Grundlage sind die Traceability-Daten: Eine Anforderung gilt als „vollständig abgedeckt“, wenn sämtliche aus ihr abgeleiteten Testaspekte als implementiert gelten (siehe Definition unten).
+
+[mermaid,traceability-coverage-requirements,svg]
+....
+include::../diagrams/traceability-coverage-requirements.mmd[]
+....
+
+=== Testabdeckung der Testaspekte
+
+Hier wird analysiert, wie viele Testaspekte bereits von automatisierten Tests ausgeführt werden.
+``Implementiert`` bedeutet, dass mindestens ein Szenario des Testaspekts mit Use-Case-Tag hinterlegt ist, ``offen`` kennzeichnet Testaspekte ohne zugeordnete Szenarien.
+
+Die beiden Kuchendiagramme (``traceability-coverage-requirements.mmd`` und
+``traceability-coverage-testaspects.mmd``) werden von ``uv run --project docs/scripts traceability build --project-root .`` generiert (läuft auch im Maven-Profil ``generate-documentation``).
+Das Skript ``testsuite_docs/traceability/builder.py`` wertet dazu die Testaspekt-Kataloge (``docs/asciidoc/testaspekte/gemSpec_ZETA``) und die Gherkin-Tags in ``src/test/resources/features`` aus:
+
+* Anforderungen: Für jede Anforderung wird geprüft, ob Testaspekte existieren und ob einer dieser Testaspekte als ``implementiert`` gilt; daraus entstehen die Anteile ``vollständig``, ``teilweise``, ``nicht abgedeckt`` sowie ``keine Testaspekte``.
+* Testaspekte: Als ``implementiert`` zählt jeder Testaspekt, der in mindestens einem Szenario mit Use-Case-Tag referenziert wird, alle übrigen Testaspekte werden als „offen“ gezählt.
+Das Ergebnis des letzten Testlaufs (inkl. Status) wird – basierend auf den Cucumber/Serenity JSON-Artefakten im ``target``-Verzeichnis – in der Traceability-Tabelle angezeigt, ändert aber nicht die prozentuale Abdeckungsberechnung.
+
+[mermaid,traceability-coverage-testaspects,svg]
+....
+include::../diagrams/traceability-coverage-testaspects.mmd[]
+....
+
+=== Traceability-Matrix
 
 include::../tables/traceability_matrix.adoc[]
 
 [appendix]
-== Vorlagen
-
-include::../../../src/test/resources/features/userstories/Use_Case_Template.adoc[]
+include::../../cucumber_methods.adoc[]
 
 [appendix]
+== Übersicht Tiger Proxy Routing
+
+[mermaid,tiger-proxy-routing,svg]
+....
+include::../diagrams/Tiger-routing-diagram.mmd[]
+....
+
+Dieses Sequenzdiagramm veranschaulicht das Routing der ZETA Dienste über den Tiger Proxy.
+Durch diese Routingkonfiguration werden die Anfragen zwischen allen relevanten Kommunikationsendpunkten im Tiger Proxy aufgezeichnet und können der Testsuite über einen gesonderten Management Port zugänglich gemacht werden.
+Zur Auswertung werden diese aufgezeichneten Anfragen von der Testsuite heruntergeladen und in die Testauswertung integriert.
+
+Anmerkung: Zur Verbesserung der Übersichtlichkeit wurde der Tiger Proxy in einzelne Knoten im Sequenzdiagramm aufgeteilt.
+Im aktuellen Deployment existiert hingegen nur eine zentrale Tiger Proxy Instanz, über welche alle Anfragen geleitet werden.
+
+[appendix]
+== Vorlagen
+
+include::../../../src/test/resources/features/Use_Case_Template.adoc[]
+
 === Testprotokoll-Vorlage
 
 // TODO: Vorlage verlinken/einfügen
 
-[appendix]
 === Fehlerbericht-Vorlage
 
 // TODO: Vorlage verlinken/einfügen
 
 [appendix]
-
 include::../afos/readme.adoc[]
 
 [appendix]
-
 include::../testaspekte/readme.adoc[]

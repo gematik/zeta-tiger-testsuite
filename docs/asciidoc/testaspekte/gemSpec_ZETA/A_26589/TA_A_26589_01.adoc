@@ -1,0 +1,4 @@
+[#TA_A_26589_01]
+===== TA_A_26589_01 - PEP HTTP Proxy - Nutzer-Daten in Header weitergeben
+
+"Die Komponente HTTP Proxy MUSS für jeden Request mit gültigem Access Token die **Nutzer-Daten anhand des Parameters jti des Access Token aus der PDP Datenbank abfragen** **und als** **neuen HTTP Header ZETA-User-Info in den Request eintragen**, bevor der Request an den Resource Server weitergeleitet wird. **[<=]"**

@@ -1,5 +1,0 @@
-[#A_27806]
-==== A_27806 - ZETA Guard – Löschfrist Security Monitoring Protokoll
-
-ZETA Guard muss sicherstellen, dass die zum Zwecke des Security Monitorings erhobenen Protokolldaten nach spätestens 6 Monaten gelöscht werden.
-Die Aufbewahrungsdauer muss dabei konfigurierbar sein.

@@ -1,17 +1,27 @@
 # Repository Guidelines
 
+## Priorities & Focus
+- Always follow these priorities: (1) AGENTS rules, (2) prefer existing TGR steps over custom code, (3) Gherkin is German with 2-space indentation and snake_case filenames.
+- Bold keywords in test aspects define the focus (e.g., **Ausgabe AccessToken** ⇒ no Refresh checks). Read the TA text and linked RFC section.
+- Use Tiger User Manual (`docs/Tiger-User-Manual.html`) and ZETA specification (`docs/gemSpec_ZETA_V1.2.0_CC.html`) in `docs` for context.
+
 ## Project Structure & Module Organization
 - `pom.xml`: Maven build, profiles, and plugin configuration.
 - `src/test/resources/features/`: Gherkin features (German `#language:de`) grouped by `userstories/<UserStory>/<UseCase>/` and `smoke/`.
 - `docs/`: Asciidoc sources, aliases, architecture notes, and `package.json` for Mermaid/Puppeteer.
 - No wrapper scripts are needed; Mermaid CLI is invoked directly by Maven (local) and by the CI Asciidoctor image.
-- `tiger*.yaml`, `defaults.yaml`, `demoData.yaml`: Test environment/configuration inputs for the Tiger test framework.
+- `tiger.yaml` plus configs under `tiger/` (`defaults.yaml`, `paths.yaml`, `tiger-*.yaml`, `eRezeptTestData.yaml`): Test environment/configuration inputs for the Tiger test framework.
+
+## Gherkin & Implementation Rules
+- Use existing TGR steps (e.g., “Hole JWT…”, “TGR prüfe…”, “decodiere und validiere …”). Only add new step definitions if the test cannot be covered with the steps documented in `docs/Tiger-User-Manual.html` or `docs/asciidoc/tables/cucumber_methods_table.adoc`.
+- Scenarios must respect UseCase preconditions (e.g., use existing tokens, do not reset if not allowed).
+- Update UseCase readmes (include::…feature[]) when adding or renaming feature files.
 
 ## Build, Test, and Development Commands
 - `mvn clean verify`: Build and run the test suite (Surefire/Failsafe via Tiger libraries).
 - `mvn test`: Run tests without packaging.
-- `mvn -Pasciidoc-enabled generate-resources`: Generate docs (HTML/PDF) into `target/docs/{html,pdf}`. Uses Node/Yarn via the frontend plugin and Mermaid for diagrams.
-- `mvn -Pasciidoc-enabled -DskipTests package`: Package and generate docs in one go.
+- `mvn -Pgenerate-documentation generate-resources`: Generate docs (HTML) into `target/docs/html`. Uses Node/Yarn via the frontend plugin and Mermaid for diagrams (inkl. `uv sync`).
+- `mvn -Pgenerate-documentation -DskipTests package`: Package and generate docs in one go.
 
 ## Coding Style & Naming Conventions
 - **Gherkin**: German keywords, 2-space indentation, descriptive scenario names. Place files under `src/test/resources/features/...` using lowercase snake_case file names.

@@ -1,4 +1,0 @@
-[#A_25754]
-==== A_25754 - PDP Client-Registrierung - Notfall-Recovery-Prozess für Nutzer
-
-Die Komponente Authorization Server MUSS dem Nutzer einen Notfall-Recovery-Prozess anbieten, falls der Nutzer sein letztes Gerät verloren und keinen Zugriff mehr auf seine registrierte E-Mail-Adresse hat.

@@ -1,3 +1,8 @@
 [#TA_A_25661_04]
 ===== TA_A_25661_04 -PDP Authorization Server - Umsetzung der Policy Decision - Access-Token Claims korrekt
-"[...] Die **Claims** im **Access** und im Refresh **Token** MÜSSEN zur Entscheidung der Policy Engine für die **angefragten Claims passen.**[\<=]"
+
+"[...]
+
+Die **Claims** im **Access** und im Refresh **Token** MÜSSEN zur Entscheidung der Policy Engine
+
+für die **angefragten Claims passen.**[<=]"

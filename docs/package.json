@@ -2,7 +2,6 @@
   "name": "zeta-docs",
   "private": true,
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "11.9.0",
-    "puppeteer": "23.11.1"
+    "@mermaid-js/mermaid-cli": "11.12.0"
   }
 }

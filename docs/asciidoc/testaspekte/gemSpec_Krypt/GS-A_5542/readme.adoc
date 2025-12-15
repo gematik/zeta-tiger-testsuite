@@ -1,0 +1,12 @@
+==== Testaspekte für die Anforderung GS-A_5542
+
+Folgende Testaspekte testen <<GS-A_5542>>.
+
+include::TA_GS-A_5542_01.adoc[]
+
+include::TA_GS-A_5542_02.adoc[]
+
+include::TA_GS-A_5542_03.adoc[]
+
+include::TA_GS-A_5542_04.adoc[]
+

@@ -1,0 +1,87 @@
+[#UC_01_14]
+== UseCase_01_14: Client ressource anfrage fachdienst SC 302
+
+.UseCase_01_14
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 302
+
+| Akteur: | *MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+
+| Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Die für die angeforderte Ressource hinterlegte temporäre Weiterleitungsregel verweist auf eine neue Zieladresse.
+
+Der PEP HTTP Proxy antwortet deshalb mit ``302 Found`` und teilt die neue URL im Location-Header mit.
+
+| Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert (``Access Token`` liegt vor). Die Weiterleitungsregeln
+des PEP HTTP Proxys wurden temporär so angepasst, dass sie eine andere Ziel-URL liefern als die zuvor entdeckte
+Konfiguration (``Discovery and Configuration``).
+
+| Nebenbedingung: |
+Konfigurationen zum URL-Rewriting im PEP HTTP Proxy sind aktiv (vgl. <<TA_A_26560_01>>).
+
+| Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+4. Der PEP HTTP Proxy prüft das *Access Token*.
+5. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+6. Die Konfiguration sieht eine neue Ziel-URL vor. Der PEP HTTP Proxy antwortet mit ``302 Found``
+und setzt den Location-Header auf die temporäre Adresse.
+
+7. Der ZETA Client informiert den MA darüber, dass die Ressource temporär unter der neuen URL erreichbar ist.
+Der ZETA Client merkt sich weiterhin die ursprüngliche URL.
+
+| Nachbedingung: |
+Die Ressource wurde nicht geladen. Der MA kennt jedoch die neue Ziel-URL für einen Folgeaufruf zum Abruf der
+gewünschten Ressource.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_26104_01>>
+* <<TA_A_26104_02>>
+* <<TA_A_26281_02>>
+* <<TA_A_26560_01>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_23>>
+
+|===
+
+[#usecase_01_14_sequence]
+[mermaid,usecase-01-14-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource
+
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP-->>-ZC: 302 Found <br>Location: temporäre URL
+    ZC-->>-MA: Hinweis auf neue temporäre Ziel-URL
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// include::UseCase_ab_cd.feature[]
+----

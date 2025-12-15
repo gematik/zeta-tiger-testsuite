@@ -21,40 +21,26 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import lombok.Builder;
-import lombok.Value;
 
 /**
  * Statistics about traffic correlation issues and results.
  */
-@Value
 @Builder
-public class CorrelationStats {
-
-  int ingressJMeterReq;
-  int ingressBackgroundReq;
-  int egressJMeterReq;
-  int egressBackgroundReq;
-
-  int inMissingResp;
-  int inRespBeforeReq;
-  int inDuplicateResp;
-
-  int egMissingResp;
-  int egRespBeforeReq;
-  int egDuplicateResp;
-
-  int nonMonotonicPairsSkipped;
+public record CorrelationStats(int ingressJMeterReq, int ingressBackgroundReq, int egressJMeterReq,
+                               int egressBackgroundReq, int inMissingResp, int inRespBeforeReq,
+                               int inDuplicateResp, int egMissingResp, int egRespBeforeReq,
+                               int egDuplicateResp, int nonMonotonicPairsSkipped) {
 
   /**
    * Returns true if any correlation issues exist.
    */
   public boolean hasIssues() {
-    return inMissingResp > 0 || inRespBeforeReq > 0 || inDuplicateResp > 0 ||
-        egMissingResp > 0 || egRespBeforeReq > 0 || egDuplicateResp > 0 ||
-        nonMonotonicPairsSkipped > 0;
+    return inMissingResp > 0 || inRespBeforeReq > 0 || inDuplicateResp > 0 || egMissingResp > 0
+        || egRespBeforeReq > 0 || egDuplicateResp > 0 || nonMonotonicPairsSkipped > 0;
   }
 
   /**

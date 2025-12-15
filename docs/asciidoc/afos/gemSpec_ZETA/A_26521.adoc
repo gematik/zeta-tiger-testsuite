@@ -1,4 +1,0 @@
-[#A_26521]
-==== A_26521 - ZETA Guard, Unterstützung von Canary Releases
-
-Die Komponenten des ZETA Guard MÜSSEN Canary Releases unterstützen.

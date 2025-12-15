@@ -1,0 +1,13 @@
+[#TA_A_25340_05]
+===== TA_A_25340_05 - Standard-Liste von Root-Zertifikaten
+
+"Der ZETA Client MUSS alle Zertifikate, die es aktiv verwendet (bspw. TLS-Verbindungsaufbau), auf Integrität und Authentizität prüfen. Falls ein Zertifikat ungültig ist, so MUSS der ZETA Client die von dem Zertifikat und den darin enthaltenen Attributen (bspw. öffentliche Schlüssel) abhängenden Arbeitsabläufe ablehnen.
+Der ZETA Client MUSS alle öffentlichen Schlüssel, die es verwenden will, auf eine positiv verlaufene Zertifikatsprüfung zurückführen können.
+
++++[...]+++
+
+Der ZETA Client MUSS die Root-Zertifikate, die von den Mitgliedern des [CAB-Forum] ausgestellt werden, als Vertrauensanker standardmäßig unterstützen. Dies impliziert:
+
+* Eine Standard-Liste von [CAB-Forum] Root-Zertifikaten MUSS im ZETA Client enthalten sein.
+
+[...]"

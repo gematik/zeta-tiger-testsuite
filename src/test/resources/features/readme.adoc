@@ -1,1 +1,13 @@
-== Tiger Testsuite für die Zero Trust Architektur
+== Definierte User Stories
+
+Es wurden auf Basis der zu testenden Anforderung einige User-Stories definiert, welche Use-Cases beinhalten, denen wiederum Testaspekte zugeordnet werden können.
+
+In Use-Case-Diagrammen werden ``critical``-Boxen verwendet.
+Diese Boxen haben keine semantische Bedeutung.
+Sie dienen nur zur besseren Abgrenzung funktionaler Sequenzen.
+
+:leveloffset: +1
+include::UserStory_Smoke/readme.adoc[]
+
+include::UserStory_01/readme.adoc[]
+:leveloffset: -1

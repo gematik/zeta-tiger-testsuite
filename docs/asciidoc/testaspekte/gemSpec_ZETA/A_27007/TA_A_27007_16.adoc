@@ -1,16 +1,18 @@
 [#TA_A_27007_16]
 ===== TA_A_27007_16 - ZETA Client - HTTP Statuscodes - Clientregistrierung - 401 Unauthorized
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Clientregistrierung** |
-+++[...]+++
-**401 Unauthorized**: Fehlende oder ungültige Authentifizierung bei der Registrierung. Der Client muss sicherstellen, dass er korrekt authentifiziert ist. Er sollte die Authentifizierungsdaten überprüfen und erneut versuchen, sich zu registrieren.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Clientregistrierung** | +++[...]+++ +++<br />+++**401 Unauthorized**: Fehlende oder ungültige Authentifizierung bei der Registrierung. Der Client muss sicherstellen, dass er korrekt authentifiziert ist. Er sollte die Authentifizierungsdaten überprüfen und erneut versuchen, sich zu registrieren.+++<br />+++[...] |
+
 |===
-+++[...]+++"
+
++++[...]+++

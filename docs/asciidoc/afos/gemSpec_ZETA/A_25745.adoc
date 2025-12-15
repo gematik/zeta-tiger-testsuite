@@ -1,4 +1,0 @@
-[#A_25745]
-==== A_25745 - ZETA Guard - Keine medizinischen Informationen in Logging und Monitoring
-
-ZETA Guard MUSS sicherstellen, dass in für den Betrieb erstellten Protokollen keine personenbezogenen medizinischen Informationen enthalten sind (u. a. medizinische Daten von Versicherten oder Informationen, aus denen sich ableiten lässt, bei welchen Leistungserbringerinstitutionen ein Versicherter in Behandlung ist).

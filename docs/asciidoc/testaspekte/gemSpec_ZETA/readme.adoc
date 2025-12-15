@@ -1,8 +1,44 @@
 === Testaspekte aus gemSpec_ZETA
 
+include::A_25337/readme.adoc[]
+
+include::A_25338/readme.adoc[]
+
+include::A_25340/readme.adoc[]
+
+include::A_25453/readme.adoc[]
+
+include::A_25644/readme.adoc[]
+
+include::A_25645/readme.adoc[]
+
+include::A_25649/readme.adoc[]
+
+include::A_25650/readme.adoc[]
+
+include::A_25653/readme.adoc[]
+
 include::A_25660/readme.adoc[]
 
+include::A_25661/readme.adoc[]
+
+include::A_25662/readme.adoc[]
+
+include::A_25663/readme.adoc[]
+
+include::A_25664/readme.adoc[]
+
+include::A_25669/readme.adoc[]
+
 include::A_25733/readme.adoc[]
+
+include::A_25739/readme.adoc[]
+
+include::A_25748/readme.adoc[]
+
+include::A_25752/readme.adoc[]
+
+include::A_25760/readme.adoc[]
 
 include::A_25761/readme.adoc[]
 
@@ -10,16 +46,75 @@ include::A_25762/readme.adoc[]
 
 include::A_25767/readme.adoc[]
 
+include::A_25794/readme.adoc[]
+
 include::A_25795/readme.adoc[]
 
-include::A_26587/readme.adoc[]
+include::A_25796/readme.adoc[]
+
+include::A_26104/readme.adoc[]
+
+include::A_26195/readme.adoc[]
+
+include::A_26281/readme.adoc[]
+
+include::A_26477/readme.adoc[]
+
+include::A_26486/readme.adoc[]
+
+include::A_26488/readme.adoc[]
+
+include::A_26489/readme.adoc[]
+
+include::A_26491/readme.adoc[]
+
+include::A_26492/readme.adoc[]
+
+include::A_26493/readme.adoc[]
+
+include::A_26560/readme.adoc[]
+
+include::A_26585/readme.adoc[]
+
+include::A_26586/readme.adoc[]
+
+include::A_26589/readme.adoc[]
+
+include::A_26590/readme.adoc[]
+
+include::A_26639/readme.adoc[]
 
 include::A_26640/readme.adoc[]
 
-include::A_27802/readme.adoc[]
+include::A_26661/readme.adoc[]
+
+include::A_26662/readme.adoc[]
+
+include::A_26666/readme.adoc[]
+
+include::A_26944/readme.adoc[]
+
+include::A_26945/readme.adoc[]
+
+include::A_26972/readme.adoc[]
+
+include::A_27007/readme.adoc[]
+
+include::A_27265/readme.adoc[]
 
 include::A_27266/readme.adoc[]
 
+include::A_27401/readme.adoc[]
+
+include::A_27727/readme.adoc[]
+
+include::A_27728/readme.adoc[]
+
 include::A_27798/readme.adoc[]
 
+include::A_27802/readme.adoc[]
+
+include::A_27853/readme.adoc[]
+
 include::A_28144/readme.adoc[]
+

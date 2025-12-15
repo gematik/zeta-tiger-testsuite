@@ -1,6 +1,9 @@
 [#TA_A_27798_01]
-===== TA_A_27798_01 - Service Discovery - Protected Resource Well-known Endpunkt bereitstellen
+===== TA_A_27798_01 - ZETA Guard, Service Discovery - well-known Endpunkt RS-FQDN
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+"Der ZETA Guard MUSS die **Well JSON Dokumente** für die Service Discovery **gemäß Abbildung *Abb_Service_Discovery* bereitstellen**.
++++[...]+++
 
-Der ZETA Guard MUSS das Protected Resource Well-known JSON Dokument für die Service Discovery bereitstellen.
+**[<=]"**
+
+Hier:  '/.well-known/oauth-protected-resource' Host: RS-FQDN

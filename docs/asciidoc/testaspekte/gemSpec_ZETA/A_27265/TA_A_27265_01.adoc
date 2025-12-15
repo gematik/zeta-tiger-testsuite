@@ -1,0 +1,4 @@
+[#TA_A_27265_01]
+===== TA_A_27265_01 - PEP HTTP Proxy - unveränderte Weiterleitung von Host Header Zeile
+
+Der PEP HTTP Proxy MUSS den **Host** Header und die Request **Zeile unverändert** an den Resource Server weiterleiten. **[<=]**

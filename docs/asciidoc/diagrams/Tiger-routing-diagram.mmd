@@ -1,0 +1,58 @@
+sequenceDiagram
+    autonumber
+ 
+    participant Testsuite
+    participant Ingress
+    participant Testdriver
+    participant TigerPDP as Tiger (Ingress?PDP)
+    participant PDP
+    participant TigerPEP as Tiger (Ingress?PEP)
+    participant PEP as PEP Proxy
+    participant TigerFD as Tiger (PEP?FD)
+    participant FD as Fachdienst (FD)
+ 
+    note over TigerPDP: Zeichnet Ingress ? PDP auf
+    note over TigerPEP: Zeichnet Ingress ? PEP auf
+    note over TigerFD: Zeichnet PEP ? FD auf
+    note over Testdriver: Simuliert ZETA Client
+ 
+    Testsuite->>Ingress: GET /proxy/hellozeta
+    activate Testsuite
+    activate Ingress
+    Ingress->>Testdriver: GET /proxy/hellozeta
+    activate Testdriver
+ 
+    Testdriver->>Ingress: GET /authenticate
+    Ingress->>TigerPDP: GET /auth/authenticate
+    activate TigerPDP
+    TigerPDP->>PDP: GET /authenticate
+    activate PDP
+    PDP-->>TigerPDP: 200
+    deactivate PDP
+    TigerPDP-->>Ingress: 200
+    deactivate TigerPDP
+    Ingress-->>Testdriver: 200
+ 
+    Testdriver->>Ingress: GET /hellozeta
+    Ingress->>TigerPEP: GET /hellozeta
+    activate TigerPEP
+    TigerPEP->>PEP: GET /hellozeta
+    activate PEP
+    PEP->>TigerFD: GET /testfachdienst/hellozeta
+    activate TigerFD
+    TigerFD->>FD: GET /hellozeta
+    activate FD
+    FD-->>TigerFD: 200
+    deactivate FD
+    TigerFD-->>PEP: 200
+    deactivate TigerFD
+    PEP-->>TigerPEP: 200
+    deactivate PEP
+    TigerPEP-->>Ingress: 200
+    deactivate TigerPEP
+    Ingress->>Testdriver: 200
+    Testdriver-->>Ingress: 200
+    deactivate Testdriver
+    Ingress-->>Testsuite: 200
+    deactivate Ingress
+    deactivate Testsuite

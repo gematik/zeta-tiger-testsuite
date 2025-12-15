@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import de.gematik.zeta.perf.TigerTraceAnalyzer.FlowTiming;
@@ -45,15 +46,13 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Unified CSV utility for reading, parsing, and analyzing CSV files.
  */
 @Slf4j
 public final class CsvUtils {
-
-  private CsvUtils() {
-  }
 
   // Legacy column mappings for Tiger metrics
   private static final Map<String, String> TIGER_LEGACY_COLUMNS = Map.of(
@@ -63,6 +62,9 @@ public final class CsvUtils {
       "backend_ms", "service_ms",
       "end_to_end_ms", "e2e_ms"
   );
+
+  private CsvUtils() {
+  }
 
   /**
    * Reads a CSV file (with header) into {@link CsvData}.
@@ -76,8 +78,13 @@ public final class CsvUtils {
       throw new IOException("CSV file not found: " + csvFile.toAbsolutePath());
     }
 
+    CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+        .setHeader()
+        .setSkipHeaderRecord(true)
+        .build();
+
     try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8);
-        CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(reader)) {
+        CSVParser parser = csvFormat.parse(reader)) {
 
       List<String> headers = new ArrayList<>(parser.getHeaderNames());
       List<CsvRow> rows = new ArrayList<>();
@@ -207,7 +214,7 @@ public final class CsvUtils {
         .collect(Collectors.toList());
 
     if (candidates.size() == 1) {
-      return candidates.get(0);
+      return candidates.getFirst();
     }
 
     // 4. Starts with (case-insensitive)
@@ -217,7 +224,7 @@ public final class CsvUtils {
         .collect(Collectors.toList());
 
     if (candidates.size() == 1) {
-      return candidates.get(0);
+      return candidates.getFirst();
     }
 
     // 5. Contains (case-insensitive)
@@ -227,7 +234,7 @@ public final class CsvUtils {
         .collect(Collectors.toList());
 
     if (candidates.size() == 1) {
-      return candidates.get(0);
+      return candidates.getFirst();
     }
 
     return null;
@@ -240,16 +247,20 @@ public final class CsvUtils {
    * @param outputFile CSV target path
    * @throws IOException on write errors
    */
-  public static void writeFlowTimings(List<FlowTiming> timings, Path outputFile)
+  public static void writeFlowTimings(@NotNull List<FlowTiming> timings, Path outputFile)
       throws IOException {
     FileUtils.ensureParentDirectories(outputFile);
 
-    try (Writer writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
-        CSVPrinter printer = CSVFormat.DEFAULT.withHeader(
+    CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+        .setHeader(
             "trace_id", "path", "e2e_ms", "service_ms", "middleware_overhead_ms",
             "ingress_request_ms", "ingress_response_ms", "egress_request_ms", "egress_response_ms",
             "forward_ms", "return_ms"
-        ).print(writer)) {
+        )
+        .build();
+
+    try (Writer writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
+        CSVPrinter printer = csvFormat.print(writer)) {
 
       for (FlowTiming timing : timings) {
         printer.printRecord(
@@ -290,79 +301,78 @@ public final class CsvUtils {
   }
 
   /**
-     * Represents a CSV dataset with headers and rows.
+   * Represents a CSV dataset with headers and rows.
+   */
+  public record CsvData(List<String> headers, List<CsvRow> rows) {
+
+    /**
+     * Returns all values from a column as strings.
+     *
+     * @param columnName column to read
+     * @return list of values (missing cells as null filtered out)
      */
-    public record CsvData(List<String> headers, List<CsvRow> rows) {
-
-      /**
-       * Returns all values from a column as strings.
-       *
-       * @param columnName column to read
-       * @return list of values (missing cells as null filtered out)
-       */
-      public List<String> getColumn(String columnName) {
-        return rows.stream()
-            .map(row -> row.get(columnName))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
-      }
-
-      /**
-       * Returns a column parsed as doubles, excluding NaN.
-       *
-       * @param columnName column to read
-       * @return array of doubles
-       */
-      public double[] getColumnAsDoubles(String columnName) {
-        return rows.stream()
-            .map(row -> row.get(columnName))
-            .filter(Objects::nonNull)
-            .mapToDouble(CsvUtils::parseDoubleOrNaN)
-            .filter(d -> !Double.isNaN(d))
-            .toArray();
-      }
-
-      /**
-       * Finds the first row where {@code columnName} equals {@code value}.
-       *
-       * @param columnName column to compare
-       * @param value      expected value
-       * @return matching row or null
-       */
-      public CsvRow findRow(String columnName, String value) {
-        return rows.stream()
-            .filter(row -> Objects.equals(row.get(columnName), value))
-            .findFirst()
-            .orElse(null);
-      }
-
+    public List<String> getColumn(String columnName) {
+      return rows.stream()
+          .map(row -> row.get(columnName))
+          .filter(Objects::nonNull)
+          .collect(Collectors.toList());
     }
+
+    /**
+     * Returns a column parsed as doubles, excluding NaN.
+     *
+     * @param columnName column to read
+     * @return array of doubles
+     */
+    public double[] getColumnAsDoubles(String columnName) {
+      return rows.stream()
+          .map(row -> row.get(columnName))
+          .filter(Objects::nonNull)
+          .mapToDouble(CsvUtils::parseDoubleOrNaN)
+          .filter(d -> !Double.isNaN(d))
+          .toArray();
+    }
+
+    /**
+     * Finds the first row where {@code columnName} equals {@code value}.
+     *
+     * @param columnName column to compare
+     * @param value      expected value
+     * @return matching row or null
+     */
+    public CsvRow findRow(String columnName, String value) {
+      return rows.stream()
+          .filter(row -> Objects.equals(row.get(columnName), value))
+          .findFirst()
+          .orElse(null);
+    }
+
+  }
 
   /**
-     * Represents a single CSV row.
+   * Represents a single CSV row.
+   */
+  public record CsvRow(List<String> headers, List<String> values) {
+
+    /**
+     * Returns the cell by column name.
+     *
+     * @param columnName column to read
+     * @return cell value or null
      */
-    public record CsvRow(List<String> headers, List<String> values) {
-
-      /**
-       * Returns the cell by column name.
-       *
-       * @param columnName column to read
-       * @return cell value or null
-       */
-      public String get(String columnName) {
-        int index = headers.indexOf(columnName);
-        return get(index);
-      }
-
-      /**
-       * Returns the cell by index.
-       *
-       * @param index zero-based index
-       * @return cell value or null
-       */
-      public String get(int index) {
-
-        return (index >= 0 && index < values.size()) ? values.get(index) : null;
-      }
+    public String get(String columnName) {
+      int index = headers.indexOf(columnName);
+      return get(index);
     }
+
+    /**
+     * Returns the cell by index.
+     *
+     * @param index zero-based index
+     * @return cell value or null
+     */
+    public String get(int index) {
+      return (index >= 0 && index < values.size()) ? values.get(index) : null;
+    }
+  }
 }

@@ -1,0 +1,18 @@
+[#TA_A_26972_02]
+===== TA_A_26972_02 - PDP Authorization Server - Nutzer-Daten aus der SM(C)-B - commonName
+
+Die Komponente Authorization Server MUSS im Falle der +++SM(C)-B+++ Authentifizierung die **folgenden Daten aus dem +++SM(C)-B+++ Zertifikat auslesen** und als Nutzer-Daten gemäß [user-info.yaml] **in der PDP Datenbank speichern**:
+
+Tabelle 10: +++SM(C)-B+++_Nutzer-Daten
+
+|===
+
+| **+++SM(C)-B+++ Daten (C.HCI.OSIG gemäß [gemSpec_PKI])** | **Nutzer-Daten gemäß [user-info.yaml]** | **Beschreibung** |
+| --- | --- | --- |
+| [...] |  |  |
+| subject, commonName | **commonName** | Wird übernommen, wenn im Zertifikat vorhanden. „Kurzname“ der Institution, so wie sie sich auf dem Anschriftenfeld findet. |
+| [...] |  |  |
+
+|===
+
+**[<=]**

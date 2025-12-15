@@ -1,0 +1,4 @@
+[#TA_A_25794_09]
+===== TA_A_25794_09 - ZETA Guard-Komponenten - Implementierung von Health Checks - Ingress
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

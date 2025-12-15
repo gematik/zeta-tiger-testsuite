@@ -1,0 +1,10 @@
+[#TA_A_25662_03]
+===== TA_A_25662_03 - PDP Authorization Server - Refresh Token Rotation - Authentisierung nach Gültigkeitsdauer v. Refresh Token
+
+"[...]
+
+Die Komponente **Authorization Server MUSS erzwingen**, dass der Nutzer eine
+
+**Authentisierung durchführen** muss, wenn seit der letzten Authentisierung **die Zeit der**
+
+**Gültigkeitsdauer des Refresh Tokens abgelaufen** ist.[<=]

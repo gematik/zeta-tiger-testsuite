@@ -1,6 +1,12 @@
 [#TA_A_27798_03]
-===== TA_A_27798_03 - Service Discovery - Protected Resource Well-known - schemakonform
+===== TA_A_27798_03 - ZETA Guard, Service Discovery - well-known Dokument schemakonform - RS-FQDN
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+"Der ZETA Guard MUSS die Well JSON Dokumente für die Service Discovery gemäß Abbildung *Abb_Service_Discovery* bereitstellen.
+Das **Protected Resource** Well-known JSON Dokument MUSS **mit dem Schema [opr-well-known.yaml]** validiert werden können.
++++[...]+++
 
-Das Protected Resource Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.
+**[<=]"**
+
+siehe auch: 
+
+<https://raw.githubusercontent.com/gematik/zeta/main/src/schemas/opr-well-known.yaml>

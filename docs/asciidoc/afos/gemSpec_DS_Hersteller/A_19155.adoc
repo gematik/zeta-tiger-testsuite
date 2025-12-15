@@ -1,4 +1,0 @@
-[#A_19155]
-==== A_19155 - Durchführung sicherheitsrelevanter Quellcode-Reviews
-
-Der Hersteller eines Produktes MUSS während der Entwicklung des Produktes sicherheitsrelevante Quellcode-Reviews oder automatisierte sicherheitsrelevante Quellcode-Scans durchführen.

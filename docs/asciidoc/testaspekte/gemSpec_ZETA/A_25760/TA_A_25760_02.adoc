@@ -1,4 +1,11 @@
 [#TA_A_25760_02]
 ===== TA_A_25760_02 - PDP Authorization Server - OAuth2 Schnittstellen - Nutzung von PKCE
+
 "Der PDP Authorization Server MUSS eine OAuth2 Schnittstelle gemäß [RFC6749] und [**RFC7636**] implementieren.
-Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. *[\<=]*"
+Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. **[<=]"**
+
+
+
+siehe auch:
+
+[RFC 7636 - Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636)

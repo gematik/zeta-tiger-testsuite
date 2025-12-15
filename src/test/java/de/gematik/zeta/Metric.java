@@ -21,22 +21,17 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta;
 
 /**
  * Represents a statistical metric like pNN, max, min, avg.
+ *
+ * @param type       -- GETTER -- Returns the metric type.
+ * @param percentile -- GETTER -- Returns the percentile value (only for PERCENTILE). only set if
+ *                   type == PERCENTILE
  */
-public class Metric {
-
-  public enum Type {PERCENTILE, MAX, MIN, AVG}
-
-  private final Type type;
-  private final double percentile; // only set if type == PERCENTILE
-
-  private Metric(Type type, double percentile) {
-    this.type = type;
-    this.percentile = percentile;
-  }
+public record Metric(Type type, double percentile) {
 
   /**
    * Creates a percentile metric (e.g., 0.95 for p95).
@@ -67,16 +62,10 @@ public class Metric {
   }
 
   /**
-   * Returns the metric type.
+   * Enumeration for describing specific metric types.
    */
-  public Type getType() {
-    return type;
+  public enum Type {
+    PERCENTILE, MAX, MIN, AVG
   }
 
-  /**
-   * Returns the percentile value (only for PERCENTILE).
-   */
-  public double getPercentile() {
-    return percentile;
-  }
 }

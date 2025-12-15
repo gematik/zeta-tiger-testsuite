@@ -1,0 +1,44 @@
+[#UC_SMOKE_01]
+== UseCase_Smoke_01: Basis-Schnittstellenprüfung
+
+.UseCase_Smoke_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Basis-Schnittstellenprüfung (HTTP Smoke)
+
+| Akteur: |
+Testsuite über den ZETA Client
+
+| Auslöser: |
+Ein Build/Deploy soll verifiziert werden, bevor weitere Tests laufen.
+
+| Kurzbeschreibung: |
+Die Testsuite sendet einen einfachen GET Request an ``${paths.client.helloZeta}`` und stellt sicher, dass Protokoll, Statuscode und Payload den Erwartungen entsprechen.
+
+| Vorbedingung: |
+ZETA Client, ZETA Guard und der Testfachdienst sind erreichbar, die Umgebung ist initialisiert.
+
+| Nebenbedingung: |
+Es wird *HTTP/1.1* verwendet (<<TA_A_26640_01>>).
+
+| Ablauf: |
+1. Vorherige Nachrichten werden gelöscht und Trigger-Endpunkte zurückgesetzt.
+2. Ein GET Request gegen ``${paths.client.helloZeta}`` wird gesendet.
+3. Die Antwort wird auf HTTP-Version, Statuscode und Body geprüft.
+4. Die Antwortzeit wird protokolliert.
+
+| Nachbedingung: |
+Baseline-Kommunikation ist bestätigt und weitere Tests können starten.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_26640_01>>
+
+|===
+
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::smoke.feature[]
+----

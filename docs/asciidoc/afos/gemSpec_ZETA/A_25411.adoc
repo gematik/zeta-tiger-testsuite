@@ -1,4 +1,0 @@
-[#A_25411]
-==== A_25411 - ZETA Guard - Verbot vom dynamischen Inhalt
-
-ZETA Guard DARF dynamischen Inhalt von Drittanbietern NICHT herunterladen und verwenden.

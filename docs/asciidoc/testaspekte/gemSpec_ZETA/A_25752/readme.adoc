@@ -1,0 +1,6 @@
+==== Testaspekte für die Anforderung A_25752
+
+Folgende Testaspekte testen <<A_25752>>.
+
+include::TA_A_25752_01.adoc[]
+

@@ -1,0 +1,4 @@
+[#TA_A_25794_02]
+===== TA_A_25794_02 - ZETA Guard-Komponenten - Implementierung von Health Checks - PEP Datenbank
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

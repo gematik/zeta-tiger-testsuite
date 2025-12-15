@@ -1,0 +1,119 @@
+[#UC_01_22]
+== UseCase_01_22: Client ressource anfrage fachdienst PoPP-Header SC 200
+
+.UseCase_01_22
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst PoPP-Header SC 200
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *PDP Datenbank*
+- *Resource Server*
+
+| Auslöser: |
+Ein MA einer LEI möchte über den ZETA Client eine geschützte Ressource abrufen und benutzen.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token & PoPP Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Dieser überprüft die Gültigkeit der Tokens und leitet die Anfrage bei erfolgreicher Prüfung an den Resource Server
+weiter.
+
+Der Client erhält daraufhin die angeforderte Ressource.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert eine
+``client_id`` inkl. zugehörigem Schlüsselpaar.
+Der ZETA Client verfügt über ein gültiges PoPP Token sowie auch eine bestehende Session mit zugehörigem Access- und Refresh-Token.
+
+| Nebenbedingung: |
+- Bereitstellung von *PoPP-Token* für Ressourcenanfrage *notwendig*. <<A_26477>>
+- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492>>
+
+| Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+- ``PoPP: ... (PoPP Token)``
+4. Der PEP HTTP Proxy prüft das *Access Token*.
+5. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+6. Der PEP HTTP Proxy prüft das *PoPP Token*.
+7. Der PEP HTTP Proxy ruft zusätzliche und noch nicht gecachte *Datensätze von der PDP Datenbank* ab.
+- *User-Info*
+8. Die PDP Datenbank liefert ``200 OK`` mit den angeforderten Daten.
+9. Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
+
+* *ZETA-User-Info*:
+** Format: ``Base64-URL kodierte JSON Struktur des User-Info Inhalts``
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/user-info.yaml[user-info.yaml]
+
+* *ZETA-PoPP-Token-Content*:
+** Format: ``Base64-URL kodierte JSON Struktur des PoPP Token Inhalts. Der PoPP Header enthält das PoPP Token.``
+
+10. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter:
+* ``GET /resource``-Anfrage
+** mit vorhandenen HTTP header
+** zusätzlich erstellte PEP HTTP Header als JSON
+11. Der Resource Server antwortet mit ``200 OK`` und der angeforderten Ressource.
+12. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
+13. Der ZETA Client liefert die Ressource an den MA.
+
+| Nachbedingung: |
+Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25669_02>>
+* <<TA_A_25669_05>>
+* <<TA_A_26477_01>>
+* <<TA_A_26477_02>>
+* <<TA_A_26477_03>>
+* <<TA_A_26477_05>>
+* <<TA_A_26477_06>>
+* <<TA_A_26477_07>>
+* <<TA_A_26477_08>>
+* <<TA_A_26477_11>>
+
+|===
+
+[#UseCase_01_22_sequence]
+[mermaid,usecase-01-22-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-DB as PDP Datenbank
+    participant RS as Resource Server
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource
+
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP->>PEP-HP: Verifiziere PoPP Token
+    PEP-HP->>+PDP-DB: Anfrage von Nutzer-Daten
+    PDP-DB-->>-PEP-HP: 200 OK, Daten für Header
+    PEP-HP->>PEP-HP: Erzeugen zusätzlicher Header
+    PEP-HP->>+RS: Weiterleiten GET /Ressource
+    RS-->>-PEP-HP: 200 OK, Ressource
+    PEP-HP-->>-ZC: 200 OK, Ressource
+    ZC-->>-MA: Ressource
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+TODO
+----

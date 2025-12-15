@@ -1,8 +1,14 @@
 [#TA_A_25762_03]
-===== TA_A_25762_03 - Nutzerauthentifizierung mittels SMCB (JWT und DPoP )
+===== TA_A_25762_03 - Nutzerauthentifizierung mittels SMCB (JWT)
 
 "Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
 
-* Authentifizierung des Nutzers **mittels SM(C)-B** signiertem Client Assertion **JWT und DPoP** gemäß [RFC7523] und [RFC9449].
++++[...]+++
+
+* Authentifizierung des Nutzers **mittels +++SM(C)-B+++ signiertem** Client Assertion **JWT** und DPoP gemäß **[RFC7523]** und [RFC9449].
 
 [...]"
+
+Ergänzend:
+
+Mit "mittels +++SM(C)-B+++ signiertem [...] JWT" ist hier das "**+++SM(C)-B+++ ID Token**" bzw. **subject_token** gemeint.

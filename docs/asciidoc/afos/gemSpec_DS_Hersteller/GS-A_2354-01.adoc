@@ -1,4 +1,0 @@
-[#GS-A_2354-01]
-==== GS-A_2354-01 - Produktunterstützung mit geeigneten Sicherheitstechnologien
-
-Hersteller von Produkten der TI MÜSSEN eine vom koordinierenden ISM freigegebene Technologie zur Wahrung der Integrität, Authentizität und (wo nötig) Vertraulichkeit der Informationen zur Produktunterstützung und Schwachstellenmeldung einsetzen.

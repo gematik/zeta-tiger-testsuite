@@ -1,4 +1,0 @@
-[#GS-A_4945-01]
-==== GS-A_4945-01 - Produktentwicklung: Qualitätssicherung
-
-Hersteller von Produkten der TI MÜSSEN für die von ihnen angebotenen Produkte der TI gewährleisten, dass bei der Entwicklung der Produkte technisch-organisatorische Verfahren der Qualitätssicherung angewendet werden (bspw. fuzz (robustness) testing bzw. penetration testing und source code review).

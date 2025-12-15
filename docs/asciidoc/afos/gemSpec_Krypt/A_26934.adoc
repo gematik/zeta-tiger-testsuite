@@ -1,8 +1,0 @@
-[#A_26934]
-==== A_26934 - ZETA/ASL-Protokoll: AES/GCM-Verschlüsselung im Handshake
-
-Ein ZETA/ASL-Server und -Client verschlüsseln im Rahmen des Handshakes des ZETA/ASL-Protokolls verschiedene Nachrichten-Teile mittels AES/GCM.
-Dabei MÜSSEN sie pro Verschlüsselung den IV jeweils zufällig als 96-Bit-Wert erzeugen.
-Der Authentication-Tag MUSS 128 Bit lang sein.
-Das Ergebnis der Verschlüsselung MUSS dann in der folgenden Kodierung aufgeführt werden:
-IV || eigentliche AES-GCM-Chiffrat || 128-Bit langer Authentication-Tag.hb

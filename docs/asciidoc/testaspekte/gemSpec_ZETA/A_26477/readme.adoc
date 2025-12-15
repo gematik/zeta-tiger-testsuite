@@ -1,0 +1,26 @@
+==== Testaspekte für die Anforderung A_26477
+
+Folgende Testaspekte testen <<A_26477>>.
+
+include::TA_A_26477_01.adoc[]
+
+include::TA_A_26477_02.adoc[]
+
+include::TA_A_26477_03.adoc[]
+
+include::TA_A_26477_04.adoc[]
+
+include::TA_A_26477_05.adoc[]
+
+include::TA_A_26477_06.adoc[]
+
+include::TA_A_26477_07.adoc[]
+
+include::TA_A_26477_08.adoc[]
+
+include::TA_A_26477_09.adoc[]
+
+include::TA_A_26477_10.adoc[]
+
+include::TA_A_26477_11.adoc[]
+

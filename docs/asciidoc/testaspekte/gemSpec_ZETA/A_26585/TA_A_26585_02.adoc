@@ -1,0 +1,5 @@
+[#TA_A_26585_02]
+===== TA_A_26585_02 - PDP Client-Registrierung - Client-Daten - Weitergabe an Policy Engine
+
+"[...]
+Die Client-Daten MÜSSEN bei **Anfragen** des Authorization-Servers **an die Policy Engine** im Request mit **übergeben** werden. **[<=]"**

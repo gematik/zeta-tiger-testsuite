@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,6 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -75,15 +77,13 @@ public class TrafficMessageParser {
 
     for (int lineNo = 0; lineNo < lines.size(); lineNo++) {
       String raw = lines.get(lineNo);
-      if (raw == null || raw.trim().isEmpty()) {
+      if (raw.trim().isEmpty()) {
         continue;
       }
 
       try {
         var message = parseMessage(raw.trim(), gateRole);
-        if (message != null) {
-          messages.add(message);
-        }
+        messages.add(message);
       } catch (Exception ex) {
         parseErrors++;
         if (parseErrors <= 10) {
@@ -133,9 +133,9 @@ public class TrafficMessageParser {
     if (http == null || http.trim().isEmpty()) {
       return false;
     }
-    return REQUEST_LINE.matcher(http).find() ||
-        http.trim().startsWith("GET ") ||
-        http.trim().startsWith("POST ");
+    return REQUEST_LINE.matcher(http).find()
+        || http.trim().startsWith("GET ")
+        || http.trim().startsWith("POST ");
   }
 
   /**
@@ -188,8 +188,7 @@ public class TrafficMessageParser {
     }
 
     for (var entry : headers.entrySet()) {
-      if (entry.getKey() != null &&
-          entry.getKey().toLowerCase(Locale.ROOT).equals(headerName)) {
+      if (entry.getKey() != null && entry.getKey().toLowerCase(Locale.ROOT).equals(headerName)) {
         String value = entry.getValue();
         return (value == null || value.isBlank()) ? null : value.trim();
       }
@@ -211,8 +210,7 @@ public class TrafficMessageParser {
     String trimmed = content.trim();
 
     // If it looks like HTTP, return as-is
-    if (trimmed.startsWith("GET ") || trimmed.startsWith("POST ") ||
-        trimmed.startsWith("HTTP/")) {
+    if (Stream.of("GET ", "POST ", "HTTP/").anyMatch(trimmed::startsWith)) {
       return content;
     }
 
@@ -221,8 +219,7 @@ public class TrafficMessageParser {
       try {
         byte[] decoded = Base64.getMimeDecoder().decode(trimmed);
         String decodedStr = new String(decoded, StandardCharsets.UTF_8);
-        if (decodedStr.contains("HTTP/") || decodedStr.contains("GET ") ||
-            decodedStr.contains("POST ")) {
+        if (Stream.of("HTTP/", "GET ", "POST ").anyMatch(decodedStr::contains)) {
           return decodedStr;
         }
       } catch (IllegalArgumentException ignore) {
@@ -269,52 +266,64 @@ public class TrafficMessageParser {
     return node.hasNonNull(field) ? node.get(field).asText() : null;
   }
 
+  /**
+   * TODO: javadoc.
+   *
+   * @param gateRole           TODO.
+   * @param uuid               TODO.
+   * @param pairedRequestsUuid TODO.
+   * @param isRequest          TODO.
+   * @param timestampMs        TODO.
+   * @param path               TODO.
+   * @param headers            TODO.
+   * @param traceId            TODO.
+   */
   public record TrafficMessage(String gateRole, String uuid, String pairedRequestsUuid,
                                boolean isRequest, long timestampMs, String path,
                                Map<String, String> headers, String traceId) {
 
-      /**
-       * Constructs a message, normalizing optional fields.
-       *
-       * @param gateRole           "ingress" or "egress"
-       * @param uuid               message uuid
-       * @param pairedRequestsUuid previous/paired uuid (nullable)
-       * @param isRequest          true if request, false if response
-       * @param timestampMs        epoch millis
-       * @param path               request path (may be empty)
-       * @param headers            HTTP headers (may be empty)
-       * @param traceId            x-trace-id (nullable)
-       */
-      public TrafficMessage(String gateRole, String uuid, String pairedRequestsUuid,
-          boolean isRequest,
-          long timestampMs, String path, Map<String, String> headers, String traceId) {
-        this.gateRole = gateRole;
-        this.uuid = uuid;
-        this.pairedRequestsUuid = emptyToNull(pairedRequestsUuid);
-        this.isRequest = isRequest;
-        this.timestampMs = timestampMs;
-        this.path = path == null ? "" : path;
-        this.headers = headers == null ? Collections.emptyMap() : headers;
-        this.traceId = traceId;
-      }
-
-      /**
-       * True if this is a request that carries an x-trace-id.
-       *
-       * @return whether message originates from JMeter traffic
-       */
-      public boolean isJMeterTraffic() {
-        return isRequest && traceId != null && !traceId.isBlank();
-      }
-
-      /**
-       * Converts empty strings to null.
-       *
-       * @param s input string
-       * @return null if blank, else s
-       */
-      private static String emptyToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
-      }
+    /**
+     * Constructs a message, normalizing optional fields.
+     *
+     * @param gateRole           "ingress" or "egress"
+     * @param uuid               message uuid
+     * @param pairedRequestsUuid previous/paired uuid (nullable)
+     * @param isRequest          true if request, false if response
+     * @param timestampMs        epoch millis
+     * @param path               request path (may be empty)
+     * @param headers            HTTP headers (may be empty)
+     * @param traceId            x-trace-id (nullable)
+     */
+    public TrafficMessage(String gateRole, String uuid, String pairedRequestsUuid,
+        boolean isRequest,
+        long timestampMs, String path, Map<String, String> headers, String traceId) {
+      this.gateRole = gateRole;
+      this.uuid = uuid;
+      this.pairedRequestsUuid = emptyToNull(pairedRequestsUuid);
+      this.isRequest = isRequest;
+      this.timestampMs = timestampMs;
+      this.path = path == null ? "" : path;
+      this.headers = headers == null ? Collections.emptyMap() : headers;
+      this.traceId = traceId;
     }
+
+    /**
+     * Converts empty strings to null.
+     *
+     * @param s input string
+     * @return null if blank, else s
+     */
+    private static String emptyToNull(String s) {
+      return (s == null || s.isBlank()) ? null : s;
+    }
+
+    /**
+     * True if this is a request that carries an x-trace-id.
+     *
+     * @return whether message originates from JMeter traffic
+     */
+    public boolean isJMeterTraffic() {
+      return isRequest && traceId != null && !traceId.isBlank();
+    }
+  }
 }

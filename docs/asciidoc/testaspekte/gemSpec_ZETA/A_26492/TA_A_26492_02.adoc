@@ -1,0 +1,5 @@
+[#TA_A_26492_02]
+===== TA_A_26492_02 - PEP HTTP Proxy - Weiterleitung von Client-Daten - Defaulteinstellung
+
+Die Komponente HTTP Proxy MUSS so konfiguriert werden können, dass pro Endpunkt des Resource Servers die Weiterleitung der Client-Daten durch den HTTP Proxy ein- und ausgeschaltet werden kann. **Die default-Einstellung ist keine Weiterleitung der Client-Daten.** Wenn die Weiterleitung der Client-Daten eingeschaltet ist, dann fragt der HTTP Proxy die Client-Daten anhand des sub claims aus dem Access Token von der Client-Registry ab und fügt sie als zusätzlichen Header in den Request ein.
+**[<=]**

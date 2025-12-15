@@ -1,0 +1,56 @@
+[#TLS_Tests]
+== TLS Tests
+[#TT_01_01]
+== TLS_Test_01_01: Der Client (testsuite) versucht, eine TLS-Verbindung mit einer RSA-Signatur herzustellen
+
+.TLS_Test_01_01
+[cols="1,1a",options="autowidth"]
+|===
+
+| *Titel:* | Der Client (testsuite) versucht, eine TLS-Verbindung mit einer RSA-Signatur herzustellen
+
+| Akteur: |
+*Service Endpoint*
+
+| Auslöser: |
+ Der Client (testsuite) versucht, eine Verbindung zu einem ZETA-Dienst herzustellen.
+
+| Kurzbeschreibung: |
+Der RSA-Signaturalgorithmus darf ab 2025 nicht mehr für TLS 1.2-Handshakes verwendet werden.
+
+| Vorbedingung: |
+1. Der ZETA Guard Endpunkt  ist ohne bekannte Störungen online.
+2. Der ZETA Guard Endpunkt  akzeptiert TLS-Verbindungen.
+3. Der ZETA Guard Endpunkt  hat ein RSA-Zertifikat.
+
+| Nebenbedingung: |
+NA
+
+| Ablauf: |
+1. Der TLS ClientHello bietet die TLS-Version 1.2 als unterstützte Version an.
+2. Der TLS ClientHello bietet nur die folgenden Ciphersuiten an:
+- TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+- TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+- TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+- TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
+- TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
+- TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+- TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+- TLS_DHE_RSA_WITH_AES_128_CCM,
+- TLS_DHE_RSA_WITH_AES_256_CCM,
+- TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256,
+- TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384,
+- TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256,
+- TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384,
+- TLS_DH_RSA_WITH_AES_128_CBC_SHA256,
+- TLS_DH_RSA_WITH_AES_256_CBC_SHA256,
+- TLS_DH_RSA_WITH_AES_128_GCM_SHA256,
+- TLS_DH_RSA_WITH_AES_256_GCM_SHA384
+3. Der TLS ClientHello sendet nur die folgenden Signaturhashalgorithmen in der ClientHello extension:
+- RSA_MD5
+- RSA_SHA1
+- RSA_SHA224
+- RSA_SHA256
+- RSA_SHA384
+- RSA_SHA512
+4. Der ZETA Guard Endpunkt akzeptiert das ClientHello nicht und sendet eine TLS Alert.

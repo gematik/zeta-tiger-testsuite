@@ -1,5 +1,0 @@
-[#GS-A_4944-01]
-==== GS-A_4944-01 - Produktentwicklung: Behebung von Sicherheitsmängeln
-
-Hersteller von Produkten der TI MÜSSEN für die von ihnen angebotenen Produkte der TI gewährleisten, dass technisch-organisatorische Verfahren zur Behebung von Sicherheitsmängeln in den Produkten während der Zeit des Einsatzes in der TI vorgehalten werden.
-Dies beinhaltet das kontinuierliche Aufspüren (bug tracking) und Nachbessern (bug fixing) von Sicherheitsmängeln (security bugs) und das zur Verfügung stellen von Updates (security updates).

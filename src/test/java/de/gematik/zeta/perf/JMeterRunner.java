@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import java.io.BufferedReader;
@@ -45,6 +46,9 @@ public class JMeterRunner {
   private static final String JMETER_HOME = "tools/apache-jmeter-5.6.3";
   private final String jmeterCommand;
 
+  /**
+   * Constructor which sets the jmeterCommand.
+   */
   public JMeterRunner() {
     this.jmeterCommand = resolveJMeterCommand();
   }
@@ -79,8 +83,8 @@ public class JMeterRunner {
     String template = Files.readString(templatePath, StandardCharsets.UTF_8);
     String rendered = applySubstitutions(template, config);
 
-    Path outputDir = config.getOutputDirectory() != null ?
-        config.getOutputDirectory() : Path.of("target", "jmeter");
+    Path outputDir = config.getOutputDirectory() != null
+        ? config.getOutputDirectory() : Path.of("target", "jmeter");
 
     Path renderedPlan = outputDir.resolve(
         FileUtils.getNameWithoutExtension(templatePath) + ".rendered.jmx");
@@ -98,7 +102,7 @@ public class JMeterRunner {
    */
   private String applySubstitutions(String template, JMeterTestConfig config) {
     String result = template;
-    Map<String, String> jmeterProps = config.getJMeterProperties();
+    Map<String, String> jmeterProps = config.getJmeterProperties();
 
     log.debug("Starting substitutions with {} properties", jmeterProps.size());
 
@@ -130,7 +134,7 @@ public class JMeterRunner {
   private String substituteDynamicPatterns(String template, Map<String, String> properties) {
     Pattern jmeterPattern = Pattern.compile("\\$\\{__P\\(([^,)]+),([^)]*)\\)\\}");
 
-    StringBuffer result = new StringBuffer();
+    StringBuilder result = new StringBuilder();
     Matcher matcher = jmeterPattern.matcher(template);
     int substitutionCount = 0;
 
@@ -201,7 +205,7 @@ public class JMeterRunner {
     Pattern remainingPattern = Pattern.compile("\\$\\{__P\\(([^,)]+),([^)]*)\\)\\}");
     Matcher matcher = remainingPattern.matcher(template);
 
-    StringBuffer result = new StringBuffer();
+    StringBuilder result = new StringBuilder();
     int cleanupCount = 0;
 
     while (matcher.find()) {
@@ -234,11 +238,11 @@ public class JMeterRunner {
   private String removeEmptyHeaderElements(String template) {
     // Pattern to match complete header elements with empty names
     Pattern emptyHeaderPattern = Pattern.compile(
-        "<!--[^>]*Custom Header[^>]*-->\\s*" +
-            "<elementProp[^>]+elementType=\"Header\"[^>]*>\\s*" +
-            "<stringProp name=\"Header\\.name\">\\s*</stringProp>\\s*" +
-            "<stringProp name=\"Header\\.value\">[^<]*</stringProp>\\s*" +
-            "</elementProp>",
+        "<!--[^>]*Custom Header[^>]*-->\\s*"
+            + "<elementProp[^>]+elementType=\"Header\"[^>]*>\\s*"
+            + "<stringProp name=\"Header\\.name\">\\s*</stringProp>\\s*"
+            + "<stringProp name=\"Header\\.value\">[^<]*</stringProp>\\s*"
+            + "</elementProp>",
         Pattern.MULTILINE | Pattern.DOTALL
     );
 
@@ -247,10 +251,10 @@ public class JMeterRunner {
 
     // Also remove headers where name is just whitespace or placeholder text
     Pattern problematicHeaderPattern = Pattern.compile(
-        "<elementProp[^>]+elementType=\"Header\"[^>]*>\\s*" +
-            "<stringProp name=\"Header\\.name\">\\s*(X-Skip-Header|\\s*)\\s*</stringProp>\\s*" +
-            "<stringProp name=\"Header\\.value\">[^<]*</stringProp>\\s*" +
-            "</elementProp>",
+        "<elementProp[^>]+elementType=\"Header\"[^>]*>\\s*"
+            + "<stringProp name=\"Header\\.name\">\\s*(X-Skip-Header|\\s*)\\s*</stringProp>\\s*"
+            + "<stringProp name=\"Header\\.value\">[^<]*</stringProp>\\s*"
+            + "</elementProp>",
         Pattern.MULTILINE | Pattern.DOTALL
     );
 
@@ -330,7 +334,7 @@ public class JMeterRunner {
     }
 
     // Add JMeter properties as command line arguments (with filtering)
-    config.getJMeterProperties().entrySet().stream()
+    config.getJmeterProperties().entrySet().stream()
         .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
         .filter(entry -> !"REQUEST_BODY".equals(entry.getKey()))  // Template handles this
         .filter(entry -> !isEmptyHeaderParameter(entry.getKey(),

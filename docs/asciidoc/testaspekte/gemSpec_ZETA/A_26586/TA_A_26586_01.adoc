@@ -1,0 +1,6 @@
+[#TA_A_26586_01]
+===== TA_A_26586_01 - PDP Authorization Server - Session-Daten speichern in PDP
+
+Die Komponente Authorization Server MUSS nach jeder **vollständigen und erfolgreichen Authentifizierung Session-Daten in der Datenbank des PDP speichern**.
+
++++[...]+++

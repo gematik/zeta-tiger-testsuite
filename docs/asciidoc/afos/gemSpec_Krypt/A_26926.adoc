@@ -1,7 +1,0 @@
-[#A_26926]
-==== A_26926 - ZETA/ASL: ZETA/ASL-Client, Verschlüsselungszähler
-
-Ein ZETA/ASL-Client MUSS sicherstellen, dass der Schlüssel K2_c2s_app_data als Attribut einen 64-Bit-Zähler besitzt.
-Dieser Zähler MUSS initial 0 sein.
-Der ZETA/ASL-Client MUSS sicherstellen, dass bei jeder Verwendung des Schlüssels bei der Verschlüsselung einer Nachricht der Zähler um eins erhöht wird.
-Der erste verwendete Zählerwert ist also 1. Es spielt dabei keine Rolle, ob die Nachricht (Chiffrat) ggf. nicht übermittelt werden konnte, der Zähler MUSS bei jeder neuen Nutzung um eins erhöht werden.

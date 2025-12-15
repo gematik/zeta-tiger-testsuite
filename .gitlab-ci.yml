@@ -1,82 +1,212 @@
 stages:
+  - preflight
   - lint
-  - docs
   - test
+  - traceability
+  - docs
   - pages
+  - container
+
+utf8_posix_check:
+  stage: preflight
+  image: alpine:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    # git is needed for `git ls-files`
+    # libintl provides the `iconv` binary on Alpine
+    - apk add --no-cache git libintl
+  script:
+    - |
+      bad=0
+
+      # NOTE: assumes "standard" filenames (no spaces/newlines) are fine
+      for f in $(git ls-files); do
+        case "$f" in
+          tools/*) continue ;;
+        esac
+
+        # skip files that look binary (contain NUL)
+        if LC_ALL=C grep -q "$(printf '\0')" "$f" 2>/dev/null; then
+          continue
+        fi
+
+        # check for CR (Windows CRLF endings)
+        if LC_ALL=C grep -q "$(printf '\r')" "$f" 2>/dev/null; then
+          echo "CRLF: $f"
+          bad=1
+        fi
+
+        # check UTF-8 validity
+        if ! iconv -f UTF-8 -t UTF-8 "$f" >/dev/null 2>&1; then
+          echo "Non-UTF8: $f"
+          bad=1
+        fi
+      done
+
+      exit $bad
+
 
 lint:
   stage: lint
-  image: maven:3.9.11-eclipse-temurin-21
+  image: maven:3.9.11-eclipse-temurin-21-alpine
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   variables:
-    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository -Xmx512m"
+    MAVEN_CLI_OPTS: "-B -ntp -nsu -DskipTests=true -Djava.awt.headless=true -Dtraceability.skip=true -Dtraceability.sync.skip=true -Dserenity.readme.sync.skip=true"
   script:
-    - mvn checkstyle:checkstyle
+    # 'check' fails the job on violations; 'checkstyle' only generates reports
+    - mvn $MAVEN_CLI_OPTS checkstyle:check --fail-at-end
   artifacts:
+    when: always
     paths:
       - target/checkstyle-result.xml
-    when: always
   cache:
+    key:
+      files:
+        - pom.xml
     paths:
       - .m2/repository
+    policy: pull-push
   allow_failure: false
+
+test:
+  stage: test
+  image: maven:3.9.11-eclipse-temurin-21-alpine
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "pipeline"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  variables:
+    # JVM options for Maven itself
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+    # Common Maven CLI flags (quiet logs, faster, headless, no snapshot checks)
+    MAVEN_CLI_OPTS: "-B -q -ntp -nsu -T 1C -Djava.awt.headless=true -Dtraceability.skip=true -Dtraceability.sync.skip=true -Dserenity.readme.sync.skip=true"
+    # Put Tiger toggles in one place so scripts stay readable
+    TIGER_FLAGS: >
+      -Dtiger.lib.activateWorkflowUi=false
+      -Dtiger.lib.startBrowser=false
+      -Dtiger.lib.trafficVisualization=false
+      -Dtiger.lib.runTestsOnStart=true
+      -Dtiger.lib.rbelAnsiColors=false
+      -Dzeta_base_url=zeta-staging.spree.de
+      -Dzeta_proxy=no-proxy
+  script:
+    - |
+      mvn $MAVEN_CLI_OPTS \
+        "-Dcucumber.filter.tags=not @perf" \
+        $TIGER_FLAGS verify
+  artifacts:
+    when: always
+    reports:
+      junit: target/failsafe-reports/TEST-*.xml
+    paths:
+      # Keep only the Serenity assets required for traceability + Pages publishing.
+      - target/site/serenity
+    expire_in: 1 week
+  cache:
+    key:
+      files:
+        - pom.xml
+    paths:
+      - .m2/repository
+    policy: pull-push
+  allow_failure: true # Known failing scenarios still provide reports for downstream jobs.
+
+traceability:
+  stage: traceability
+  image: ghcr.io/astral-sh/uv:bookworm-slim # Debian/glibc image with uv preinstalled so pydowndoc-bin wheels resolve
+  variables:
+    UV_LINK_MODE: "copy"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    # Download the Serenity report required for runtime coverage.
+    - job: test
+      artifacts: true
+      optional: true # Continue even when the test job reports expected failures.
+  script:
+    - uv sync --project docs/scripts
+    - uv run --project docs/scripts traceability build --project-root .
+  artifacts:
+    paths:
+      # Provide all generated traceability sources to the docs job.
+      - docs/asciidoc/diagrams
+      - docs/asciidoc/tables
+      - target/generated-docs/traceability.json
+    expire_in: 1 week
 
 docs:
   stage: docs
   image: uwebarthel/asciidoctor:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    # Pull in the traceability artefacts generated after the test run.
+    - job: traceability
+      artifacts: true
   script:
     - mkdir -p docs
     - |
       asciidoctor \
         -r asciidoctor-diagram \
         -a data-uri \
-        -a imagesdir=. \
-        -a imagesoutdir=docs \
-        -a puppeteer-config=docs/puppeteer-config.json \
-        -D docs \
-        docs/asciidoc/Testplan_ZETA.adoc
-    - |
-      asciidoctor-pdf \
-        -r asciidoctor-diagram \
         -a puppeteer-config=docs/puppeteer-config.json \
         -D docs \
         docs/asciidoc/Testplan_ZETA.adoc
   artifacts:
     paths:
-      - docs/Testplan_ZETA.pdf
       - docs/Testplan_ZETA.html
     expire_in: 1 week
   allow_failure: true
-
-test:
-  stage: test
-  image: maven:3.9.11-eclipse-temurin-21
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-  variables:
-    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-  script:
-    - mvn --batch-mode clean verify
-  artifacts:
-    reports:
-      junit: target/site/serenity/*.xml
-    paths:
-      - target/site/serenity
-    expire_in: 1 week
-  cache:
-    paths:
-      - .m2/repository
 
 pages:
   stage: pages
   image: busybox:stable
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    # Only download the Serenity report needed for publishing.
+    - job: test
+      artifacts: true
+      optional: true # Publish even if tests failed (reports still generated).
   script:
     - echo "Publishing Serenity report"
   pages:
     publish: target/site/serenity
     expire_in: 1 week
+
+docker-image:
+  stage: container
+  image: docker:29-cli
+  services:
+    - name: docker:29-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: "tcp://docker:2375"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - |
+      # Authenticate once with the GitLab container registry (stdin avoids leaking secrets).
+      echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - |
+      # Build and push with Docker schema v2 manifest (config digest present) using the default Buildx builder.
+      # Use the container driver because the default docker driver cannot build multi-arch images in DinD.
+      docker buildx create --use --name multiarch-builder --driver docker-container
+      # Ensure the builder is ready before we start the build.
+      docker buildx inspect --bootstrap
+      # - --pull keeps base layers current; --output oci-mediatypes=false flips media type from OCI to Docker v2; --platform linux/amd64,linux/arm64 for platform independence
+      docker buildx build \
+        --pull \
+        --output=type=registry,oci-mediatypes=false \
+        --platform linux/amd64,linux/arm64 \
+        -f Dockerfile \
+        -t "${CI_REGISTRY_IMAGE}:latest" \
+        .

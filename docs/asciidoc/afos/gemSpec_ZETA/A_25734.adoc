@@ -1,4 +1,0 @@
-[#A_25734]
-==== A_25734 - ZETA Client - Zugriffsprotokoll Clientregistrierung
-
-Der ZETA Client MUSS dem Nutzer einen Einblick in das Zugriffsprotokoll der Schnittstellen des Clientregistrierungsdienstes für genutzte Clients dieses Nutzers geben.

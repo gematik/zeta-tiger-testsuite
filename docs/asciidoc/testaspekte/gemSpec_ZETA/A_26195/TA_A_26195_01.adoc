@@ -1,0 +1,4 @@
+[#TA_A_26195_01]
+===== TA_A_26195_01 - PEP HTTP Proxy - Unterstützung Websocket
+
+"Die Komponente HTTP Proxy MUSS das **WebSocket-Protokoll unterstützen**. **[<=]"**

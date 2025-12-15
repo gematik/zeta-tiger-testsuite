@@ -1,4 +1,0 @@
-[#A_19153]
-==== A_19153 - Sicherheitsrelevanter Softwarearchitektur-Review
-
-Der Hersteller eines Produktes MUSS einen sicherheitsrelevanten Softwarearchitektur-Review durchführen und identifizierte Architekturschwachstellen beheben.

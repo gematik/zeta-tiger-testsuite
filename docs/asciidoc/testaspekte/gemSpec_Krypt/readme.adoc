@@ -1,0 +1,6 @@
+=== Testaspekte aus gemSpec_Krypt
+
+include::A_18464/readme.adoc[]
+
+include::GS-A_5542/readme.adoc[]
+

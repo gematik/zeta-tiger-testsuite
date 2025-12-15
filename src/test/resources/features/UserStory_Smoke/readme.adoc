@@ -1,0 +1,59 @@
+[#US_SMOKE]
+== UserStory_Smoke: Proof of Concept Smoke Tests
+
+Als Testsuite-Team möchte ich nach jeder Bereitstellung schnell verifizieren, dass die Referenz- implementierung (ZETA Client, ZETA Guard und Testfachdienste) grundsätzlich funktioniert, damit nachfolgende, tiefere Tests nicht bereits an Basisproblemen scheitern.
+
+[#smoke_sequence_overview]
+[mermaid,smoke-sequence-overview,svg]
+....
+sequenceDiagram
+    participant ZC as ZETA Client
+    participant ZG as ZETA Guard
+    participant RS as Resource Server
+    ZC->>+ZG: Request Resource
+    ZG->>+RS: Forward Request
+    RS-->>-ZG: Return Resource Data
+    ZG-->>-ZC: Return Resource Data
+....
+
+=== Schritt 1: HTTP-Schnittstelle prüfen
+
+Als Betreiber möchte ich sicherstellen, dass grundlegende HTTP-Kommunikation funktioniert und standardisierte Antworten geliefert werden, damit die Infrastruktur korrekt aufgebaut ist.
+
+* Der Tiger REST Client löscht alte Nachrichten und setzt die Umgebung zurück.
+* Ein GET Request gegen ``${paths.client.helloZeta}`` wird abgesetzt.
+* Antwort wird auf HTTP-Version, Statuscode und Payload überprüft; Antwortzeit wird protokolliert.
+
+Akzeptanzkriterien:
+
+* HTTP/1.1 wird verwendet (<<TA_A_26640_01>>).
+* Statuscode 200 und Payload ``Hello ZETA!`` werden zurückgegeben.
+
+Abgebildet durch: <<UC_SMOKE_01>>
+
+=== Schritt 2: REST API – E-Rezept CRUD
+
+Die Testsuite ruft den REST-Proxypfad des ZETA Guards auf und führt CRUD- sowie Fehlerszenarien gegen den Testfachdienst aus.
+
+* POST/GET/PUT/DELETE Operationen zeigen den kompletten E-Rezept-Lebenszyklus.
+* Fehlerfälle wie Duplikate, Validierungsfehler und nicht-existierende Ressourcen lösen korrekte HTTP-Codes aus.
+
+Abgebildet durch: <<UC_SMOKE_02>>
+
+=== Schritt 3: WebSocket/STOMP – E-Rezept CRUD
+
+Über eine native WebSocket/STOMP-Verbindung werden CRUD- und Fehlerszenarien ausgeführt, um die bidirektionale Kommunikation zu prüfen.
+
+* Verbindung via ``wss://`` Endpoint, Antworten über ``/user/queue/erezept``.
+* CRUD-Operationen laufen über ``/app``-Routen, inkl.
+Fehlerbehandlung.
+
+Abgebildet durch: <<UC_SMOKE_03>>
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+include::UseCase_01/readme.adoc[]
+include::UseCase_02/readme.adoc[]
+include::UseCase_03/readme.adoc[]
+:leveloffset: -2

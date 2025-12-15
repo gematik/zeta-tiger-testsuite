@@ -1,0 +1,14 @@
+[#TA_A_25644_04]
+===== TA_A_25644_04 - PDP Client-Registrierung mit TPM Attestation / Windows
+
+Die Komponente Authorization Server MUSS die Clients/Apps bei der Registrierung über
+
+folgende Mechanismen attestieren:
+
+[ ... ]
+
+• Client signiertes Client Assertion JWT (mit TPM Attestation [ ... ]
+
+für Windows [ ... ])
+
+[ ... ]

@@ -1,4 +1,0 @@
-[#A_25400]
-==== A_25400 - ZETA Guard - Umsetzung Sicherer Softwareentwicklungsprozess
-
-Der Hersteller des ZETA Guards MUSS einen sicheren Softwareentwicklungsprozess umsetzen (siehe [gemSpec_DS_Hersteller#Kapitel 2.2 Sicherer Softwareentwicklungsprozess]).

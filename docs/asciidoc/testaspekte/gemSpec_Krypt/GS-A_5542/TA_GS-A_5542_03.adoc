@@ -1,0 +1,6 @@
+[#TA_GS-A_5542_03]
+===== TA_GS-A_5542_03 - TLS-Verbindungen (fatal Alert bei Abbrüchen) - PIP & PAP
+
+Alle Produkttypen, die das TLS-Protokoll verwenden, MÜSSEN sicherstellen, **dass alle von ihnen durchgeführten Verbindungsabbrüche** (egal ob im noch laufenden TLS-Handshake oder in einer schon etablierten TLS-Verbindung) **mit einer im TLS-Protokoll aufgeführten Fehlermeldung (fataler Alert) angekündigt werden**, außer das TLS-Protokoll untersagt dies explizit.
+
+**[<=]**

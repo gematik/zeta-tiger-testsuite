@@ -13,12 +13,25 @@ Die Konfigurationsdatei für die Testsuite sieht folgendermaßen aus:
 
 [source,yaml]
 ----
-include::../../../tiger-cloud.yaml[]
+include::../../../tiger/tiger-cloud.yaml[]
 ----
+
+NOTE: Die konkreten Hostnamen werden nicht mehr direkt in den tiger-cloud*-Konfigurationen hinterlegt.
+Setzen Sie stattdessen den Wert `zeta_base_url` (nur Hostname, ohne Schema) in der `defaults.yaml`.
+Die Tests leiten daraus automatisch `https://`- und `wss://`-Zugriffe ab.
+Sie können den Wert lokal über die kommentierten Beispiele in der `defaults.yaml` wählen, per Umgebungsvariable `ZETA_BASE_URL` oder über den Maven-Aufruf, z. B. `mvn -Dzeta_base_url=beispiel-host.tld test`.
+
+Die Tiger-Proxy-Erfassung für den Cluster-Traffic ist über `tiger-proxy.yaml` standardmäßig aktiv und erwartet den via Port-Forward freigegebenen Admin-Port unter `http://localhost:9999`.
+Die eigenständige Datei erleichtert es, abweichende Proxy-Konfigurationen in CI-Stages ohne Änderungen an `tiger.yaml` zu hinterlegen.
+Stellen Sie sicher, dass vor dem Teststart ein Port-Forward (z. B. `kubectl port-forward svc/tiger-proxy 9999:9999`) aktiv ist.
+Wenn Sie den Proxy temporär nicht benötigen, entfernen Sie den Eintrag in `tiger.yaml` oder überschreiben Sie die Einstellung `additionalConfigurationFiles` für den jeweiligen Lauf.
+
+Der `environment`-Schalter im `defaults.yaml` bleibt dabei auf `cloud`, sodass unabhängig von der Zielumgebung stets `tiger-cloud.yaml` geladen wird.
 
 Das Architekturdiagramm dazu ist wie folgt:
 
-[mermaid]
+[#testumgebung_kubernetes_cloud]
+[mermaid,testumgebung-kubernetes-cloud,svg]
 ....
 C4Context
     title ZETA tiger-cloud Setup
@@ -40,4 +53,3 @@ C4Context
     Rel(client, sdk, "Interner Aufruf")
     Rel(sdk, guard, "HTTP")
 ....
-

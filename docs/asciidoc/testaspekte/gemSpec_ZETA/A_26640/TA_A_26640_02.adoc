@@ -1,5 +1,4 @@
 [#TA_A_26640_02]
 ===== TA_A_26640_02 - ZETA Guard - HTTP Protokoll-Version HTTP/2
 
-Die Komponente Ingress MUSS das HTTP Protokoll in den Versionen [...] HTTP/2 [...] unterstützen.
-
+Die Komponente Ingress MUSS das HTTP Protokoll in den [...] HTTP/2 [...] unterstützen.

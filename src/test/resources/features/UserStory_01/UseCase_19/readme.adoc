@@ -1,0 +1,50 @@
+[#UC_01_19]
+== UseCase_01_19: Client ressource anfrage fachdienst SC 405
+
+.UseCase_01_19
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 405
+
+| Akteur: |
+TODO
+
+| weitere Akteure: |
+TODO
+
+| Auslöser: |
+TODO
+
+| Kurzbeschreibung: |
+TODO
+
+| Vorbedingung: |
+TODO
+
+| Nebenbedingung: |
+TODO
+
+| Ablauf: |
+TODO
+
+| Nachbedingung: |
+TODO
+
+| Abgedeckte Testaspekte: |
+TODO
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    %% TODO
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+TODO
+----

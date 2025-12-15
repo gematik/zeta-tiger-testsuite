@@ -1,0 +1,8 @@
+[#TA_A_25338_01]
+===== TA_A_25338_01 - JWT-Assertion mit Client-Daten entsprechend Schema
+
+"Der ZETA Client MUSS bei der +++SM(C)-B+++ Authentifizierung mit DPoP in der **JWT-Assertion unter "urn:telematik:client-self-assessment" die Client-Daten** gemäß [**client-instance.yaml**] eintragen.
+
+[...]"
+
+(siehe auch: <https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/client-instance.yaml> )

@@ -1,0 +1,4 @@
+[#TA_A_27853_07]
+===== TA_A_27853_07 - ZETA Guard, Responses mit Header ZETA-API-Version - Management Service
+
+"Alle ZETA Guard Komponenten MÜSSEN **an ihren Endpunkten in den Responses den Header ZETA-API-Version angeben**, der die **exakte SemVer-Version** der ausführenden Instanz angibt. **[<=]"**

@@ -1,4 +1,0 @@
-[#A_25774]
-==== A_25774 - PDP - Löschfristen für Auditeinträge des Admin Audit-Logs
-
-Der PDP MUSS sicherstellen, dass die Löschung eines Auditeintrags den gesetzlichen Vorgaben entspricht und frühestens nach 12 Monaten erfolgt.

@@ -1,16 +1,18 @@
 [#TA_A_27007_10]
-===== TA_A_27007_TA_A_27007_10 - ZETA Client - HTTP Statuscodes - Authentifizierung - OIDC - 401 Unauthorized
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+===== TA_A_27007_10 - ZETA Client - HTTP Statuscodes - Authentifizierung - OIDC - 401 Unauthorized
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Authentifizierung mit OIDC und Authorization Code Flow** |
-+++[...]+++
-**401 Unauthorized**: Authentifizierung fehlgeschlagen, z.B. ungültiger Code oder Token. Der Client sollte den Autorisierungscode überprüfen und gegebenenfalls einen neuen Code anfordern oder den Flow neu starten.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Authentifizierung mit OIDC und Authorization Code Flow**+++<br />+++ | +++[...]+++ +++<br />+++**401 Unauthorized**: Authentifizierung fehlgeschlagen, z.B. ungültiger Code oder Token. Der Client sollte den Autorisierungscode überprüfen und gegebenenfalls einen neuen Code anfordern oder den Flow neu starten.+++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

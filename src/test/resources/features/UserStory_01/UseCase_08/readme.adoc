@@ -1,0 +1,50 @@
+[#UC_01_08]
+== UseCase_01_08: Client authentisierung und autorisierung software attest SC 401
+
+.UseCase_01_08
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client authentisierung und autorisierung software attest SC 401
+
+| Akteur: |
+TODO
+
+| weitere Akteure: |
+TODO
+
+| Auslöser: |
+TODO
+
+| Kurzbeschreibung: |
+TODO
+
+| Vorbedingung: |
+TODO
+
+| Nebenbedingung: |
+TODO
+
+| Ablauf: |
+TODO
+
+| Nachbedingung: |
+TODO
+
+| Abgedeckte Testaspekte: |
+TODO
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    %% TODO
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+TODO
+----

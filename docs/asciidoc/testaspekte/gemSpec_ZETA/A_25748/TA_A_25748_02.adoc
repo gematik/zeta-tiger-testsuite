@@ -1,0 +1,4 @@
+[#TA_A_25748_02]
+===== TA_A_25748_02 - PDP Client-Registrierung - Maximale Anzahl von Clients - Wert  konfigurierbar
+
+"Die Komponente Authorization Server MUSS sicherstellen, dass ein Nutzer maximal 256 Clients registrieren kann. **Der Wert muss konfigurierbar sein.** **[<=]"**

@@ -1,0 +1,224 @@
+[#UC_01_09]
+== UseCase_01_09: Client authentisierung und autorisierung software attest SC 403
+
+.UseCase_01_09
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client authentisierung und autorisierung software attest SC 403
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *Konnektor / TI-Gateway*
+- *SMC-B*
+- *PEP HTTP Proxy*
+- *PDP Authorization Server*
+- *PDP Policy Engine*
+
+| Auslöser: |
+Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafür authentisieren und autorisieren.
+
+| Kurzbeschreibung: |
+Um auf einen Resource Server zugreifen zu können, benötigt der
+Client ein Access Token vom PDP Authorization Server.
+Stationäre ZETA Clients verwenden dafür den Token Exchange Flow mittels Software-Attestierung. +
+
+Obwohl die technischen Nachweise korrekt übermittelt werden, verweigert die Policy Engine den Zugriff. 
+Der PDP Authorization Server gibt deshalb ``403 Forbidden`` zurück und stellt keine Tokens aus.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert bereits eine
+``client_id`` inklusive zugehörigem Schlüsselpaar.
+Der Client hat keine bestehende Session (kein gültiges Refresh Token).
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+1. MA startet *Authentisierung/Autorisierung-Prozess (Token-Austausch)* über den ZETA Client.
+2. Der ZETA Client fordert beim PDP Authorization Server eine Nonce an:
+- ``GET /nonce``
+3. Der PDP Authorization Server liefert ``200 OK`` mit einer neuen Nonce zurück.
+4. Der ZETA Client erstellt ein *DPoP Key Pair* (sitzungsbasiert).
+- Zweck: Bindung für den späteren Token-Austausch.
+
+5. Der ZETA Client berechnet eine *attestation challenge*:
+- ``attestation_challenge = HASH(pubKeyHash + nonce)``
+
+6. Der ZETA Client erstellt ein *Client Statement* mit *posture-software*.
++
+.client_statement:
+[source,txt]
+----
+- sub
+- product_id
+- product_version
+- posture (containing attestation_challenge etc.)
+- attestation-info
+----
++
+
+7. Der ZETA Client erstellt ein *Client Assertion JWT*.
++
+.Client Assertion JWT Claims (with Attestation):
+[source,json]
+----
+{
+"iss": "<client_id>",
+"sub": "<client_id>",
+"aud": "<AS_Token_Endpoint_URL>",
+"exp": "...",
+"jti": "...",
+// Embed the client_statement
+"urn:gematik:params:oauth:client-attestation:software":
+  {
+    "attestation_data": "<Base64(client_statement)>",
+    "client_statement_format": "client-statement"
+  }
+}
+(sig by Client_Instance_Private_Key)
+----
++
+
+8. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
++
+.SMC-B Access Token Claims:
+[source,json]
+----
+{
+"iss": "<client_id>",// Issuer is the client
+"sub": "<Telematik-ID from SMC-B>",// Subject is the institution
+"aud": "[<Resource_Server_Endpoint_URL>]",// Audience is the Resource Server
+"exp": "...",// Short-lived
+"iat": "...",
+"jti": "...",
+"scope": "..." // As required for the Resource Server access
+}
+----
++
+
+9. Der ZETA Client initiiert eine *External Authenticate*-Anfrage beim Konnektor / TI-Gateway:
+- Übermittlung des JWT-Hash.
+10. Der KTG reicht den Hash an die SMC-B weiter.
+11. Die SMC-B antwortet mit signiertem Hash.
+12. Der KTG liefert die *JWT-Signatur* zurück an den ZETA Client.
+
+13. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+14. Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
+- Enthält Claims für den Token Request.
++
+.DPoP Proof JWT Claims (for Token Exchange):
+[source,json]
+----
+{
+"typ": "dpop+jwt",
+"alg": "ES256",
+"jwk": { ... }
+}.{
+"jti": "...",
+"htm": "POST","htu": "<AS_Token_Endpoint_URL>",
+"nonce": "<nonce from AS>", // Binding to AS
+"iat": "..."
+}.(sig by DPoP_Private_Key)
+----
++
+
+15. Der ZETA Client sendet einen *Token Request* (<<RFC8693, RFC 8693>>) an den PDP Authorization Server:
+- Enthält ``DPoP: signed_dpop_jwt``.
++
+.Token Exchange Request Body:
+[source,txt]
+----
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<SMC-B_Access_Token>
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<Client_Assertion_JWT>...
+----
++
+
+16. Der PDP Authorization Server validiert den Request:
+- Client Assertion
+- Attestation
+- DPoP Proof
+- Subject Token
+17. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
+- ``POST /v1/data/authz`` mit Input-Parametern.
+
+18. Die Policy Engine verweigert den Zugriff (``allow = false``).
+19. Der PDP Authorization Server erstellt eine Fehlermeldung und stellt keine Tokens aus.
+20. Der PDP Authorization Server antwortet dem ZETA Client mit ``403 Forbidden`` und Fehlerdetails.
+21. Der ZETA Client informiert den MA über den abgelehnten Zugriff.
+
+| Nachbedingung: |
+Es wurden keine Access- oder Refresh-Token ausgegeben. Der Zugriff auf den Resource Server bleibt verwehrt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25661_03>>
+* <<TA_A_25760_02>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_04>>
+* <<TA_A_27401_01>>
+
+|===
+
+[#usecase_01_09_sequence]
+[mermaid,usecase-01-09-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant KTG as Konnektor/<br>TI-Gateway
+    participant SMC as SMC-B
+    participant PDP-AS as PDP Authorization<br>Server
+    participant PDP-PE as PDP Policy Engine
+
+    MA->>+ZC: Starte Prozess
+
+    critical 1. Vorbereitung
+        ZC->>+PDP-AS: GET /nonce
+        PDP-AS-->>ZC: 200 OK new-nonce: nonce
+        ZC->>ZC: Erstelle DPoP Schlüsselpaar
+        ZC->>ZC: Attestierungs-Challenge berechnen
+    end
+
+    critical 2. Erstellen des Client Statement
+        ZC->>ZC: Erstellen Client Statement (posture-software)
+        ZC->>ZC: Erzeuge Client Assertion (JWT)
+    end
+
+    critical 3. SMC-B Signatur holen
+        ZC->>ZC: Erstellen von SMC-B Access Token (JWT)
+        ZC->>+KTG: External Authenticate<br>(JWT-Hash)
+        KTG->>+SMC: Signiere (Hash)
+        SMC-->>-KTG: Signatur
+        KTG->>-ZC: JWT-Signatur
+    end
+
+    critical 4. DPoP Proof erstellen
+        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Access Token
+        ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
+    end
+
+    critical 5. Validierung & Zugriffsverweigerung
+        ZC->>PDP-AS: POST /token (RFC 8693) DPoP: signed_dpop_jwt
+        PDP-AS-->>PDP-AS: Validiere Request
+        PDP-AS->>+PDP-PE: POST /v1/data/authz
+        PDP-PE-->>-PDP-AS: allow = false
+        PDP-AS->>PDP-AS: Fehlermeldung erzeugen
+        PDP-AS-->>-ZC: 403 Forbidden, Fehlermeldung
+        ZC-->>-MA: Zugriff verweigert
+    end
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+#include::Client_authentisierung_und_autorisierung_software_attest_SC_403.feature[]
+----

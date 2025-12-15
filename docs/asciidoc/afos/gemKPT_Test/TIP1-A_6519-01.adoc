@@ -1,0 +1,4 @@
+[#TIP1-A_6519-01]
+==== TIP1-A_6519-01 - Eigenverantwortlicher Test: Hersteller und Anbieter
+
+Zulassungsnehmer MÜSSEN im Rahmen der Eigenverantwortlichen Tests ihre Pflichten gemäß [Tab_Test_005_01] "Eigenverantwortlicher Test (EvT)" erfüllen.

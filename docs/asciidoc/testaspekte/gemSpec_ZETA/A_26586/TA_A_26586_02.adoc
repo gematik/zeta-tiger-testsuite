@@ -1,0 +1,6 @@
+[#TA_A_26586_02]
+===== TA_A_26586_02 - PDP Authorization Server - Daten an Policy Engine im Request
+
++++[...]+++
+
+Die **Session-Daten und Nutzer-Daten** MÜSSEN bei Anfragen des Authorization-Servers **an die Policy Engine im Request** mit **übergeben** werden.

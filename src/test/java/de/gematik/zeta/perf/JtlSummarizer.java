@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import java.io.IOException;
@@ -140,8 +141,8 @@ public class JtlSummarizer {
       }
       if (indices[i] == -1) {
         throw new IllegalArgumentException(
-            "Missing required JTL column: " + REQUIRED_HEADERS[i] +
-                ". Found: " + Arrays.toString(headers));
+            "Missing required JTL column: " + REQUIRED_HEADERS[i]
+                + ". Found: " + Arrays.toString(headers));
       }
     }
 
@@ -237,8 +238,8 @@ public class JtlSummarizer {
     long firstTimestamp = records.stream().mapToLong(JtlRecord::timestamp).min().orElse(0);
     long lastTimestamp = records.stream().mapToLong(JtlRecord::timestamp).max().orElse(0);
 
-    return (lastTimestamp > firstTimestamp) ?
-        (records.size() / ((lastTimestamp - firstTimestamp) / 1000.0)) : records.size();
+    return (lastTimestamp > firstTimestamp)
+        ? (records.size() / ((lastTimestamp - firstTimestamp) / 1000.0)) : records.size();
   }
 
   /**

@@ -1,4 +1,0 @@
-[#A_25770]
-==== A_25770 - ZETA Client - Client Credentials Rotation
-
-Der ZETA Client MUSS seine Client-Credentials regelmäßig rotieren (erneuern und neu registrieren), wobei die Häufigkeit der Rotation durch die gematik nach einer Auswertung der initialen Benutzererfahrung festgelegt wird.

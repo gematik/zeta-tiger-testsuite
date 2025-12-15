@@ -1,5 +1,6 @@
 ==== Testaspekte für die Anforderung A_26944
 
-Diese Testaspekte testen <<A_26944>>.
+Folgende Testaspekte testen <<A_26944>>.
 
 include::TA_A_26944_01.adoc[]
+

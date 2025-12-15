@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_26586
+
+Folgende Testaspekte testen <<A_26586>>.
+
+include::TA_A_26586_01.adoc[]
+
+include::TA_A_26586_02.adoc[]
+

@@ -1,0 +1,19 @@
+[#TA_A_25739_07]
+===== TA_A_25739_07 - PDP, Open Policy Agent Instanzen - korrekte Konfiguration bundles authz polling - aktive Instanz
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+
+Tabelle 7: OPA - Konfiguration
+
+|===
+
+| **Konfiguration** | **Aktive OPA Instanz** | **Simulations-OPA Instanz** |
+| --- | --- | --- |
+| **[...]** |  |  |
+| **bundles:** +++<br />+++  **authz:** +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**polling:** +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**min_delay_seconds:** <min> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**max_delay_seconds:** <max> | **<min>** +++<br />+++Minimale Zeit bis zum nächsten Polling. +++<br />+++Default: 300 +++<br />+++**<max>** +++<br />+++Maximale Zeit bis zum nächsten Polling. +++<br />+++Default: 320 | wie aktive OPA Instanz |
+| **[...]** |  |  |
+
+|===
+
+**[<=]**

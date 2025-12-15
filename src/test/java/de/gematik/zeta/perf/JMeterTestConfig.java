@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import java.nio.file.Path;
@@ -44,7 +45,7 @@ public class JMeterTestConfig {
   Map<String, String> parameters = new LinkedHashMap<>();
 
   @Builder.Default
-  Map<String, String> jMeterProperties = new LinkedHashMap<>();
+  Map<String, String> jmeterProperties = new LinkedHashMap<>();
 
   Path jtlOutput;
   Path htmlOutput;

@@ -1,0 +1,16 @@
+environment: cloud
+
+# Environment `cloud` loads `tiger-cloud.yaml`. Keep this value; adapt the host with the setting below.
+
+# Hostname (without scheme) for the external ZETA deployment.
+# The value is reused for HTTPS and WSS targets by the features and the tiger-cloud profile.
+# Override via environment variable ZETA_BASE_URL or Maven property -Dzeta_base_url=....
+#zeta_base_url: zeta-dev.westeurope.cloudapp.azure.com
+#zeta_base_url: zeta-cd.westeurope.cloudapp.azure.com
+#zeta_base_url: zeta-achelos.westeurope.cloudapp.azure.com
+#zeta_base_url: zeta-local.westeurope.cloudapp.azure.com
+zeta_base_url: zeta-staging.spree.de
+
+zeta_proxy_url: localhost:9999
+#zeta_proxy: proxy
+zeta_proxy: no-proxy

@@ -1,16 +1,18 @@
 [#TA_A_27007_03]
 ===== TA_A_27007_03- ZETA Client - HTTP Statuscodes - Authentifizierung - Client Assertion - 401 Unauthorized
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Authentifizierung mit Client Assertion JWT** |
-+++[...]+++
-**401 Unauthorized**: Authentifizierung fehlgeschlagen, z.B. aufgrund einer ungültigen Signatur oder eines abgelaufenen JWT. Der Client sollte überprüfen, ob das JWT korrekt signiert und nicht abgelaufen ist. Er kann ein neues JWT generieren und die Anfrage erneut senden.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Authentifizierung mit Client Assertion JWT** | +++[...]+++ +++<br />+++**401 Unauthorized**: Authentifizierung fehlgeschlagen, z.B. aufgrund einer ungültigen Signatur oder eines abgelaufenen JWT. Der Client sollte überprüfen, ob das JWT korrekt signiert und nicht abgelaufen ist. Er kann ein neues JWT generieren und die Anfrage erneut senden. +++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

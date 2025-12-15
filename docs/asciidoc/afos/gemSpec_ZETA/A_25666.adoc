@@ -1,5 +1,0 @@
-[#A_25666]
-==== A_25666 - ZETA Guard - TLS Terminierung
-
-Die Komponente Ingress MUSS TLS für von außen eingehende Verbindungen terminieren können.
-Alternativ wird die TLS-Verbindung am PEP HTTP Proxy terminiert.
