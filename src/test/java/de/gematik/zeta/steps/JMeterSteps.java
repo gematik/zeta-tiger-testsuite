@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.steps;
 
 import de.gematik.zeta.perf.CsvUtils;
@@ -154,7 +155,7 @@ public class JMeterSteps {
         .targetRps(targetRps)
         .baseUrl(baseUrl)
         .parameters(parameters)
-        .jMeterProperties(jmeterProps)
+        .jmeterProperties(jmeterProps)
         .jtlOutput(jtlOutput)
         .htmlOutput(htmlOutput)
         .propertiesFile(propertiesFile)
@@ -296,8 +297,9 @@ public class JMeterSteps {
     String effectiveLabel = CsvUtils.resolveSummaryLabel(csv.getColumn("label"), requestedLabel);
 
     if (effectiveLabel == null) {
-      throw new AssertionError("Label not found in summary: '" + requestedLabel +
-          "'. Available: " + csv.getColumn("label"));
+      throw new AssertionError(
+          "Label not found in summary: '" + requestedLabel + "'. Available: " + csv.getColumn(
+              "label"));
     }
 
     // Retrieve row for label

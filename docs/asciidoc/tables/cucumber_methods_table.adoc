@@ -1,0 +1,166 @@
+// Dieses Tabellenfragment wird automatisch von generate-tgr-methods erzeugt.
+// Nicht manuell bearbeiten; Änderungen an Glue-Klassen + Skript neu ausführen.
+
+[cols="<165, <156, <69, <120", options="header"]
+|===
+^|Deutsch
+^|Englisch
+^|Datei
+^|Beschreibung
+
+|Alle Manipulationen im TigerProxy {tigerResolvedString} werden gestoppt
+|Reset all manipulation in the TigerProxy {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|Clears all existing manipulations configured in the TigerProxy instance.
+
+|Anfrage an Kanal {tigerResolvedString} mit folgenden JSON Daten gesendet wird:
+|request is sent to channel {tigerResolvedString} with following JSON data:
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Sends a request with JSON payload to a STOMP channel.
+
+|decodiere Base64Url {tigerResolvedString} und prüfe das die Länge {int} bit ist
+|-
+|src\test\java\de\gematik\zeta\steps\NonceSteps.java
+|Cucumber step definition for validating a Base64Url encoded string and it's length.
+
+|decodiere und validiere {tigerResolvedString} gegen Schema {string}
+|decode and validate {tigerResolvedString} against schema {string}
+|src\test\java\de\gematik\zeta\steps\SchemaValidationSteps.java
+|Cucumber step definition for validating a Base64 coded JSON string against a schema loaded from the resources directory.
+
+|der Kanal {tigerResolvedString} mit ID {tigerResolvedString} abonniert wird
+|the channel {tigerResolvedString} with ID {tigerResolvedString} is subscribed
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Subscribes to a STOMP channel.
+
+|eine Anfrage mit folgenden mehrzeiligen Daten an Kanal {tigerResolvedString} gesendet wird:
+|a request with following multi-line data is sent to channel {tigerResolvedString}:
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Sends a request with data to a STOMP channel (using DataTable).
+
+|eine leere Anfrage an Kanal {tigerResolvedString} gesendet wird
+|an empty request is sent to channel {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Sends an empty request to a STOMP channel.
+
+|eine WebSocket Verbindung zu {tigerResolvedString} geöffnet wird
+|a WebSocket to {tigerResolvedString} is opened
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Opens a WebSocket connection.
+
+|erstelle die JMeter-Zusammenfassung aus {string} nach {string}
+|create the JMeter summary from {string} to {string}
+|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|Summarizes a JTL file into a CSV summary.
+
+|gebe die Antwortzeit vom aktuellen Nachrichtenpaar aus
+|show response time of current message pair
+|src\test\java\de\gematik\zeta\steps\TimingGlue.java
+|Computes and reports the response time for the currently active request/response pair.
+
+|hat die empfangene Nachricht im Feld {string} den Wert {tigerResolvedString}
+|the received message has field {string} with value {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Verifies a field in the last received message.
+
+|Hole JWT für Client {tigerResolvedString} mit zusätzlichem Header {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
+|Get JWT for Client {tigerResolvedString} with additional header {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
+
+|Hole JWT für Client {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
+|Get JWT for Client {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
+
+|Hole JWT mit zusätzlichem Header {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
+|Get JWT with additional header {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
+
+|Hole JWT von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
+|Get JWT from {tigerResolvedString} and store in variable {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
+
+|ich JMeter mit dem Plan {tigerResolvedString} starte
+|I start JMeter with plan {tigerResolvedString}
+|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|Runs a JMeter plan with optional CLI-like arguments from a DataTable.
+
+|logge alle Nachrichten
+|log all messages
+|src\test\java\de\gematik\zeta\steps\TimingGlue.java
+|Logs a summary of all RBEL messages captured in the current test run.
+
+|set connection timeout for websocket connections to {int} seconds
+|-
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Sets the connection timeout for websocket connections.
+
+|set message timeout for websocket messages to {int} seconds
+|-
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Sets the message timeout for websocket messages.
+
+|Setze im TigerProxy {string} die JwtManipulation auf Feld {string} und Wert {string}
+|Set the JwtManipulation in the TigerProxy {string} to field {string} and value {string}
+|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|Sends a manipulation request to the TigerProxy to apply a specific modification on intercepted messages.
+
+|Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Manipulation auf
+|Set the manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to
+|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|Sends a manipulation request to the TigerProxy to modify intercepted messages based on specified criteria.
+
+|stelle sicher, dass im JMeter-Summary {string} das Label {string} {jmeterMetric} <= {double}
+|ensure that in the JMeter summary {string} the label {string} has {jmeterMetric} <= {double}
+|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|Asserts that a metric of a label is ≤ threshold.
+
+|stelle sicher, dass im JMeter-Summary {string} das Label {string} {jmeterMetric} >= {double}
+|ensure that in the JMeter summary {string} the label {string} has {jmeterMetric} >= {double}
+|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|Asserts that a metric of a label is ≥ threshold.
+
+|stelle sicher, dass in {string} für die Spalte {tigerMetric} der {metric}-Wert <= {int} ms ist
+|ensure that in {string}, for column {tigerMetric}, the {metric} value is <= {int} ms
+|src\test\java\de\gematik\zeta\steps\PerfSteps.java
+|Asserts a metric (percentile/max/min/avg) for a Tiger column is ≤ threshold.
+
+|stimmt empfangene Nachricht als JSON überein mit:
+|received message matches following JSON:
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Verifies the last received WebSocket message matches expected JSON (similar to TGR step).
+
+|validiere {tigerResolvedString} gegen Schema {string}
+|validate {tigerResolvedString} against schema {string}
+|src\test\java\de\gematik\zeta\steps\SchemaValidationSteps.java
+|Cucumber step definition for validating a JSON string against a schema loaded from the resources directory.
+
+|Variable {tigerResolvedString} existiert
+|-
+|src\test\java\de\gematik\zeta\steps\HelperSteps.java
+|Cucumber step for checking if a tiger variable is set.
+
+|wird der Wert des Knotens {string} der empfangenen Nachricht in der Variable {string} gespeichert
+|value of node {string} from received message is stored in variable {string}
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Saves a value from the received message using JSON path (like TGR step).
+
+|wird die empfangene ID in der Variable {string} gespeichert
+|received ID is stored in variable {string}
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Saves the received ID to a Tiger variable (legacy step - kept for backwards compatibility).
+
+|wird die WebSocket Verbindung geschlossen
+|WebSocket connection is closed
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Closes the WebSocket connection.
+
+|wird eine Nachricht auf dem Kanal {tigerResolvedString} empfangen
+|a message on channel {tigerResolvedString} is received
+|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|Waits for a message on the specified channel.
+|===
+

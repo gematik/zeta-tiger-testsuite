@@ -1,0 +1,60 @@
+[#UC_SMOKE_02]
+== UseCase_Smoke_02: REST API – E-Rezept CRUD & Fehlerfälle
+
+.UseCase_Smoke_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | REST API Smoke – CRUD & Fehlerfälle
+
+| Akteur: |
+Testsuite agierend als REST Client
+
+| Auslöser: |
+Nach einem Deploy soll die REST-basierte Schnittstelle des Testfachdienstes verifiziert werden.
+
+| Kurzbeschreibung: |
+Die Testsuite ruft die E-Rezept-REST-API über den ZETA Guard auf, führt den vollständigen CRUD
+Lebenszyklus durch und provoziert verschiedene Fehler (Duplikate, Validierungsfehler,
+nicht-existierende Ressourcen).
+
+| Vorbedingung: |
+ZETA Guard und Testfachdienst laufen, REST-Pfade sind konfiguriert.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+1. Umgebung zurücksetzen und Standard-Header setzen.
+2. CRUD-Szenarien (CREATE, READ, LIST, UPDATE, DELETE) durchlaufen.
+3. Fehlerfälle (Duplicate, Validation, Not Found) auslösen und HTTP-Codes prüfen.
+4. IDs aus Antworten speichern und für Folgeoperationen nutzen.
+
+| Nachbedingung: |
+REST-Schnittstelle bestätigt Funktion und liefert erwartete Fehler-Codes.
+
+| Abgedeckte Testaspekte: |
+* (Derzeit nicht zugeordnet)
+
+|===
+
+[#UC_SMOKE_02_sequence]
+[mermaid,UC_SMOKE_02_sequence,svg]
+....
+sequenceDiagram
+    participant TS as Testsuite
+    participant ZG as ZETA Guard
+    participant TF as Testfachdienst
+
+    TS->>+ZG: CRUD Requests via ${paths.erezept.rest.proxyPath}
+    ZG->>+TF: Forward REST Request
+    TF-->>-ZG: Response / Fehler
+    ZG-->>-TS: HTTP Response
+....
+
+[.lead]
+Feature-Dateien zu diesem Use Case
+
+[source]
+----
+include::rest_api_crud_erezept.feature[]
+----

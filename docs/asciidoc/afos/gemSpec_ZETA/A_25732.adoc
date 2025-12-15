@@ -1,4 +1,0 @@
-[#A_25732]
-==== A_25732 - ZETA Client - Unterstützung des Nutzers bei der Registrierung
-
-Der mobile ZETA Client MUSS den Nutzer bei der Clientregistrierung und -Verwaltung geeignet unterstützen (z. B. mittels Guide, Tutorial o. ä.).

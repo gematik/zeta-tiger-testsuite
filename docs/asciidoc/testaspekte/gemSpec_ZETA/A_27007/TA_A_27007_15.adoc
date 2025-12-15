@@ -1,16 +1,18 @@
 [#TA_A_27007_15]
 ===== TA_A_27007_15 - ZETA Client - HTTP Statuscodes - Clientregistrierung - 400 Bad Request
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Clientregistrierung** |
-+++[...]+++
-**400 Bad Request**: Fehlerhafte Anfrage, z.B. ungültige oder unvollständige Clientdaten. Der Client sollte die übermittelten Registrierungsdaten überprüfen und mögliche Fehler beheben, bevor er erneut versucht, sich zu registrieren.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Clientregistrierung** | +++[...]+++ +++<br />+++**400 Bad Request**: Fehlerhafte Anfrage, z.B. ungültige oder unvollständige Clientdaten. Der Client sollte die übermittelten Registrierungsdaten überprüfen und mögliche Fehler beheben, bevor er erneut versucht, sich zu registrieren. +++<br />+++[...] |
+
 |===
-+++[...]+++"
+
++++[...]+++

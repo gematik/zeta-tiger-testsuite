@@ -1,6 +1,8 @@
 [#TA_A_27798_02]
-===== TA_A_27798_02 - Service Discovery - Authorization Server Well-known Endpunkt bereitstellen
+===== TA_A_27798_02 - ZETA Guard, Service Discovery - well-known Endpunkt AuthS-FQDN
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+"Der ZETA Guard MUSS die **Well JSON Dokumente** für die Service Discovery **gemäß Abbildung *Abb_Service_Discovery* bereitstellen**.
 
-Der ZETA Guard MUSS das Authorization Server Well-known JSON Dokument für die Service Discovery bereitstellen.
++++[...]+++ **[<=]"**
+
+Hier:  '/.well-known/oauth-authorization-server' Host: AuthS-FQDN

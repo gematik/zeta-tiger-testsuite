@@ -1,9 +1,10 @@
 ==== Testaspekte für die Anforderung A_25760
 
-Diese Testaspekte testen <<A_25760>>.
+Folgende Testaspekte testen <<A_25760>>.
 
 include::TA_A_25760_01.adoc[]
 
 include::TA_A_25760_02.adoc[]
 
 include::TA_A_25760_03.adoc[]
+

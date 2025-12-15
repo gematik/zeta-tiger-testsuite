@@ -17,3 +17,8 @@ include::TA_A_25795_06.adoc[]
 include::TA_A_25795_07.adoc[]
 
 include::TA_A_25795_08.adoc[]
+
+include::TA_A_25795_09.adoc[]
+
+include::TA_A_25795_10.adoc[]
+

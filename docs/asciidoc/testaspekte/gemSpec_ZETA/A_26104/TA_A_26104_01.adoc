@@ -1,0 +1,4 @@
+[#TA_A_26104_01]
+===== TA_A_26104_01 - ZETA Guard-Komponenten - Protokollieren von Änderungen - Zeitpunkt der Änderung
+
+"Die Komponenten des ZETA Guard MUSS **jede Änderung protokollieren**, einschließlich des **Zeitpunkts der Änderung** und des Administrators, der die Änderung vorgenommen hat. **[<=]"**

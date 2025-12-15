@@ -1,0 +1,14 @@
+[#TA_A_25644_06]
+===== TA_A_25644_06 - PDP Client-Registrierung mit SW Attestation / Linux
+
+Die Komponente Authorization Server MUSS die Clients/Apps bei der Registrierung über
+
+folgende Mechanismen attestieren:
+
+[ ... ]
+
+• Client signiertes Client Assertion JWT ([ ... ] Software Attestation
+
+für [ ... ] Linux Clients)
+
+[ ... ]

@@ -21,20 +21,24 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta;
+
+import lombok.Getter;
 
 /**
  * Tiger trace metrics as written by analysis CSV.
- * <p>
- * Columns present in the CSV: trace_id, path, e2e_ms, service_ms, middleware_overhead_ms,
+ *
+ * <p>Columns present in the CSV: trace_id, path, e2e_ms, service_ms, middleware_overhead_ms,
  * ingress_request_ms, ingress_response_ms, egress_request_ms, egress_response_ms, forward_ms,
  * return_ms
- * <p>
- * Notes on calculations: forward_ms  = egress_request_ms  - ingress_request_ms service_ms  =
+ *
+ * <p>Notes on calculations: forward_ms  = egress_request_ms  - ingress_request_ms service_ms  =
  * egress_response_ms - egress_request_ms return_ms   = ingress_response_ms - egress_response_ms
  * e2e_ms      = ingress_response_ms - ingress_request_ms middleware_overhead_ms = e2e_ms -
  * (forward_ms + service_ms + return_ms)
  */
+@Getter
 public enum TigerMetric {
 
   /**
@@ -68,16 +72,13 @@ public enum TigerMetric {
    */
   MIDDLEWARE_OVERHEAD_MS("middleware_overhead_ms");
 
+  /**
+   * -- GETTER -- Returns the exact CSV column name.
+   */
   private final String columnName;
 
   TigerMetric(String columnName) {
     this.columnName = columnName;
   }
 
-  /**
-   * Returns the exact CSV column name.
-   */
-  public String getColumnName() {
-    return columnName;
-  }
 }

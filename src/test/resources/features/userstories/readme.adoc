@@ -1,6 +1,0 @@
-
-Es wurden auf Basis der zu testenden Anforderung einige User-Stories definiert, welche Use-Cases beinhalten, denen wiederum Testaspekte zugeordnet werden können.
-
-include::smoke/readme.adoc[]
-
-include::UserStory_01/readme.adoc[]

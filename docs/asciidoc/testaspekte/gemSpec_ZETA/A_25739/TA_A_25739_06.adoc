@@ -1,0 +1,19 @@
+[#TA_A_25739_06]
+===== TA_A_25739_06 - PDP, Open Policy Agent Instanzen - korrekte Konfiguration bundles authz - Sim Instanz
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+
+Tabelle 7: OPA - Konfiguration
+
+|===
+
+| **Konfiguration** | **Aktive OPA Instanz** | **Simulations-OPA Instanz** |
+| --- | --- | --- |
+| **[...]** |  |  |
+| **bundles:** +++<br />+++  **authz:** +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**service:** <service name> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**resource:** <path> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**persist:** true +++<br />+++ | **[...]**+++<br />+++ | **<path>** +++<br />+++Durch das label latest-sim wird die neueste bundle.tar.gz Datei für die Simulations-Instanz der Policy Engine heruntergeladen. +++<br />+++Default: +++<br />+++**/policies/<TI service>/latest-sim** |
+| **[...]** |  |  |
+
+|===
+
+**[<=]**

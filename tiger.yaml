@@ -1,17 +1,35 @@
-# minimum viable test environment specification
-# default local Tiger Proxy
-tigerProxy:
-# no server nodes
-servers: { }
-
 lib:
-#  activateWorkflowUi: true # default is false
-#  trafficVisualization: true # default is false
-#  runTestsOnStart: false # default is true
+#  activateWorkflowUi: true                  # default is false – enables the Tiger Workflow UI
+#  addCurlCommandsForRaCallsToReport: true   # default is true – adds curl commands for RA calls to HTML report
+#  clearEnvironmentStartupTraffic: true      # default is true – clears startup traffic after environment init
+#  createRbelHtmlReports: true               # default is true – generates RBel HTML reports after test run
+#  enableTestManagementRestApi: false        # default is false – exposes REST API for managing test runs
+#  enableTestSelection: true                 # default is false – allows selection of tests in Workflow UI
+#  javaHome: ""                              # default is system Java – overrides JVM for Tiger library
+#  pauseExecutionTimeoutSeconds: 60          # default is 60 – timeout for pause steps before auto-continue
+  rbelAnsiColors: true                      # default is true – enables ANSI color output in logs
+#  rbelLogoFilePath: ""                      # default is empty – optional path to custom logo in reports
+#  rbelPathDebugging: false                  # default is false – enables detailed RBelPath debug output
+#  runTestsOnStart: false                    # default is true – automatically runs tests when Tiger starts
+#  startBrowser: true                        # default is true – opens Workflow UI in browser when started
+#  trafficVisualization: true                # default is false – enables sequence diagram in Workflow UI
+#  workflowUiPort: 8080                      # default is 8080 – port for the Workflow UI
+#  workflowUiStartTimeoutInSeconds: 120      # default is 120 – wait time for UI startup before timeout
+
+rbel:                                       # default is 5 – request wait timeout
+  request:
+    timeout: 20
 
 additionalConfigurationFiles:
-  - filename: defaults.yaml
-  - filename: demoData.yaml
-    baseKey: demo
-  - filename: tiger-${environment}.yaml
+  - filename: tiger/defaults.yaml
+  - filename: tiger/tiger-${zeta_proxy}.yaml
+  - filename: tiger/tiger-${environment}.yaml
     baseKey: tiger
+  - filename: tiger/paths.yaml
+    baseKey: paths
+  - filename: tiger/eRezeptTestData.yaml
+    baseKey: eRezeptTestData
+  - filename: tiger/regex.yaml
+    baseKey: regex
+  - filename: tiger/tokens.yaml
+    baseKey: tokens

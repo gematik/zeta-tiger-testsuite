@@ -1,6 +1,12 @@
 [#TA_A_27798_04]
-===== TA_A_27798_04 - Service Discovery - Authorization Server Well-known - schemakonform
+===== TA_A_27798_04 - ZETA Guard, Service Discovery - well-known Dokument schemakonform - AuthS-FQDN
 
-*Dieser Testaspekt testet einen Teil der Anforderung <<A_27798>>.*
+"Der ZETA Guard MUSS die Well JSON Dokumente für die Service Discovery gemäß Abbildung *Abb_Service_Discovery* bereitstellen.
++++[...]+++
+Das **Authorization Server** Well-known JSON Dokument MUSS **mit dem Schema [as-well-known.yaml]** validiert werden können.
 
-Das Authorization Server Well-known JSON Dokument MUSS mit dem Schema [as-well-known.yaml] validiert werden können.
+**[<=]"**
+
+siehe auch:
+
+<https://raw.githubusercontent.com/gematik/zeta/main/src/schemas/as-well-known.yaml>

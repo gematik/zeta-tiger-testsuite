@@ -1,0 +1,6 @@
+[#TA_A_25739_01]
+===== TA_A_25739_01 - PDP, Open Policy Agent Instanzen - Senden von Policy Decision an AS - aktive Instanz
+
+"Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei **eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz)**, und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+
+[...]"

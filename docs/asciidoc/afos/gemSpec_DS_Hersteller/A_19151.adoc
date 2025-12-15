@@ -1,4 +1,0 @@
-[#A_19151]
-==== A_19151 - Implementierungsspezifische Sicherheitsanforderungen
-
-Der Hersteller eines Produktes MUSS während der Entwicklung des Produktes implementierungsspezifische Sicherheitsanforderungen dokumentieren und umsetzen.

@@ -1,0 +1,227 @@
+[#UC_01_01]
+== UseCase_01_01: Client initiale registrierung stationaer SC 201
+
+.UseCase_01_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client initiale registrierung stationaer SC 201
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *Konnektor / TI-Gateway*
+- *PDP Authorization Server*
+- *PDP Datenbank*
+- *PDP Policy Engine*
+
+| Auslöser: |
+Ein MA einer LEI registriert einen stationären ZETA Client erstmalig in der Client-Registry des ZETA Guard.
+
+| Kurzbeschreibung: |
+Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte.
+Dieser Prozess ist zweistufig und findet einmalig pro ZETA Guard-Instanz statt.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist noch nicht beim ZETA Guard registriert.
+
+| Nebenbedingung: |
+Es wird *HTTP/1.1* verwendet. (<<TA_A_26640_01>>)
+
+| Ablauf: |
+1. Der MA startet im ZETA Client die Abfrage des *Service Directorys*.
+2. Der ZETA Client ruft den well-known Endpunkt des Resource Servers auf:
+- ``GET /.well-known/oauth-protected-resource Host: <RS-FQDN> HTTP/1.1``
+3. Der Resource Server antwortet mit ``200 OK`` und liefert das well-known JSON Dokument (<<RFC9728, RFC 9728>>).
+4. Der ZETA Client aktualisiert seine Konfiguration für den Resource Server und den ZETA Guard.
+5. Der ZETA Client ruft den well-known Endpunkt des Authorization Servers auf:
+- ``GET /.well-known/oauth-authorization-server Host: <AuthS-FQDN> HTTP/1.1``
+6. Der Authorization Server antwortet mit ``200 OK`` und liefert das well-known JSON Dokument (<<RFC8414, RFC 8414>>).
+7. Der ZETA Client aktualisiert seine Konfiguration für den Authorization Server.
+8. Der ZETA Client meldet dem MA, dass die Konfiguration überprüft und aktualisiert wurde.
+9. Der MA startet die *initiale Registrierung* im ZETA Client.
+10. Der ZETA Client generiert ein *Client Instance Key Pair*.
+11. Der ZETA Client sendet eine *Dynamic Client Registration (DCR)* an den PDP Authorization Server (``POST /register HTTP/1.1``), mit:
++
+.DCR-Request
+[source,json]
+----
+{
+"client_name": "myClient",
+"grant_types": [
+"urn:ietf:params:oauth:grant-type:token-exchange",
+"refresh_token"
+],
+"jwks": {
+"keys": [<Client_Instance_Public_Key_JWK>]
+},
+"token_endpoint_auth_method": "private_key_jwt"
+}
+----
++
+
+12. Der PDP Authorization Server erzeugt eine neue ``client_id``.
+13. Der PDP Authorization Server legt in der PDP Datenbank einen *Client Placeholder* an (``state: pending_attestation``).
++
+.Store Client Placeholder:
+[source,txt]
+----
+- client_id
+- client_name
+- public_key_jwks
+- ...
+- state: pending_attestation
+----
++
+
+14. Die PDP Datenbank bestätigt die Speicherung.
+15. Der PDP Authorization Server gibt eine *201 Created Response* mit ``client_id`` zurück an den ZETA Client.
++
+.DCR Response Body:
+[source,json]
+----
+{
+"client_id": "<client_id>",
+"client_id_issued_at": "<timestamp>",
+"..." :  "..."
+}
+----
++
+
+16. Der ZETA Client meldet die positive *initiale Registrierung* des Clients an den MA.
+
+| Nachbedingung: |
+Der stationäre ZETA Client besitzt eine ``client_id`` und ein zugehöriges Schlüsselpaar.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_18464_01>>
+* <<TA_A_21275-01_01>>
+* <<TA_A_21275-01_02>>
+* <<TA_A_21275-01_05>>
+* <<TA_A_21275-01_06>>
+* <<TA_A_25340_01>>
+* <<TA_A_25340_02>>
+* <<TA_A_25340_03>>
+* <<TA_A_25340_04>>
+* <<TA_A_25340_05>>
+* <<TA_A_25340_06>>
+* <<TA_A_25340_07>>
+* <<TA_A_25340_09>>
+* <<TA_A_25733_01>>
+* <<TA_A_25748_01>>
+* <<TA_A_25748_02>>
+* <<TA_A_25760_02>>
+* <<TA_A_25794_01>>
+* <<TA_A_25794_02>>
+* <<TA_A_25794_03>>
+* <<TA_A_25794_04>>
+* <<TA_A_25794_05>>
+* <<TA_A_25794_06>>
+* <<TA_A_25794_07>>
+* <<TA_A_25794_08>>
+* <<TA_A_25794_09>>
+* <<TA_A_25794_10>>
+* <<TA_A_25795_01>>
+* <<TA_A_25795_02>>
+* <<TA_A_25795_03>>
+* <<TA_A_25795_04>>
+* <<TA_A_25795_05>>
+* <<TA_A_25795_06>>
+* <<TA_A_25795_07>>
+* <<TA_A_25795_08>>
+* <<TA_A_25795_09>>
+* <<TA_A_25795_10>>
+* <<TA_A_25796_01>>
+* <<TA_A_25796_02>>
+* <<TA_A_25796_03>>
+* <<TA_A_25796_04>>
+* <<TA_A_25796_05>>
+* <<TA_A_25796_06>>
+* <<TA_A_25796_07>>
+* <<TA_A_25796_08>>
+* <<TA_A_25796_09>>
+* <<TA_A_25796_10>>
+* <<TA_A_25796_11>>
+* <<TA_A_25796_12>>
+* <<TA_A_25796_13>>
+* <<TA_A_25796_14>>
+* <<TA_A_25796_15>>
+* <<TA_A_25796_16>>
+* <<TA_A_25796_17>>
+* <<TA_A_25796_18>>
+* <<TA_A_25796_19>>
+* <<TA_A_25796_20>>
+* <<TA_A_25796_21>>
+* <<TA_A_25796_22>>
+* <<TA_A_25796_23>>
+* <<TA_A_25796_24>>
+* <<TA_A_25796_25>>
+* <<TA_A_25796_26>>
+* <<TA_A_25796_27>>
+* <<TA_A_25796_28>>
+* <<TA_A_25796_29>>
+* <<TA_A_25796_30>>
+* <<TA_A_26585_01>>
+* <<TA_A_26587_01>>
+* <<TA_A_26587_05>>
+* <<TA_A_26587_09>>
+* <<TA_A_26640_01>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_14>>
+* <<TA_A_27266_01>>
+* <<TA_A_27266_02>>
+* <<TA_A_27798_01>>
+* <<TA_A_27798_02>>
+* <<TA_A_27798_03>>
+* <<TA_A_27798_04>>
+* <<TA_A_27799_01>>
+* <<TA_A_27853_06>>
+* <<TA_GS-A_5526_01>>
+* <<TA_GS-A_5542_01>>
+* <<TA_GS-A_5542_02>>
+
+|===
+
+[#usecase_01_01_sequence]
+[mermaid,usecase-01-01-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-AS as PDP Authorization<br>Server
+    participant PDP-DB as PDP Datenbank
+
+    MA->>+ZC: MA startet Abfrage des Service Directorys.
+    ZC->>+PEP-HP: GET /.well-known/oauth-protected-resource Host: <RS-FQDN> HTTP/1.1
+    PEP-HP-->>-ZC: 200 OK, JSON body with well-known JSON document (RFC9728)
+    ZC->>ZC: Aktualisierung von Konfiguration für Resource Server und ZETA Guard
+    ZC->>+PDP-AS: GET /.well-known/oauth-authorization-server Host: <AuthS-FQDN> HTTP/1.1
+    PDP-AS-->>-ZC: 200 OK, JSON body with well-known JSON document (RFC8414)
+
+    ZC->>ZC: Aktualisierung von Konfiguration für Authorisation Server
+    ZC-->>-MA: ZETA Client Konfiguration aktualisiert
+
+    MA->>+ZC: Teil1: initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register HTTP/1.1
+    PDP-AS->>PDP-AS: Generiere client_id
+    PDP-AS->>+PDP-DB: Speichere Client-Platzhalter
+    PDP-DB-->>-PDP-AS: Client-Platzhalter erstellt
+    PDP-AS-->>-ZC: 201 Created: Client erfolgreich registriert
+    ZC-->>-MA: Client ist initial registriert
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+- Komponententests und Integrationstests in einer gemeinsamen Datei:
+
+[source]
+----
+include::Client_initiale_registrierung_stationaer_SC_201.feature[]
+----

@@ -1,0 +1,50 @@
+[#UC_01_10]
+== UseCase_01_10: Client authentisierung und autorisierung client attest SC 200
+
+.UseCase_01_10
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client authentisierung und autorisierung client attest SC 200
+
+| Akteur: |
+TODO
+
+| weitere Akteure: |
+TODO
+
+| Auslöser: |
+TODO
+
+| Kurzbeschreibung: |
+TODO
+
+| Vorbedingung: |
+TODO
+
+| Nebenbedingung: |
+TODO
+
+| Ablauf: |
+TODO
+
+| Nachbedingung: |
+TODO
+
+| Abgedeckte Testaspekte: |
+TODO
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    %% TODO
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+TODO
+----

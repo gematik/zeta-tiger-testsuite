@@ -1,0 +1,4 @@
+[#TA_A_25794_07]
+===== TA_A_25794_07 - ZETA Guard-Komponenten - Implementierung von Health Checks - Management Service
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

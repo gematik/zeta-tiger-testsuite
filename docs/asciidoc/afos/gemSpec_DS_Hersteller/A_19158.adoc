@@ -1,4 +1,0 @@
-[#A_19158]
-==== A_19158 - Sicherheitsschulung für Entwickler
-
-Der Hersteller eines Produktes MUSS alle Entwickler des Produktes in sicherer Entwicklung und Secure-Coding-Techniken schulen.

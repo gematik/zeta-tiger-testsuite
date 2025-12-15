@@ -1,8 +1,0 @@
-[#A_26943]
-==== A_26943 - ZETA/ASL-Server, Nichtproduktivumgebung, Ablehnung von nonPU-Chiffraten in der PU
-
-Ein ZETA/ASL-Server in der Produktivumgebung MUSS äußere HTTPS-Request, die im Request-Header eine Variable "ZETA/ASL-nonPU-Tracing" enthalten, mit einer HTTP-Fehlermeldung 403-Forbidden beantworten.
-Der ZETA/ASL-Server MUSS sicherstellen, dass der innere Request (Chiffrat im Request-Body des äußeren Requests) nicht an einen Resource-Server weitergereicht wird.
-Ein ZETA/ASL-Server in der Produktivumgebung, die am Chiffrat am nonPU/PU-Byte erkennt (vgl.
-A_26927-*), dass es sich um ein nonPU-Chiffrat handelt, MUSS den Request mit einer Fehlermeldung an die äußere Schicht des Aktensystems (Webschnittstelle) beantworten.
-Der ZETA/ASL-Server MUSS sicherstellen, dass das Chiffrat nicht entschlüsselt und das Chiffrat sicher gelöscht wird.

@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_25650
+
+Folgende Testaspekte testen <<A_25650>>.
+
+include::TA_A_25650_01.adoc[]
+
+include::TA_A_25650_02.adoc[]
+

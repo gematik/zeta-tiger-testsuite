@@ -8,7 +8,8 @@ Ziel ist es, dass wir von Implementierung-Tickets aus dem Jira-Backlog Test-Tick
 
 Der Workflow könnte folgendermaßen abgebildet werden:
 
-[mermaid]
+[#jira_youtrack_ticket_flow]
+[mermaid,jira-youtrack-ticket-flow,svg]
 ....
 flowchart TD
 %% Lanes

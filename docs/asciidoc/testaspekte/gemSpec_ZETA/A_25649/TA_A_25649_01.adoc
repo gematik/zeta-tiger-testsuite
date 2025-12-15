@@ -1,0 +1,18 @@
+[#TA_A_25649_01]
+===== TA_A_25649_01 - PDP Authorization Server - Regelmäßige Wiederholung der  Attestation - nach Ablauf des ersten Refresh Token
+
+"Die Komponente **Authorization Server** SOLL die **Client-Attestierung für jede neue Session**
+
+**verlangen.**[<=]
+
+Hinweis: Eine **Session** des Authorization Servers ist gültig vom Zeitpunkt **t1 =**
+
+**(Ausstellungszeitpunkt des ersten Refresh Token nach vollständiger Authentifizierung) bis**
+
+**zum Zeitpunkt t2 = t1 + (Gültigkeitsdauer des ersten Refresh Token)**. Bei mobilen Clients
+
+werden für die Attestation Services des mobilen Betriebssystems verwendet, die ein Rate
+
+Limit haben können. In diesem Fall kann die Attestation eventuell nicht für jede neue
+
+Session widerholt werden."

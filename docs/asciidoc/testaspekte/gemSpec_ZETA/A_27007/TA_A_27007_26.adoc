@@ -1,16 +1,18 @@
 [#TA_A_27007_26]
 ===== TA_A_27007_26 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 403 Forbidden
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **HTTP Proxy** |
-+++[...]+++
-**403 Forbidden**: Zugriff auf die angeforderte Ressource durch den Proxy verweigert. Der Client darf keine weiteren Anfragen an diese Ressource senden und soll den Nutzer über die fehlende Berechtigung informieren.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**403 Forbidden**: Zugriff auf die angeforderte Ressource durch den Proxy verweigert. Der Client darf keine weiteren Anfragen an diese Ressource senden und soll den Nutzer über die fehlende Berechtigung informieren.+++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

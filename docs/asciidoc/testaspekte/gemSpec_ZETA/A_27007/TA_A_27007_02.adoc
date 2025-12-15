@@ -1,16 +1,18 @@
 [#TA_A_27007_02]
 ===== TA_A_27007_02 - ZETA Client - HTTP Statuscodes - Authentifizierung - Client Assertion - 400 Bad Request
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Authentifizierung mit Client Assertion JWT** |
-+++[...]+++
-**400 Bad Request**: Fehlerhafte oder ungültige JWT-Assertion (z.B. falsches Format oder fehlende Claims). Der Client sollte die JWT-Assertion auf Fehler prüfen (z.B. Format, fehlende Claims) und die Anfrage entsprechend korrigieren oder erneut senden.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Authentifizierung mit Client Assertion JWT** | +++[...]+++ +++<br />+++**400 Bad Request**: Fehlerhafte oder ungültige JWT-Assertion (z.B. falsches Format oder fehlende Claims). Der Client sollte die JWT-Assertion auf Fehler prüfen (z.B. Format, fehlende Claims) und die Anfrage entsprechend korrigieren oder erneut senden. +++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

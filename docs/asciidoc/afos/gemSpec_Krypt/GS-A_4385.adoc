@@ -1,4 +1,0 @@
-[#GS-A_4385]
-==== GS-A_4385 - TLS-Verbindungen, Version 1.2
-
-Alle Produkttypen, die Übertragungen mittels TLS durchführen, MÜSSEN die TLS-Version 1.2 [RFC-5246] unterstützen.

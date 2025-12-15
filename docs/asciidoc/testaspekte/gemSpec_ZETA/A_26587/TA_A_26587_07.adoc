@@ -1,8 +1,0 @@
-[#TA_A_26587_07]
-===== TA_A_26587_07 - Operation delete für Client-Daten
-
-"Die Komponente PDP Datenbank MUSS Schnittstellen anbieten, sodass [...]
-
-* der Authorization Server die Operationen create, retrieve, update und **delete** für Session-, User- und **Client**\-Daten ausführen kann,
-
-[...]"

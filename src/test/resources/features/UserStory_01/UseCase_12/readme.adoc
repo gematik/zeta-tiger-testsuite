@@ -1,0 +1,134 @@
+[#UC_01_12]
+== UseCase_01_12: Client ressource anfrage fachdienst SC 200
+
+.UseCase_01_12
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 200
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *PDP Datenbank*
+- *Resource Server*
+
+| Auslöser: |
+Ein MA einer LEI möchte über den ZETA Client eine geschützte Ressource abrufen und benutzen.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Dieser überprüft die Gültigkeit des Tokens und leitet die Anfrage bei erfolgreicher Prüfung an den Resource Server
+weiter.
+
+Der Client erhält daraufhin die angeforderte Ressource.
+
+| Vorbedingung: |
+Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert eine
+``client_id`` inkl. zugehörigem Schlüsselpaar.
+Der ZETA Client verfügt über eine bestehende Session mit zugehörigem Access- und Refresh-Token.
+
+| Nebenbedingung: |
+- Keine Bereitstellung von *PoPP-Token* für Ressourcenanfrage notwendig. <<A_26477>>
+- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492>>
+- Es wird *HTTP/3* verwendet. (<<TA_A_26640_03>>)
+- Es werden Websocket-Verbindungen für die Ressourcenanfragen seitens ZETA Client & PEP HTTP Proxy verwendet. <<A_26639>> <<A_26195>>
+
+| Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+4. Der PEP HTTP Proxy prüft das *Access Token*.
+5. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+6. Der PEP HTTP Proxy ruft zusätzliche und noch nicht gecachte *Datensätze von der PDP Datenbank* ab.
+- *User-Info*
+7. Die PDP Datenbank liefert ``200 OK`` mit den angeforderten Daten.
+8. Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
+
+* *ZETA-User-Info*:
+** Format: ``Base64-URL kodierte JSON Struktur des User-Info Inhalts``
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/user-info.yaml[user-info.yaml]
+
+9. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter:
+* ``GET /resource``-Anfrage
+** mit vorhandenen HTTP header
+** zusätzlich erstellte PEP HTTP Header als JSON
+10. Der Resource Server antwortet mit ``200 OK`` und der angeforderten Ressource.
+11. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
+12. Der ZETA Client liefert die Ressource an den MA.
+
+| Nachbedingung: |
+Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25660_02>>
+* <<TA_A_25669_01>>
+* <<TA_A_25669_04>>
+* <<TA_A_25669_07>>
+* <<TA_A_25669_08>>
+* <<TA_A_25669_09>>
+* <<TA_A_25762_04>>
+* <<TA_A_25767_02>>
+* <<TA_A_26195_01>>
+* <<TA_A_26492_01>>
+* <<TA_A_26492_02>>
+* <<TA_A_26493_01>>
+* <<TA_A_26493_02>>
+* <<TA_A_26560_01>>
+* <<TA_A_26561_01>>
+* <<TA_A_26561_02>>
+* <<TA_A_26587_13>>
+* <<TA_A_26589_01>>
+* <<TA_A_26639_01>>
+* <<TA_A_26640_03>>
+* <<TA_A_26661_01>>
+* <<TA_A_26666_01>>
+* <<TA_A_27007_21>>
+* <<TA_A_27265_01>>
+* <<TA_A_27265_02>>
+* <<TA_A_27399_01>>
+* <<TA_A_27853_01>>
+* <<TA_A_27853_02>>
+
+|===
+
+[#usecase_01_12_sequence]
+[mermaid,usecase-01-12-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-DB as PDP Datenbank
+    participant RS as Resource Server
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: HTTP/3 GET /resource
+
+
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP->>+PDP-DB: Anfrage von Nutzer-Daten
+    PDP-DB-->>-PEP-HP: 200 OK, Daten für Header
+    PEP-HP->>PEP-HP: Erzeugen zusätzlicher Header
+    PEP-HP->>+RS: Weiterleiten GET /Ressource
+    RS-->>-PEP-HP: 200 OK, Ressource
+    PEP-HP-->>-ZC: 200 OK, Ressource
+    ZC-->>-MA: Ressource
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::Client_ressource_anfrage_fachdienst_SC_200.feature[]
+----

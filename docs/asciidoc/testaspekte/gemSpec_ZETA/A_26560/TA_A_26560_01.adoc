@@ -1,0 +1,5 @@
+[#TA_A_26560_01]
+===== TA_A_26560_01 - PEP HTTP Proxy - Weiterleitungskonfiguration - Request URLs RS
+
+Der PEP HTTP Proxy MUSS es ermöglichen, dass **Regeln für die Weiterleitung von Request URLs an die URLs von Resource Servern** konfiguriert werden können.
+**[<=]**

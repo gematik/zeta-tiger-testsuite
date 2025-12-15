@@ -1,0 +1,11 @@
+[#A_25665]
+==== A_25665 - PDP Authorization Server - Plugin-Schnittstelle Application Authorization Backend
+
+Die Komponente Authorization Server MUSS eine Plug-In Schnittstelle (per Webhook) zu einem anwendungsspezifischen Authorization Backend implementieren und dabei die folgenden Signale und Informationen aus der erhaltenen Zugriffsanfrage weiterreichen.
+
+ Tabelle #: PDP Authorization Server - Plugin-Schnittstelle Application 
+Authorization Backend
+
+Operation Operation Kennung Input Output Benachrichtigung über die Ablehnung des Zugriffs durch PDP notifiyAccessDenied Trace-Id Subject-Information Client-Information PDP-Decision - Anwendungsspezifische Autorisierung authorizeAccess Trace-Id Session-Id Authorization-Scopes Authorization-Details Subject-Information Client-Information PDP-Decision Zugriff erlauben Ja/Nein Zusätzliche Authorization Scopes Zusätzliche Authorization Details Zusätzliche Claims
+
+Benachrichtigung über abgelaufene oder terminierte Sessions notifySessionTermination Trace-Id Session-Id -

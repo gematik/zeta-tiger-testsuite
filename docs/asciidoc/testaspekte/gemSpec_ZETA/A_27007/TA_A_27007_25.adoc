@@ -1,16 +1,18 @@
 [#TA_A_27007_25]
 ===== TA_A_27007_25 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 401 Unauthorized
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **HTTP Proxy** |
-+++[...]+++
-**401 Unauthorized**: Fehlende oder ungültige Authentifizierung.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**401 Unauthorized**: Fehlende oder ungültige Authentifizierung.+++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]**"**

@@ -1,4 +1,0 @@
-[#A_26664]
-==== A_26664 - PDP - Durchsetzung der Policy-Konfiguration
-
-Der PDP MUSS sicherstellen, dass nur die in der Konfiguration festgelegten Eigenschaften angewendet werden, insbesondere Herkunft der Policies und Daten sowie Signaturprüfung der Policies und Daten.

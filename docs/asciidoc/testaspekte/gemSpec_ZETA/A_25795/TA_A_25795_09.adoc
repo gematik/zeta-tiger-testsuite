@@ -1,0 +1,11 @@
+[#TA_A_25795_09]
+===== TA_A_25795_09 - ZETA Guard-Komponenten - Automatische Antwort auf Health Check Anfragen - Ingress
+
+"Die Komponenten des ZETA Guard MUSS **automatisch auf Health Check Anfragen antworten** können, um ihre Funktionalität und Verfügbarkeit zu bestätigen. **[<=]"**
+
+
+
+Ergänzend:
+
+Hier geht es darum, das Endpunkte bereitstehen, welche die Anfragen automatisch beantworten.
+Inhaltliche Prüfung erfolgt in  *A_25796 - ZETA Guard-Komponenten - Bereitstellung von Zustandsinformationen*

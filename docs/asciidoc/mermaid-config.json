@@ -16,8 +16,9 @@
     "noteTextColor": "#1a1a1a",
     "actorBkg": "#E6EEF6",
     "actorTextColor": "#1a1a1a",
-    "sequenceNumberColor": "#005AA0"
+    "sequenceNumberColor": "#0D47A1"
   },
+  "themeCSS": ".sequenceNumber{fill:#0D47A1 !important;font-weight:600;}#sequencenumber circle{fill:#E6EEF6 !important;stroke:#0D47A1 !important;}",
   "flowchart": {
     "curve": "basis",
     "htmlLabels": true,

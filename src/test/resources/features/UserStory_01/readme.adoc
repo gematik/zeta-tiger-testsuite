@@ -1,0 +1,224 @@
+[#US_01]
+== UserStory_01: Client-Registrierung, Authentisierung/Autorisierung und Ressourcen-Anfrage (stationärer Client, OAuth Token Exchange)
+
+Als Nutzer aus dem Kontext LEI möchte ich mich mit meiner SMC-B am ZETA Guard anmelden, um mit dem Resource Server zu interagieren und geschützte Ressourcen anzufragen.
+
+Diese User Story besteht aus den folgenden Schritten:
+
+* Schritt 1: Registrierung
+* Schritt 2: Authentisierung/Autorisierung
+* Schritt 3: Abfrage Ressource
+
+'''
+
+=== Schritt 1: Registrierung
+
+Als Nutzer eines stationären ZETA Clients möchte ich diesen beim ZETA Guard initial registrieren, damit ich anschließend eine erste Aktivierung (Token Exchange) durchführen und den ZETA Client für Anfragen am ZETA Guard verwenden kann.
+
+[#userstory_01_step1_registration]
+[mermaid,userstory-01-step1-registration,svg]
+....
+sequenceDiagram
+    autonumber
+
+    participant ZC as ZETA Client
+    participant PDP-AS as ZETA Guard (PDP Authorization Server)
+    participant PDP-DB as ZETA Guard (PDP DB)
+
+    activate ZC
+    ZC->>ZC: Generierung des Schlüsselpaars für Registrierung
+    ZC->>+PDP-AS: Registrierungsanfrage
+    PDP-AS->>PDP-AS: Prüfung der Anfrage und Ausstellen von client_id bei Erfolg
+    PDP-AS->>+PDP-DB: Abspeichern der erfolgreichen Registrierung
+    PDP-DB-->>-PDP-AS: Speicherbestätigung
+    PDP-AS-->>-ZC: Registrierungsantwort
+    deactivate ZC
+....
+
+Beschreibung:
+
+. Generierung des Schlüsselpaars für Registrierung: Der ZETA Client generiert ein Schlüsselpaar, bestehend aus einem privaten und einem öffentlichen Schlüssel.
+
+. Registrierungsanfrage: Der ZETA Client übermittelt seine Registrierungsanfrage, inkl. öffentlichem Schlüssel und Metadaten, an den ZETA Guard (Authorization Server/PDP).
+
+. Prüfung der Anfrage und Ausstellen von ``client_id`` bei Erfolg: Der ZETA Guard prüft die Anfrage auf Gültigkeit und Authentizität.
+Bei Erfolg wird eine eindeutige ``client_id`` für den ZETA Client generiert.
+
+. Abspeichern der erfolgreichen Registrierung: Die erfolgreiche Registrierung wird mit der zugehörigen ``client_id`` in der PDP-Datenbank gespeichert.
+
+. Speicherbestätigung: Das erfolgreiche Speichern wird von der PDP-Datenbank bestätigt.
+
+. Registrierungsantwort: Der ZETA Guard sendet dem ZETA Client die Registrierungsantwort mit der vergebenen ``client_id`` oder im Fehlerfall eine Fehlermeldung.
+
+==== Akzeptanzkriterien:
+
+* Der Nutzer kann den Registrierungsprozess über den ZETA Client im Kontext der LEI initiieren.
+* Nach dem Registrierungsversuch liefert das System eine Rückmeldung über den Status, d.h. erfolgreich oder fehlgeschlagen.
+* Verläuft der Registrierungsversuch erfolgreich, so ist der ZETA Client am ZETA-Guard initial registriert.
+* Der Ablauf der Registrierung und Aktivierung ist nachvollziehbar protokolliert, einschließlich Erfolgen und Fehlern.
+
+==== Abgebildet durch folgende Use Cases:
+
+- <<UC_01_01>>
+- <<UC_01_02>>
+- <<UC_01_03>>
+- <<UC_01_04>>
+- <<UC_01_05>>
+
+=== Schritt 2: Authentisierung/Autorisierung
+
+Als Nutzer eines stationären Clients möchte ich mich mittels SMC-B am ZETA Guard authentisieren, damit ich anschließend eine Autorisierung für den Zugriff auf eine Ressource erhalte und diese Ressource abfragen kann.
+
+[#userstory_01_step2_auth]
+[mermaid,userstory-01-step2-auth,svg]
+....
+sequenceDiagram
+    autonumber
+
+    participant ZC as ZETA Client
+    participant ZG as ZETA Guard
+
+    ZC->>+ZG: Authentisierunganfrage mit SMC-B
+    ZG-->>ZC: Authentisierungantwort
+
+    ZC->>ZG: Autorisierungsanfrage für Ressource
+    ZG-->>-ZC: Autorisierungsantwort
+....
+
+Beschreibung:
+
+. Authentisierunganfrage mit SMC-B: Der ZETA Client nutzt die SMC-B, um eine Authentisierungsanfrage zu erstellen und sendet diese an den ZETA Guard.
+
+. Authentisierungsantwort: Der ZETA Guard prüft die Authentisierung und sendet eine Antwort zurück: erfolgreich oder fehlgeschlagen.
+
+. Autorisierungsanfrage für Ressource: Nach erfolgreicher Authentisierung stellt der ZETA Client eine Autorisierungsanfrage für den Zugriff auf eine bestimmte Ressource.
+
+. Autorisierungsantwort: Der ZETA Guard prüft anhand der vorgegebenen Berechtigungsregeln, ob der Zugriff auf die Ressource erlaubt ist und antwortet mit „erlaubt“, wenn der Zugriff erlaubt ist, oder „fehlgeschlagen“, wenn der Zugriff nicht erlaubt ist.
+Wenn der Zugriff erlaubt ist, stellt der ZETA Guard ein Zugriffstoken aus.
+
+==== Akzeptanzkriterien:
+
+* Der Nutzer kann mit einer SMC-B am ZETA Guard einen Authentisierungsversuch durchführen.
+* Nach dem Authentisierungsversuch liefert das System eine Rückmeldung über den Status, d.h. erfolgreich authentisiert oder fehlgeschlagen.
+* Bei einer Autorisierungsanfrage für eine Ressource liefert das System eine eindeutige Entscheidung, d.h. gewährt oder verweigert.
+* Der Nutzer erhält eine Rückmeldung, ob er berechtigt ist, die angefragte Ressource zu nutzen oder nicht.
+
+==== Abgebildet durch folgende Use Cases:
+
+- <<UC_01_06>>
+- <<UC_01_07>>
+- <<UC_01_08>>
+- <<UC_01_09>>
+- <<UC_01_10>>
+- <<UC_01_11>>
+- <<UC_01_25>>
+
+=== Schritt 3: Abfrage Ressource
+
+Als Nutzer eines stationären Clients möchte ich mit einer zuvor erlangten Berechtigung eine Ressource vom Resource Server anfragen, damit ich die Ressource erfolgreich beziehen und weiterverwenden kann.
+
+[#userstory_01_step3_resource]
+[mermaid,userstory-01-step3-resource,svg]
+....
+sequenceDiagram
+    autonumber
+
+    participant ZC as ZETA Client
+    participant ZG as ZETA Guard
+    participant RS as Resource Server
+
+    ZC->>+ZG: Ressourcenanfrage
+    ZG->>ZG: Berechtigungsprüfung
+    ZG->>+RS: pos. Prüfungsergebnis: Weiterleitung der Anfrage an FD
+    RS-->>-ZG: Übermittlung Ressource oder Fehler
+    ZG-->>-ZC: Übermittlung Ressource oder Fehler
+....
+
+Beschreibung:
+
+. Ressourcenanfrage: Der ZETA Client stellt beim ZETA Guard eine Anfrage für eine Ressource.
+
+. Berechtigungsprüfung: Der Guard prüft, ob der Client die nötige Berechtigung hat.
+
+. Weiterleitung bei Erfolg: Bei positiver Berechtigungsprüfung leitet der Guard die Anfrage an den Resource Server weiter.
+
+. Antwort: Fällt die Berechtigungsprüfung positiv aus, wird die angeforderte Ressource vom Resource Server bezogen und über den ZETA Guard an den ZETA Client übermittelt.
+Bei negativer Berechtigungsprüfung erhält der ZETA Client über den ZETA Guard eine entsprechende Fehlermeldung.
+
+==== Akzeptanzkriterien:
+
+* Der Nutzer verfügt über eine Berechtigung zur Ressourcennutzung, deren Gültigkeit vom System geprüft wird.
+* Mit dieser Berechtigung kann eine Anfrage an den Resource Server gestellt werden.
+* Der Resource Server liefert eine Rückmeldung zur Anfrage (d.h. Ressource erfolgreich zurückgeliefert oder Fehler).
+
+==== Abgebildet durch folgende Use Cases:
+
+- <<UC_01_12>>
+- <<UC_01_13>>
+- <<UC_01_14>>
+- <<UC_01_15>>
+- <<UC_01_16>>
+- <<UC_01_17>>
+- <<UC_01_18>>
+- <<UC_01_19>>
+- <<UC_01_20>>
+- <<UC_01_21>>
+- <<UC_01_22>>
+- <<UC_01_23>>
+- <<UC_01_24>>
+
+'''
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+include::UseCase_01/readme.adoc[]
+
+include::UseCase_02/readme.adoc[]
+
+include::UseCase_03/readme.adoc[]
+
+include::UseCase_04/readme.adoc[]
+
+include::UseCase_05/readme.adoc[]
+
+include::UseCase_06/readme.adoc[]
+
+include::UseCase_07/readme.adoc[]
+
+include::UseCase_08/readme.adoc[]
+
+include::UseCase_09/readme.adoc[]
+
+include::UseCase_10/readme.adoc[]
+
+include::UseCase_11/readme.adoc[]
+
+include::UseCase_12/readme.adoc[]
+
+include::UseCase_13/readme.adoc[]
+
+include::UseCase_14/readme.adoc[]
+
+include::UseCase_15/readme.adoc[]
+
+include::UseCase_16/readme.adoc[]
+
+include::UseCase_17/readme.adoc[]
+
+include::UseCase_18/readme.adoc[]
+
+include::UseCase_19/readme.adoc[]
+
+include::UseCase_20/readme.adoc[]
+
+include::UseCase_21/readme.adoc[]
+
+include::UseCase_22/readme.adoc[]
+
+include::UseCase_23/readme.adoc[]
+
+include::UseCase_24/readme.adoc[]
+
+include::UseCase_25/readme.adoc[]
+:leveloffset: -2

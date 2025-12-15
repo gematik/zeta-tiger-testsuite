@@ -1,4 +1,0 @@
-[#A_19164]
-==== A_19164 - Mitwirkungspflicht bei Sicherheitsprüfung
-
-Der Hersteller eines Produktes MUSS Sicherheitsprüfungen (z.B. Pentest) der gematik unterstützen.

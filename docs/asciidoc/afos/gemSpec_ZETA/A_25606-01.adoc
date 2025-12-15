@@ -1,6 +1,0 @@
-[#A_25606-01]
-==== A_25606-01 - Security Monitoring - Fehlermeldung bei Aktualisierung von PIP-Daten oder PDP-Policies
-
-ZETA Guard MUSS beim folgenden Fehler während der Aktualisierung der vom PIP und PAP Service heruntergeladenen Daten eine Fehlermeldung automatisiert über die von der gematik angebotene Schnittstelle an das TI SIEM-System übermittelen:
-* Policy Download Fehler ((HTTP Fehlercode: 400, 404)
-* Fehler bei der Integritätsprüfung der Policy-Signatur

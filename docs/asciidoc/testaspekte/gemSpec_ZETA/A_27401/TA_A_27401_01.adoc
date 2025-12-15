@@ -1,0 +1,10 @@
+[#TA_A_27401_01]
+===== TA_A_27401_01 - PDP Policy Engine - Decision Eigenschaften - schemakonform
+
+"Die PDP Policy Engine MUSS Decision-Anfragen mit einem **JSON Objekt nach dem Schema [pdp-decision.yaml] beantworten.** **[<=]"**
+
+
+
+siehe auch:
+
+<https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/pdp-decision.yaml>

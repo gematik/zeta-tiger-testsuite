@@ -1,0 +1,10 @@
+==== Testaspekte für die Anforderung A_26492
+
+Folgende Testaspekte testen <<A_26492>>.
+
+include::TA_A_26492_01.adoc[]
+
+include::TA_A_26492_02.adoc[]
+
+include::TA_A_26492_03.adoc[]
+

@@ -1,5 +1,0 @@
-[#A_26946]
-==== A_26946 - PEP HTTP Proxy - Verwaltung der ZETA/ASL-Kanal Schlüssel in der PEP Datenbank
-
-Die Komponente HTTP Proxy MUSS die ZETA/ASL-Kanal Schlüssel so verwalten (z.
-B. in der PEP Datenbank), dass für die Terminierung des ZETA/ASL-Kanals mehrere HTTP Proxy Instanzen genutzt werden können.

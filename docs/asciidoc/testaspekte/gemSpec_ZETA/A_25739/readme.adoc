@@ -1,0 +1,28 @@
+==== Testaspekte für die Anforderung A_25739
+
+Folgende Testaspekte testen <<A_25739>>.
+
+include::TA_A_25739_01.adoc[]
+
+include::TA_A_25739_02.adoc[]
+
+include::TA_A_25739_03.adoc[]
+
+include::TA_A_25739_04.adoc[]
+
+include::TA_A_25739_05.adoc[]
+
+include::TA_A_25739_06.adoc[]
+
+include::TA_A_25739_07.adoc[]
+
+include::TA_A_25739_08.adoc[]
+
+include::TA_A_25739_09.adoc[]
+
+include::TA_A_25739_10.adoc[]
+
+include::TA_A_25739_11.adoc[]
+
+include::TA_A_25739_12.adoc[]
+

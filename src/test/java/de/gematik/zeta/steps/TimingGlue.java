@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.steps;
 
 import de.gematik.rbellogger.data.RbelElement;
@@ -43,7 +44,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TimingGlue {
 
-
   /**
    * Helper to extract a required facet from an {@link RbelElement} or throw a concise assertion
    * error.
@@ -57,9 +57,8 @@ public class TimingGlue {
    */
   private static <T> T requireFacet(@NonNull RbelElement element, @NonNull Class<T> type,
       @NonNull String context) {
-    return element.getFacet(type)
-        .orElseThrow(
-            () -> new AssertionError("Missing " + type.getSimpleName() + " for " + context));
+    return element.getFacet(type).orElseThrow(
+        () -> new AssertionError("Missing " + type.getSimpleName() + " for " + context));
   }
 
   /**
@@ -108,8 +107,7 @@ public class TimingGlue {
   public void showResponseTimeOfCurrentMessagePair() {
     var messages = RbelMessageRetriever.getInstance().getRbelMessages();
     if (messages == null || messages.isEmpty()) {
-      throw new AssertionError(
-          "No RBEL messages recorded – cannot determine response time.");
+      throw new AssertionError("No RBEL messages recorded – cannot determine response time.");
     }
 
     var request = RbelMessageRetriever.getInstance().getCurrentRequest();
@@ -127,7 +125,6 @@ public class TimingGlue {
         "The current response took " + duration.toMillis() + " ms.");
   }
 
-
   /**
    * Finds the response message that belongs to a given request by inspecting the
    * {@link TracingMessagePairFacet} of the provided messages.
@@ -140,13 +137,9 @@ public class TimingGlue {
   public RbelElement findResponseForRequest(@NonNull List<RbelElement> messages,
       @NonNull RbelElement request) {
     return messages.isEmpty() ? null : messages.stream()
-        .map(m -> requireFacet(m, TracingMessagePairFacet.class,
-            "message " + m.getUuid()))
-        .filter(
+        .map(m -> requireFacet(m, TracingMessagePairFacet.class, "message " + m.getUuid())).filter(
             tracingMessagePairFacet -> tracingMessagePairFacet.getRequest().getUuid()
-                .equals(request.getUuid()))
-        .findFirst()
-        .map(TracingMessagePairFacet::getResponse)
+                .equals(request.getUuid())).findFirst().map(TracingMessagePairFacet::getResponse)
         .orElse(null);
   }
 
@@ -169,10 +162,9 @@ public class TimingGlue {
     var duration = Duration.between(requestTiming.getTransmissionTime(),
         responseTiming.getTransmissionTime());
 
-    log.info(
-        "Duration between request with UUID: {} and response with UUID: {} "
-            + "taken from Tiger Message logs is {} ms",
-        request.getUuid(), response.getUuid(), duration.toMillis());
+    log.info("Duration between request with UUID: {} and response with UUID: {} "
+            + "taken from Tiger Message logs is {} ms", request.getUuid(), response.getUuid(),
+        duration.toMillis());
 
     return duration;
   }

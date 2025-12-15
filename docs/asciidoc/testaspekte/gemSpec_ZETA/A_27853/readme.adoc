@@ -1,0 +1,20 @@
+==== Testaspekte für die Anforderung A_27853
+
+Folgende Testaspekte testen <<A_27853>>.
+
+include::TA_A_27853_01.adoc[]
+
+include::TA_A_27853_02.adoc[]
+
+include::TA_A_27853_03.adoc[]
+
+include::TA_A_27853_04.adoc[]
+
+include::TA_A_27853_05.adoc[]
+
+include::TA_A_27853_06.adoc[]
+
+include::TA_A_27853_07.adoc[]
+
+include::TA_A_27853_08.adoc[]
+

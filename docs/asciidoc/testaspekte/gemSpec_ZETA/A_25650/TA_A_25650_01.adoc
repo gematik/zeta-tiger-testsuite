@@ -1,0 +1,6 @@
+[#TA_A_25650_01]
+===== TA_A_25650_01 - PDP Client Registrierung - TI-Identität in Attestation - Bindung KVNR
+
+"Die Komponente **Authorization Server** MUSS den **registrierten Client an eine TI-Identität**
+
+(**KVNR** oder TelematikID, festgestellt während der Authentifizierung) **binden**.[<=]"

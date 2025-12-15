@@ -1,0 +1,10 @@
+[#TA_A_25662_02]
+===== TA_A_25662_02 - PDP Authorization Server - Refresh Token Rotation - einmalige Benutzung v. Refresh Token
+
+"Die Komponente Authorization Server MUSS eine Refresh Token Rotation gemäß
+
+[RFC6749#10.4] erzwingen und **MUSS sicherstellen, dass ein Refresh Token nur einmal**
+
+**gegen ein Access Token und ein Refresh Token getauscht werden kann.**
+
+[...]"

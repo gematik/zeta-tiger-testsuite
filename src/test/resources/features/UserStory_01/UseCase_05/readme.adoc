@@ -1,0 +1,50 @@
+[#UC_01_05]
+== UseCase_01_05: Client registrierung stationaer SC 409
+
+.UseCase_01_05
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client registrierung stationaer SC 409
+
+| Akteur: |
+TODO
+
+| weitere Akteure: |
+TODO
+
+| Auslöser: |
+TODO
+
+| Kurzbeschreibung: |
+TODO
+
+| Vorbedingung: |
+TODO
+
+| Nebenbedingung: |
+TODO
+
+| Ablauf: |
+TODO
+
+| Nachbedingung: |
+TODO
+
+| Abgedeckte Testaspekte: |
+TODO
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    %% TODO
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+TODO
+----

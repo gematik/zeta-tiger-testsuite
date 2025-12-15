@@ -1,5 +1,8 @@
 == Abgeleitete Testaspekte
 
-Es wurden einige Testaspekte aus den identifizierten Anforderungen generiert, die im Folgenden aufgeführt werden.
+Es wurden Testaspekte aus den identifizierten Anforderungen generiert, die im Folgenden aufgeführt werden.
+
+include::gemSpec_Krypt/readme.adoc[]
 
 include::gemSpec_ZETA/readme.adoc[]
+

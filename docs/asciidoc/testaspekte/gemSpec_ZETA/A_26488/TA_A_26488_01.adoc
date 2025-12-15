@@ -1,5 +1,6 @@
 [#TA_A_26488_01]
-===== TA_A_26488_01 - PEP HTTP Proxy - Last
+===== TA_A_26488_01 PEP HTTP Proxy - mehr als 300 Verbindungen und Requests pro Sekunde
 
-"Die Komponente PEP HTTP Proxy MUSS pro Pod mehr als 300 Websocket Verbindungen und mehr als 300 Requests pro Sekunde
-unterstützen können."
+"Die Komponente PEP HTTP Proxy MUSS **pro Pod** **mehr als 300** Websocket **Verbindungen**
+
+und mehr als 300 **Requests pro Sekunde** unterstützen können.[<=]"

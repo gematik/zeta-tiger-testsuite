@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_18464
+
+Folgende Testaspekte testen <<A_18464>>.
+
+include::TA_A_18464_01.adoc[]
+
+include::TA_A_18464_02.adoc[]
+

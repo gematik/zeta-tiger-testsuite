@@ -1,0 +1,116 @@
+[#UC_01_25]
+== UseCase_01_25: Client authentisierung und autorisierung refresh token without attest SC 403
+
+.UseCase_01_25
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client authentisierung und autorisierung refresh token without attest SC 403
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PDP Authorization Server*
+- *PDP Datenbank*
+- *PDP Policy Engine*
+- *Resource Server*
+
+| Auslöser: |
+Ein MA einer LEI möchte auf einen Resource Server zugreifen.
+
+| Kurzbeschreibung: |
+Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafür authentisieren
+und autorisieren, wobei bereits ein gültiges Refresh Token vorliegt.
+
+| Vorbedingung: |
+Der ZETA Client verfügt über ein gültiges Refresh-Token.
+
+| Nebenbedingung: |
+Das Access Token und der Client übermittelt daher das Refresh Token für den Request.
+
+| Ablauf: |
+1. MA startet *Authentisierung/Autorisierung-Prozess (Token-Erneuerung)* über den ZETA Client.
+2. Der ZETA Client erstellt eine Client Assertion ohne Attestierung auf Basis des vorhandenen Refresh Tokens.
+3. Der ZETA Client erzeugt ein *DPoP Proof JWT* für den Token Request.
++
+.Client Assertion für Refresh-Token-Nutzung:
+[source,json]
+----
+{
+  "iss": "< client_id >",
+  "sub": "< client_id >",
+  "aud": "< AS_Token_Endpoint_URL >",
+  "exp": ...,
+  "jti": "..."
+}
+----
++
+
+4. Der ZETA Client sendet den Token Request inklusive Refresh Token und Client Assertion an den PDP Authorization Server.
++
+.Token Exchange Request Body:
+[source,txt]
+----
+grant_type=refresh_token
+&refresh_token=<Refresh_Token>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<Client_Assertion_JWT_without_Attestation>
+----
++
+
+5. Der PDP Authorization Server validiert den Request:
+- Client Assertion
+- DPoP Proof
+- Refresh Token
+6. Bei einer erfolgreichen Validierung des Requests invalidiert der PDP Authorization Server das alte Refresh Token.
+7. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
+- ``POST /v1/data/authz`` mit Input-Parametern (u.a. Refresh-Token, Session- und Nutzer-Daten).
+8. Die PDP Policy Engine antwortet: ``Refresh Token invalid``
+9. Der PDP Authorization Server erstellt kein neues Refresh Token und antwortet mit ``403 Forbidden``.
+10. MA wird vom ZETA Client über den verweigerten Zugriff informiert.
+
+| Nachbedingung: |
+Der MA ist nicht authentisiert und nicht autorisiert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25660_06>>
+
+|===
+
+[#usecase_01_25_sequence]
+[mermaid,usecase-01-25-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PDP-AS as PDP Authorization<br>Server
+    participant PDP-DB as PDP Datenbank
+    participant PDP-PE as PDP Policy Engine
+
+    MA->>+ZC: Starte Zugriff auf Resource Server
+    ZC->>ZC: Erzeuge Client Assertion<br>(JWT) (ohne Attestierung)
+
+    ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
+    ZC->>+PDP-AS: POST /token DPoP: <signed_dpop_jwt>
+
+    PDP-AS->>PDP-AS: Validiere Request
+    PDP-AS->>PDP-AS: Invalidiere Refresh Token
+
+    PDP-AS->>+PDP-PE: POST /v1/data/authz
+    PDP-PE->>-PDP-AS: Refresh Token Invalid
+
+    PDP-AS->>-ZC: 403 Forbidden
+
+    ZC->>-MA: "Zugriff nicht gestattet"
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// TODO: include::client_authentisierung_und_autorisierung_refresh_token_without_attest_sc_200.feature[]
+----

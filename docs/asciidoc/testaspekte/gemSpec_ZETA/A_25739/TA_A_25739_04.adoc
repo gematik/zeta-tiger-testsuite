@@ -1,0 +1,17 @@
+[#TA_A_25739_04]
+===== TA_A_25739_04 - PDP, Open Policy Agent Instanzen - korrekte Konfiguration Services - Sim Instanz
+
+"Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+
+Tabelle 7: OPA - Konfiguration
+
+|===
+
+| **Konfiguration** | **Aktive OPA Instanz** | **Simulations-OPA Instanz** |
+| --- | --- | --- |
+| **services:** +++<br />+++  **- name:** <service name> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**url:** <PIP und PAP service> | <service name> +++<br />+++Innerhalb der OPA Konfiguration verwendeter Service Name. +++<br />++++++<br />+++<PIP und PAP service> +++<br />+++Download-Endpunkt des PIP und PAP Servicees entsprechend der verwendeten Umgebung +++<br />+++Default:  +++<br />+++Produktions-Instanz: <https://pip-pap.ti-dienste.de>  +++<br />+++Referenz-Instanz: <https://pip-pap-ref.ti-dienste.de>  +++<br />+++Test-Instanz: <https://pip-pap-test.ti-dienste.de> | **wie aktive OPA Instanz** |
+
+|===
+
+**[<=]"**

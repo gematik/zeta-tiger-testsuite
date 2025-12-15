@@ -1,0 +1,12 @@
+[#TA_A_25644_02]
+===== TA_A_25644_02 - PDP Client-Registrierung mit Apple DCAppAttest
+
+Die Komponente Authorization Server MUSS die Clients/Apps bei der Registrierung über
+
+folgende Mechanismen attestieren:
+
+[ ... ]
+
+• Apple DCAppAttest.
+
+[ ... ]

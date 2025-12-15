@@ -1,0 +1,18 @@
+[#TA_A_26972_03]
+===== TA_A_26972_03 - PDP Authorization Server - Nutzer-Daten aus der SM(C)-B - professionOID
+
+Die Komponente Authorization Server MUSS im Falle der +++SM(C)-B+++ Authentifizierung die **folgenden Daten aus dem +++SM(C)-B+++ Zertifikat auslesen** und als Nutzer-Daten gemäß [user-info.yaml] **in der PDP Datenbank speichern**:
+
+Tabelle 10: +++SM(C)-B+++_Nutzer-Daten
+
+|===
+
+| **+++SM(C)-B+++ Daten (C.HCI.OSIG gemäß [gemSpec_PKI])** | **Nutzer-Daten gemäß [user-info.yaml]** | **Beschreibung** |
+| --- | --- | --- |
+| [...] |  |  |
+| Extension Admission, professionOID | **professionOID** | OID der Institution gemäß [gemSpec_OID#GS-A_4443-*] |
+| [...] |  |  |
+
+|===
+
+**[<=]**

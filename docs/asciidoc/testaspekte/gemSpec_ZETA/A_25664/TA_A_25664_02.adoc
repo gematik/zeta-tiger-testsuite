@@ -1,0 +1,4 @@
+[#TA_A_25664_02]
+===== TA_A_25664_02 - PDP Authorization Server - Refresh Token Laufzeit gemäß Policy
+
+"Die Komponente Authorization Server MUSS die **Laufzeit** der ausgegebenen **Token** entsprechend der Festlegungen aus der getroffenen **Zugriffsentscheidung der Policy Engine** setzen. **[<=]"**

@@ -1,16 +1,18 @@
 [#TA_A_27007_24]
 ===== TA_A_27007_24 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 400 Bad Request
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **HTTP Proxy** |
-+++[...]+++
-**400 Bad Request**: Ungültige Anfrage an den Proxy. Der Client sollte die Anfrage überprüfen und sicherstellen, dass sie korrekt formatiert und vollständig ist, bevor er sie erneut sendet.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**400 Bad Request**: Ungültige Anfrage an den Proxy. Der Client sollte die Anfrage überprüfen und sicherstellen, dass sie korrekt formatiert und vollständig ist, bevor er sie erneut sendet.+++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

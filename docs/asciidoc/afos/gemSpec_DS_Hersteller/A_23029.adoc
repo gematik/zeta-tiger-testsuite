@@ -1,6 +1,0 @@
-[#A_23029]
-==== A_23029 - Bereitstellung von Updates abhängig von der Kritikalität der Schwachstellen
-
-Hersteller von TI-Produkten SOLLEN bewertete Software-Schwachstellen innerhalb der folgenden maximalen Behebungszeit schließen.
-
-CVSS (bewertet) Behebungszeit 10-9 Schnellstmöglich, Individualvereinbarung 8,9-7 1 Monat 6,9-5 quartalsweise <5 Regelpatchzyklus

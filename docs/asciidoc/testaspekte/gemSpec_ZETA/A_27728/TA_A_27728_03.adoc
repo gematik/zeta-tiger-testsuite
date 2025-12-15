@@ -1,0 +1,4 @@
+[#TA_A_27728_03]
+===== TA_A_27728_03 - ZETA Guard, Telemetrie-Daten Service, Konfigurierbarkeit der Lieferintervalle - Konfigurative Änderung
+
+Der Telemetrie-Daten Service im ZETA Guard MUSS eine Anpassung der Lieferintervalle in einer ausgelagerten Konfiguration ermöglichen. Möglich sind Intervalle von sofort bis 5 Minuten. **Änderungen** des Lieferintervalls **MÜSSEN konfigurativ** durchgeführt werden können. **[<=]**

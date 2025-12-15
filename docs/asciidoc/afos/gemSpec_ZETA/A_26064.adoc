@@ -1,4 +1,0 @@
-[#A_26064]
-==== A_26064 - Access Token bei Monitoring-Signalen sperren
-
-Falls das Monitoring System eine Änderung in den Kommunikationsmerkmalen signalisiert, muss der PDP das aktuelle Access Token sperren.

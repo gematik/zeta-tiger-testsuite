@@ -1,4 +1,0 @@
-[#A_22985]
-==== A_22985 - Bereitstellung der Bewertung von Schwachstellen gegenüber der gematik
-
-Hersteller von Produkten der TI MÜSSEN der gematik und den einsetzenden Anbietern gegenüber den CVS-Score sowie den Bewertungsvektor bei Bedarf und auf Nachfrage zur Verfügung stellen.

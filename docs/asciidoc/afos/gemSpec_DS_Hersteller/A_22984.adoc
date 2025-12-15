@@ -1,5 +1,0 @@
-[#A_22984]
-==== A_22984 - Unverzügliche Bewertung von Schwachstellen
-
-Hersteller von Produkten der TI MÜSSEN erkannte Software-Schwachstellen in den von Ihnen entwickelten Produkten der TI unverzüglich nach dem international etablierten Standard Common Vulnerability Scoring System (CVSS) in der jeweils aktuellen Fassung bewerten.
-Hierbei MUSS eine Reaktionszeit von <24h zur Bewertung der Schwachstellen an Werktagen sowie Bewertung der Schwachstellen an Wochenenden und Feiertagen von <72h gewährleistet werden.

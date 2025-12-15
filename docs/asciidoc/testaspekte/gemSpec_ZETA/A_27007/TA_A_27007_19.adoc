@@ -1,15 +1,18 @@
 [#TA_A_27007_19]
 ===== TA_A_27007_19 - ZETA Client - HTTP Statuscodes - Clientregistrierung - 429 Too Many Requests
-"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. *[\<=]*
+
+"Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 5: ZT_HTTP_Statuscodes
 
 +++[...]+++
-[caption=]
-.Tabelle 5: ZT_HTTP_Statuscodes
-[options="header"]
+
 |===
-| **Endpunkte** | **HTTP Statuscodes** 
-| **Alle Endpunkte** |
-**429 Too Many Requests**: Zu viele Anfragen innerhalb eines bestimmten Zeitraums (Rate Limiting). Der Client sollte die Anzahl der Anfragen reduzieren und eine geeignete Wartezeit (Retry-After Header beachten) einhalten, bevor er die Anfrage erneut sendet.
-+++[...]+++
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Alle Endpunkte**+++<br />+++ | **429 Too Many Requests**: Zu viele Anfragen innerhalb eines bestimmten Zeitraums (Rate Limiting). Der Client sollte die Anzahl der Anfragen reduzieren und eine geeignete Wartezeit (Retry-After Header beachten) einhalten, bevor er die Anfrage erneut sendet. +++<br />+++[...] |
+
 |===
-+++[...]+++"
+
+[...]"

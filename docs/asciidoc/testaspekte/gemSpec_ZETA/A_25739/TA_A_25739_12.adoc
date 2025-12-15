@@ -1,0 +1,18 @@
+[#TA_A_25739_12]
+===== TA_A_25739_12 - PDP, Open Policy Agent Instanzen - korrekte Konfiguration decision_logs - Sim Instanz
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+
+Tabelle 7: OPA - Konfiguration
+
+|===
+
+| **Konfiguration** | **Aktive OPA Instanz** | **Simulations-OPA Instanz** |
+| --- | --- | --- |
+| **[...]** |  |  |
+| **decision_logs:**+++<br />+++  **service:** <service name>+++<br />+++  **resource:** ${DL_REMOTE_URL}+++<br />+++  **reporting:**+++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**min_delay_seconds:** <min>+++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**max_delay_seconds:** <max> | ${DL_REMOTE_URL}+++<br />+++Die URL des Remote Servers, zu dem die decision logs gesendet werden. Dieser Parameter wird per environment Variable übergeben, sodass jeder Anbieter des ZETA Guard bei Bedarf seinen eigenen Server angeben kann, der die decision logs empfängt.+++<br />+++<min>+++<br />+++Minimale Verzögerung bis zum nächsten Versand.+++<br />+++Default: 300+++<br />+++<max>+++<br />+++Maximale Verzögerung bis zum nächsten Versand.+++<br />+++Default: 360 | **wie aktive OPA Instanz** |
+
+|===
+
+**[<=]**

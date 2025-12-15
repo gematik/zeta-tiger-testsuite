@@ -4,233 +4,46 @@ Auf Basis der folgenden Versionen der Dokumente findet die Gestaltung und Abdeck
 
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_DS_Hersteller/gemSpec_DS_Hersteller_V1.7.0[Spezifikation Datenschutz- und Sicherheitsanforderungen der TI an Hersteller], Kurzbezeichnung: gemSpec_DS_Hersteller, Version: 1.7.0
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/gemSpec_ZETA_V1.1.0[Spezifikation Zero Trust Access (ZETA)], Kurzbezeichnung: gemSpec_ZETA, Version: 1.1.0
+* https://gemspec.gematik.de/docs/gemKPT/gemKPT_Test/gemKPT_Test_V3.1.0[Testkonzept der TI], Kurzbezeichnung: gemKPT_Test, Version: 3.1.0
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.40.2[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur], Kurzbezeichnung: gemSpec_Krypt, Version: 2.40.2
 
-Hierbei wurden die folgenden abzuprüfenden Anforderungen laut https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.1.0_V1.0.0/[Verzeichnis von Anforderungen: Zero Trust Access (ZETA) Guard], Kurzbezeichnung: gemVZ_Afo_ZETA_Guard, Version: 1.1.0, identifiziert:
+Hierbei wurden die folgenden abzuprüfenden Anforderungen laut https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.1.0_V1.0.0/[Verzeichnis von Anforderungen: Zero Trust Access (ZETA) Guard] identifiziert:
 
-=== Anforderung aus gemSpec_DS_Hersteller
+=== Anforderungen gemVZ AFO ZETA Guard (Produkttest 3.1.1)
 
-include::gemSpec_DS_Hersteller/A_17178.adoc[]
+==== Testkonzept der TI (gemKPT_Test V3.1.0)
 
-include::gemSpec_DS_Hersteller/A_17179.adoc[]
+include::gemKPT_Test/A_27438.adoc[]
 
-include::gemSpec_DS_Hersteller/A_19147.adoc[]
+include::gemKPT_Test/TIP1-A_6519.adoc[]
 
-include::gemSpec_DS_Hersteller/A_19148.adoc[]
+include::gemKPT_Test/TIP1-A_6519-01.adoc[]
 
-include::gemSpec_DS_Hersteller/A_19150.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19151.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19152.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19153.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19154.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19155.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19156.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19157.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19158.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19159.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19160.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19163.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19164.adoc[]
-
-include::gemSpec_DS_Hersteller/A_19165.adoc[]
-
-include::gemSpec_DS_Hersteller/A_22984.adoc[]
-
-include::gemSpec_DS_Hersteller/A_22985.adoc[]
-
-include::gemSpec_DS_Hersteller/A_22986.adoc[]
-
-include::gemSpec_DS_Hersteller/A_23029.adoc[]
-
-include::gemSpec_DS_Hersteller/A_23445.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_2330-02.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_2350-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_2354-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_2525-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_4944-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_4945-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_4946-01.adoc[]
-
-include::gemSpec_DS_Hersteller/GS-A_4947-01.adoc[]
-
-=== Anforderung aus gemSpec_Krypt
-
-include::gemSpec_Krypt/A_17124-03.adoc[]
-
-include::gemSpec_Krypt/A_17322.adoc[]
-
-include::gemSpec_Krypt/A_17775.adoc[]
+==== Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur (gemSpec_Krypt V2.40.2)
 
 include::gemSpec_Krypt/A_18464.adoc[]
 
-include::gemSpec_Krypt/A_18467.adoc[]
-
-include::gemSpec_Krypt/A_18986.adoc[]
-
 include::gemSpec_Krypt/A_21275-01.adoc[]
 
-include::gemSpec_Krypt/A_26920.adoc[]
-
-include::gemSpec_Krypt/A_26921.adoc[]
-
-include::gemSpec_Krypt/A_26922.adoc[]
-
-include::gemSpec_Krypt/A_26923.adoc[]
-
-include::gemSpec_Krypt/A_26924.adoc[]
-
-include::gemSpec_Krypt/A_26925.adoc[]
-
-include::gemSpec_Krypt/A_26926.adoc[]
-
-include::gemSpec_Krypt/A_26927.adoc[]
-
-include::gemSpec_Krypt/A_26928.adoc[]
-
-include::gemSpec_Krypt/A_26929.adoc[]
-
-include::gemSpec_Krypt/A_26930.adoc[]
-
-include::gemSpec_Krypt/A_26931.adoc[]
-
-include::gemSpec_Krypt/A_26932.adoc[]
-
-include::gemSpec_Krypt/A_26933.adoc[]
-
-include::gemSpec_Krypt/A_26934.adoc[]
-
-include::gemSpec_Krypt/A_26935.adoc[]
-
-include::gemSpec_Krypt/A_26936.adoc[]
-
-include::gemSpec_Krypt/A_26937.adoc[]
-
-include::gemSpec_Krypt/A_26938.adoc[]
-
-include::gemSpec_Krypt/A_26939.adoc[]
-
-include::gemSpec_Krypt/A_26940.adoc[]
-
-include::gemSpec_Krypt/A_26941.adoc[]
-
-include::gemSpec_Krypt/A_26942.adoc[]
-
-include::gemSpec_Krypt/A_26943.adoc[]
-
-include::gemSpec_Krypt/GS-A_4357-02.adoc[]
-
-include::gemSpec_Krypt/GS-A_4359-02.adoc[]
-
-include::gemSpec_Krypt/GS-A_4361-02.adoc[]
-
-include::gemSpec_Krypt/GS-A_4367.adoc[]
-
-include::gemSpec_Krypt/GS-A_4368.adoc[]
-
 include::gemSpec_Krypt/GS-A_4384-03.adoc[]
-
-include::gemSpec_Krypt/GS-A_4385.adoc[]
-
-include::gemSpec_Krypt/GS-A_4387.adoc[]
-
-include::gemSpec_Krypt/GS-A_4393.adoc[]
-
-include::gemSpec_Krypt/GS-A_5016.adoc[]
-
-include::gemSpec_Krypt/GS-A_5035.adoc[]
-
-include::gemSpec_Krypt/GS-A_5322.adoc[]
 
 include::gemSpec_Krypt/GS-A_5526.adoc[]
 
 include::gemSpec_Krypt/GS-A_5542.adoc[]
 
-=== Anforderung aus gemSpec_ZETA
-
-include::gemSpec_ZETA/A_25335.adoc[]
-
-include::gemSpec_ZETA/A_25336.adoc[]
+==== Spezifikation Zero Trust Access (ZETA) (gemSpec_ZETA V1.1.0)
 
 include::gemSpec_ZETA/A_25337.adoc[]
 
 include::gemSpec_ZETA/A_25338.adoc[]
 
-include::gemSpec_ZETA/A_25339.adoc[]
-
 include::gemSpec_ZETA/A_25340.adoc[]
-
-include::gemSpec_ZETA/A_25400.adoc[]
-
-include::gemSpec_ZETA/A_25401.adoc[]
-
-include::gemSpec_ZETA/A_25402.adoc[]
-
-include::gemSpec_ZETA/A_25403.adoc[]
-
-include::gemSpec_ZETA/A_25404.adoc[]
-
-include::gemSpec_ZETA/A_25405.adoc[]
-
-include::gemSpec_ZETA/A_25406.adoc[]
-
-include::gemSpec_ZETA/A_25407.adoc[]
-
-include::gemSpec_ZETA/A_25409.adoc[]
-
-include::gemSpec_ZETA/A_25410.adoc[]
-
-include::gemSpec_ZETA/A_25411.adoc[]
-
-include::gemSpec_ZETA/A_25412.adoc[]
-
-include::gemSpec_ZETA/A_25421.adoc[]
-
-include::gemSpec_ZETA/A_25427.adoc[]
 
 include::gemSpec_ZETA/A_25432.adoc[]
 
 include::gemSpec_ZETA/A_25434.adoc[]
 
-include::gemSpec_ZETA/A_25445.adoc[]
-
-include::gemSpec_ZETA/A_25447.adoc[]
-
-include::gemSpec_ZETA/A_25449.adoc[]
-
-include::gemSpec_ZETA/A_25450.adoc[]
-
-include::gemSpec_ZETA/A_25451.adoc[]
-
 include::gemSpec_ZETA/A_25453.adoc[]
-
-include::gemSpec_ZETA/A_25484-01.adoc[]
-
-include::gemSpec_ZETA/A_25485-01.adoc[]
-
-include::gemSpec_ZETA/A_25486.adoc[]
-
-include::gemSpec_ZETA/A_25490.adoc[]
-
-include::gemSpec_ZETA/A_25606-01.adoc[]
 
 include::gemSpec_ZETA/A_25644.adoc[]
 
@@ -252,8 +65,6 @@ include::gemSpec_ZETA/A_25657.adoc[]
 
 include::gemSpec_ZETA/A_25658.adoc[]
 
-include::gemSpec_ZETA/A_25659.adoc[]
-
 include::gemSpec_ZETA/A_25660.adoc[]
 
 include::gemSpec_ZETA/A_25661.adoc[]
@@ -264,11 +75,7 @@ include::gemSpec_ZETA/A_25663.adoc[]
 
 include::gemSpec_ZETA/A_25664.adoc[]
 
-include::gemSpec_ZETA/A_25666.adoc[]
-
-include::gemSpec_ZETA/A_25667.adoc[]
-
-include::gemSpec_ZETA/A_25668.adoc[]
+include::gemSpec_ZETA/A_25665.adoc[]
 
 include::gemSpec_ZETA/A_25669.adoc[]
 
@@ -278,13 +85,7 @@ include::gemSpec_ZETA/A_25671.adoc[]
 
 include::gemSpec_ZETA/A_25674.adoc[]
 
-include::gemSpec_ZETA/A_25718.adoc[]
-
-include::gemSpec_ZETA/A_25732.adoc[]
-
 include::gemSpec_ZETA/A_25733.adoc[]
-
-include::gemSpec_ZETA/A_25734.adoc[]
 
 include::gemSpec_ZETA/A_25735.adoc[]
 
@@ -292,23 +93,9 @@ include::gemSpec_ZETA/A_25738.adoc[]
 
 include::gemSpec_ZETA/A_25739.adoc[]
 
-include::gemSpec_ZETA/A_25744.adoc[]
-
-include::gemSpec_ZETA/A_25745.adoc[]
-
-include::gemSpec_ZETA/A_25746.adoc[]
-
 include::gemSpec_ZETA/A_25748.adoc[]
 
-include::gemSpec_ZETA/A_25749.adoc[]
-
-include::gemSpec_ZETA/A_25750.adoc[]
-
-include::gemSpec_ZETA/A_25751.adoc[]
-
 include::gemSpec_ZETA/A_25752.adoc[]
-
-include::gemSpec_ZETA/A_25754.adoc[]
 
 include::gemSpec_ZETA/A_25758.adoc[]
 
@@ -324,14 +111,6 @@ include::gemSpec_ZETA/A_25767.adoc[]
 
 include::gemSpec_ZETA/A_25768.adoc[]
 
-include::gemSpec_ZETA/A_25769.adoc[]
-
-include::gemSpec_ZETA/A_25770.adoc[]
-
-include::gemSpec_ZETA/A_25771.adoc[]
-
-include::gemSpec_ZETA/A_25774.adoc[]
-
 include::gemSpec_ZETA/A_25783.adoc[]
 
 include::gemSpec_ZETA/A_25784.adoc[]
@@ -339,8 +118,6 @@ include::gemSpec_ZETA/A_25784.adoc[]
 include::gemSpec_ZETA/A_25785.adoc[]
 
 include::gemSpec_ZETA/A_25786.adoc[]
-
-include::gemSpec_ZETA/A_25787.adoc[]
 
 include::gemSpec_ZETA/A_25788.adoc[]
 
@@ -358,27 +135,13 @@ include::gemSpec_ZETA/A_25798.adoc[]
 
 include::gemSpec_ZETA/A_25799.adoc[]
 
-include::gemSpec_ZETA/A_25800.adoc[]
-
-include::gemSpec_ZETA/A_25802.adoc[]
-
-include::gemSpec_ZETA/A_26038.adoc[]
-
-include::gemSpec_ZETA/A_26064.adoc[]
-
 include::gemSpec_ZETA/A_26104.adoc[]
 
 include::gemSpec_ZETA/A_26195.adoc[]
 
-include::gemSpec_ZETA/A_26269.adoc[]
-
 include::gemSpec_ZETA/A_26281.adoc[]
 
 include::gemSpec_ZETA/A_26477.adoc[]
-
-include::gemSpec_ZETA/A_26479-01.adoc[]
-
-include::gemSpec_ZETA/A_26480.adoc[]
 
 include::gemSpec_ZETA/A_26486.adoc[]
 
@@ -395,12 +158,6 @@ include::gemSpec_ZETA/A_26491.adoc[]
 include::gemSpec_ZETA/A_26492.adoc[]
 
 include::gemSpec_ZETA/A_26493.adoc[]
-
-include::gemSpec_ZETA/A_26517.adoc[]
-
-include::gemSpec_ZETA/A_26519.adoc[]
-
-include::gemSpec_ZETA/A_26521.adoc[]
 
 include::gemSpec_ZETA/A_26560.adoc[]
 
@@ -428,23 +185,15 @@ include::gemSpec_ZETA/A_26661.adoc[]
 
 include::gemSpec_ZETA/A_26662.adoc[]
 
-include::gemSpec_ZETA/A_26664.adoc[]
-
 include::gemSpec_ZETA/A_26666.adoc[]
 
 include::gemSpec_ZETA/A_26668.adoc[]
 
 include::gemSpec_ZETA/A_26669.adoc[]
 
-include::gemSpec_ZETA/A_26681.adoc[]
-
 include::gemSpec_ZETA/A_26944.adoc[]
 
 include::gemSpec_ZETA/A_26945.adoc[]
-
-include::gemSpec_ZETA/A_26946.adoc[]
-
-include::gemSpec_ZETA/A_26947.adoc[]
 
 include::gemSpec_ZETA/A_26964.adoc[]
 
@@ -468,15 +217,11 @@ include::gemSpec_ZETA/A_27265.adoc[]
 
 include::gemSpec_ZETA/A_27266.adoc[]
 
-include::gemSpec_ZETA/A_27385.adoc[]
-
 include::gemSpec_ZETA/A_27399.adoc[]
 
 include::gemSpec_ZETA/A_27401.adoc[]
 
 include::gemSpec_ZETA/A_27492-01.adoc[]
-
-include::gemSpec_ZETA/A_27494-01.adoc[]
 
 include::gemSpec_ZETA/A_27496.adoc[]
 
@@ -486,25 +231,12 @@ include::gemSpec_ZETA/A_27727.adoc[]
 
 include::gemSpec_ZETA/A_27728.adoc[]
 
-include::gemSpec_ZETA/A_27797.adoc[]
-
 include::gemSpec_ZETA/A_27798.adoc[]
-
-include::gemSpec_ZETA/A_27799.adoc[]
-
-include::gemSpec_ZETA/A_27800.adoc[]
 
 include::gemSpec_ZETA/A_27802.adoc[]
 
-include::gemSpec_ZETA/A_27806.adoc[]
-
-include::gemSpec_ZETA/A_27851.adoc[]
-
 include::gemSpec_ZETA/A_27853.adoc[]
-
-include::gemSpec_ZETA/A_27864.adoc[]
 
 include::gemSpec_ZETA/A_27867.adoc[]
 
 include::gemSpec_ZETA/A_28144.adoc[]
-

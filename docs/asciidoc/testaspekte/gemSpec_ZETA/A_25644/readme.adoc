@@ -1,0 +1,18 @@
+==== Testaspekte für die Anforderung A_25644
+
+Folgende Testaspekte testen <<A_25644>>.
+
+include::TA_A_25644_01.adoc[]
+
+include::TA_A_25644_02.adoc[]
+
+include::TA_A_25644_03.adoc[]
+
+include::TA_A_25644_04.adoc[]
+
+include::TA_A_25644_05.adoc[]
+
+include::TA_A_25644_06.adoc[]
+
+include::TA_A_25644_07.adoc[]
+

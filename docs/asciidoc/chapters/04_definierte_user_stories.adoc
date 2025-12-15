@@ -1,4 +1,0 @@
-[#_definierte_user_stories]
-== Definierte User-Stories
-
-include::../../../src/test/resources/features/userstories/readme.adoc[]

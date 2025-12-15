@@ -1,4 +1,4 @@
 [#TA_A_25767_01]
 ===== TA_A_25767_01 - Clientkey in JWT für Authentifizierung
 
-"Das ZETA Client MUSS Private Key **JWT [RFC7521] und [RFC7523]** [...] Authentifizierung unterstützen."
+"Das ZETA Client MUSS Private Key **JWT [RFC7521] und [RFC7523]** [...] Authentifizierung unterstützen. **[<=]**"

@@ -7,3 +7,8 @@ include::TA_A_25762_01.adoc[]
 include::TA_A_25762_02.adoc[]
 
 include::TA_A_25762_03.adoc[]
+
+include::TA_A_25762_04.adoc[]
+
+include::TA_A_25762_05.adoc[]
+

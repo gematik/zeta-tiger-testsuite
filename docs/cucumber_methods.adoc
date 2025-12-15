@@ -1,0 +1,33 @@
+== Cucumber Methoden — Referenz (Deutsch ↔ Englisch)
+
+____
+
+Diese Datei dokumentiert die in der Testumgebung verfügbaren *Cucumber*-Schritte in ihrer deutschen Formulierung, ihre englischen Entsprechungen und Beispiel-Verwendung. +
+Ziel: Entwickler:innen und Testautor:innen sollen TGR-Steps direkt aus den Feature-Dateien nutzen können, ohne eigene Glue-Klassen zu schreiben.
+
+____
+
+=== Kurzüberblick und Hinweise zur Benutzung
+
+* *Cucumber*-Steps sind Testschritte, die vom Runner / Glue zur Verfügung gestellt werden. Es sollten alle Schritte sowohl in einer englischen und in einer deutschen Variante existieren.
+* Platzhalter wie `${free.port.1}` oder `${tiger.ports.name}` kommen typischerweise aus `tiger.yaml` und werden zur Laufzeit aufgelöst.
+* Wo möglich: nutze TGR-Schritte statt eigener Java-Glue-Logik — das reduziert Boilerplate und erhöht Lesbarkeit.
+
+=== Automatisch generierte Projektschritte (Cucumber Glue)
+
+Die projektspezifischen Glue-Schritte (Deutsch/Englisch) werden aus den Cucumber-Annotationen unter `src/test/java` ausgelesen.
+Aktualisiere die Tabelle nach neuen oder geänderten Steps mit:
+
+[source,bash]
+----
+uv run --project docs/scripts generate-cucumber-methods
+----
+
+Die generierte Tabelle liegt unter `docs/asciidoc/tables/cucumber_methods_table.adoc` und wird hier
+eingebunden:
+
+include::asciidoc/tables/cucumber_methods_table.adoc[]
+
+*Schlussbemerkung*
+
+Diese Referenz ist das zentrale Nachschlagewerk im Repository für alle TGR-Steps in deutschen Feature-Files.

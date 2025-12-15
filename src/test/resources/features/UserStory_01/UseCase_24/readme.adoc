@@ -1,0 +1,80 @@
+[#UC_01_24]
+== UseCase_01_24: Client_ressource_anfrage_Performance_SC_200
+
+.UseCase_01_24
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage Performance SC 200
+
+| Akteur: |
+*Mehrere MA einer LEI*
+
+| weitere Akteure: |
+- *PEP HTTP Proxy*
+- *Resource Server*
+
+| Auslöser: |
+Mehrere MA einer LEI fragen parallel eine Ressource an.
+
+| Kurzbeschreibung: |
+Das System ZETA Guard wird mit parallelen Anfragen mehrerer Nutzer belastet.
+Jeder Nutzer tritt mit einem gültigen Access Token an den ZETA Guard heran und fordert Ressourcen beim Resource Server an.
+Die Anfragen werden von ZETA Guard im angemessenen Zeitrahmen beantwortet.
+
+| Vorbedingung: |
+Die ZETA Clients sind alle registriert und authentisiert.
+Es liegt eine Autorisierung in Form eines Access Tokens für jede Ressource vor.
+Die optionale zusätzliche Verschlüsselung der Daten per ZETA/ASL wird nicht genutzt.
+
+| Ablauf: |
+1. Mehrere MA fordern über ihre ZETA Clients eine geschützte Ressource an.
+2. Die ZETA Clients senden ``GET /resource`` an den PEP HTTP Proxy und fügen die Access Tokens im Authorization Header hinzu.
+3. Der HTTP PEP Proxy prüft jedes Access Token und leitet valide Anfragen parallel an den Resource Server weiter.
+4. Der Resource Server stellt die Ressourcen bereit und antwortet mit ``200 OK`` inklusive Antwortdaten an den PEP.
+5. Der HTTP PEP Proxy empfängt alle Antworten und leitet sie zurück an die ZETA Clients.
+6. Die ZETA Clients liefern die erhaltenen Ressourcen an die MA zurück.
+
+| Nebenbedingung: |
+Die Access Tokens dürfen nicht abgelaufen oder ungültig sein.
+
+| Nachbedingung: |
+Die Nutzer haben die Ressourcen zeitnah erhalten. Als Statuscode kommt ``200 OK`` zurück.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_26486_01>>
+* <<TA_A_26488_01>>
+* <<TA_A_26489_01>>
+* <<TA_A_26491_01>>
+* <<TA_A_26561_01>>
+* <<TA_A_26561_02>>
+* <<TA_A_26661_01>>
+* <<TA_A_27853_07>>
+
+|===
+
+[#usecase_01_24_sequence]
+[mermaid,usecase-01-24-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as Mehrere MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant RS as Resource Server
+
+    MA->>+ZC: Ressource anfragen
+    ZC->>+PEP-HP: GET /resource<br>Authorization: Bearer Access Token
+    PEP-HP->>+RS: Weiterleitung GET /resource<br>inkl. Access Token
+    RS-->>-PEP-HP: 200 OK<br>Antwortdaten
+    PEP-HP-->>-ZC: 200 OK<br>Antwortdaten
+    ZC-->>-MA: Erhalt der Ressource
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::Client_ressource_anfrage_Performance_SC_200.feature[]
+----

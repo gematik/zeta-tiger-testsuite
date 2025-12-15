@@ -1,6 +1,0 @@
-[#A_27800]
-==== A_27800 - ZETA Guard, Authentifizierung und Autorisierung für stationäre Clients
-
-Der ZETA Guard MUSS die Client-Registrierung für stationäre Clients gemäß AbbildungAbb_Authentifizierung_und_Autorisierung bereitstellen.
-
- Abbildung #: Abb_Authentifizierung_und_Autorisierung

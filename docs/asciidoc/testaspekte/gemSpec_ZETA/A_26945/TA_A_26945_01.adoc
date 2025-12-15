@@ -1,0 +1,20 @@
+[#TA_A_26945_01]
+===== TA_A_26945_01 - PDP Authorization Server - Refresh Token Inhalt
+
+"Die Komponente Authorization Server MUSS Refresh Token **mit Attributen gemäß [refresh-token.yaml]** ausstellen. **[<=]**
+
++++[...]+++
+
+#### 7.5.1 Dokumente der gematik
+
+Tabelle 17: Referenzierte Dokumente der gematik
+
+|===
+
+| **[Quelle]** +++<br />+++ | **Herausgeber: Titel** |
+| --- | --- |
+| [refresh-token.yaml] | Schema refresh-token.yaml  +++<br />+++<https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/refresh-token.yaml> |
+
+|===
+
+[...]"

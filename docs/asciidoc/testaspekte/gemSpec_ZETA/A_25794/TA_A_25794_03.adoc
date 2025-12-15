@@ -1,0 +1,4 @@
+[#TA_A_25794_03]
+===== TA_A_25794_03 - ZETA Guard-Komponenten - Implementierung von Health Checks - Authorization Server
+
+"Die Komponenten des ZETA Guard MUSS **Health Checks implementieren**, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.  **[<=]"**

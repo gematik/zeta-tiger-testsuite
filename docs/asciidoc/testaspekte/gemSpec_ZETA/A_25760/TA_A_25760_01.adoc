@@ -1,4 +1,11 @@
 [#TA_A_25760_01]
 ===== TA_A_25760_01 - PDP Authorization Server - OAuth2 Schnittstellen - OAuth2 konform
+
 "Der PDP Authorization Server MUSS eine OAuth2 Schnittstelle gemäß [**RFC6749**] und [RFC7636] implementieren.
-Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. *[\<=]*"
+Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. **[<=]"**
+
+
+
+siehe auch:
+
+[RFC 6749: The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)

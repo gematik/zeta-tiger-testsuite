@@ -1,5 +1,3 @@
-// encoding: UTF-8
-
 = Testplan ZETA
 achelos GmbH
 :doctype: book
@@ -17,6 +15,8 @@ achelos GmbH
 :sectlinks:
 :icons: font
 :source-highlighter: rouge
+:source-linenums-option:
+:source-language: gherkin
 :imagesdir: images
 :diagram-format: svg
 :mermaid-config: mermaid-config.json
@@ -35,7 +35,7 @@ include::chapters/02_referenzen.adoc[]
 
 include::chapters/03_einleitung.adoc[]
 
-include::chapters/04_definierte_user_stories.adoc[]
+include::../../src/test/resources/features/readme.adoc[]
 
 include::chapters/05_zu_testende_merkmale.adoc[]
 

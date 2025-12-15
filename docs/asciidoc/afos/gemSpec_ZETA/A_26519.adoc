@@ -1,4 +1,0 @@
-[#A_26519]
-==== A_26519 - ZETA Guard, Unterstützung von Service-Mesh Lösungen
-
-Die Komponenten des ZETA Guard MÜSSEN es ermöglichen, dass Service-Mesh Lösungen zur Verwaltung der Komponenten eingesetzt werden können.

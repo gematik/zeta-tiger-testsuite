@@ -1,0 +1,15 @@
+[#TA_A_26493_01]
+===== TA_A_26493_01 - PEP HTTP Proxy - Umgang mit JWKS des Popp Servers - Verwendung JWKS für weitere Gültigkeitsdauer
+
+"Die Komponente HTTP Proxy MUSS, falls nach Ablauf der Gültigkeitsdauer für heruntergeladene JWKS des Popp Servers, **kein neues JWKS heruntergeladen werden kann**,
+
+* das bestehende **JWKS des Popp Servers für eine weitere Gültigkeitsdauer nutzen** und
+* [...]
+
+**[<=]"**
+
+
+
+siehe auch:
+
+<https://gemspec.gematik.de/prereleases/Draft_PoPP_25_1/gemSpec_PoPP_Service_V1.0.0_CC2/#A_26449> (Gültigkeit JWKS 24H)

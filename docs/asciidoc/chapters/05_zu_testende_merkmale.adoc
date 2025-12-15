@@ -1,6 +1,30 @@
 == Zu testende Merkmale
 
+=== Zuordnung von User Stories, Use Cases und Testaspekten
+
 Nachfolgend eine initiale Zuordnung der User Stories und Use Cases zu konkreten Testaspekten.
+Die Tabelle gruppiert die Use Cases unter der jeweiligen User Story und zeigt, welche Testaspekte aktuell mit Szenarien hinterlegt und zuletzt erfolgreich gelaufen sind.
 
 include::../tables/features_table.adoc[]
 
+=== Produktumsetzung vs. Testsuite-Abdeckung
+
+Diese Übersicht stellt den gemeldeten Umsetzungsstand den bereits durch die Testsuite abgedeckten Anforderungen gegenüber.
+Die Produktstatus-Angaben werden aus ``docs/asciidoc/tables/product_implementation.csv`` gelesen (Beispieldatei: ``docs/asciidoc/tables/product_implementation_example.csv``).
+Die CSV verwendet deutschsprachige Spaltenköpfe (``Anforderung``, optional ``Titel`` als Lesehilfe, ``umgesetzt``, ``Hinweis``); für den Umsetzungsstand bitte ``ja``, ``nein`` oder ``teilweise`` verwenden. Der optionale Titel wird von der Generierung ignoriert.
+Die Spalte „umgesetzt“ zeigt die gemeldete Implementierung, „getestet“ fasst die Testsuite-Abdeckung pro Anforderung zusammen und „Hinweise“ heben Differenzen oder fehlende Angaben hervor.
+
+include::../tables/product_gap_table.adoc[]
+
+=== Übersicht Produktumsetzung & Testsuite-Abdeckung
+
+Die folgende Übersicht verdichtet die Kombination aus gemeldetem Umsetzungsstand
+und Testsuite-Abdeckung. Die Grafik zeigt die Anteile, die Tabelle daneben nennt
+die exakten Zahlen.
+
+[mermaid,product-gap-summary,svg]
+....
+include::../diagrams/product-gap-summary.mmd[]
+....
+
+include::../tables/product_gap_summary.adoc[]

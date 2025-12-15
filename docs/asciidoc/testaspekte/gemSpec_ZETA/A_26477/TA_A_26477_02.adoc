@@ -1,0 +1,9 @@
+[#TA_A_26477_02]
+===== TA_A_26477_02 - PEP HTTP Proxy - PoPP Token Validierung - Gültigkeitsdauer seit Ausstellung
+
+"[...]
+
+Zusätzlich MUSS die Konfiguration **pro Endpunkt** unterstützen, dass die **Dauer der Gültigkeit des PoPP Token in Sekunden** **seit Ausstellung** und nach Ausstellungszeitpunkt und Prüfzeitpunkt innerhalb des gleichen Quartals eingestellt werden kann.
+
+[...]
+**[<=]"**

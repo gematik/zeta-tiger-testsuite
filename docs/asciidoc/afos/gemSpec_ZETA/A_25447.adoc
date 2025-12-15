@@ -1,4 +1,0 @@
-[#A_25447]
-==== A_25447 - PDP Authorization Server - Kommunikation nur mit authentischer Policy Engine
-
-Der PDP Authorization Server MUSS sicherstellen, dass er mit einer authentischen und korrekt konfigurierten Policy Engine kommuniziert.

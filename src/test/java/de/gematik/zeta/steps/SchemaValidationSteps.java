@@ -21,94 +21,128 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.steps;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
+import com.nimbusds.jwt.SignedJWT;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.Comparator;
-import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Step definitions for validating JSON instances against JSON/YAML schemas using the networknt JSON
  * Schema validator.
  */
+@Slf4j
 public class SchemaValidationSteps {
 
   private static final ObjectMapper JSON = new ObjectMapper();
-  private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
   /**
-   * JsonSchemaFactory for JSON Schema validation using the Draft 7 specification.
+   * Shared registry for loading schemas using the new networknt 2.x API with a Draft-7 default
+   * (used when a schema does not provide $schema).
    */
-  private static final JsonSchemaFactory FACTORY = JsonSchemaFactory.getInstance(
-      SpecVersion.VersionFlag.V7);
+  private static final SchemaRegistry SCHEMA_REGISTRY =
+      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
 
   /**
-   * Loads a YAML or JSON schema file from the classpath (resources directory).
+   * Loads a YAML schema file from the classpath (resources directory).
    *
-   * @param schemaPath relative path to the schema under {@code resources}
-   * @return parsed {@link JsonSchema} instance
-   * @throws IOException              if the schema cannot be read or parsed
-   * @throws IllegalArgumentException if the schema resource cannot be found
+   * @param schemaName name or relative path of the schema on the classpath
+   * @return {@link Schema} configured with the schema's base location
    */
-  private static JsonSchema loadSchemaFromClasspath(String schemaPath) throws IOException {
-    String cp = schemaPath.trim();
-    final String resource = cp.startsWith("/") ? cp.substring(1) : cp;
-
-    try (InputStream in = SchemaValidationSteps.class.getClassLoader()
-        .getResourceAsStream(resource)) {
-      if (in == null) {
-        throw new IllegalArgumentException(
-            "Schema not found in the path under resources: " + resource);
-      }
-      String schema = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      JsonNode schemaNode =
-          resource.endsWith(".json") ? JSON.readTree(schema) : YAML.readTree(schema);
-      return FACTORY.getSchema(schemaNode);
+  private Schema loadYamlSchema(String schemaName) {
+    var normalizedPath = schemaName.startsWith("/") ? schemaName.substring(1) : schemaName;
+    if (!normalizedPath.startsWith("schemas/")) {
+      normalizedPath = "schemas/v_1_0/" + normalizedPath;
     }
+
+    var resource = SchemaValidationSteps.class.getClassLoader().getResource(normalizedPath);
+    if (resource == null) {
+      throw new AssertionError("Schema not found on the classpath: " + normalizedPath);
+    }
+
+    var location = SchemaLocation.of("classpath:" + normalizedPath);
+    return SCHEMA_REGISTRY.getSchema(location);
+  }
+
+
+  /**
+   * Parses a JSON string.
+   *
+   * @param jsonString the input string
+   * @return {@link JsonNode}
+   */
+  private JsonNode parseJsonString(String jsonString) {
+    if (jsonString == null || jsonString.isBlank()) {
+      throw new AssertionError("JSON text to be validated is empty.");
+    }
+    JsonNode jsonNode;
+    try {
+      jsonNode = JSON.readTree(jsonString);
+    } catch (Exception parse) {
+      // If the input is longer than 300 characters, show only the beginning
+      var preview =
+          jsonString.length() > 300 ? jsonString.substring(0, 300) + " …" : jsonString;
+      throw new AssertionError("JSON could not be parsed:\n" + preview, parse);
+    }
+    return jsonNode;
   }
 
   /**
-   * Validates a JSON string against a given {@link JsonSchema}.
+   * Validates a JSON string against a given {@link Schema}.
+   *
+   * <p>With the soft option enabled, errors will be logged only and no exception is thrown.</p>
    *
    * <p>If the JSON is empty, cannot be parsed, or does not match the schema,
    * an {@link AssertionError} is thrown with a detailed error message.
    *
-   * @param schema       the JSON Schema to validate against
-   * @param jsonInstance the JSON string to validate
-   * @param schemaPath   identifier or path of the schema (used for error reporting)
+   * @param schema     the JSON Schema to validate against
+   * @param jsonNode   the JSON string to validate
+   * @param schemaPath identifier or path of the schema (used for error reporting)
+   * @param soft       if true, errors will only be logged.
    * @throws AssertionError if validation fails
    */
-  private static void assertValid(JsonSchema schema, String jsonInstance, String schemaPath) {
-    if (jsonInstance == null || jsonInstance.isBlank()) {
-      throw new AssertionError("JSON text to be validated is empty.");
-    }
-    JsonNode instance;
-    try {
-      instance = JSON.readTree(jsonInstance);
-    } catch (Exception parse) {
-      // If the input is longer than 300 characters, show only the beginning
-      String preview =
-          jsonInstance.length() > 300 ? jsonInstance.substring(0, 300) + " …" : jsonInstance;
-      throw new AssertionError("JSON could not be parsed:\n" + preview, parse);
-    }
+  private void assertValid(Schema schema, JsonNode jsonNode, String schemaPath, boolean soft) {
 
-    Set<ValidationMessage> errors = schema.validate(instance);
-    if (!errors.isEmpty()) {
-      StringBuilder sb = new StringBuilder("Schema validation failed (" + schemaPath + "):\n");
-      errors.stream()
-          .sorted(Comparator.comparing(ValidationMessage::getMessage))
-          .forEach(e -> sb.append(" - ").append(e.getMessage()).append("\n"));
-      throw new AssertionError(sb.toString());
+    try {
+      var errors = schema.validate(jsonNode);
+      if (!errors.isEmpty()) {
+        var sb = new StringBuilder(
+            "Validation against " + schemaPath + " failed with " + errors.size()
+                + " errors:\n");
+        errors.stream()
+            .sorted(Comparator.comparing(Error::getMessage))
+            .forEach(e -> {
+              sb.append(" - ").append(e.getMessage());
+              var path = e.getEvaluationPath();
+              if (path != null) {
+                sb.append(" [path: ").append(path).append("]");
+              }
+              sb.append("\n");
+            });
+        throw new AssertionError(sb.toString());
+      } else {
+        // Im Gutfall ist es egal, ob soft oder interrupting geprüft wird
+        log.info("Validation passed for schema {}", schemaPath);
+      }
+    } catch (AssertionError | RuntimeException ex) {
+      if (soft) {
+        log.warn("Soft validation failed for schema {}: {}", schemaPath, ex.getMessage());
+        SoftAssertionsContext.recordSoftFailure("Schema validation (soft) for " + schemaPath, ex);
+      } else {
+        throw ex;
+      }
     }
   }
 
@@ -116,18 +150,92 @@ public class SchemaValidationSteps {
    * Cucumber step definition for validating a JSON string against a schema loaded from the
    * resources directory.
    *
-   * <p>German: {@code @Dann("validiere {tigerResolvedString} gegen Schema {string}")}<br> English:
-   * {@code @Then("validate {tigerResolvedString} against schema {string}")}.
-   *
-   * @param json       the JSON string to validate
+   * @param jsonString the JSON string to validate
    * @param schemaPath relative path of the schema under {@code resources}
-   * @throws IOException    if the schema cannot be loaded
-   * @throws AssertionError if the JSON is invalid against the schema
    */
   @Dann("validiere {tigerResolvedString} gegen Schema {string}")
   @Then("validate {tigerResolvedString} against schema {string}")
-  public void validateJsonAgainstYamlSchema(String json, String schemaPath) throws IOException {
-    JsonSchema schema = loadSchemaFromClasspath(schemaPath);
-    assertValid(schema, json, schemaPath);
+  public void validateJsonAgainstYamlSchema(String jsonString, String schemaPath) {
+    var schema = loadYamlSchema(schemaPath);
+    JsonNode jsonNode = parseJsonString(jsonString);
+    assertValid(schema, jsonNode, schemaPath, false);
   }
+
+  /**
+   * Soft-asserting variant of the schema validation that collects failures until the end of the
+   * scenario instead of aborting immediately.
+   *
+   * @param jsonString the JSON string to validate
+   * @param schemaPath relative path of the schema under {@code resources}
+   */
+  @Dann("validiere {tigerResolvedString} soft gegen Schema {string}")
+  @Then("soft-validate {tigerResolvedString} against schema {string}")
+  public void softlyValidateJsonAgainstYamlSchema(String jsonString, String schemaPath) {
+
+    var schema = loadYamlSchema(schemaPath);
+    JsonNode jsonNode = parseJsonString(jsonString);
+    assertValid(schema, jsonNode, schemaPath, true);
+  }
+
+  /**
+   * Soft-asserting variant of the schema validation of a Base64 coded JSON string.
+   *
+   * @param encodedJwt the Base64 coded JWT to be validated
+   * @param schemaName relative path of the schema under {@code resources}
+   */
+  @Dann("decodiere und validiere {tigerResolvedString} gegen Schema {string} (soft assert)")
+  @Then("decode and validate {tigerResolvedString} against schema {string} (soft assert)")
+  public void softlyValidateEncodedJwtAgainstYamlSchema(String encodedJwt,
+      String schemaName) {
+
+    var schema = loadYamlSchema(schemaName);
+    var jsonNode = decodeJwt(encodedJwt);
+    assertValid(schema, jsonNode, schemaName, true);
+  }
+
+  /**
+   * Cucumber step definition for validating a Base64 coded JSON string against a schema loaded from
+   * the resources directory.
+   *
+   * <p>The encoded token is expected to consist of at least two parts separated by dots:
+   *   <ol>
+   *     <li>header</li>
+   *     <li>payload</li>
+   *     <li>optional: signature</li>
+   *    </ol>
+   * </p>
+   *
+   * @param encodedJwt the Base64 coded JWT to be validated
+   * @param schemaName relative path of the schema under {@code resources}
+   */
+  @Dann("decodiere und validiere {tigerResolvedString} gegen Schema {string}")
+  @Then("decode and validate {tigerResolvedString} against schema {string}")
+  public void validateEncodedJwtAgainstYamlSchema(String encodedJwt, String schemaName) {
+    var schema = loadYamlSchema(schemaName);
+    var jsonNode = decodeJwt(encodedJwt);
+    assertValid(schema, jsonNode, schemaName, false);
+  }
+
+  /**
+   * Decodes a Base64URL encoded JWT.
+   *
+   * @param encodedToken the Base64URL coded JWT to be validated
+   * @return the decoded json string
+   */
+  private ObjectNode decodeJwt(String encodedToken) {
+
+    try {
+      SignedJWT signedJwt = SignedJWT.parse(encodedToken);
+
+      ObjectNode jsNode = JSON.createObjectNode();
+      jsNode.set("header", JSON.valueToTree(signedJwt.getHeader().toJSONObject()));
+      jsNode.set("payload", JSON.readTree(signedJwt.getPayload().toString()));
+
+      return jsNode;
+
+    } catch (ParseException | JsonProcessingException e) {
+      throw new AssertionError("signed JWT could not be parsed.");
+    }
+  }
+
 }

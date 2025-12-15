@@ -5,3 +5,13 @@
 *OAuth 2.0 Token Exchange (RFC 8693)*, Januar 2020.
 Online verfügbar: https://www.rfc-editor.org/rfc/rfc8693
 (zuletzt abgerufen am 17. September 2025).
+
+* [[[RFC9728]]] M.B. Jones, P. Hunt, A. Pareck
+*OAuth 2.0 Protected Resource Metadata*
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc9728
+(zuletzt abgerufen am 31. Oktober 2025)
+
+* [[[RFC8414]]] M. Jones, N. Sakimura, J. Bradley
+*OAuth 2.0 Authorization Server Metadata*
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc8414
+(zuletzt abgerufen am 31. Oktober 2025)

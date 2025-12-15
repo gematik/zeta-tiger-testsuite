@@ -1,0 +1,5 @@
+[#TA_A_26477_04]
+===== TA_A_26477_04 - PEP HTTP Proxy - PoPP Token Validierung - fehlender PoPP Header
+
+"[...]
+Wenn ein Request für einen Endpunkt des Resource Servers empfangen wird, der **kein PoPP Header enthält und das Vorhandensein** des PoPP Headers wird **verlangt**, dann MUSS der HTTP Proxy den Request mit HTTP Code **400 Bad Request** beantworten.[...]**[<=]"**

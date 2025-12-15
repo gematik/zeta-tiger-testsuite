@@ -1,6 +1,8 @@
 ==== Testaspekte für die Anforderung A_27266
 
-Diese Testaspekte testen <<A_27266>>.
+Folgende Testaspekte testen <<A_27266>>.
 
 include::TA_A_27266_01.adoc[]
+
 include::TA_A_27266_02.adoc[]
+

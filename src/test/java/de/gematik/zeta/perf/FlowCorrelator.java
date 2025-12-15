@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import de.gematik.zeta.perf.TigerTraceAnalyzer.FlowTiming;
@@ -115,8 +116,7 @@ public class FlowCorrelator {
         continue;
       }
 
-      String path = !ingressPair.getPath().isEmpty() ?
-          ingressPair.getPath() : egressPair.getPath();
+      String path = ingressPair.getPath().isEmpty() ? egressPair.getPath() : ingressPair.getPath();
 
       flowTimings.add(new FlowTiming(traceId, path, t1, t4, t2, t3));
     }
@@ -235,16 +235,22 @@ public class FlowCorrelator {
 
   private record GatePair(TrafficMessage request, TrafficMessage response) {
 
-      /**
-       * Returns the HTTP path of the paired request.
-       *
-       * @return request path (never null)
-       */
-      public String getPath() {
-        return request.path();
-      }
+    /**
+     * Returns the HTTP path of the paired request.
+     *
+     * @return request path (never null)
+     */
+    public String getPath() {
+      return request.path();
     }
+  }
 
+  /**
+   * TODO: javadoc.
+   *
+   * @param flowTimings TODO.
+   * @param stats       TODO.
+   */
   public record CorrelationResult(List<FlowTiming> flowTimings, CorrelationStats stats) {
 
   }

@@ -1,5 +1,0 @@
-[#A_25450]
-==== A_25450 - PDP - Policy nur vom gematik PIP und PAP Service
-
-Der PDP MUSS sicherstellen, dass in den Policy Engines nur Policies und Daten vom gematik PIP und PAP Service importiert werden können.
-Eine unberechtigte Änderung der Konfiguration des PDP MUSS technisch ausgeschlossen werden.

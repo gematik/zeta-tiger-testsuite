@@ -1,4 +1,0 @@
-[#A_19152]
-==== A_19152 - Verwendung eines sicheren Produktlebenszyklus
-
-Der Hersteller eines Produktes MUSS innerhalb des Produktlebenszyklus (Entwicklung, Betrieb, Außerbetriebnahme) seines Produktes Sicherheitsaktivitäten integrieren und anwenden, d. h. in einschlägigen Fachkreisen anerkannte, erprobte und bewährte Regeln anwenden.

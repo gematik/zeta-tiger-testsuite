@@ -1,4 +1,0 @@
-[#A_25787]
-==== A_25787 - ZETA Guard-Komponenten - Gewährleistung der Systemintegrität während Aktualisierungen
-
-Die Komponenten des ZETA Guard MUSS während des gesamten Aktualisierungsprozesses die Systemintegrität und Sicherheitsrichtlinien aufrechterhalten.

@@ -1,0 +1,24 @@
+==== Testaspekte für die Anforderung A_25794
+
+Folgende Testaspekte testen <<A_25794>>.
+
+include::TA_A_25794_01.adoc[]
+
+include::TA_A_25794_02.adoc[]
+
+include::TA_A_25794_03.adoc[]
+
+include::TA_A_25794_04.adoc[]
+
+include::TA_A_25794_05.adoc[]
+
+include::TA_A_25794_06.adoc[]
+
+include::TA_A_25794_07.adoc[]
+
+include::TA_A_25794_08.adoc[]
+
+include::TA_A_25794_09.adoc[]
+
+include::TA_A_25794_10.adoc[]
+

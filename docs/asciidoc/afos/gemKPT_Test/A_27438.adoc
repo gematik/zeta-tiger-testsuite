@@ -1,0 +1,4 @@
+[#A_27438]
+==== A_27438 - Durchführung der Generalprobe
+
+Der Zulassungsnehmer MUSS seine Aufgaben [Tab_Test_035_02] "Gesa mtintegrationstest - Generalprobe" erfüllen.

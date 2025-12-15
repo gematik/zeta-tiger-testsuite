@@ -25,3 +25,4 @@ include::TA_A_27802_10.adoc[]
 include::TA_A_27802_11.adoc[]
 
 include::TA_A_27802_12.adoc[]
+

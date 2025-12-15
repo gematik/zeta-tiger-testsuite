@@ -1,0 +1,91 @@
+[#UC_01_13]
+== UseCase_01_13: Client ressource anfrage fachdienst SC 301
+
+.UseCase_01_13
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 301
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+
+| Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Die für die angeforderte Ressource hinterlegte Weiterleitungsregel verweist auf eine neue Zieladresse.
+
+Der PEP HTTP Proxy antwortet deshalb mit ``301 Moved Permanently`` und teilt die neue URL im Location-Header mit.
+
+| Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert (``Access Token`` liegt vor). Die Weiterleitungsregeln
+des PEP HTTP Proxys wurden so angepasst, dass sie eine andere Ziel-URL liefern als die zuvor entdeckte Konfiguration
+(``Discovery and Configuration``).
+
+| Nebenbedingung: |
+Konfigurationen zum URL-Rewriting im PEP HTTP Proxy sind aktiv (vgl. <<TA_A_26560_01>>).
+
+| Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+4. Der PEP HTTP Proxy prüft das *Access Token*.
+5. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+6. Die Konfiguration sieht eine neue Ziel-URL vor. Der PEP HTTP Proxy antwortet mit ``301 Moved Permanently``
+und setzt den Location-Header auf die neue Adresse.
+
+7. Der ZETA Client informiert den MA darüber, dass die Ressource unter der neuen URL erreichbar ist.
+Der ZETA Client merkt sich die neue URL für zukünftige Anfragen.
+
+| Nachbedingung: |
+Die Ressource wurde nicht geladen. Der MA kennt jedoch die neue Ziel-URL für einen Folgeaufruf.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_26104_01>>
+* <<TA_A_26104_02>>
+* <<TA_A_26281_02>>
+* <<TA_A_26560_01>>
+* <<TA_A_26661_01>>
+* <<TA_A_26666_02>>
+* <<TA_A_27007_22>>
+* <<TA_A_27728_01>>
+* <<TA_A_27728_02>>
+* <<TA_A_27728_03>>
+
+|===
+
+[#usecase_01_13_sequence]
+[mermaid,usecase-01-13-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource
+
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP-->>-ZC: 301 Moved Permanently<br>Location: neue URL
+    ZC-->>-MA: Hinweis auf neue Ziel-URL
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// TODO: Feature-Datei wird ergänzt, sobald vorhanden
+----

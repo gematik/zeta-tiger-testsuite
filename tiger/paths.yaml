@@ -1,0 +1,45 @@
+client:
+  baseUrl: "http://zetaClient"
+  helloZeta: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta"
+  helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
+  reset: "http://zetaClient/testdriver-api/reset"
+  websocketBaseUrl: "wss://${zeta_base_url}/proxy/achelos_testfachdienst/ws"
+  storage: "http://zetaClient/testdriver-api/storage"
+  storagePath: "/testdriver-api/storage"
+
+erezept:
+  rest:
+    proxyPath: "/proxy/achelos_testfachdienst/api/erezept"
+    pepPath: "/pep/achelos_testfachdienst/api/erezept"
+
+  websocket:
+    userQueue: "/achelos_testfachdienst/user/queue/erezept"
+    appChannels:
+      create: "/achelos_testfachdienst/app/erezept.create"
+      list: "/achelos_testfachdienst/app/erezept.list"
+      readPrefix: "/achelos_testfachdienst/app/erezept.read."
+      updatePrefix: "/achelos_testfachdienst/app/erezept.update."
+      deletePrefix: "/achelos_testfachdienst/app/erezept.delete."
+
+guard:
+  baseUrl: "http://zetaGuard"
+  helloZetaPath: "/pep/achelos_testfachdienst/hellozeta"
+  tokenEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/token"
+  registerEndpointPath: "/auth/realms/zeta-guard/clients-registrations/openid-connect"
+  nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
+  wellKnownOAuthServerPath: "/.well-known/oauth-authorization-server"
+  wellKnownOAuthProtectedResourcePath: "/.well-known/oauth-protected-resource"
+  actuatorHealthPath: "/actuator/health"
+  managementServicePath: "/managementService"
+  ecKeyFile: "src/test/resources/keys/${zeta_base_url}-ecKey.pem"
+  helloZetaFullPath: "https://${zeta_base_url}${paths.guard.helloZetaPath}"
+  audPath: "https://${zeta_base_url}"
+
+tigerProxy:
+  baseUrl: "http://${zeta_proxy_url}"
+  modifyJwsTokenPath: "/manipulation/modifyJwsToken"
+  modificationPath: "/modification"
+  resetJwtManipulationPath: "/resetJwtManipulation"
+  keyPath: "/key"
+  modifyJwtPath: "/modifyJwt"
+

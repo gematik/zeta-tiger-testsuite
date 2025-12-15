@@ -1,5 +1,0 @@
-[#A_25659]
-==== A_25659 - PDP Authorization Server - Check Client Registrierung
-
-Der PDP Authorization Server MUSS die Client Instanzen über den Mechanismus JSON Web Token Client Authentication gemäß [RFC7523] mit DPoP gemäß [RFC9449]
-authentifizieren und Anfragen, die den Mechanismus nicht verwenden, ablehnen.

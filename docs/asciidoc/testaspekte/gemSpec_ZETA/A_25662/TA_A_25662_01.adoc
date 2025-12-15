@@ -1,0 +1,6 @@
+[#TA_A_25662_01]
+===== TA_A_25662_01 - PDP Authorization Server - Refresh Token Rotation - Token gemäß RFC6749#10.4
+
+"Die Komponente Authorization Server MUSS eine **Refresh Token Rotation gemäß**
+
+**[RFC6749#10.4] erzwingen** [...]"

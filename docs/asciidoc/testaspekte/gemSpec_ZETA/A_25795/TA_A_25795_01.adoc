@@ -1,7 +1,11 @@
 [#TA_A_25795_01]
 ===== TA_A_25795_01 - ZETA Guard-Komponenten - Automatische Antwort auf Health Check Anfragen - HTTP Proxy
 
-"Die Komponenten des ZETA Guard MUSS **automatisch auf Health Check Anfragen antworten** können, um ihre Funktionalität und Verfügbarkeit zu bestätigen."
+"Die Komponenten des ZETA Guard MUSS **automatisch auf Health Check Anfragen antworten** können, um ihre Funktionalität und Verfügbarkeit zu bestätigen. **[<=]"**
 
-Ergänzend: Hier geht es darum, dass Endpunkte bereitstehen, welche die Anfragen automatisch beantworten.
-Inhaltliche Prüfung erfolgt in <<A_25796>>.
+
+
+Ergänzend:
+
+Hier geht es darum, dass Endpunkte bereitstehen, welche die Anfragen automatisch beantworten.
+Inhaltliche Prüfung erfolgt in  *A_25796 - ZETA Guard-Komponenten - Bereitstellung von Zustandsinformationen*

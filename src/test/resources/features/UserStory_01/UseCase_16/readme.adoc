@@ -1,0 +1,74 @@
+[#UC_01_16]
+== UseCase_01_16: Client ressource anfrage fachdienst SC 401
+
+.UseCase_01_16
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 401
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+
+| Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Das verwendete Access Token oder der DPoP Nachweis ist jedoch ungültig, sodass der PEP HTTP Proxy ``401 Unauthorized``
+zurückgibt und der Zugriff verweigert wird.
+
+| Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert (``Access Token`` liegt vor).
+
+| Nebenbedingung: |
+Die vom ZETA Client verwendeten Token sind jedoch abgelaufen oder nicht mehr gültig.
+
+| Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+4. Der PEP HTTP Proxy prüft die übermittelten Token und eine der Prüfungen schlägt fehl.
+5. Der PEP HTTP Proxy antwortet mit ``401 Unauthorized`` und verweist auf den fehlerhaften Nachweis.
+6. Der ZETA Client informiert den MA, dass die Authentisierungsdaten fehlerhaft sind.
+
+| Nachbedingung: |
+Der Ressourcenzugriff wurde abgewiesen. Der MA muss eine erneute Authentisierung durchführen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25733_02>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_25>>
+
+|===
+[#usecase_01_16_sequence]
+[mermaid,usecase-01-16-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource (Access Token + DPoP)
+    PEP-HP->>PEP-HP: Token & DPoP validieren
+    PEP-HP-->>-ZC: 401 Unauthorized
+    ZC-->>-MA: Fehlerhafte Authentisierungsdaten
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// TODO: Feature-Datei wird ergänzt, sobald vorhanden
+----

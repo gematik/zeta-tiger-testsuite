@@ -1,0 +1,4 @@
+[#TA_A_18464_02]
+===== TA_A_18464_02 - TLS-Verbindungen, nicht Version 1.1 - PIP & PAP
+
+"**Alle Produkttypen**, die Übertragungen mittels TLS durchführen, DÜRFEN **NICHT die TLS-Version 1.1** [RFC-4346] unterstützen. **[<=]"**

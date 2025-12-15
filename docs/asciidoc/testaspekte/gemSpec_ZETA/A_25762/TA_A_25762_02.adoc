@@ -3,6 +3,8 @@
 
 "Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
 
-* Authentifizierung des Nutzers gegenüber dem **zentralen IDP**\-Dienst der TI gemäß [gemSpec_IDP_Dienst] (**SmartCardIDP für kartengebundene Identitäten**).
++++[...]+++
+
+* Authentifizierung des Nutzers gegenüber dem **zentralen IDP**-Dienst der TI gemäß [gemSpec_IDP_Dienst] (**SmartCardIDP für kartengebundene Identitäten**).
 
 [...]"

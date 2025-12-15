@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.jexl;
 
 import java.util.LinkedHashMap;
@@ -36,6 +37,8 @@ public final class CustomJexlNamespaces {
   }
 
   /**
+   * TODO: javadoc.
+   *
    * @return namespace name to implementation mapping that will be registered before Tiger starts
    */
   public static Map<String, Object> namespaces() {

@@ -1,0 +1,4 @@
+[#TA_A_26666_02]
+===== TA_A_26666_02 - PEP HTTP Proxy - TLS Terminierung - Terminierung am PEP HTTP Proxy
+
+Die Komponente **PEP HTTP Proxy MUSS TLS für eingehende Verbindungen von außerhalb Kubernetes terminieren können**. Alternativ wird die TLS-Verbindung an der Komponente Ingress terminiert. **[<=]**

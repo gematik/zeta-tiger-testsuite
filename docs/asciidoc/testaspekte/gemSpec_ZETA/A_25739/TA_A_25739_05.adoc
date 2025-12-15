@@ -1,0 +1,19 @@
+[#TA_A_25739_05]
+===== TA_A_25739_05 - PDP, Open Policy Agent Instanzen - korrekte Konfiguration bundles authz - aktive Instanz
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz).
+Die OPA Instanzen MÜSSEN gemäß Tabelle OPA_Konfiguration konfiguriert werden.
+
+Tabelle 7: OPA - Konfiguration
+
+|===
+
+| **Konfiguration** | **Aktive OPA Instanz** | **Simulations-OPA Instanz** |
+| --- | --- | --- |
+| **[...]** |  |  |
+| **bundles:** +++<br />+++  **authz:** +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**service:** <service name> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**resource:** <path> +++<br />+++&nbsp;&nbsp;&nbsp;&nbsp;**persist:** true +++<br />+++ | **<path>** +++<br />+++Der Pfad wird wie in [pip-pap-service.yaml] beschrieben angegeben. Durch das label latest wird die neueste bundle.tar.gz Datei für die aktive OPA Instanz heruntergeladen. +++<br />+++Default: +++<br />+++**/policies/<TI service>/latest** +++<br />+++ | [...] |
+| **[...]** |  |  |
+
+|===
+
+**[<=]**

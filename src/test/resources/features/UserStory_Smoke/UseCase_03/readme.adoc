@@ -1,0 +1,65 @@
+[#UC_SMOKE_03]
+== UseCase_Smoke_03: WebSocket/STOMP – E-Rezept CRUD & Fehlerfälle
+
+.UseCase_Smoke_03
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | WebSocket/STOMP Smoke – CRUD & Fehlerfälle
+
+| Akteur: |
+Testsuite (WebSocket/STOMP Client)
+
+| Auslöser: |
+Die bidirektionale Kommunikation soll nach jedem Deploy verifiziert werden.
+
+| Kurzbeschreibung: |
+Die Testsuite baut eine native WebSocket-Verbindung auf, sendet CRUD-Operationen über ``/app`` und wertet Antworten auf ``/user/queue/erezept`` aus.
+Zusätzlich werden Fehlerfälle wie Duplikate, Konflikte und Validierungsfehler ausgelöst.
+
+| Vorbedingung: |
+WebSocket-Endpunkt ``${paths.guard.websocketBaseUrl}`` ist erreichbar, Testfachdienst subscribt auf die relevanten Channels.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+1. WebSocket-Verbindung aufbauen und User-Queue abonnieren.
+2. CREATE/READ/LIST/UPDATE/DELETE über STOMP senden und Antworten validieren.
+3. Fehlerfälle (Duplicate, Not Found, Konflikte) triggern und Fehlermeldungen prüfen.
+4. Verbindung schließen.
+
+| Nachbedingung: |
+WebSocket/STOMP-Schnittstelle liefert erwartete Antworten und Fehlermeldungen.
+
+| Abgedeckte Testaspekte: |
+* (Derzeit nicht zugeordnet)
+
+|===
+
+[#UC_SMOKE_03_sequence]
+[mermaid,UC_SMOKE_03_sequence,svg]
+....
+sequenceDiagram
+    participant TS as Testsuite (WS Client)
+    participant TF as Testfachdienst
+    participant Q as Queue
+
+    TS->>+TF: STOMP CONNECT / SUBSCRIBE
+    TS->>TF: SEND CRUD Messages
+    TF->>Q: Persist/Notify
+    Q-->>TS: Response / Fehler
+    TS-->>TF: DISCONNECT
+....
+
+[.lead]
+Feature-Dateien zu diesem Use Case
+
+[source]
+----
+include::ws_crud_erezept.feature[]
+----
+
+[source]
+----
+include::ws_crud_erezept_error_scenarios.feature[]
+----

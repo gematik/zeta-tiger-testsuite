@@ -1,6 +1,0 @@
-[#A_27797]
-==== A_27797 - ZETA, Ablauf  Zugriff auf geschützte Ressource
-
-Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb_ZETA_Zugriff_auf_geschützte_Ressource unterstützen.
-
- Abbildung #: Abb_ZETA_Zugriff_auf_geschützte_Ressource

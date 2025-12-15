@@ -1,4 +1,0 @@
-[#A_22986]
-==== A_22986 - Meldung von erheblichen Schwachstellen und Bedrohungen
-
-Der Hersteller von TI-Produkten MUSS kritische und hochbewertete Schwachstellen (CVSS ab 7) und erhebliche Bedrohungen unverzüglich nach Abschluss der Bewertung direkt an die gematik und die einsetzenden Anbieter melden.

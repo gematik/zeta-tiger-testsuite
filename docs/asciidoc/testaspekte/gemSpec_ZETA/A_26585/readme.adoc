@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_26585
+
+Folgende Testaspekte testen <<A_26585>>.
+
+include::TA_A_26585_01.adoc[]
+
+include::TA_A_26585_02.adoc[]
+

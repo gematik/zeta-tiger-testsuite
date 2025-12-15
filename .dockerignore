@@ -1,0 +1,10 @@
+.git
+.idea
+target
+out
+perf
+tools
+docs
+config
+jmeter.log
+*.iml

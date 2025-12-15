@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.perf;
 
 import java.io.IOException;
@@ -31,9 +32,9 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Tiger Trace Analyzer
- * <p>
- * Analyzes Tiger traffic dumps and correlates ingress/egress flows using UUID-based pairing and
+ * Tiger Trace Analyzer.
+ *
+ * <p>Analyzes Tiger traffic dumps and correlates ingress/egress flows using UUID-based pairing and
  * X-Trace-Id correlation.
  */
 @Slf4j
@@ -42,6 +43,9 @@ public class TigerTraceAnalyzer {
   private final TrafficMessageParser parser;
   private final FlowCorrelator correlator;
 
+  /**
+   * Constructor which sets both, the trafficMessageParser and the FlowCorrelator.
+   */
   public TigerTraceAnalyzer() {
     this.parser = new TrafficMessageParser();
     this.correlator = new FlowCorrelator();
@@ -112,11 +116,12 @@ public class TigerTraceAnalyzer {
   private List<FlowTiming> createIngressE2EFlowTimings(
       List<TrafficMessageParser.TrafficMessage> messages) {
     var flows = new ArrayList<FlowTiming>();
+    // TODO: Convert comments to english.
 
     // 1) Kandidaten-Requests: nur echte JMeter-Requests (mit TraceId)
     var jmeterRequests = messages.stream()
         .filter(TrafficMessageParser.TrafficMessage::isJMeterTraffic) // isRequest && has traceId
-        .collect(Collectors.toList());
+        .toList();
     if (jmeterRequests.isEmpty()) {
       return flows;
     }
@@ -155,13 +160,13 @@ public class TigerTraceAnalyzer {
       }
 
       if (resp != null) {
-        long tReq = req.timestampMs();
-        long tRes = resp.timestampMs();
+        long timestampReq = req.timestampMs();
+        long timestampRes = resp.timestampMs();
         flows.add(new FlowTiming(
             req.traceId(),           // trace_id
             req.path(),              // path
-            tReq, tRes,                 // e2e: request_ms -> response_ms
-            tReq, tRes                  // ingress==egress in Ein-Datei-Analyse
+            timestampReq, timestampRes,                 // e2e: request_ms -> response_ms
+            timestampReq, timestampRes                  // ingress==egress in Ein-Datei-Analyse
         ));
       }
     }
@@ -180,47 +185,65 @@ public class TigerTraceAnalyzer {
     }
   }
 
+  /**
+   * TODO: add javadoc.
+   *
+   * @param ingressMessageCount TODO.
+   * @param egressMessageCount  TODO.
+   * @param flowTimings         TODO.
+   * @param stats               TODO.
+   */
   public record AnalysisResult(int ingressMessageCount, int egressMessageCount,
                                List<FlowTiming> flowTimings, CorrelationStats stats) {
 
   }
 
+  /**
+   * TODO: add javadoc.
+   *
+   * @param traceId           TODO.
+   * @param path              TODO.
+   * @param ingressRequestMs  TODO.
+   * @param ingressResponseMs TODO.
+   * @param egressRequestMs   TODO.
+   * @param egressResponseMs  TODO.
+   */
   public record FlowTiming(String traceId, String path, long ingressRequestMs,
                            long ingressResponseMs, long egressRequestMs, long egressResponseMs) {
 
-      /**
-       * Returns end-to-end latency in ms.
-       */
-      public double getEndToEndMs() {
-        return ingressResponseMs - ingressRequestMs;
-      }
-
-      /**
-       * Returns backend service time in ms.
-       */
-      public double getServiceMs() {
-        return egressResponseMs - egressRequestMs;
-      }
-
-      /**
-       * Returns middleware overhead in ms.
-       */
-      public double getMiddlewareOverheadMs() {
-        return getEndToEndMs() - getServiceMs();
-      }
-
-      /**
-       * Returns forward time (ingress -> egress) in ms.
-       */
-      public double getForwardMs() {
-        return egressRequestMs - ingressRequestMs;
-      }
-
-      /**
-       * Returns return time (egress -> ingress) in ms.
-       */
-      public double getReturnMs() {
-        return ingressResponseMs - egressResponseMs;
-      }
+    /**
+     * Returns end-to-end latency in ms.
+     */
+    public double getEndToEndMs() {
+      return ingressResponseMs - ingressRequestMs;
     }
+
+    /**
+     * Returns backend service time in ms.
+     */
+    public double getServiceMs() {
+      return egressResponseMs - egressRequestMs;
+    }
+
+    /**
+     * Returns middleware overhead in ms.
+     */
+    public double getMiddlewareOverheadMs() {
+      return getEndToEndMs() - getServiceMs();
+    }
+
+    /**
+     * Returns forward time (ingress -> egress) in ms.
+     */
+    public double getForwardMs() {
+      return egressRequestMs - ingressRequestMs;
+    }
+
+    /**
+     * Returns return time (egress -> ingress) in ms.
+     */
+    public double getReturnMs() {
+      return ingressResponseMs - egressResponseMs;
+    }
+  }
 }

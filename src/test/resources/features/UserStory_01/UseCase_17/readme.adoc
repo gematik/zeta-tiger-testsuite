@@ -1,0 +1,95 @@
+[#UC_01_17]
+== UseCase_01_17: Client ressource anfrage fachdienst SC 403
+
+.UseCase_01_17
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 403
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+
+| Auslöser: |
+Ein MA eines Leistungserbringers möchte auf zwei verschiedene Resource Server eines Fachdienstes zugreifen.
+
+
+| Kurzbeschreibung: |
+Ein MA einer LEI möchte auf Resource Server zwei unterschiedlicher Fachdienste zugreifen. Für den Abruf der angefragten
+Ressource ist jeweils ein Anwesenheitsnachweis des betroffenen Patienten notwendig, der jeweils in Form eines PoPP
+Tokens erbracht wird. +
+Die Überprüfung dieser PoPP Tokens im PEP HTTP Proxy ist nicht erfolgreich, daher lehnt dieser beide Zugriffe auf die
+angefragten Ressourcen mit dem Statuscode 403 (Forbidden) ab.
+
+| Vorbedingung: |
+Der ZETA Client ist bereits registriert, d.h. verfügt bereits über eine ``client_id``. Service Discovery wurde bereits
+durchgeführt und ein gültiges Access Token liegt ebenfalls vor, d.h. der Client ist auch bereits authentisiert und
+autorisiert. +
+Die jeweils zum Nachweis der Anwesenheit des Patienten notwendigen PoPP Token liegen dem ZETA Client vor.
+
+| Nebenbedingung: |
+- Der *PEP HTTP Proxy* ist so konfiguriert, dass
+* für die Endpunkte der beiden Resource Server der Request Header ``PoPP`` verlangt wird,
+* das jeweilige PoPP Token validiert wird und
+* die Dauer der Gültigkeit seit Ausstellung, nach Ausstellungs- und Prüfzeitpunkt
+eingestellt sind.
+- Beide PoPP Token sind ungültig:
+* PoPP Token 1 verfügt über eine ungültige Signatur
+* PoPP Token 2 verfügt über einen ungültigen Wert bzgl. Gültigkeit, Ausstellungs- oder Prüfzeitpunkt.
+
+| Ablauf: |
+Der Ablauf für beide PoPP Token ist gleich, nur mit jeweils unterschiedlichen PoPP Token und Endpunkten:
+
+1. MA löst im Client den Zugriff auf die Resource des Fachdienstes aus
+2. Der Zeta Client erzeugt ein DPoP Schlüsselpaar als Nachweis für den Resource Server (RS)
+3. Der Zeta Client ruft die Ressource am PEP HTTP Proxy ab:
+- `GET /resource`
+- `Authorization: DPoP ... (Access Token)`
+- `DPoP .... (DPoP Token)`
+- `Header mit PoPP Token`
+4. Der PEP HTTP Proxy prüft *Access Token*, *DPoP Proof* und *PoPP Token*. Ergebnis: *PoPP Token* ungültig.
+5. Der Zugriff auf die Resource des Fachdienstes wird mit dem Statuscode 403 (Forbidden) abgewiesen.
+6. MA wird vom ZETA Client über den verweigerten Zugriff informiert.
+
+| Hinweis: |
+
+| Nachbedingung:  |
+Der Abruf der geschützten Ressource vom MA über den ZETA Client war nicht erfolgreich.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25660_03>>
+* <<TA_A_26477_09>>
+* <<TA_A_26477_10>>
+* <<TA_A_26661_01>>
+* <<TA_A_27007_26>>
+
+|===
+
+[mermaid]
+....
+sequenceDiagram
+    autonumber
+    actor MA as MA eines LEI
+    participant ZC as ZETA Client
+    participant PHP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PHP: GET /resource Authorization: <br> DPoP... (Access Token), <br> DPoP .... (DPoP Token), <br> PoPP Token (Header)
+    PHP->>PHP: Verifiziere Access Token, <br>DPoP Nachweis und PoPP Token / <br>Ergebnis: PoPP Token ungültig
+    PHP-->>-ZC: 403 Forbidden
+    ZC-->>-MA: Zugriff auf die angefragte Resource wurde aufgrund <br>ungültigem PoPP Tokens verweigert.
+....
+
+'''
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+// include::UseCase_ab_cd.feature[]
+----

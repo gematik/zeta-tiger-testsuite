@@ -21,6 +21,7 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  * #L%
  */
+
 package de.gematik.zeta.steps;
 
 import de.gematik.zeta.Metric;
@@ -47,6 +48,9 @@ public class PerfSteps {
 
   private final TigerTraceAnalyzer tigerAnalyzer;
 
+  /**
+   * Default constructor setting the tiger trace analyzer.
+   */
   public PerfSteps() {
     this.tigerAnalyzer = new TigerTraceAnalyzer();
   }
@@ -148,9 +152,9 @@ public class PerfSteps {
 
     double[] values = metrics.get(columnName);
     if (values == null || values.length == 0) {
-      throw new AssertionError("No values found for column: " + columnName +
-          " (effective: " + effectiveColumn + ") in " + csvPath +
-          " | available columns: " + csv.headers());
+      throw new AssertionError(
+          "No values found for column: " + columnName + " (effective: " + effectiveColumn + ") in "
+              + csvPath + " | available columns: " + csv.headers());
     }
 
     double observed = calculateMetricValue(values, metric);
@@ -175,12 +179,12 @@ public class PerfSteps {
    * @return computed value
    */
   private double calculateMetricValue(double[] values, Metric metric) {
-    return switch (metric.getType()) {
-      case PERCENTILE -> CsvUtils.percentile(values, metric.getPercentile());
+    return switch (metric.type()) {
+      case PERCENTILE -> CsvUtils.percentile(values, metric.percentile());
       case MAX -> Arrays.stream(values).max().orElse(Double.NaN);
       case MIN -> Arrays.stream(values).min().orElse(Double.NaN);
       case AVG -> Arrays.stream(values).average().orElse(Double.NaN);
-      default -> throw new IllegalArgumentException("Unsupported metric type: " + metric.getType());
+      default -> throw new IllegalArgumentException("Unsupported metric type: " + metric.type());
     };
   }
 
@@ -191,12 +195,12 @@ public class PerfSteps {
    * @return name like p95|max|min|avg
    */
   private String formatMetricName(Metric metric) {
-    return switch (metric.getType()) {
-      case PERCENTILE -> "p" + Math.round(metric.getPercentile() * 100);
+    return switch (metric.type()) {
+      case PERCENTILE -> "p" + Math.round(metric.percentile() * 100);
       case MAX -> "max";
       case MIN -> "min";
       case AVG -> "avg";
-      default -> metric.getType().toString().toLowerCase();
+      default -> metric.type().toString().toLowerCase();
     };
   }
 

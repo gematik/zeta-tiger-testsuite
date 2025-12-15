@@ -1,4 +1,0 @@
-[#GS-A_2350-01]
-==== GS-A_2350-01 - Produktunterstützung der Hersteller
-
-Hersteller von Produkten der TI MÜSSEN der gematik Supportinformationen sowie Informationen zu Softwareupdates als Produktunterstützung für von ihnen entwickelte Produkte der TI zur Konsolidierung und Weiterleitung an die ISM der Beteiligten zur Verfügung stellen.

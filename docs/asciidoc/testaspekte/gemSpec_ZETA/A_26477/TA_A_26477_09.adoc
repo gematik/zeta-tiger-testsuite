@@ -1,0 +1,7 @@
+[#TA_A_26477_09]
+===== TA_A_26477_09 - PEP HTTP Proxy - PoPP Token Validierung - Signatur ungültig
+
+"[...]
+
+Wenn die **Signatur** des PoPP Tokens **ungültig** ist [...], dann MUSS der Request mit HTTP **Code 403 Forbidden** beantwortet werden.
+**[<=]"**

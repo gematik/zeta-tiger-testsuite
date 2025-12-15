@@ -1,0 +1,4 @@
+[#TA_A_26639_01]
+===== TA_A_26639_01 - ZETA Guard - Unterstützung Websocket - Ingress
+
+"Die Komponente **Ingress** MUSS das **WebSocket-Protokoll** unterstützen. **[<=]"**

@@ -1,5 +1,8 @@
 [#TA_A_26486_01]
-===== TA_A_26486_01 - PEP HTTP Proxy - Requests unter Last innerhalb von 0,1 Sekunden
+===== TA_A_26486_01 PEP HTTP Proxy - Requests unter Last innerhalb von 0,1 Sekunden
 
-"Die Komponente PEP HTTP Proxy MUSS bei einem Deployment in eine Cloud Umgebung ermöglichen, dass eingehende Requests
-unter Last innerhalb von 0,1 Sekunden geprüft und bei erfolgreicher Prüfung weitergeleitet werden."
+"Die Komponente PEP HTTP Proxy MUSS bei einem Deployment in eine Cloud Umgebung
+
+ermöglichen, dass eingehende Requests **unter Last innerhalb von 0,1 Sekunden** **geprüft**
+
+und bei erfolgreicher Prüfung **weitergeleitet** werden.[<=]"

@@ -1,4 +1,0 @@
-[#A_25746]
-==== A_25746 - ZETA Guard - Keine sicherheitsrelevanten Daten in Logging und Monitoring
-
-ZETA Guard MUSS sicherstellen, dass in für den Betrieb erstellten Protokollen keine sicherheitsrelevanten Daten enthalten sind.

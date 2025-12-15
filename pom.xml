@@ -6,82 +6,84 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>0.1.3</version>
+  <version>0.2.1</version>
 
-  <!-- Profiles: Ein großes asciidoc-enabled-Profil + kleine OS-Override-Profile -->
+  <!-- Projektlizenzinformationen -->
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <!-- Profiles: Ein großes generate-documentation-Profil + kleine OS-Override-Profile -->
   <profiles>
 
-    <!-- Haupt-Profil: enthält frontend + asciidoctor; opt-in via -Pasciidoc-enabled -->
+    <!-- Haupt-Profil: enthält frontend + asciidoctor; opt-in via -Pgenerate-documentation -->
     <profile>
-      <id>asciidoc-enabled</id>
+      <id>generate-documentation</id>
 
       <properties>
+        <traceability.skip>false</traceability.skip>
+        <traceability.sync.skip>false</traceability.sync.skip>
+        <serenity.readme.sync.skip>false</serenity.readme.sync.skip>
+        <traceability.phase>verify</traceability.phase>
         <!-- mmdc Wrapper (Unix-like). Windows wird durch OS-Profil überschrieben -->
         <mmdc.cmd>${project.build.directory}/node_modules/.bin/mmdc</mmdc.cmd>
       </properties>
 
       <build>
         <plugins>
-          <!-- Node/Yarn/Mermaid -->
+          <!-- Node/PNPM/Mermaid -->
           <plugin>
             <groupId>com.github.eirslett</groupId>
             <artifactId>frontend-maven-plugin</artifactId>
-            <version>${version.frontend.maven.plugin}</version>
             <executions>
               <execution>
-                <id>install node and yarn</id>
+                <id>install node and pnpm</id>
                 <phase>initialize</phase>
                 <goals>
-                  <goal>install-node-and-yarn</goal>
+                  <goal>install-node-and-pnpm</goal>
                 </goals>
                 <configuration>
                   <nodeVersion>${version.node}</nodeVersion>
-                  <yarnVersion>${version.yarn}</yarnVersion>
+                  <pnpmVersion>${version.pnpm}</pnpmVersion>
                   <installDirectory>${project.build.directory}</installDirectory>
                 </configuration>
               </execution>
               <execution>
-                <id>yarn install</id>
+                <id>pnpm install</id>
                 <phase>initialize</phase>
                 <goals>
-                  <goal>yarn</goal>
+                  <goal>pnpm</goal>
                 </goals>
                 <configuration>
-                  <arguments>install --frozen-lockfile --silent --cwd ${project.basedir}/docs --modules-folder ${project.build.directory}/node_modules</arguments>
+                  <arguments>install --prefer-frozen-lockfile --dir ${project.basedir}/docs
+                    --modules-dir ../target/node_modules --store-dir ../target/pnpm-store
+                  </arguments>
                   <installDirectory>${project.build.directory}</installDirectory>
-                  <workingDirectory>${project.build.directory}</workingDirectory>
                 </configuration>
               </execution>
             </executions>
           </plugin>
 
-          <!-- Asciidoctor mit Diagram- und PDF-Unterstützung -->
+          <!-- Asciidoctor mit Diagramm-Unterstützung -->
           <plugin>
             <groupId>org.asciidoctor</groupId>
             <artifactId>asciidoctor-maven-plugin</artifactId>
-            <version>${version.asciidoctor.maven.plugin}</version>
             <dependencies>
-              <dependency>
-                <groupId>org.asciidoctor</groupId>
-                <artifactId>asciidoctorj</artifactId>
-                <version>${version.asciidoctorj}</version>
-              </dependency>
               <dependency>
                 <groupId>org.asciidoctor</groupId>
                 <artifactId>asciidoctorj-diagram</artifactId>
                 <version>${version.asciidoctorj.diagram}</version>
-              </dependency>
-              <dependency>
-                <groupId>org.asciidoctor</groupId>
-                <artifactId>asciidoctorj-pdf</artifactId>
-                <version>${version.asciidoctorj.pdf}</version>
               </dependency>
             </dependencies>
 
             <executions>
               <execution>
                 <id>generate-html-doc</id>
-                <phase>generate-resources</phase>
+                <phase>verify</phase>
                 <goals>
                   <goal>process-asciidoc</goal>
                 </goals>
@@ -90,27 +92,12 @@
                   <outputDirectory>${project.build.directory}/docs/html</outputDirectory>
                   <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
                   <attributes>
-                    <!-- Inline images (including Mermaid SVGs) into HTML -->
                     <data-uri>true</data-uri>
-                    <!-- Resolve image references relative to output -->
-                    <imagesdir>.</imagesdir>
-                    <!-- Place generated diagram images next to the HTML so links resolve -->
-                    <imagesoutdir>${project.build.directory}/docs/html</imagesoutdir>
-                    <!-- Allow reading local files referenced by image macros if needed -->
+                    <imagesdir>images</imagesdir>
+                    <imagesoutdir>${project.build.directory}/docs/html/images</imagesoutdir>
                     <allow-uri-read>true</allow-uri-read>
+                    <diagram-names>true</diagram-names>
                   </attributes>
-                </configuration>
-              </execution>
-              <execution>
-                <id>generate-pdf-doc</id>
-                <phase>generate-resources</phase>
-                <goals>
-                  <goal>process-asciidoc</goal>
-                </goals>
-                <configuration>
-                  <backend>pdf</backend>
-                  <outputDirectory>${project.build.directory}/docs/pdf</outputDirectory>
-                  <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
                 </configuration>
               </execution>
             </executions>
@@ -118,7 +105,6 @@
             <configuration>
               <attributes>
                 <mmdc>${mmdc.cmd}</mmdc>
-                <diagram-cachedir>${project.build.directory}/docs/diagram-cache</diagram-cachedir>
                 <puppeteer-config>docs/puppeteer-config.json</puppeteer-config>
               </attributes>
               <requires>
@@ -126,6 +112,7 @@
               </requires>
               <sourceDirectory>docs/asciidoc</sourceDirectory>
             </configuration>
+
           </plugin>
 
         </plugins>
@@ -133,7 +120,7 @@
 
     </profile>
 
-    <!-- Kleines OS-Profil: Windows-spezifisches mmdc (überschreibt Property aus asciidoc-enabled) -->
+    <!-- Kleines OS-Profil: Windows-spezifisches mmdc (überschreibt Property aus generate-documentation) -->
     <profile>
       <id>os-windows</id>
       <activation>
@@ -146,7 +133,7 @@
       </properties>
     </profile>
 
-    <!-- Kleines OS-Profil: Unix-spezifisches mmdc (falls nötig; default in asciidoc-enabled bereits unix) -->
+    <!-- Kleines OS-Profil: Unix-spezifisches mmdc (falls nötig; default in generate-documentation bereits unix) -->
     <profile>
       <id>os-unix</id>
       <activation>
@@ -165,19 +152,27 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
 
-    <version.maven.failsafe>3.5.3</version.maven.failsafe>
-    <version.maven.surefire>3.5.3</version.maven.surefire>
-    <version.maven.compiler>3.13.0</version.maven.compiler>
-    <version.maven.enforcer>3.5.0</version.maven.enforcer>
-    <version.tiger>4.0.9</version.tiger>
+    <version.maven.failsafe>3.5.4</version.maven.failsafe>
+    <version.maven.surefire>3.5.4</version.maven.surefire>
+    <version.maven.compiler>3.14.1</version.maven.compiler>
+    <version.maven.enforcer>3.6.2</version.maven.enforcer>
+    <version.maven.exec>3.6.2</version.maven.exec>
     <version.maven.checkstyle>3.6.0</version.maven.checkstyle>
+    <version.maven.versions>2.20.1</version.maven.versions>
+    <version.tiger>4.1.11</version.tiger>
     <version.asciidoctor.maven.plugin>3.2.0</version.asciidoctor.maven.plugin>
     <version.asciidoctorj.diagram>3.0.1</version.asciidoctorj.diagram>
-    <version.asciidoctorj.pdf>2.3.19</version.asciidoctorj.pdf>
-    <version.asciidoctorj>3.0.0</version.asciidoctorj>
-    <version.frontend.maven.plugin>1.15.1</version.frontend.maven.plugin>
-    <version.node>v22.18.0</version.node>
-    <version.yarn>v1.22.22</version.yarn>
+    <version.frontend.maven.plugin>1.15.4</version.frontend.maven.plugin>
+    <version.nimbus.jose.jwt>10.6</version.nimbus.jose.jwt>
+    <version.node>v25.0.0</version.node>
+    <version.pnpm>10.22.0</version.pnpm>
+    <version.checkstyle>12.1.1</version.checkstyle>
+    <traceability.skip>true</traceability.skip>
+    <traceability.sync.skip>true</traceability.sync.skip>
+    <traceability.executable>uv</traceability.executable>
+    <traceability.phase>verify</traceability.phase>
+    <serenity.readme.sync.skip>true</serenity.readme.sync.skip>
+    <version.tyrus>2.2.1</version.tyrus>
   </properties>
 
   <!-- Zentrale Plugin-Versionsverwaltung befindet sich im Build-Abschnitt weiter unten -->
@@ -200,33 +195,39 @@
       <artifactId>tiger-test-lib</artifactId>
     </dependency>
     <dependency>
-      <groupId>de.gematik.test</groupId>
-      <artifactId>tiger-zion</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>commons-logging</groupId>
-          <artifactId>commons-logging</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>de.gematik.test</groupId>
-      <artifactId>tiger-testenv-mgr</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
-      <version>10.4</version>
+      <version>${version.nimbus.jose.jwt}</version>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
     </dependency>
     <dependency>
-      <groupId>de.gematik</groupId>
-      <artifactId>tiger-cloud-extension</artifactId>
-      <version>${version.tiger}</version>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents.client5</groupId>
+      <artifactId>httpclient5</artifactId>
+    </dependency>
+
+    <!-- WebSocket Dependencies -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-websocket</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-messaging</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.tyrus.bundles</groupId>
+      <artifactId>tyrus-standalone-client</artifactId>
+      <version>${version.tyrus}</version>
+    </dependency>
+
+
   </dependencies>
 
   <build>
@@ -234,17 +235,29 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>${version.maven.compiler}</version>
-          <configuration>
-            <release>${maven.compiler.release}</release>
-          </configuration>
+          <groupId>com.github.eirslett</groupId>
+          <artifactId>frontend-maven-plugin</artifactId>
+          <version>${version.frontend.maven.plugin}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>${version.maven.exec}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.asciidoctor</groupId>
+          <artifactId>asciidoctor-maven-plugin</artifactId>
+          <version>${version.asciidoctor.maven.plugin}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>${version.maven.surefire}</version>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>${version.maven.enforcer}</version>
+        </plugin>
+        <plugin>
+          <groupId>de.gematik.test</groupId>
+          <artifactId>tiger-maven-plugin</artifactId>
+          <version>${version.tiger}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -257,24 +270,19 @@
           <version>${version.maven.checkstyle}</version>
         </plugin>
         <plugin>
-          <groupId>com.github.eirslett</groupId>
-          <artifactId>frontend-maven-plugin</artifactId>
-          <version>${version.frontend.maven.plugin}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.asciidoctor</groupId>
-          <artifactId>asciidoctor-maven-plugin</artifactId>
-          <version>${version.asciidoctor.maven.plugin}</version>
-        </plugin>
-        <plugin>
-          <groupId>de.gematik.test</groupId>
-          <artifactId>tiger-maven-plugin</artifactId>
-          <version>${version.tiger}</version>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>versions-maven-plugin</artifactId>
+          <version>${version.maven.versions}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-enforcer-plugin</artifactId>
-          <version>${version.maven.enforcer}</version>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${version.maven.surefire}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${version.maven.compiler}</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -293,7 +301,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[21,)</version>
+                  <version>${maven.compiler.release}</version>
                 </requireJavaVersion>
                 <requireMavenVersion>
                   <version>[3.9,)</version>
@@ -303,11 +311,77 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- Traceability artefacts for Serenity -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-traceability-artifacts</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.sync.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>sync</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>sync-serenity-readme</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${serenity.readme.sync.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>serenity-sync-readme</argument>
+                <argument>--project-root</argument>
+                <argument>${project.basedir}</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>run-traceability-builder</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>traceability</argument>
+                <argument>build</argument>
+                <argument>--project-root</argument>
+                <argument>${project.basedir}</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <!-- Tiger Testsuite -->
       <plugin>
         <groupId>de.gematik.test</groupId>
         <artifactId>tiger-maven-plugin</artifactId>
-        <version>${version.tiger}</version>
         <executions>
           <execution>
             <phase>generate-test-sources</phase>
@@ -330,9 +404,16 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${version.maven.failsafe}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit-platform</artifactId>
+            <version>${version.maven.surefire}</version>
+          </dependency>
+        </dependencies>
         <configuration>
           <failIfNoTests>false</failIfNoTests>
+          <testFailureIgnore>true</testFailureIgnore>
           <includes>
             <include>**/Driver*IT.java</include>
           </includes>
@@ -351,16 +432,54 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${version.maven.checkstyle}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${version.checkstyle}</version>
+          </dependency>
+        </dependencies>
         <configuration>
-          <configLocation>google_checks.xml</configLocation>
+          <configLocation>config/checkstyle/custom_google_checks.xml</configLocation>
           <consoleOutput>true</consoleOutput>
           <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
           <outputFileFormat>xml</outputFileFormat>
           <failOnViolation>true</failOnViolation>
+          <failsOnError>true</failsOnError>
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
           <linkXRef>false</linkXRef>
           <violationSeverity>warning</violationSeverity>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit-platform</artifactId>
+            <version>${version.maven.surefire}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
     </plugins>

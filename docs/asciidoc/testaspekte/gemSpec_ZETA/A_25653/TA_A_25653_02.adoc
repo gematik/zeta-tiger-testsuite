@@ -1,0 +1,12 @@
+[#TA_A_25653_02]
+===== TA_A_25653_02 - PDP Client-Registrierung - Umsetzung der Client Policy - Ablehnung durch Policy
+
+Die Komponente Authorization Server MUSS die **zulässigen Clients entsprechend** der
+
+Konfiguration oder **Policy** (über PDP-Decision) **ermitteln** und nur diese gemäß der
+
+festgelegten Client Policy registrieren. **Clients**, die die geforderten Parameter der Client
+
+Policy nicht unterstützen bzw. **nicht das geforderte Niveau erreichen, MÜSSEN abgelehnt**
+
+**werden.**[<=]

@@ -1,7 +1,0 @@
-[#A_27385]
-==== A_27385 - ZETA Guard-Komponenten - Abbildung von Produkt- und Konfigurationsversionen
-
-Die Komponenten des ZETA Guard MUSS folgende Versionsangaben jederzeit im Betrieb vorhalten:
-
-* Produktversion gem. [gemSpec_OM#Tab_ProdIdent] des ZETA-Guard
-* Konfigurationsversion gem. [gemKPT_Betr#A_20219-01] des ZETA-Guard

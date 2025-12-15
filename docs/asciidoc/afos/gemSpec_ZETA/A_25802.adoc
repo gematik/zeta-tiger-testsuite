@@ -1,4 +1,0 @@
-[#A_25802]
-==== A_25802 - ZETA Client - Einhaltung der BSI [TR-03161-1]
-
-Der ZETA Client eines FdVs MUSS die BSI [ TR-03161-1]  erfüllen, sofern sie für den ZETA Client anwendbar ist.

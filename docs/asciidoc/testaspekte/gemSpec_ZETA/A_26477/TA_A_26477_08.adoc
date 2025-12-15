@@ -1,0 +1,8 @@
+[#TA_A_26477_08]
+===== TA_A_26477_08 - PEP HTTP Proxy - PoPP Token Validierung - Übereinstimmung von claim
+
+"[...]
+Der **claim *actorId* des PoPP Token** MUSS mit dem **Attribut *identifier* aus den zum Access Token** **gehörenden Nutzer-Daten** **übereinstimmen**.
+
+[...]
+**[<=]"**

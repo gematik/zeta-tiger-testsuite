@@ -1,0 +1,6 @@
+==== Testaspekte für die Anforderung A_26639
+
+Folgende Testaspekte testen <<A_26639>>.
+
+include::TA_A_26639_01.adoc[]
+

@@ -1,0 +1,327 @@
+# Begin of Health Checks (was in UC0101)
+  # https://inadarei.github.io/rfc-healthcheck/
+  # https://docs.spring.io/spring-boot/docs/3.1.x/actuator-api/htmlsingle/#health / https://docs.spring.io/spring-boot/api/rest/actuator/health.html
+
+  @dev
+  @A_25794 #HP-54
+  @TA_A_25794_01 #HP-326 HTTP-Proxy
+  @TA_A_25794_02 #HP-327 PEP DB
+  @TA_A_25794_03 #HP-328 AuthZ Server
+  @TA_A_25794_04 #HP-329 PDP DB
+  @TA_A_25794_05 #HP-330 Policy Engine
+  @TA_A_25794_06 #HP-331 Notification Service
+  @TA_A_25794_07 #HP-332 Management Service
+  @TA_A_25794_08 #HP-333 Telemetrie-Daten Service
+  @TA_A_25794_09 #HP-334 Ingress
+  @TA_A_25794_10 #HP-335 Egress
+  Szenariogrundriss: ZETA Guard-Komponenten - Implementierung von Health Checks
+  # Die Komponenten des ZETA Guard MUSS Health Checks implementieren, um ihren aktuellen Zustand und ihre Verfügbarkeit zu überwachen.
+
+    # For local/cloud testing please reverse commenting in the following 4 lines:
+    Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.actuatorHealthPath}"
+    #Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}/mocked/actuator/health"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.actuatorHealthPath}"
+    #Dann TGR finde die letzte Anfrage mit dem Pfad "mocked/actuator/health"
+
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" <response_comparison> "200"
+
+    # ToDo: use correct paths:
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.HTTP_Proxy"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.DB"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Authorization_Server"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.DB"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Policy_Engine"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Notification_Service"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Management_Service"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Telemetrie-Daten_Service"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Ingress"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Egress"
+
+    Beispiele: Integrationstest
+      | response_comparison |
+      | überein mit         |
+
+    @component
+    Beispiele: Komponententest
+      | response_comparison |
+      | nicht überein mit   |
+
+  @dev
+  @A_25795 #HP-55
+  @TA_A_25795_01 #HP-218 HTTP-Proxy
+  @TA_A_25795_02 #HP-219 PEP DB
+  @TA_A_25795_03 #HP-220 AuthZ Server
+  @TA_A_25795_04 #HP-221 PDP DB
+  @TA_A_25795_05 #HP-222 Policy Engine
+  @TA_A_25795_06 #HP-223 Notification Service
+  @TA_A_25795_07 #HP-224 Management Service
+  @TA_A_25795_08 #HP-225 Telemetrie-Daten Service
+  @TA_A_25795_09 #HP-229 Ingress
+  @TA_A_25795_10 #HP-230 Egress
+  Szenariogrundriss: ZETA Guard-Komponenten - Automatische Antwort auf Health Check Anfragen
+  # Die Komponenten des ZETA Guard MUSS automatisch auf Health Check Anfragen antworten können, um ihre Funktionalität und Verfügbarkeit zu bestätigen.
+  # Voraussetzung für aktuelle Implementierung: separate Adresse wird von jeder Komponente angeboten
+
+    #Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}/mocked2/actuator/health<path>"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.actuatorHealthPath}<path>"
+    #Dann TGR finde die letzte Anfrage mit dem Pfad "/mocked2/actuator/health<path>"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.actuatorHealthPath}<path>"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Dann TGR gebe aktuelle Response als Rbel-Tree aus
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.status"
+
+    # ToDo: use correct addresses in following examples, as soon as they are available
+    Beispiele: Integrationstest
+      | path                     |
+      # complete ZETA Guard
+      | /                        |
+      # HP-218 PEP HTTP Proxy
+      | /PEP/httpProxy           |
+      # HP-219 PEP DB
+      | /PEP/db                  |
+      # HP-220 PDP AuthZ Server
+      | /PDP/authorizationServer |
+      # HP-221 PDP DB
+      | /PDP/db                  |
+      # HP-222 Policy Engine
+      | /PDP/policyEngine        |
+      # HP-223 Notification Service
+      | /notificationService     |
+      # HP-224 Management Service
+      | /managementService       |
+      # HP-225 Telemetrie-Daten Service
+      | /telemetriedatenService  |
+      # HP-229 Ingress
+      | /ingress                 |
+      # HP-230 Egress
+      | /egress                  |
+
+    @component
+    Beispiele: Komponententest
+      | path                     |
+      # complete ZETA Guard
+      | /                        |
+      # HP-218 PEP HTTP Proxy
+      | /PEP/httpProxy           |
+      # HP-219 PEP DB
+      | /PEP/db                  |
+      # HP-220 PDP AuthZ Server
+      | /PDP/authorizationServer |
+      # HP-221 PDP DB
+      | /PDP/db                  |
+      # HP-222 Policy Engine
+      | /PDP/policyEngine        |
+      # HP-223 Notification Service
+      | /notificationService     |
+      # HP-224 Management Service
+      | /managementService       |
+      # HP-225 Telemetrie-Daten Service
+      | /telemetriedatenService  |
+      # HP-229 Ingress
+      | /ingress                 |
+      # HP-230 Egress
+      | /egress                  |
+
+  @dev
+  @A_25796 #HP-56
+  @TA_A_25796_01 #HP-336 HTTP-Proxy - Betriebszeit
+  @TA_A_25796_02 #HP-337 HTTP-Proxy - letzte erfolgreiche Transaktion
+  #@TA_A_25796_03 #HP-338 HTTP-Proxy - Fehlerzustände
+  @TA_A_25796_04 #HP-339 PEP DB - Betriebszeit
+  @TA_A_25796_05 #HP-340 PEP DB - letzte erfolgreiche Transaktion
+  #@TA_A_25796_06 #HP-341 PEP DB - - Fehlerzustände
+  @TA_A_25796_07 #HP-342 AuthZ Server - Betriebszeit
+  @TA_A_25796_08 #HP-343 AuthZ Server - letzte erfolgreiche Transaktion
+  #@TA_A_25796_09 #HP-344 AuthZ Server - Fehlerzustände
+  @TA_A_25796_10 #HP-345 PDP DB - Betriebszeit
+  @TA_A_25796_11 #HP-346 PDP DB - letzte erfolgreiche Transaktion
+  #@TA_A_25796_12 #HP-347 PDP DB - Fehlerzustände
+  @TA_A_25796_30 #HP-348 Policy Engine - Betriebszeit
+  @TA_A_25796_13 #HP-349 Policy Engine - letzte erfolgreiche Transaktion
+  #@TA_A_25796_14 #HP-350 Policy Engine - Fehlerzustände
+  @TA_A_25796_15 #HP-351 Notification Service - Betriebszeit
+  @TA_A_25796_16 #HP-352 Notification Service - letzte erfolgreiche Transaktion
+  #@TA_A_25796_17 #HP-353 Notification Service - Fehlerzustände
+  @TA_A_25796_18 #HP-354 Management Service - Betriebszeit
+  @TA_A_25796_19 #HP-355 Management Service - letzte erfolgreiche Transaktion
+  #@TA_A_25796_20 #HP-356 Management Service - Fehlerzustände
+  @TA_A_25796_21 #HP-357 Telemetrie-Daten Service - Betriebszeit
+  @TA_A_25796_22 #HP-358 Telemetrie-Daten Service - letzte erfolgreiche Transaktion
+  #@TA_A_25796_23 #HP-359 Telemetrie-Daten Service - Fehlerzustände
+  @TA_A_25796_24 #HP-360 Ingress - Betriebszeit
+  @TA_A_25796_25 #HP-361 Ingress - letzte erfolgreiche Transaktion
+  #@TA_A_25796_26 #HP-362 Ingress - Fehlerzustände
+  @TA_A_25796_27 #HP-363 Egress - Betriebszeit
+  @TA_A_25796_28 #HP-364 Egress - letzte erfolgreiche Transaktion
+  #@TA_A_25796_29 #HP-365 Egress - Fehlerzustände
+  Szenariogrundriss: ZETA Guard-Komponenten - Bereitstellung von Zustandsinformationen
+  # Die Komponenten des ZETA Guard MUSS detaillierte Zustandsinformationen als Teil ihrer Health Check Antworten bereitstellen, einschließlich - aber nicht beschränkt auf - Betriebszeit, letzte erfolgreiche Transaktion und eventuelle Fehlerzustände.
+
+    #Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}/mocked/actuator/health"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.actuatorHealthPath}"
+    #Dann TGR finde die letzte Anfrage mit dem Pfad "/mocked/actuator/health"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.actuatorHealthPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" <response_comparison> "200"
+
+    # PEP HTTP Proxy
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.HTTP_Proxy.details.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.HTTP_Proxy.details.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.DB.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.DB.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Authorization_Server.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Authorization_Server.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.DB.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.DB.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Policy_Engine.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PDP.components.Policy_Engine.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Notification_Service.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Notification_Service.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Management_Service.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Management_Service.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Telemetrie-Daten_Service.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Telemetrie-Daten_Service.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Ingress.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Ingress.lastTransaction"
+
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Egress.uptime"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.Egress.lastTransaction"
+
+
+    #Todo: Komponenten müssen aktuelle Fehlerzustände zeigen können, damit diese ausgelesen werden können
+    # PEP DB (with DB is down)
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$body.components.PEP.components.DB.output"
+
+    Beispiele: Integrationstest
+      | response_comparison |
+      | überein mit         |
+
+    @component
+    Beispiele: Komponententest
+      | response_comparison |
+      | nicht überein mit   |
+
+# End of Health Checks
+
+
+
+====================================================================================================
+Funktionalität: Client_authentisierung_und_autorisierung_software attest_SC_400
+
+  Grundlage:
+    Gegeben sei TGR lösche aufgezeichnete Nachrichten
+
+  @no_proxy
+  @component
+  @dev
+  @A_27007
+  @A_25661
+  @TA_A_27007_02
+  @TA_A_25661_03
+  Szenario: Fehlerhafte Anfrage im Authorization Code Flow
+    # TODO: Reevaluate this scenario implementation
+    Wenn Hole JWT für Client "evil_client" von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Dann TGR finde die letzte Anfrage mit dem Pfad ".*/token"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+
+  @no_proxy
+  @component
+  @staging
+  @A_26662
+  @TA_A_26662_01
+  Szenario: Der ZETA Guard muss bei HTTP Fehler 400 ein JSON Objekt gemäß [zeta-error.yaml] senden.
+    Wenn Hole JWT für Client "evil_client" von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Und validiere "${jwtToken}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+
+====================================================================================================
+
+Funktionalität: Client_authentisierung_und_autorisierung_software attest_SC_403
+
+  Grundlage:
+    Gegeben sei TGR lösche aufgezeichnete Nachrichten
+
+  @no_proxy
+  @component
+  @dev
+  @A_25661
+  @A_27007
+  @TA_A_27007_04
+  @TA_A_25661_03
+  Szenario: Die Komponente Authorization Server MUSS [...] eine Zugriffsverweigerung mit einem HTTP-Statuscode 403 quittieren.
+    Wenn Hole JWT mit zusätzlichem Header "x-evil-header" von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Dann TGR finde die letzte Anfrage mit dem Pfad ".*/token"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
+
+  @no_proxy
+  @component
+  @staging
+  @A_26662
+  @TA_A_26662_01
+  Szenario: Der ZETA Guard muss bei HTTP Fehler 403 ein JSON Objekt gemäß [zeta-error.yaml] ergänzen.
+    Wenn Hole JWT mit zusätzlichem Header "x-evil-header" von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Und validiere "${jwtToken}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+
+====================================================================================================
+
+Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
+
+  Grundlage:
+    Gegeben sei TGR lösche aufgezeichnete Nachrichten
+
+  @component
+  @dev
+  @TA_A_27802_01
+  @TA_A_27802_02
+  @TA_A_27802_03
+  @TA_A_27802_04
+  @TA_A_27802_05
+  @TA_A_27802_10
+  @TA_A_27802_11
+  Szenariogrundriss:  ZETA Guard, JWT Prüfung (Komponententest)
+    # TODO: Evaluate on how to get the access token for this test
+    Wenn Hole JWT von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "JWT_BEARER_TOKEN"
+    Und Setze "<Feld>" im JWT-Token "${JWT_BEARER_TOKEN}" auf den Wert "<NeuerWert>" und signiere mit dem Key "mocks/jwt-sign-key.pem" und speichere in der Variable "JWT_ERROR_TOKEN"
+    Und TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.helloZetaPath}" mit folgenden Headern:
+      | Authorization | Bearer ${JWT_ERROR_TOKEN} |
+    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
+
+    Beispiele: Manipulationen
+      | Feld          | NeuerWert        | ResponseCode |
+      | re-sign       |                  | 200          |
+      | header.alg    | RS1              | 401          |
+      | payload.exp   | 1758719276       | 401          |
+      | payload.aud   | unknown          | 401          |
+      | payload.iss   | someone          | 401          |
+      | hash          |                  | 401          |
+      | header.typ    | JWT              | 401          |
+      | payload.nonce | 1234567890123456 | 401          |
+
+  @dev
+  @TA_A_25761_02
+  @TA_A_25767_01
+  @TA_A_25767_02
+  Szenario: ZETA Guard, Resource Abfrage mit gültigem access token (Komponententest)
+    # TODO!
+    Wenn Hole JWT von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und validiere "${jwtToken}" gegen Schema "schemas/v_1_0/access-token.yaml"
+    Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "JWT_BEARER_TOKEN"
+    Und TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.helloZetaPath}" mit folgenden Headern:
+      | Authorization | Bearer ${JWT_BEARER_TOKEN} |
+    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+====================================================================================================

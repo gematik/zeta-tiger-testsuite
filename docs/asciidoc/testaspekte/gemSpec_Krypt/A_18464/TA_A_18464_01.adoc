@@ -1,0 +1,4 @@
+[#TA_A_18464_01]
+===== TA_A_18464_01 - TLS-Verbindungen, nicht Version 1.1 - ZETA Guard
+
+"**Alle Produkttypen**, die Übertragungen mittels TLS durchführen, DÜRFEN **NICHT die TLS-Version 1.1** [RFC-4346] unterstützen. **[<=]"**

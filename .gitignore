@@ -163,7 +163,38 @@ buildNumber.properties
 
 # --- Whitelist JMeter distribution (rekursiv) ---
 !tools/apache-jmeter-5.6.3/**
+
+# uv build artifacts
+**/.venv/
+.uv/
+*.egg-info/
+
+# pnpm
+docs/node_modules
+
+# Traceability artefacts
+docs/asciidoc/diagrams/traceability-*.mmd
+docs/asciidoc/tables/features_table.adoc
+docs/asciidoc/tables/traceability_matrix.adoc
+
+# Generated Markdown narratives for Serenity
+src/test/resources/features/**/readme.md
+/docs/asciidoc/tables/product_gap_table.adoc
+/docs/asciidoc/diagrams/product-gap-summary.mmd
+/docs/asciidoc/tables/product_gap_summary.adoc
+
 .jenkins
 .githubignore
+# private key
 src/test/resources/mocks/jwt-sign-key.pem
+src/test/resources/keys/zeta-achelos.westeurope.cloudapp.azure.com-ecKey.pem
+src/test/resources/keys/zeta-cd.westeurope.cloudapp.azure.com-ecKey.pem
+src/test/resources/keys/zeta-dev.westeurope.cloudapp.azure.com-ecKey.pem
+src/test/resources/keys/zeta-local.westeurope.cloudapp.azure.com-ecKey.pem
+src/test/resources/keys/zeta-staging.westeurope.cloudapp.azure.com-ecKey.pem
+# internals
+tiger-cloud.yaml
+tiger-cloud-achelos.yaml
+tiger-cloud-dev.yaml
+# jmeter
 tools

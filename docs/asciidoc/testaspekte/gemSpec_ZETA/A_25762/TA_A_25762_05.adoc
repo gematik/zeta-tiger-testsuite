@@ -1,0 +1,10 @@
+[#TA_A_25762_05]
+===== TA_A_25762_05 - Nutzerauthentifizierung mittels SMCB (Client Assertion)
+
+"Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
+
++++[...]+++
+
+* Authentifizierung des Nutzers mittels +++SM(C)-B+++ signiertem **Client Assertion** JWT und DPoP gemäß **[RFC7523]** und [RFC9449].
+
+[...]"

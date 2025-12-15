@@ -2,6 +2,50 @@
 == Glossar
 
 [glossary]
-TM:: Testmanager
+AS:: Authorization Server
+ASL:: Additional Security Layer
+AT:: Access Token
+DCR:: Dynamic Client Registration
+DPoP:: Demonstrating Proof of Possession
+eGK:: elektronische Gesundheitskarte
+EvT:: Eigenverantwortlicher Test
+FQDN:: Fully Qualified Domain Name
+gRPC:: Google Remote Procedure Call
+HBA:: Heilberufeausweis
+HSM:: Hardware Security Module
+IAM:: Identity and Access Management
+ICAM:: Identity, Credentials, Access Management
+IDP:: Identity Provider
+JWKS:: JSON Web Key Set
+JWT:: JSON Web Token
+LEI:: Leistungserbringerinstitution
+MA:: Mitarbeiter
+MAs:: Mitarbeitende
+OIDC:: OpenID Connect
+OPA:: Open Policy Agent
+OPR:: OAuth Protected Resources
+OTLP:: OpenTelemetry Protocol
+OTel:: OpenTelemetry
+PAP:: Policy Administration Point
+PCR:: Platform Configuration Register
+PDP:: Policy Decision Point
+PEP:: Policy Enforcement Point
+PIP:: Policy Information Point
+PoPP:: Proof of Patient Presence
 PM:: Produktmanager
 PMO:: Product Management Office
+PS:: Primärsystem
+RS:: Resource Server
+RT:: Refresh Token
+SIEM:: Security Information and Event Management
+SM:: Security Module
++++SM(C)+++:: Security Module (Card)
++++SM(C)-B+++:: Security Module (Card) Typ B, (Institutionskarte, Praxiskarte)
+SMC:: Security Module (Card), alternative Schreibweise
+SMC-B:: Security Module (Card) Typ B, (Institutionskarte, Praxiskarte), alternative Schreibweise
+TEE:: Trusted Execution Environment
+TM:: Testmanager
+TPM:: Trusted Platform Module
+ZETA:: Zero Trust Access
+ZT:: Zero Trust
+ZTA:: ZETA Attestation Service

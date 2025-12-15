@@ -1,0 +1,31 @@
+{
+  "client_id": "123e4567-e89b-12d3-a456-426614174000",
+  "client_id_issued_at": 1727160000,
+  "token_endpoint_auth_method": "private_key_jwt",
+  "token_endpoint_auth_signing_alg": "ES256",
+  "grant_types": [
+    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "response_types": ["code"],
+  "redirect_uris": [
+    "https://demo.example.org/cb"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "4a8Y4b0l4lq3z8yY6Gm7oQq8zQKrmZzQ2lS1b3m4n5o",
+        "y": "mQ0R2S3T4U5V6W7X8Y9Z0a1b2c3d4e5f6g7h8i9jAA",
+        "use": "sig",
+        "alg": "ES256",
+        "kid": "demo-key-1"
+      }
+    ]
+  },
+  "status": "pending_attestation",
+  "registration_client_uri": "https://zetaGuard/register/123e4567-e89b-12d3-a456-426614174000",
+  "registration_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ..."
+}

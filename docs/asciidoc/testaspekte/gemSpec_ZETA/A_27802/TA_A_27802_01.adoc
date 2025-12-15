@@ -1,7 +1,8 @@
 [#TA_A_27802_01]
 ===== TA_A_27802_01 - ZETA Guard - JWT-Header-Prüfung
 
-Der ZETA Guard MUSS bei der Prüfung von JWT folgende Prüfschritte durchführen:
+"Der ZETA Guard MUSS bei der Prüfung von JWT folgende Prüfschritte durchführen:
 
-**JWT Header-Überprüfung**: Zuerst überprüfen, ob der Algorithmus akzeptabel ist, um unnötige Verarbeitung zu vermeiden.
-Gültige Algorithmen sind in [gemSpec_Krypt] festgelegt.
+**JWT Header-Überprüfung**: Zuerst überprüfen, ob der **Algorithmus akzeptabel** ist, um unnötige Verarbeitung zu vermeiden. Gültige Algorithmen sind in [gemSpec_Krypt] festgelegt.
+
+[...]"
