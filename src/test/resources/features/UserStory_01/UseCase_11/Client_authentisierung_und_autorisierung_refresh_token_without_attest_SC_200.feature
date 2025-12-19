@@ -63,7 +63,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Warte bis Access Token abgelaufen ist
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
 
     # Zweite Anfrage um Token Refresh auszulösen
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -98,7 +98,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Warte bis zweiter Access Token abgelaufen ist
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
 
     # Dritte Anfrage um erneuten Token Refresh auszulösen
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -153,7 +153,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Warte bis Access Token abgelaufen ist
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
 
     # Zweite Anfrage um Token Refresh auszulösen
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -246,7 +246,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Token Refresh auslösen
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     # Following check is a good way to wait that refresh token request is finished
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
@@ -304,7 +304,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Warte bis Access Token abgelaufen ist
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
 
     # Ersten Refresh durchführen (verwendet usedRefreshToken)
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -326,7 +326,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Zweiter Refresh-Versuch sollte fehlschlagen
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
 
@@ -392,7 +392,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR lösche aufgezeichnete Nachrichten
 
     # Warte auf Token Expiry und Trigger Refresh
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     # Warten dass HelloZeta-Response vollständig geparst ist (sollte fehlschlagen)

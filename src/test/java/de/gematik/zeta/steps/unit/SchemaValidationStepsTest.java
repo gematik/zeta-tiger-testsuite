@@ -28,6 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import de.gematik.zeta.steps.SchemaValidationSteps;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,8 +43,27 @@ class SchemaValidationStepsTest {
   private static final String WELL_KNOWN_SCHEMA = "schemas/v_1_0/as-well-known.yaml";
   private static final String ACCESS_TOKEN_SCHEMA = "schemas/v_1_0/access-token.yaml";
   private static final String CLIENT_ASSERTION_JWT_SCHEMA = "client-assertion-jwt.yaml";
+  // private static final String POPP_TOKEN_SCHEMA = "popp-token.yaml";
+  private static final String POPP_TOKEN_SCHEMA = "schemas/mock/popp-token-gemspec_popp.yaml";
 
   private final SchemaValidationSteps steps = new SchemaValidationSteps();
+
+  private static final String ENCODED_POPP_TOKEN = loadResource("mocks/encoded_popp_token.jwt");
+
+  private static String loadResource(String resource) {
+    final String normalized = resource.startsWith("/") ? resource.substring(1) : resource;
+    try (InputStream in =
+        SchemaValidationStepsTest.class.getClassLoader().getResourceAsStream(normalized)) {
+      if (in == null) {
+        throw new IllegalArgumentException("Resource not found: " + normalized);
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read resource: " + normalized, e);
+    }
+  }
+
+  private static final String EXAMPLE_POPP_TOKEN = loadResource("mocks/example_popp_token.json");
 
   /**
    * The sub-element "client_statement" comes from referenced schema file.
@@ -72,6 +95,11 @@ class SchemaValidationStepsTest {
                   "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
                   "platform": "linux",
                   "posture": {
+                      "platform_product_id": {
+                          "platform": "linux",
+                          "packaging_type": "deb",
+                          "application_id": "org.mozilla.firefox"
+                      },
                       "product_id": "test_proxy",
                       "product_version": "0.1.0",
                       "os": "Linux",
@@ -254,5 +282,28 @@ class SchemaValidationStepsTest {
     assertDoesNotThrow(
         () -> steps.softlyValidateJsonAgainstYamlSchema(VALID_CLIENT_ASSERTION_JWT,
             CLIENT_ASSERTION_JWT_SCHEMA));
+  }
+
+  /**
+   * Verifies that a jwt verifies correct against a schema with referenced schema.
+   */
+  @Test
+  public void testPoppTokenVerifiesAgainstSchemaWithRef() {
+
+    assertDoesNotThrow(
+        () -> steps.validateJsonAgainstYamlSchema(EXAMPLE_POPP_TOKEN,
+            POPP_TOKEN_SCHEMA));
+  }
+
+  /**
+   * Verifies that a base64 encoded token is correctly decoded and validated.
+   */
+  @Test
+  public void testBase64EncodedPoppTokenVerifiesAgainstSchema() {
+
+    assertDoesNotThrow(
+        () -> steps.validateEncodedJwtAgainstYamlSchema(ENCODED_POPP_TOKEN,
+            POPP_TOKEN_SCHEMA));
+
   }
 }

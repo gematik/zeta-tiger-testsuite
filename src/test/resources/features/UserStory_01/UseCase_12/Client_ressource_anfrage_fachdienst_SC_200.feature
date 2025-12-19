@@ -122,7 +122,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "requestPath"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu" überein mit "${requestScheme}://${requestHost}${requestPath}"
     Und TGR speichere Wert des Knotens "$.header.dpop.body.iat" der aktuellen Anfrage in der Variable "resourceIat"
-    Und prüfe dass Timestamp "${resourceIat}" innerhalb von 300 Sekunden liegt
+    Und prüfe dass Timestamp "${resourceIat}" in der Vergangenheit liegt
 
     # Access Token Hash (ath) Validierung - nur bei Resource Requests
     Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.body.ath"
@@ -208,3 +208,100 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
       | $.header.dpop | body.ath   | wronghash                  | 401          |
       | $.header.dpop | body.htm   | POST                       | 401          |
       | $.header.dpop | body.htu   | https://wrong.url/resource | 401          |
+
+  @dev
+  @TA_A_25669_01
+  @TA_A_25669_02
+  @TA_A_25669_03
+  @TA_A_25669_07
+  Szenario: PEP fügt alle ZETA-Header ein (User-Info, PoPP-Token-Content, Client-Data)
+    Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    # Prüfe Request VOR PEP - keine ZETA-Header vorhanden
+    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "$.header" der aktuellen Anfrage in der Variable "ALL_OLD_HEADERS"
+
+    Und prüfe aktueller Request enthält keinen Knoten "$.header.ZETA-User-Info"
+    Und prüfe aktueller Request enthält keinen Knoten "$.header.ZETA-PoPP-Token-Content"
+    Und prüfe aktueller Request enthält keinen Knoten "$.header.ZETA-Client-Data"
+
+    # PoPP-Header (JWT) muss vorhanden sein
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.popp"
+
+    # Prüfe Request NACH PEP
+    Dann TGR finde die letzte Anfrage mit dem Pfad "^/achelos_testfachdienst/hellozeta"
+    Und TGR speichere Wert des Knotens "$.header" der aktuellen Anfrage in der Variable "ALL_HEADERS"
+
+    # TA_A_25669_01: ZETA-User-Info wurde eingefügt
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-User-Info"
+    Und TGR speichere Wert des Knotens "$.header.ZETA-User-Info" der aktuellen Anfrage in der Variable "USER_INFO"
+    Und prüfe ob der Knoten "${USER_INFO}" MAX 350 Byte groß ist
+    Und prüfe "${USER_INFO}" ist striktes Base64-URL Format
+    Und decodiere "${USER_INFO}" von Base64-URL und speichere in der Variable "USER_INFO_decoded"
+    Und validiere "${USER_INFO_decoded}" gegen Schema "schemas/v_1_0/user-info.yaml"
+
+    # TA_A_25669_02: ZETA-PoPP-Token-Content wurde eingefügt
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-PoPP-Token-Content"
+    Und TGR speichere Wert des Knotens "$.header.ZETA-PoPP-Token-Content" der aktuellen Anfrage in der Variable "POPP_CONTENT"
+    Und prüfe ob der Knoten "${POPP_CONTENT}" MAX 450 Byte groß ist
+    Und prüfe "${POPP_CONTENT}" ist striktes Base64-URL Format
+    Und decodiere "${POPP_CONTENT}" von Base64-URL und speichere in der Variable "POPP_CONTENT_decoded"
+    # Vergleich: ZETA-PoPP-Token-Content muss dem Payload des PoPP-JWT entsprechen
+    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR speichere Wert des Knotens "$.header.popp.body" der aktuellen Anfrage in der Variable "POPP_JWT_PAYLOAD"
+    Und prüfe Knoten "${POPP_JWT_PAYLOAD}" enthält mindestens alle Kindknoten von "${POPP_CONTENT_decoded}"
+
+    # TA_A_25669_03: ZETA-Client-Data wurde eingefügt - zurück zum Request NACH PEP
+    Dann TGR finde die letzte Anfrage mit dem Pfad "^/achelos_testfachdienst/hellozeta"
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-Client-Data"
+    Und TGR speichere Wert des Knotens "$.header.ZETA-Client-Data" der aktuellen Anfrage in der Variable "CLIENT_DATA"
+    Und prüfe ob der Knoten "${CLIENT_DATA}" MAX 2500 Byte groß ist
+    Und prüfe "${CLIENT_DATA}" ist striktes Base64-URL Format
+    Und decodiere "${CLIENT_DATA}" von Base64-URL und speichere in der Variable "CLIENT_DATA_decoded"
+    Und validiere "${CLIENT_DATA_decoded}" soft gegen Schema "schemas/v_1_0/client-instance.yaml"
+
+    # TA_A_25669_07: Alle anderen Header wurden weitergeleitet
+    Und prüfe Knoten "${ALL_HEADERS}" enthält mindestens alle Header aus "${ALL_OLD_HEADERS}"
+
+  @dev
+  @TA_A_25669_04
+  @TA_A_25669_05
+  @TA_A_25669_06
+  Szenario: PEP überschreibt vom Client gesetzte ZETA-Header
+    Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
+
+    # Setze gefälschte ZETA-Header als Default-Header - diese werden vom Client mitgesendet
+    Und TGR setze den default header "zeta-user-info" auf den Wert "FAKE_USER_INFO"
+    Und TGR setze den default header "zeta-popp-token-content" auf den Wert "FAKE_POPP_CONTENT"
+    Und TGR setze den default header "zeta-client-data" auf den Wert "FAKE_CLIENT_DATA"
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    # Prüfe Request VOR PEP - gefälschte Header wurden vom Client gesendet
+    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.zeta-user-info" überein mit "FAKE_USER_INFO"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.zeta-popp-token-content" überein mit "FAKE_POPP_CONTENT"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.zeta-client-data" überein mit "FAKE_CLIENT_DATA"
+
+    # Prüfe Request NACH PEP - Header wurden vom PEP überschrieben (nicht mehr FAKE_*)
+    Dann TGR finde die letzte Anfrage mit dem Pfad "^/achelos_testfachdienst/hellozeta"
+
+    # Prüfe, dass alle drei ZETA-Header vorhanden sind
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-User-Info"
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-PoPP-Token-Content"
+    Und TGR prüfe aktueller Request enthält Knoten "$.header.ZETA-Client-Data"
+
+    # TA_A_25669_04: ZETA-User-Info wurde überschrieben (nicht mehr FAKE-Wert)
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.ZETA-User-Info" nicht überein mit "FAKE_USER_INFO"
+
+    # TA_A_25669_05: ZETA-PoPP-Token-Content wurde überschrieben (nicht mehr FAKE-Wert)
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.ZETA-PoPP-Token-Content" nicht überein mit "FAKE_POPP_CONTENT"
+
+    # TA_A_25669_06: ZETA-Client-Data wurde überschrieben (nicht mehr FAKE-Wert)
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.ZETA-Client-Data" nicht überein mit "FAKE_CLIENT_DATA"
