@@ -2,6 +2,11 @@
 
 # Release Notes ZETA Tiger Testsuite
 
+## Version: 0.2.4
+
+### changed
+- Updates to documentation and clean up of configuration files
+
 ## Version: 0.2.3
 
 This version tests the "happy flow" for the ZETA protocol between the ZETA client SDK and the ZETA Guard.

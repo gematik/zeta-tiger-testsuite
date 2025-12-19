@@ -87,7 +87,7 @@ class SchemaValidationStepsTest {
               "iss": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
               "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
               "aud": [
-                  "https://zeta-local.westeurope.cloudapp.azure.com/auth/realms/zeta-guard/protocol/openid-connect/token"
+                  "https://zeta-kind.local/auth/realms/zeta-guard/protocol/openid-connect/token"
               ],
               "exp": 1764599351,
               "jti": "[B@1f54480b",

@@ -65,6 +65,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
 
     @no_proxy
     @component
+    @TA_A_26641_01
     Beispiele: Komponententest
       | reset_step                             | request_step                                                                  | expected_path                                          |
       | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthProtectedResourcePath}" | .*${paths.guard.wellKnownOAuthProtectedResourcePath}$ |

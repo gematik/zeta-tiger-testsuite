@@ -149,7 +149,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
 
   @dev
   @TA_A_25762_04
-  Szenario: Nutzerauthentifizierung mittels SMC-B (DPoP)
+  Szenariogrundriss: Nutzerauthentifizierung mittels SMC-B (DPoP)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 

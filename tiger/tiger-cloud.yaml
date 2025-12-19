@@ -1,0 +1,20 @@
+servers:
+  testfachdienst:
+    active: false
+    type: externalUrl
+    source:
+      - "http://${zeta_base_url}/"
+    healthcheckUrl: "http://${zeta_base_url}/actuator/health"
+
+  # Note that the zetaClient needs '/proxy/' as path before the correct path.
+  zetaClient:
+    type: externalUrl
+    source:
+      - "https://${zeta_base_url}/"
+    healthcheckUrl: "https://${zeta_base_url}/health"
+
+  zetaGuard:
+    type: externalUrl
+    source:
+      - "https://${zeta_base_url}/"
+    healthcheckUrl: "https://${zeta_base_url}/actuator/health"

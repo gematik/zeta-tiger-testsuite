@@ -192,9 +192,5 @@ src/test/resources/keys/zeta-cd.westeurope.cloudapp.azure.com-ecKey.pem
 src/test/resources/keys/zeta-dev.westeurope.cloudapp.azure.com-ecKey.pem
 src/test/resources/keys/zeta-local.westeurope.cloudapp.azure.com-ecKey.pem
 src/test/resources/keys/zeta-staging.westeurope.cloudapp.azure.com-ecKey.pem
-# internals
-tiger-cloud.yaml
-tiger-cloud-achelos.yaml
-tiger-cloud-dev.yaml
 # jmeter
 tools
