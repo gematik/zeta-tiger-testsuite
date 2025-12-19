@@ -69,9 +69,9 @@ mvn verify "-Dcucumber.filter.tags=@TA_A_25761_02 or @TA_A_27802_01"
 
 # Ausführen gegen eine bestimmte Stage (Cloud)
 # 1. Setzen Sie den gewünschten Host (ohne Scheme) via ENV oder Maven:
-#    export ZETA_BASE_URL=zeta-dev.example
+#    export ZETA_BASE_URL=zeta-kind.local
 #    # oder
-#    mvn verify -Dzeta_base_url=zeta-dev.example
+#    mvn verify -Dzeta_base_url=zeta-kind.local
 # 2. Nutzen Sie das Cloud-Profil (environment=cloud bleibt unverändert):
 mvn verify -Denvironment=cloud
 ```
@@ -89,7 +89,7 @@ docker build -t testsuite:latest .
 
 # 2) Container ausführen (Volume mount nur für Reports nötig).
 docker run --rm \
-  -e ZETA_BASE_URL=https://zeta-dev.example \
+  -e ZETA_BASE_URL=https://zeta-kind.local \
   -v "$PWD/target/site/serenity:/app/target/site/serenity" \
   -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
   testsuite:latest
@@ -137,7 +137,7 @@ testsuite-smoke:
   script:
     - /usr/local/bin/run-tests.sh
   variables:
-    ZETA_BASE_URL: https://zeta-dev.example
+    ZETA_BASE_URL: https://zeta-kind.local
     TIGER_ENVIRONMENT: cloud
     CUCUMBER_TAGS: "@smoke and not @perf"
     SERENITY_EXPORT_DIR: "$CI_PROJECT_DIR/target/site/serenity"
@@ -177,7 +177,7 @@ checkout -- <file>`) aus oder normalisieren Sie alles mit `git add --renormalize
 
 Konfigurieren Sie den Cloud-Host zentral über `zeta_base_url` in der `defaults.yaml`.
 Alternativ können Sie beim Start `ZETA_BASE_URL` oder einen Maven-Parameter wie
-`-Dzeta_base_url=https://zeta-dev.example` setzen. Belassen Sie `environment` auf `cloud`. Der
+`-Dzeta_base_url=https://zeta-kind.local` setzen. Belassen Sie `environment` auf `cloud`. Der
 Proxy-Overlay ist bereits eingebunden und nutzt den via Port-Forward erreichbaren Admin-Port
 (`http://localhost:9999`). Stellen Sie sicher, dass vor dem Teststart ein entsprechender
 Port-Forward aktiv ist (z. B. `kubectl port-forward svc/tiger-proxy 9999:9999`).

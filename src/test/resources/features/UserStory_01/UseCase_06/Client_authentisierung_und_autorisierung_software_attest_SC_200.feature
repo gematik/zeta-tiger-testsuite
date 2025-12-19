@@ -429,6 +429,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und validiere, dass der Zeitstempel "${CLIENT_ASSERTION_EXP}" später als "${CLIENT_ASSERTION_TIMESTAMP}" liegt
     Und validiere, dass der Zeitstempel "${CLIENT_ASSERTION_TIMESTAMP}" in der Vergangenheit liegt
 
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.client_assertion.body.client_statement.posture"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.client_assertion.body.client_statement.posture.attestation_challenge"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.client_assertion.body.client_statement.posture.public_key"
     # TA_A_25337_01
@@ -441,7 +442,9 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     ## client assertion enthält client statement mit attestation_data und client_id
     Und TGR speichere Wert des Knotens "$.body.client_id" der aktuellen Anfrage in der Variable "CLIENT_ID"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion.body.client_statement.sub" überein mit "${CLIENT_ID}"
-    Und TGR prüfe aktueller Request enthält Knoten "$.body.client_assertion.body.client_statement.urn:gematik:params:oauth:client-attestation:software"
+
+    Und TGR speichere Wert des Knotens "$.body.client_assertion.body.client_statement.posture" der aktuellen Anfrage in der Variable "POSTURE"
+    Und validiere "${POSTURE}" soft gegen Schema "schemas/v_1_0/posture-software.yaml"
 
 
   @dev
