@@ -54,7 +54,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Dann Setze im TigerProxy "${proxy}" für die Nachricht "${opaResponseCondition}" die Manipulation auf Feld "$.body.result.allow" und Wert "false" und 1 Ausführungen
 
     # Warten bis Token abgelaufen ist
-    Und TGR warte "${accessTokenTtl}" Sekunden
+    Und warte "${accessTokenTtl}" Sekunden
 
     # Neuer Request löst Refresh aus, OPA lehnt ab
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"

@@ -76,29 +76,6 @@ public class SchemaValidationSteps {
     return SCHEMA_REGISTRY.getSchema(location);
   }
 
-
-  /**
-   * Parses a JSON string.
-   *
-   * @param jsonString the input string
-   * @return {@link JsonNode}
-   */
-  private JsonNode parseJsonString(String jsonString) {
-    if (jsonString == null || jsonString.isBlank()) {
-      throw new AssertionError("JSON text to be validated is empty.");
-    }
-    JsonNode jsonNode;
-    try {
-      jsonNode = JSON.readTree(jsonString);
-    } catch (Exception parse) {
-      // If the input is longer than 300 characters, show only the beginning
-      var preview =
-          jsonString.length() > 300 ? jsonString.substring(0, 300) + " …" : jsonString;
-      throw new AssertionError("JSON could not be parsed:\n" + preview, parse);
-    }
-    return jsonNode;
-  }
-
   /**
    * Validates a JSON string against a given {@link Schema}.
    *
@@ -157,7 +134,7 @@ public class SchemaValidationSteps {
   @Then("validate {tigerResolvedString} against schema {string}")
   public void validateJsonAgainstYamlSchema(String jsonString, String schemaPath) {
     var schema = loadYamlSchema(schemaPath);
-    JsonNode jsonNode = parseJsonString(jsonString);
+    JsonNode jsonNode = CheckMessageSteps.parseJsonString(jsonString, false);
     assertValid(schema, jsonNode, schemaPath, false);
   }
 
@@ -173,7 +150,7 @@ public class SchemaValidationSteps {
   public void softlyValidateJsonAgainstYamlSchema(String jsonString, String schemaPath) {
 
     var schema = loadYamlSchema(schemaPath);
-    JsonNode jsonNode = parseJsonString(jsonString);
+    JsonNode jsonNode = CheckMessageSteps.parseJsonString(jsonString, false);
     assertValid(schema, jsonNode, schemaPath, true);
   }
 
@@ -239,3 +216,4 @@ public class SchemaValidationSteps {
   }
 
 }
+

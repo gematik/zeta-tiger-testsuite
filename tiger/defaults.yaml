@@ -8,8 +8,9 @@ environment: cloud
 #zeta_base_url: zeta-dev.westeurope.cloudapp.azure.com
 #zeta_base_url: zeta-cd.westeurope.cloudapp.azure.com
 #zeta_base_url: zeta-achelos.westeurope.cloudapp.azure.com
-#zeta_base_url: zeta-local.westeurope.cloudapp.azure.com
+#zeta_base_url: zeta-kind.local
 zeta_base_url: zeta-staging.spree.de
+#zeta_base_url: localhost:8080
 
 zeta_proxy_url: localhost:9999
 #zeta_proxy: proxy

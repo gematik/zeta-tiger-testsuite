@@ -70,8 +70,8 @@ public class TigerProxyManipulationsSteps {
    * @param field The internal name of the JWT field whose value should be altered
    * @param value The new value to be assigned to the specified JWT field during manipulation
    */
-  @Dann("Setze im TigerProxy {string} die JwtManipulation auf Feld {string} und Wert {string}")
-  @Then("Set the JwtManipulation in the TigerProxy {string} to field {string} and value {string}")
+  @Dann("Setze im TigerProxy {string} die JwtManipulation auf Feld {string} und Wert {tigerResolvedString}")
+  @Then("Set the JwtManipulation in the TigerProxy {string} to field {string} and value {tigerResolvedString}")
   public void setTigerProxyJwtManipulation(String tigerProxy, String field, String value) {
     String url = getUrl(tigerProxy, "${paths.tigerProxy.modifyJwsTokenPath}");
     HttpHeaders headers = new HttpHeaders();
@@ -115,9 +115,9 @@ public class TigerProxyManipulationsSteps {
    * @param value      The new value to assign to the specified field
    */
   @Dann("Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Manipulation auf "
-      + "Feld {string} und Wert {string}")
+      + "Feld {string} und Wert {tigerResolvedString}")
   @Then("Set the manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to "
-      + "field {string} and value {string}")
+      + "field {string} and value {tigerResolvedString}")
   public void setTigerProxyManipulation(String tigerProxy, String message, String field, String value) {
     sendRbelManipulation(tigerProxy, Map.of(
         "name", "modification" + random.nextInt(100),

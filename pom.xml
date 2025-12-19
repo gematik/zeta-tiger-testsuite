@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>0.2.1</version>
+  <version>0.2.3</version>
 
   <!-- Projektlizenzinformationen -->
   <licenses>
@@ -159,7 +159,7 @@
     <version.maven.exec>3.6.2</version.maven.exec>
     <version.maven.checkstyle>3.6.0</version.maven.checkstyle>
     <version.maven.versions>2.20.1</version.maven.versions>
-    <version.tiger>4.1.11</version.tiger>
+    <version.tiger>4.1.7</version.tiger>
     <version.asciidoctor.maven.plugin>3.2.0</version.asciidoctor.maven.plugin>
     <version.asciidoctorj.diagram>3.0.1</version.asciidoctorj.diagram>
     <version.frontend.maven.plugin>1.15.4</version.frontend.maven.plugin>

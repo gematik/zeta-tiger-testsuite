@@ -31,5 +31,7 @@ additionalConfigurationFiles:
     baseKey: eRezeptTestData
   - filename: tiger/regex.yaml
     baseKey: regex
+  - filename: tiger/testdata.yaml
+    baseKey: testdata
   - filename: tiger/tokens.yaml
     baseKey: tokens

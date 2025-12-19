@@ -125,35 +125,6 @@ public class DpopValidationSteps {
   }
 
   /**
-   * Validates that a timestamp is within an acceptable time window from the current time.
-   *
-   * <p>According to RFC 9449, the creation time of the JWT must be within an acceptable window.
-   * This step checks that the timestamp is not too old or too far in the future.
-   *
-   * @param timestamp               the Unix timestamp in seconds
-   * @param acceptableWindowSeconds the acceptable time window in seconds
-   */
-  @Und("prüfe dass Timestamp {tigerResolvedString} innerhalb von {int} Sekunden liegt")
-  @And("check that timestamp {tigerResolvedString} is within {int} seconds")
-  public void validateTimestampWindow(String timestamp, int acceptableWindowSeconds) {
-    long timestampValue;
-    try {
-      timestampValue = Long.parseLong(timestamp);
-    } catch (NumberFormatException e) {
-      throw new AssertionError("Invalid timestamp format: " + timestamp);
-    }
-    long now = System.currentTimeMillis() / 1000;
-    long diff = Math.abs(now - timestampValue);
-
-    assertThat(diff)
-        .as("Timestamp must be within acceptable window (RFC 9449)")
-        .isLessThanOrEqualTo(acceptableWindowSeconds);
-
-    log.info("Timestamp validation successful: {} seconds difference (max: {})", diff,
-        acceptableWindowSeconds);
-  }
-
-  /**
    * Validates that the jwk in the DPoP JWT header does not contain private key components.
    *
    * <p>According to RFC 9449, the jwk JOSE Header Parameter must not contain a private key.

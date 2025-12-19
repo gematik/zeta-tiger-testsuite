@@ -43,3 +43,6 @@ tigerProxy:
   keyPath: "/key"
   modifyJwtPath: "/modifyJwt"
 
+opa:
+  decisionPath: "/v1/data/zeta/authz/decision"
+

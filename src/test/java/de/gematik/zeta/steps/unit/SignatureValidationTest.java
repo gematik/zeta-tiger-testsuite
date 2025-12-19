@@ -27,6 +27,10 @@ package de.gematik.zeta.steps.unit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import de.gematik.zeta.steps.JwtSteps;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,6 +38,7 @@ import org.junit.jupiter.api.Test;
  */
 class SignatureValidationTest {
 
+  private static final String ENCODED_POPP_TOKEN_RESOURCE = "mocks/encoded_popp_token.jwt";
 
   private final JwtSteps validator = new JwtSteps();
 
@@ -68,38 +73,27 @@ class SignatureValidationTest {
         "signature verification was not successful");
   }
 
-  // TODO: fix and activate again
-  //  @Test
-  //  void testVerifyX5cSignature() {
-  //    String subjectToken =
-  //        "eyJ0eXAiOiJKV1QiLCJraWQiOiJ3NjI5MTVJaUw1bzFVZ2o0Q3NHbzR0MUVid3EweDhiNTdwVmFldS1qemFvIiwieDVj"
-  //            + "IjpbIk1JSURORENDQXR1Z0F3SUJBZ0lIQWxEK0dyZ01uakFLQmdncWhrak9QUVFEQWpDQmxURUxNQWtHQTFVRU"
-  //            + "JoTUNSRVV4R2pBWUJnTlZCQW9NRVdkbGJXRjBhV3NnVGs5VUxWWkJURWxFTVVnd1JnWURWUVFMREQ5SmJuTjBh"
-  //            + "WFIxZEdsdmJpQmtaWE1nUjJWemRXNWthR1ZwZEhOM1pYTmxibk10UTBFZ1pHVnlJRlJsYkdWdFlYUnBhMmx1Wm"
-  //            + "5KaGMzUnlkV3QwZFhJeElEQWVCZ05WQkFNTUYwZEZUUzVUVFVOQ0xVTkJOVGNnVkVWVFZDMVBUa3haTUI0WERU"
-  //            + "STFNRFl3TlRJeU1EQXdNRm9YRFRNd01EWXdOVEl4TlRrMU9Wb3dYREVMTUFrR0ExVUVCaE1DUkVVeEhEQWFCZ0"
-  //            + "5WQkFvTUV6TXdNREEyTURZeU5TQk9UMVF0VmtGTVNVUXhMekF0QmdOVkJBTU1Ka0Z5ZW5Sd2NtRjRhWE1nUVc1"
-  //            + "dUxVSmxZWFJ5YVhobElGcGxkR0VnVkVWVFZDMVBUa3haTUZvd0ZBWUhLb1pJemowQ0FRWUpLeVFEQXdJSUFRRU"
-  //            + "hBMElBQkZRdUVrTENYNWtKY1dhR1lYZGFSVGRUQWpBaEVrRGw5Q1dXZDh2RkhZR1NobWpoY0ZobTViSWV4NFIz"
-  //            + "SkVxZ2h2a1AwZkpnemdvOUF6QWF1Ukx6WkRHamdnRkxNSUlCUnpBT0JnTlZIUThCQWY4RUJBTUNCNEF3REFZRF"
-  //            + "ZSMFRBUUgvQkFJd0FEQXNCZ05WSFI4RUpUQWpNQ0dnSDZBZGhodG9kSFJ3T2k4dlpXaGpZUzVuWlcxaGRHbHJM"
-  //            + "bVJsTDJOeWJDOHdSUVlGS3lRSUF3TUVQREE2TURnd05qQTBNREl3Rmd3VVFtVjBjbWxsWW5OemRNT2tkSFJsSU"
-  //            + "VGeWVuUXdDUVlIS29JVUFFd0VNaE1OTVMweU1EQXhOREEyTURZeU5UQWRCZ05WSFE0RUZnUVVQeDhZMW82QVNB"
-  //            + "bi80aWlXVjE2OFBtQ3JLek13RXdZRFZSMGxCQXd3Q2dZSUt3WUJCUVVIQXdJd0lBWURWUjBnQkJrd0Z6QUtCZ2"
-  //            + "dxZ2hRQVRBU0JJekFKQmdjcWdoUUFUQVJOTUI4R0ExVWRJd1FZTUJhQUZMWHZkWDZabWhmSjAzY3ZXeEhGaERN"
-  //            + "dkJaeFJNRHNHQ0NzR0FRVUZCd0VCQkM4d0xUQXJCZ2dyQmdFRkJRY3dBWVlmYUhSMGNEb3ZMMlZvWTJFdVoyVn"
-  //            + "RZWFJwYXk1a1pTOWxZMk10YjJOemNEQUtCZ2dxaGtqT1BRUURBZ05IQURCRUFpQVdGeWt4RGNQSzhhdTZRVXJr"
-  //            + "Z21wZzU5bUdFb2lnbklQRS8rL2pFeURsQ2dJZ1pCV1FCL0FTR2VQanJZV2FpZUl4ekNpMSt3RUJxalZQUTgzeD"
-  //            + "dET1pEdUE9Il0sImFsZyI6IkVTMjU2In0.eyJpc3MiOiJiYTNiZmFmZi0xMzRiLTQzYzAtOTZiYS0zMDQ1NjI4"
-  //            + "MDIwYmQiLCJleHAiOjE3NjQxNzEyNDIsImF1ZCI6WyJodHRwczovL3pldGEtbG9jYWwud2VzdGV1cm9wZS5jbG"
-  //            + "91ZGFwcC5henVyZS5jb20vYXV0aC8iXSwic3ViIjoiMS0yMDAxNDA2MDYyNSIsImlhdCI6MTc2NDE3MTIxMiwi"
-  //            + "bm9uY2UiOiJVZGt0aFh4cTdXNGNIdlJ4TTlBZHlBIiwianRpIjoiOTE1OTY1NGYtYzcwNy00ZDFlLTgwYTUtMm"
-  //            + "RlY2JhMmMzOGQ2IiwidHlwIjoiQmVhcmVyIn0.cgmlFZugxuuIqN36dlk6VhEteWiPVeKNyHUInHLCXvZ6sr34"
-  //            + "d-cumVvcta-hrMw7pld8gBq3HLWS8tyAuPoz0w";
-  //
-  //    assertDoesNotThrow(
-  //        () -> validator.verifyJwtSignature(subjectToken),
-  //        "signature verification was not successful");
-  //  }
+  @Test
+  void testVerifyX5cSignature() {
+
+    final String encodedPoppToken = loadEncodedPoppToken();
+
+    assertDoesNotThrow(
+        () -> validator.verifyJwtSignature(encodedPoppToken),
+        "signature verification was not successful");
+  }
+
+  private static String loadEncodedPoppToken() {
+    final String normalized = ENCODED_POPP_TOKEN_RESOURCE;
+    try (InputStream in =
+        SignatureValidationTest.class.getClassLoader().getResourceAsStream(normalized)) {
+      if (in == null) {
+        throw new IllegalArgumentException("Resource not found: " + normalized);
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read resource: " + normalized, e);
+    }
+  }
 
 }

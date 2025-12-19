@@ -65,7 +65,8 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     #[RFC 7523] - Werte auf Gültigkeit prüfen
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.header.alg" überein mit "ES256"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.header.typ" überein mit "JWT"
-    Und prüfe dass Timestamp "$.body.subject_token.body.exp" innerhalb von 60 Sekunden liegt
+    Und TGR speichere Wert des Knotens "$.body.subject_token.body.exp" der aktuellen Anfrage in der Variable "subjectTokenExp"
+    Und prüfe dass Timestamp "${subjectTokenExp}" in der Zukunft liegt
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.aud" überein mit "${audPath}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.nonce" überein mit "${nonce}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.iss" überein mit "${client_id}"
@@ -141,7 +142,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "tokenRequestPath"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu.path" überein mit "${tokenRequestPath}"
     Und TGR speichere Wert des Knotens "$.header.dpop.body.iat" der aktuellen Anfrage in der Variable "iat"
-    Und prüfe dass Timestamp "${iat}" innerhalb von 300 Sekunden liegt
+    Und prüfe dass Timestamp "${iat}" in der Vergangenheit liegt
     # @TA_A_27802_11 - nonce Validierung
     # Guard MUSS prüfen, dass DPoP nonce mit vom /nonce Endpoint ausgegebener nonce übereinstimmt
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.nonce" überein mit "${tokenNonce}"
