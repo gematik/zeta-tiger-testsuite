@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung GS-A_5526
+
+Folgende Testaspekte testen <<GS-A_5526>>.
+
+include::TA_GS-A_5526_01.adoc[]
+
+include::TA_GS-A_5526_02.adoc[]
+

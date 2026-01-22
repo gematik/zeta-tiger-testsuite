@@ -1,0 +1,14 @@
+==== Testaspekte für die Anforderung A_25783
+
+Folgende Testaspekte testen <<A_25783>>.
+
+include::TA_A_25783_01.adoc[]
+
+include::TA_A_25783_02.adoc[]
+
+include::TA_A_25783_03.adoc[]
+
+include::TA_A_25783_04.adoc[]
+
+include::TA_A_25783_05.adoc[]
+

@@ -1,0 +1,4 @@
+[#TA_A_27264_06]
+===== TA_A_27264_06 - ZETA Guard, Telemetrie-Daten - Trace - Notification Service
+
+Alle ZETA Guard-Komponenten mit Ausnahme der Datenbanken MÜSSEN OpenTelemetry konforme **Traces**, Metriken, and Logs erzeugen. **[<=]**

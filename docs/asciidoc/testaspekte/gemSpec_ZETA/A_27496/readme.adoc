@@ -1,0 +1,10 @@
+==== Testaspekte für die Anforderung A_27496
+
+Folgende Testaspekte testen <<A_27496>>.
+
+include::TA_A_27496_01.adoc[]
+
+include::TA_A_27496_02.adoc[]
+
+include::TA_A_27496_03.adoc[]
+

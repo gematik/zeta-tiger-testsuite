@@ -32,7 +32,7 @@ Der ZETA Client verfügt über ein gültiges PoPP Token sowie auch eine bestehen
 
 | Nebenbedingung: |
 - Bereitstellung von *PoPP-Token* für Ressourcenanfrage *notwendig*. <<A_26477>>
-- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492>>
+- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492-01>>
 
 | Ablauf: |
 1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.

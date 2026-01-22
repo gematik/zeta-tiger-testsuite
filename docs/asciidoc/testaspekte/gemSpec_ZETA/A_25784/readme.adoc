@@ -1,0 +1,5 @@
+==== Testaspekte für die Anforderung A_25784
+
+Folgende Testaspekte testen <<A_25784>>.
+
+include::TA_A_25784_01.adoc[]

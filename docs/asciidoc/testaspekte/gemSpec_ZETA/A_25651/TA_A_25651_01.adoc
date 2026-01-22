@@ -1,0 +1,4 @@
+[#TA_A_25651_01]
+===== TA_A_25651_01 - PDP Client-Registrierung - Offband Nutzer Verification - Prozess via Email
+
+Die Komponente Authorization Server MUSS einen Offband Prozess (per E-Mail) für die Kommunikation mit diesem Nutzer unterstützen (Trust on First Use), wobei der Nutzer seine E-Mail Adresse eigenverantwortlich vergibt. **[<=]**

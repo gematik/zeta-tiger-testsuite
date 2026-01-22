@@ -46,3 +46,10 @@ tigerProxy:
 opa:
   decisionPath: "/v1/data/zeta/authz/decision"
 
+popp:
+  jwks: "/jwks.json"
+
+openSearch:
+  baseUrl: "http://${opensearch_url}"
+  openTelemetryLogsSearchPath: "/otel-logs-*/_search"
+  openTelemetryLogsSearchPathPattern: "/otel-logs-.*/_search.*"

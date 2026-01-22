@@ -1,0 +1,4 @@
+[#TA_A_26661_26]
+===== TA_A_26661_26 - ZETA Guard - HTTP Statuscodes - Alle Endpunkte - 500 Internal Server Error
+
+"Der ZETA Guard MUSS für **Alle Endpunkte** den HTTP Statuscode **500 Internal Server Error** unterstützen. **[<=]"**

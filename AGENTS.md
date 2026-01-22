@@ -3,7 +3,7 @@
 ## Priorities & Focus
 - Always follow these priorities: (1) AGENTS rules, (2) prefer existing TGR steps over custom code, (3) Gherkin is German with 2-space indentation and snake_case filenames.
 - Bold keywords in test aspects define the focus (e.g., **Ausgabe AccessToken** ⇒ no Refresh checks). Read the TA text and linked RFC section.
-- Use Tiger User Manual (`docs/Tiger-User-Manual.html`) and ZETA specification (`docs/gemSpec_ZETA_V1.2.0_CC.html`) in `docs` for context.
+- Use Tiger User Manual (`docs/Tiger-User-Manual.html`) and ZETA specification (`docs/gemSpec_ZETA_V1.2.0.html`) in `docs` for context.
 
 ## Project Structure & Module Organization
 - `pom.xml`: Maven build, profiles, and plugin configuration.

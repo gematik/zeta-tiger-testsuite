@@ -1,0 +1,4 @@
+[#TA_A_26661_15]
+===== TA_A_26661_15 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 200 OK
+
+"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **200 OK** unterstützen. **[<=]"**

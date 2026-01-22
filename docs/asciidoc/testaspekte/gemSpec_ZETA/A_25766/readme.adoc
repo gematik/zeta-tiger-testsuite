@@ -1,0 +1,9 @@
+==== Testaspekte für die Anforderung A_25766
+
+Folgende Testaspekte testen <<A_25766>>.
+
+include::TA_A_25766_01.adoc[]
+
+include::TA_A_25766_02.adoc[]
+
+include::TA_A_25766_03.adoc[]

@@ -1,0 +1,10 @@
+[#TA_A_21275-01_01]
+===== TA_A_21275-01_01 - TLS-Verbindungen, zulässige Hashfunktionen bei Signaturen im TLS-Handshake - ZETA Guard - erlaubte Hashfunktionen
+
+"Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN sicherstellen, dass
+
+. sie im Rahmen der **Erstellung und Prüfung von digitalen Signaturen** im Rahmen des TLS-Handshakes ausschließlich **folgende** kryptographisch geeignete **Hashfunktionen** verwenden:
+.. **SHA-256, SHA-384, SHA-512 [FIPS-180-4]**
+.. **SHA3-256, SHA3-384, SHA3-512 [FIPS-202]**
+
+[...] **[<=]"**

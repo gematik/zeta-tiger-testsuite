@@ -1,0 +1,4 @@
+[#TA_A_25735_02]
+===== TA_A_25735_02 - Aktivierung Push-Benachrichtigung - Neuregistrierungen für diesen Nutzer
+
+"Das Clientsystem MUSS dem Nutzer die Möglichkeit geben, Push-Benachrichtigungen für Aktivitäten über registrierte Clients und **Neuregistrierungen für diesen Nutzer** zu aktivieren. **[<=]"**

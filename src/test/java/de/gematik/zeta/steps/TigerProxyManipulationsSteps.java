@@ -54,26 +54,35 @@ import org.springframework.web.client.RestTemplate;
  * Cucumber step definitions for TigerProxy manipulation operations.
  *
  * <p>This class provides step definitions for manipulating the TigerProxy.
- *
+ * The TigerProxy URL is automatically resolved from the configuration variable
+ * {@code paths.tigerProxy.baseUrl}.
  */
 public class TigerProxyManipulationsSteps {
   private final Random random = new Random();
   private final RestTemplate restTemplate = new RestTemplate();
 
   /**
+   * Resolves the TigerProxy base URL from configuration.
+   *
+   * @return The TigerProxy base URL
+   */
+  private String getTigerProxyBaseUrl() {
+    return TigerGlobalConfiguration.resolvePlaceholders("${paths.tigerProxy.baseUrl}");
+  }
+
+  /**
    * Sends a manipulation request to the TigerProxy to apply a specific modification on intercepted messages.
-   * This method instructs the TigerProxy identified by the given URL to modify intercepted data
+   * This method instructs the TigerProxy to modify intercepted data
    * according to the provided message criteria. It targets a specified JWT field and updates its value
    * with the new one supplied.
    *
-   * @param tigerProxy URL or identifier of the TigerProxy instance responsible for performing the manipulation
    * @param field The internal name of the JWT field whose value should be altered
    * @param value The new value to be assigned to the specified JWT field during manipulation
    */
-  @Dann("Setze im TigerProxy {string} die JwtManipulation auf Feld {string} und Wert {tigerResolvedString}")
-  @Then("Set the JwtManipulation in the TigerProxy {string} to field {string} and value {tigerResolvedString}")
-  public void setTigerProxyJwtManipulation(String tigerProxy, String field, String value) {
-    String url = getUrl(tigerProxy, "${paths.tigerProxy.modifyJwsTokenPath}");
+  @Dann("Setze im TigerProxy die JwtManipulation auf Feld {string} und Wert {tigerResolvedString}")
+  @Then("Set the JwtManipulation in the TigerProxy to field {string} and value {tigerResolvedString}")
+  public void setTigerProxyJwtManipulation(String field, String value) {
+    String url = getUrl("${paths.tigerProxy.modifyJwsTokenPath}");
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -89,15 +98,14 @@ public class TigerProxyManipulationsSteps {
   /**
    * Configures a JWT manipulation on the TigerProxy without re-signing.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value new value for the field
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString}")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString}")
-  public void setTigerProxyJwtManipulation(String tigerProxy, String jwtLocation, String jwtField, String value) {
-    sendJwtManipulation(tigerProxy, Map.of(
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString}")
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString}")
+  public void setTigerProxyJwtManipulation(String jwtLocation, String jwtField, String value) {
+    sendJwtManipulation(Map.of(
         "name", "jwt-modification-" + random.nextInt(1000),
         "jwtLocation", jwtLocation,
         "jwtField", jwtField,
@@ -109,17 +117,16 @@ public class TigerProxyManipulationsSteps {
    * This method directs the TigerProxy to apply a modification targeting a particular field within the message,
    * identified by its RBel path. It updates the field's value with the provided new value during message interception.
    *
-   * @param tigerProxy URL of the TigerProxy that performs the manipulation
    * @param message    Logic to identify the messages that needs to be manipulated
    * @param field      RBel path identifier of the field you want to manipulate
    * @param value      The new value to assign to the specified field
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Manipulation auf "
+  @Dann("Setze im TigerProxy für die Nachricht {tigerResolvedString} die Manipulation auf "
       + "Feld {string} und Wert {tigerResolvedString}")
-  @Then("Set the manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to "
+  @Then("Set the manipulation in the TigerProxy for message {tigerResolvedString} to "
       + "field {string} and value {tigerResolvedString}")
-  public void setTigerProxyManipulation(String tigerProxy, String message, String field, String value) {
-    sendRbelManipulation(tigerProxy, Map.of(
+  public void setTigerProxyManipulation(String message, String field, String value) {
+    sendRbelManipulation(Map.of(
         "name", "modification" + random.nextInt(100),
         "condition", message,
         "targetElement", field,
@@ -132,19 +139,18 @@ public class TigerProxyManipulationsSteps {
    * This method directs the TigerProxy to apply a modification targeting a particular field within the message,
    * identified by its RBel path, for a specified number of executions.
    *
-   * @param tigerProxy URL of the TigerProxy that performs the manipulation
    * @param message    Logic to identify the messages that needs to be manipulated
    * @param field      RBel path identifier of the field you want to manipulate
    * @param value      The new value to assign to the specified field
    * @param executions Number of times to execute before auto-clearing
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Manipulation auf "
+  @Dann("Setze im TigerProxy für die Nachricht {tigerResolvedString} die Manipulation auf "
       + "Feld {string} und Wert {tigerResolvedString} und {int} Ausführungen")
-  @Then("Set the manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to "
+  @Then("Set the manipulation in the TigerProxy for message {tigerResolvedString} to "
       + "field {string} and value {tigerResolvedString} with {int} executions")
-  public void setTigerProxyManipulationWithExecutions(String tigerProxy, String message, String field, String value,
+  public void setTigerProxyManipulationWithExecutions(String message, String field, String value,
       Integer executions) {
-    sendRbelManipulation(tigerProxy, Map.of(
+    sendRbelManipulation(Map.of(
         "name", "modification" + random.nextInt(100),
         "condition", message,
         "targetElement", field,
@@ -157,19 +163,18 @@ public class TigerProxyManipulationsSteps {
    * This is useful for modifying form-data fields which cannot be directly addressed by RBel path.
    * The regex filter is applied to the target element and matching parts are replaced with the new value.
    *
-   * @param tigerProxy  URL of the TigerProxy that performs the manipulation
    * @param message     Logic to identify the messages that needs to be manipulated
    * @param field       RBel path identifier of the field you want to manipulate (e.g., $.body)
    * @param regexFilter Regex pattern to find the part to replace within the target element
    * @param value       The new value to replace the matched regex with
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Regex-Manipulation auf "
+  @Dann("Setze im TigerProxy für die Nachricht {tigerResolvedString} die Regex-Manipulation auf "
       + "Feld {string} mit Regex {string} und Wert {tigerResolvedString}")
-  @Then("Set the regex manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to "
+  @Then("Set the regex manipulation in the TigerProxy for message {tigerResolvedString} to "
       + "field {string} with regex {string} and value {tigerResolvedString}")
-  public void setTigerProxyRegexManipulation(String tigerProxy, String message, String field, String regexFilter,
+  public void setTigerProxyRegexManipulation(String message, String field, String regexFilter,
       String value) {
-    sendRbelManipulation(tigerProxy, Map.of(
+    sendRbelManipulation(Map.of(
         "name", "regex-modification" + random.nextInt(100),
         "condition", message,
         "targetElement", field,
@@ -180,19 +185,17 @@ public class TigerProxyManipulationsSteps {
 
   /**
    * Clears all existing manipulations configured in the TigerProxy instance.
-   * This method instructs the TigerProxy, identified by the given URL or reference, to remove all active
+   * This method instructs the TigerProxy to remove all active
    * manipulations, effectively resetting its modification rules to a clean state.
-   *
-   * @param tigerProxy URL or identifier of the TigerProxy instance responsible for managing manipulations
    */
-  @Dann("Alle Manipulationen im TigerProxy {tigerResolvedString} werden gestoppt")
-  @Then("Reset all manipulation in the TigerProxy {tigerResolvedString}")
-  public void resetTigerProxyManipulation(String tigerProxy) {
-    String modificationUrl = getUrl(tigerProxy, "${paths.tigerProxy.modificationPath}");
+  @Dann("Alle Manipulationen im TigerProxy werden gestoppt")
+  @Then("Reset all manipulation in the TigerProxy")
+  public void resetTigerProxyManipulation() {
+    String modificationUrl = getUrl("${paths.tigerProxy.modificationPath}");
     try {
       restTemplate.delete(modificationUrl);
       ResponseEntity<String> resetResponse =
-          restTemplate.postForEntity(getUrl(tigerProxy, "${paths.tigerProxy.resetJwtManipulationPath}"), null, String.class);
+          restTemplate.postForEntity(getUrl("${paths.tigerProxy.resetJwtManipulationPath}"), null, String.class);
       assertThat(resetResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     } catch (RestClientException e) {
       throw new AssertionError("The manipulation could not be removed in the TigerProxy.");
@@ -201,16 +204,15 @@ public class TigerProxyManipulationsSteps {
 
 
   /**
-   * Sends a key from a file with the specified algorithm to the given TigerProxy instance.
+   * Sends a key from a file with the specified algorithm to the TigerProxy instance.
    *
-   * @param tigerProxy the identifier or name of the TigerProxy to send the key to
    * @param keyName the name to assign to the key being sent
    * @param file the path to the file containing the key
    * @param algorithm the algorithm used for the key
    */
-  @Dann("Sende TigerProxy {tigerResolvedString} den Key {string} aus der Datei {tigerResolvedString} mit dem Algorithmus {string}")
-  @Then("Send the TigerProxy {tigerResolvedString} the key {string} from file {tigerResolvedString} with algorithm {string}")
-  public void sendKeyfileTigerProxy(String tigerProxy, String keyName, String file, String algorithm) {
+  @Dann("Sende TigerProxy den Key {string} aus der Datei {tigerResolvedString} mit dem Algorithmus {string}")
+  @Then("Send the TigerProxy the key {string} from file {tigerResolvedString} with algorithm {string}")
+  public void sendKeyfileTigerProxy(String keyName, String file, String algorithm) {
     Key keyFile;
 
     try {
@@ -220,21 +222,20 @@ public class TigerProxyManipulationsSteps {
     }
 
     String keyBase64 = Base64.getEncoder().encodeToString(keyFile.getEncoded());
-    sendKeyToTigerProxy(tigerProxy, keyName, keyBase64, keyFile.getAlgorithm());
+    sendKeyToTigerProxy(keyName, keyBase64, keyFile.getAlgorithm());
   }
 
   /**
-   * Sends a key from a file with the specified algorithm to the given TigerProxy instance.
+   * Sends a key with the specified algorithm to the TigerProxy instance.
    *
-   * @param tigerProxy the identifier or name of the TigerProxy to send the key to
    * @param keyName the name to assign to the key being sent
    * @param keyBase64 base64 content of the keyfile
    * @param algorithm the algorithm used for the key
    */
-  @Dann("Sende TigerProxy {tigerResolvedString} den Key {string} mit dem Inhalt {tigerResolvedString} und dem Algorithmus {string}")
-  @Then("Send the TigerProxy {tigerResolvedString} the key {string} with content {tigerResolvedString} and algorithm {string}")
-  public void sendKeyToTigerProxy(String tigerProxy, String keyName, String keyBase64, String algorithm) {
-    String url = getUrl(tigerProxy, "${paths.tigerProxy.keyPath}/" + keyName);
+  @Dann("Sende TigerProxy den Key {string} mit dem Inhalt {tigerResolvedString} und dem Algorithmus {string}")
+  @Then("Send the TigerProxy the key {string} with content {tigerResolvedString} and algorithm {string}")
+  public void sendKeyToTigerProxy(String keyName, String keyBase64, String algorithm) {
+    String url = getUrl("${paths.tigerProxy.keyPath}/" + keyName);
 
     try {
       RestTemplate restTemplate = new RestTemplate();
@@ -258,19 +259,18 @@ public class TigerProxyManipulationsSteps {
   /**
    * Configures a JWT manipulation on the TigerProxy.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value new value for the field
    * @param privateKeyPem private key used to re-sign the token
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
       + "mit privatem Schlüssel {tigerResolvedString}")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString} "
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString} "
       + "using private key {tigerResolvedString}")
-  public void setTigerProxyJwtManipulationWithKey(String tigerProxy, String jwtLocation, String jwtField, String value,
+  public void setTigerProxyJwtManipulationWithKey(String jwtLocation, String jwtField, String value,
       String privateKeyPem) {
-    sendJwtManipulation(tigerProxy, Map.of(
+    sendJwtManipulation(Map.of(
         "jwtLocation", jwtLocation,
         "jwtField", jwtField,
         "replaceWith", value,
@@ -280,20 +280,19 @@ public class TigerProxyManipulationsSteps {
   /**
    * Configures a JWT manipulation on the TigerProxy with condition and execution limit, without re-signing.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value new value for the field
    * @param condition regex pattern to match request paths
    * @param executions number of times to execute before auto-clearing (null = unlimited)
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
       + "für Pfad {tigerResolvedString} und {int} Ausführungen")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString} "
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString} "
       + "for path {tigerResolvedString} with {int} executions")
-  public void setTigerProxyJwtManipulationWithConditionNoResign(String tigerProxy, String jwtLocation, String jwtField,
+  public void setTigerProxyJwtManipulationWithConditionNoResign(String jwtLocation, String jwtField,
       String value, String condition, Integer executions) {
-    sendJwtManipulation(tigerProxy, Map.of(
+    sendJwtManipulation(Map.of(
         "jwtLocation", jwtLocation,
         "jwtField", jwtField,
         "replaceWith", value,
@@ -304,7 +303,6 @@ public class TigerProxyManipulationsSteps {
   /**
    * Configures a JWT manipulation on the TigerProxy with condition and execution limit.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value new value for the field
@@ -312,13 +310,13 @@ public class TigerProxyManipulationsSteps {
    * @param condition regex pattern to match request paths
    * @param executions number of times to execute before auto-clearing (null = unlimited)
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
       + "mit privatem Schlüssel {tigerResolvedString} für Pfad {tigerResolvedString} und {int} Ausführungen")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString} "
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString} "
       + "using private key {tigerResolvedString} for path {tigerResolvedString} with {int} executions")
-  public void setTigerProxyJwtManipulationWithCondition(String tigerProxy, String jwtLocation, String jwtField,
+  public void setTigerProxyJwtManipulationWithCondition(String jwtLocation, String jwtField,
       String value, String privateKeyPem, String condition, Integer executions) {
-    sendJwtManipulation(tigerProxy, Map.ofEntries(
+    sendJwtManipulation(Map.ofEntries(
         Map.entry("jwtLocation", jwtLocation),
         Map.entry("jwtField", jwtField),
         Map.entry("replaceWith", value),
@@ -331,7 +329,6 @@ public class TigerProxyManipulationsSteps {
    * Configures a JWT manipulation on the TigerProxy with condition, execution limit, and JWK replacement.
    * The JWK in the JWT header will be replaced with the public key derived from the provided private key.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value new value for the field
@@ -339,13 +336,13 @@ public class TigerProxyManipulationsSteps {
    * @param condition regex pattern to match request paths
    * @param executions number of times to execute before auto-clearing (null = unlimited)
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {string} "
       + "mit privatem Schlüssel {tigerResolvedString} für Pfad {tigerResolvedString} und {int} Ausführungen und ersetze JWK")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString} "
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {string} "
       + "using private key {tigerResolvedString} for path {tigerResolvedString} with {int} executions and replace JWK")
-  public void setTigerProxyJwtManipulationWithConditionAndReplaceJwk(String tigerProxy, String jwtLocation, String jwtField,
+  public void setTigerProxyJwtManipulationWithConditionAndReplaceJwk(String jwtLocation, String jwtField,
       String value, String privateKeyPem, String condition, Integer executions) {
-    sendJwtManipulation(tigerProxy, Map.ofEntries(
+    sendJwtManipulation(Map.ofEntries(
         Map.entry("jwtLocation", jwtLocation),
         Map.entry("jwtField", jwtField),
         Map.entry("replaceWith", value),
@@ -356,21 +353,52 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
+   * Configures a JWT manipulation on the TigerProxy for Authorization header (access token)
+   * with automatic DPoP ath update. When the access token is manipulated, the ath claim
+   * in the DPoP JWT will be recalculated and the DPoP JWT will be re-signed.
+   *
+   * @param jwtField what to change in the access token JWT (e.g., "body.iss", "body.sub")
+   * @param value new value for the field
+   * @param accessTokenKeyPem private key used to re-sign the access token
+   * @param dpopKeyPem private key used to re-sign the DPoP JWT after ath update
+   * @param condition regex pattern to match request paths
+   * @param executions number of times to execute before auto-clearing
+   */
+  @Dann("Setze im TigerProxy für Access Token das Feld {string} auf Wert {tigerResolvedString} "
+      + "mit Access Token Key {tigerResolvedString} und DPoP Key {tigerResolvedString} "
+      + "für Pfad {tigerResolvedString} und {int} Ausführungen")
+  @Then("Set in TigerProxy for access token the field {string} to value {tigerResolvedString} "
+      + "using access token key {tigerResolvedString} and DPoP key {tigerResolvedString} "
+      + "for path {tigerResolvedString} with {int} executions")
+  public void setTigerProxyAccessTokenManipulationWithAthUpdate(String jwtField, String value,
+      String accessTokenKeyPem, String dpopKeyPem, String condition, Integer executions) {
+    sendJwtManipulation(Map.ofEntries(
+        Map.entry("jwtLocation", "$.header.authorization"),
+        Map.entry("jwtField", jwtField),
+        Map.entry("replaceWith", value),
+        Map.entry("privateKeyPem", accessTokenKeyPem),
+        Map.entry("condition", condition),
+        Map.entry("deleteAfterNExecutions", executions),
+        Map.entry("dpopLocation", "$.header.dpop"),
+        Map.entry("dpopPrivateKeyPem", dpopKeyPem),
+        Map.entry("updateAth", true)));
+  }
+
+  /**
    * Configures a single-execution JWT manipulation on the TigerProxy (executes once then auto-clears).
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param jwtLocation where the JWT is located
    * @param jwtField what to change in the JWT
    * @param value new value for the field
    * @param privateKeyPem private key used to re-sign the token
    */
-  @Dann("Setze im TigerProxy {tigerResolvedString} für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
+  @Dann("Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString} "
       + "mit privatem Schlüssel {tigerResolvedString} einmalig")
-  @Then("Set in TigerProxy {tigerResolvedString} for JWT in {string} the field {string} to value {tigerResolvedString} "
+  @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString} "
       + "using private key {tigerResolvedString} once")
-  public void setTigerProxyJwtManipulationOnce(String tigerProxy, String jwtLocation, String jwtField,
+  public void setTigerProxyJwtManipulationOnce(String jwtLocation, String jwtField,
       String value, String privateKeyPem) {
-    sendJwtManipulation(tigerProxy, Map.of(
+    sendJwtManipulation(Map.of(
         "jwtLocation", jwtLocation,
         "jwtField", jwtField,
         "replaceWith", value,
@@ -382,11 +410,10 @@ public class TigerProxyManipulationsSteps {
    * Sends a JWT manipulation request to TigerProxy.
    * Central method handling all HTTP communication for JWT manipulations.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param body Request body containing manipulation parameters
    */
-  private void sendJwtManipulation(String tigerProxy, Map<String, Object> body) {
-    String url = getUrl(tigerProxy, "${paths.tigerProxy.modifyJwtPath}");
+  private void sendJwtManipulation(Map<String, Object> body) {
+    String url = getUrl("${paths.tigerProxy.modifyJwtPath}");
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -403,11 +430,10 @@ public class TigerProxyManipulationsSteps {
    * Sends an RBel manipulation request to TigerProxy.
    * Central method handling all HTTP communication for RBel path manipulations.
    *
-   * @param tigerProxy URL of the TigerProxy
    * @param body Request body containing manipulation parameters
    */
-  private void sendRbelManipulation(String tigerProxy, Map<String, Object> body) {
-    String url = getUrl(tigerProxy, "${paths.tigerProxy.modificationPath}");
+  private void sendRbelManipulation(Map<String, Object> body) {
+    String url = getUrl("${paths.tigerProxy.modificationPath}");
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -421,13 +447,13 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Builds the request URL from the given tigerProxy and uri part.
+   * Builds the request URL from the TigerProxy base URL and uri part.
    *
-   * @param tigerProxy TigerProxy URL
    * @param uri        Specific endpoint that is called in the TigerProxy
    * @return The complete URL to access the TigerProxy API
    */
-  private String getUrl(String tigerProxy, String uri) {
+  private String getUrl(String uri) {
+    String tigerProxy = getTigerProxyBaseUrl();
     String resolvedUri = TigerGlobalConfiguration.resolvePlaceholders(uri);
     return (tigerProxy.endsWith("/") ? tigerProxy.substring(0, tigerProxy.length() - 1) : tigerProxy) + resolvedUri;
   }

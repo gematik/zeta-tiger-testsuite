@@ -1,0 +1,4 @@
+[#TA_A_26661_08]
+===== TA_A_26661_08 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit OIDC und Authorization Code Flow - 401 Unauthorized
+
+"Der ZETA Guard MUSS für **Authentifizierung mit OIDC und Authorization Code Flow** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**

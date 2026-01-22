@@ -1,0 +1,4 @@
+[#A_28426]
+==== A_28426 - ZETA Client, Service Discovery
+
+Der ZETA Client MUSS die Well-known und JWKS JSON-Dokumente regelmäßig einmal alle 24 Stunden neu laden, wenn im HTTP-Response-Header kein Cache-Control-Header vom ZETA Guard eingefügt wurde. Der ZETA Client MUSS die Service Discovery erneut durchführen, wenn beim Kommunikationsaufbau zu den geschützten Ressourcen der HTTP-Statuscodes 404 (Not Found) empfangen wird.

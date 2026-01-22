@@ -1,0 +1,4 @@
+[#TA_A_28464_01]
+===== TA_A_28464_01 - PEP HTTP Proxy - ZETA Guard Authorization Server - genau eine logische Komponente
+
+"Die Komponente PEP HTTP Proxy MUSS das OAuth Protected Resource Well-known so bereitstellen, dass für ZETA Clients der ZETA Guard Authorization Server als **genau eine logische Komponente** bereitgestellt wird (nur ein Eintrag authorization_servers im OAuth Protected Resource Well-known). **[<=]"**

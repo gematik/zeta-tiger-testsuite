@@ -7,44 +7,29 @@
 | *Titel:* | Client authentisierung und autorisierung client attest SC 200
 
 | Akteur: |
-TODO
 
 | weitere Akteure: |
-TODO
 
 | Auslöser: |
-TODO
 
 | Kurzbeschreibung: |
-TODO
 
 | Vorbedingung: |
-TODO
 
 | Nebenbedingung: |
-TODO
 
 | Ablauf: |
-TODO
 
 | Nachbedingung: |
-TODO
 
 | Abgedeckte Testaspekte: |
-TODO
 
 |===
-
-[mermaid]
-....
-sequenceDiagram
-    %% TODO
-....
 
 [.lead]
 Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-TODO
+include::Client_authentisierung_und_autorisierung_client_attest_SC_200.feature[]
 ----

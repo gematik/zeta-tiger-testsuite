@@ -1,0 +1,12 @@
+==== Testaspekte für die Anforderung A_27867
+
+Folgende Testaspekte testen <<A_27867>>.
+
+include::TA_A_27867_01.adoc[]
+
+include::TA_A_27867_02.adoc[]
+
+include::TA_A_27867_03.adoc[]
+
+include::TA_A_27867_04.adoc[]
+

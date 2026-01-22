@@ -1,0 +1,11 @@
+[#TA_GS-A_4384-03_06]
+===== TA_GS-A_4384-03_06 - TLS-Verbindungen - PIP & PAP - eliptische Kurven
+
+Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
+
+* [...]
+* [...]
+* Beim **ephemeren Elliptic-Curve-Diffie-Hellman-Schlüsselaustausch** (vgl. "ECDHE" im Namen der Cipher-Suites) MÜSSEN die **Kurven P-256** und **P-384** [FIPS-186-5] **unterstützt werden.** Es SOLLEN die Kurven brainpoolP256r1 und brainpoolP384r1 (vgl. [RFC-5639] und [RFC-7027]) unterstützt werden. ***Andere Kurven als in GS-A_4384-**** **aufgeführt DÜRFEN NICHT verwendet werden.**
+* [...]
+
+**[<=]**

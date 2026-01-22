@@ -1,7 +1,7 @@
 [#TA_A_26477_10]
 ===== TA_A_26477_10 - PEP HTTP Proxy - PoPP Token Validierung - Parameter-Prüfung nicht erfolgreich
 
-[...]
++++[...]+++
 
 Wenn [...] eine der **anderen Prüfungen nicht erfolgreich** war, dann MUSS der Request mit HTTP **Code 403 Forbidde**n beantwortet werden.
 **[<=]**

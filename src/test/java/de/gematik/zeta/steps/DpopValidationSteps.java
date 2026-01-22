@@ -28,8 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
+import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.SignedJWT;
@@ -91,8 +93,8 @@ public class DpopValidationSteps {
    *
    * @param dpopJwt the DPoP JWT to verify
    */
-  @Und("verifiziere Signatur von DPoP JWT {tigerResolvedString}")
-  @And("verify signature of DPoP JWT {tigerResolvedString}")
+  @Und("verifiziere ES256 Signatur von DPoP JWT {tigerResolvedString}")
+  @And("verify ES256 signature of DPoP JWT {tigerResolvedString}")
   public void verifyDpopSignature(String dpopJwt) {
     SignedJWT signedJwt;
     try {
@@ -104,9 +106,15 @@ public class DpopValidationSteps {
     assertThat(jwk).as("DPoP JWT must contain jwk in header").isNotNull();
 
     // Gematik requirement: Only ECC (ES256) is allowed
+    assertThat(signedJwt.getHeader().getAlgorithm())
+        .as("DPoP JWT must use ES256 algorithm for gematik requirements")
+        .isEqualTo(JWSAlgorithm.ES256);
     assertThat(jwk)
         .as("DPoP JWT must use Elliptic Curve key (EC) for gematik requirements")
         .isInstanceOf(ECKey.class);
+    assertThat(((ECKey) jwk).getCurve())
+        .as("DPoP JWT must use P-256 curve for gematik requirements")
+        .isEqualTo(Curve.P_256);
 
     JWSVerifier verifier;
     boolean valid;

@@ -1,0 +1,4 @@
+[#TA_A_27264_10]
+===== TA_A_27264_10 - ZETA Guard, Telemetrie-Daten - Metrik - Ingress
+
+Alle ZETA Guard-Komponenten mit Ausnahme der Datenbanken MÜSSEN OpenTelemetry konforme Traces, **Metriken**, and Logs erzeugen. **[<=]**

@@ -1,0 +1,4 @@
+[#TA_A_25788_02]
+===== TA_A_25788_02 - ZETA Guard-Komponenten - Rollback bei abgebrochener Aktualisierung
+
+"Die Komponenten des ZETA Guard MUSS die Fähigkeit besitzen, **zu einer stabilen Vorversion zurückzukehren**, sollte eine Aktualisierung fehlerhaft sein oder **abgebrochen werden müssen**. **[<=]**"

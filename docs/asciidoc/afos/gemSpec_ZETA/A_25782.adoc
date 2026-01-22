@@ -1,0 +1,4 @@
+[#A_25782]
+==== A_25782 - ZETA Client - OAuth2 Session Management
+
+Der ZETA Client MUSS die vom Autorisation Server ausgestellten Access- und Refresh Token gemäß [RFC6749#1.5] sowie die DPoP Schlüssel gemäß [RFC9449] bis zur nächsten Aufforderung zur Autorisierung oder Authentifizierung als User-Session sicher aufbewahren, nach Bedarf abgelaufene Access Token über Refresh Token erneuern und eine Refresh Token-Rotation gemäß [RFC6749#10.4] unterstützen.

@@ -28,22 +28,22 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Gegeben sei TGR setze lokale Variable "proxy" auf "http://${zeta_proxy_url}"
-    Gegeben sei Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
 
   @dev
+  @A_25660
   @TA_A_25660_06
   Szenario: Refresh Token wird bei negativer Policy Decision abgelehnt (Negativtest)
-    Und TGR setze lokale Variable "accessTokenTtl" auf "5"
+    Gegeben sei TGR setze lokale Variable "accessTokenTtl" auf "5"
     # WICHTIG: expires_in Manipulation MUSS VOR dem ersten Token-Request aktiviert werden!
     # Sonst hat der erste Token normales expires_in (z.B. 300s) und wird nicht refresht
-    Wenn TGR setze lokale Variable "tokenResponseCondition" auf "isResponse && request.path =~ '.*/token'"
-    Dann Setze im TigerProxy "${proxy}" für die Nachricht "${tokenResponseCondition}" die Manipulation auf Feld "$.body.expires_in" und Wert "${accessTokenTtl}" und 1 Ausführungen
+    Und TGR setze lokale Variable "tokenResponseCondition" auf "isResponse && request.path =~ '.*${paths.guard.tokenEndpointPath}'"
+    Und Setze im TigerProxy für die Nachricht "${tokenResponseCondition}" die Manipulation auf Feld "$.body.expires_in" und Wert "${accessTokenTtl}" und 1 Ausführungen
 
     # Initiale Token holen (mit manipuliertem expires_in)
-    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
@@ -51,7 +51,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     # OPA Response manipulieren: allow=false simuliert serverseitige Token-Invalidierung/Session-Entzug
     # Diese Manipulation greift erst beim Refresh-Request
     Wenn TGR setze lokale Variable "opaResponseCondition" auf "isResponse && $.body.result.allow"
-    Dann Setze im TigerProxy "${proxy}" für die Nachricht "${opaResponseCondition}" die Manipulation auf Feld "$.body.result.allow" und Wert "false" und 1 Ausführungen
+    Dann Setze im TigerProxy für die Nachricht "${opaResponseCondition}" die Manipulation auf Feld "$.body.result.allow" und Wert "false" und 1 Ausführungen
 
     # Warten bis Token abgelaufen ist
     Und warte "${accessTokenTtl}" Sekunden

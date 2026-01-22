@@ -1,0 +1,15 @@
+==== Testaspekte für die Anforderung A_28422
+
+Folgende Testaspekte testen <<A_28422>>.
+
+include::TA_A_28422_01.adoc[]
+
+include::TA_A_28422_02.adoc[]
+
+include::TA_A_28422_03.adoc[]
+
+include::TA_A_28422_04.adoc[]
+
+include::TA_A_28422_05.adoc[]
+
+include::TA_A_28422_06.adoc[]

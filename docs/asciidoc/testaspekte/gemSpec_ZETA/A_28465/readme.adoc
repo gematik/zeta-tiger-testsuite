@@ -1,0 +1,7 @@
+==== Testaspekte für die Anforderung A_28465
+
+Folgende Testaspekte testen <<A_28465>>.
+
+include::TA_A_28465_01.adoc[]
+
+include::TA_A_28465_02.adoc[]

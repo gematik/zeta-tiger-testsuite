@@ -1,1 +1,10 @@
 product_id: 'test_proxy'
+
+# Erwartete Fehlermeldungen für Policy-Ablehnungen (TA_A_25752_01)
+# Diese Texte müssen mit der tatsächlichen Implementierung des Authorization Servers abgeglichen werden.
+policy_rejection:
+  invalid_profession_oid_error_hint: 'Die professionOID ist für diesen Dienst nicht zugelassen.'
+  invalid_product_id_error_hint: 'Die product_id ist nicht für diesen Dienst registriert.'
+  invalid_product_version_error_hint: 'Die product_version wird nicht unterstützt.'
+  invalid_scope_error_hint: 'Der angeforderte scope ist nicht verfügbar.'
+  invalid_audience_error_hint: 'Die angeforderte audience ist nicht erreichbar.'

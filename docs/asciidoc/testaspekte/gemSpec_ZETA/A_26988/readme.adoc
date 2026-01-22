@@ -1,0 +1,26 @@
+==== Testaspekte für die Anforderung A_26988
+
+Folgende Testaspekte testen <<A_26988>>.
+
+include::TA_A_26988_01.adoc[]
+
+include::TA_A_26988_02.adoc[]
+
+include::TA_A_26988_03.adoc[]
+
+include::TA_A_26988_04.adoc[]
+
+include::TA_A_26988_05.adoc[]
+
+include::TA_A_26988_06.adoc[]
+
+include::TA_A_26988_07.adoc[]
+
+include::TA_A_26988_08.adoc[]
+
+include::TA_A_26988_09.adoc[]
+
+include::TA_A_26988_10.adoc[]
+
+include::TA_A_26988_11.adoc[]
+

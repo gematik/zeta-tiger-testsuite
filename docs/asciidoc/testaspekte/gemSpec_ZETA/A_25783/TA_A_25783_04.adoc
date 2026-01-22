@@ -1,0 +1,10 @@
+[#TA_A_25783_04]
+===== TA_A_25783_04 - Anweisung befolgen Warnungen anzeigen
+
+"Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben der Resource Server und Zero Trust-APIs auswerten und **den Anweisungen daraus folgen** und insbesondere
+
+* eine **Anzeige der Warnungen** aufgrund der Policy-Entscheidungen und
+
++++[...]+++
+
+umsetzen. **[<=]**"

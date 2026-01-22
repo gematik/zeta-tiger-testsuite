@@ -2,7 +2,8 @@
 [#_anforderungen_mappingreferenz]
 == Anforderungen (Mapping/Referenz)
 
-Die nachfolgenden Diagramme visualisieren zuerst die Beziehungen zwischen Anforderungen, Testaspekten und Use Cases sowie die aktuelle Testabdeckung.
+Das nachfolgende Diagramm visualisiert die Beziehungen zwischen Anforderungen, Testaspekten und Use Cases.
+Die Abdeckungsdiagramme befinden sich in Kapitel 5 (Zu testende Merkmale).
 Danach folgt die vollständige Traceability-Matrix.
 
 === Vernetzung von Anforderungen, Testaspekten und Use Cases
@@ -14,34 +15,6 @@ Fehlt eine Verbindung, existiert entweder kein Testaspekt oder noch kein Use Cas
 [mermaid,traceability-overview,svg]
 ....
 include::../diagrams/traceability-overview.mmd[]
-....
-
-=== Testabdeckung der Anforderungen
-
-Das Kreisdiagramm gruppiert alle Anforderungen nach dem aktuellen Abdeckungsstatus.
-Grundlage sind die Traceability-Daten: Eine Anforderung gilt als „vollständig abgedeckt“, wenn sämtliche aus ihr abgeleiteten Testaspekte als implementiert gelten (siehe Definition unten).
-
-[mermaid,traceability-coverage-requirements,svg]
-....
-include::../diagrams/traceability-coverage-requirements.mmd[]
-....
-
-=== Testabdeckung der Testaspekte
-
-Hier wird analysiert, wie viele Testaspekte bereits von automatisierten Tests ausgeführt werden.
-``Implementiert`` bedeutet, dass mindestens ein Szenario des Testaspekts mit Use-Case-Tag hinterlegt ist, ``offen`` kennzeichnet Testaspekte ohne zugeordnete Szenarien.
-
-Die beiden Kuchendiagramme (``traceability-coverage-requirements.mmd`` und
-``traceability-coverage-testaspects.mmd``) werden von ``uv run --project docs/scripts traceability build --project-root .`` generiert (läuft auch im Maven-Profil ``generate-documentation``).
-Das Skript ``testsuite_docs/traceability/builder.py`` wertet dazu die Testaspekt-Kataloge (``docs/asciidoc/testaspekte/gemSpec_ZETA``) und die Gherkin-Tags in ``src/test/resources/features`` aus:
-
-* Anforderungen: Für jede Anforderung wird geprüft, ob Testaspekte existieren und ob einer dieser Testaspekte als ``implementiert`` gilt; daraus entstehen die Anteile ``vollständig``, ``teilweise``, ``nicht abgedeckt`` sowie ``keine Testaspekte``.
-* Testaspekte: Als ``implementiert`` zählt jeder Testaspekt, der in mindestens einem Szenario mit Use-Case-Tag referenziert wird, alle übrigen Testaspekte werden als „offen“ gezählt.
-Das Ergebnis des letzten Testlaufs (inkl. Status) wird – basierend auf den Cucumber/Serenity JSON-Artefakten im ``target``-Verzeichnis – in der Traceability-Tabelle angezeigt, ändert aber nicht die prozentuale Abdeckungsberechnung.
-
-[mermaid,traceability-coverage-testaspects,svg]
-....
-include::../diagrams/traceability-coverage-testaspects.mmd[]
 ....
 
 === Traceability-Matrix

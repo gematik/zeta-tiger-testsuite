@@ -1,0 +1,4 @@
+[#TA_A_26661_03]
+===== TA_A_26661_03 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 401 Unauthorized
+
+"Der ZETA Guard MUSS für **Authentifizierung mit Client Assertion JWT** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**

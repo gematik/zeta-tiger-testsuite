@@ -132,6 +132,8 @@ Der MA ist authentisiert und autorisiert.
 * <<TA_A_27867_03>>
 * <<TA_A_27867_04>>
 * <<TA_GS-A_5526_02>>
+* <<TA_A_25766_02>>
+
 
 |===
 

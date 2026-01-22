@@ -1,7 +1,17 @@
 == Nicht zu testende Merkmale
 
-Folgende Aspekte sind in der aktuellen Iteration nicht Bestandteil der Testdurchführung. Jedes Element enthält die Begründung und – sofern vorhanden – die geplante Verschiebung.
+Folgende Aspekte sind in der aktuellen Iteration nicht Bestandteil der Testdurchführung.
+Jedes Element enthält die Begründung und – sofern vorhanden – die geplante Verschiebung.
 
-> [!NOTE]
-> w.i.p.
+[cols="2,3,2",options="header"]
+|===
+|Merkmal | Begründung | Geplante Aufnahme
 
+|WebSocket-Unterstützung
+|Die WebSocket-Kommunikation ist noch instabil bzw. fehlschlagend
+|Nach Update der Tiger Testsuite Version
+
+|Telemetrie-Funktionen
+|Telemetrie ist in der aktuellen Auslieferung eingeschränkt
+|Sobald produktiv freigegebene Telemetrie-Schnittstellen vorliegen
+|===

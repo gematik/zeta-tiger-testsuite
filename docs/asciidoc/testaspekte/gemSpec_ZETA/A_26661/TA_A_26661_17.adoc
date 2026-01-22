@@ -1,0 +1,4 @@
+[#TA_A_26661_17]
+===== TA_A_26661_17 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 302 Found
+
+"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **302 Found** unterstützen. **[<=]"**

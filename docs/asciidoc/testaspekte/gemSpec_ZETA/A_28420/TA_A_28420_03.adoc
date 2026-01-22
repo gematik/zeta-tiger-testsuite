@@ -1,0 +1,4 @@
+[#TA_A_28420_03]
+===== TA_A_28420_03 - ZETA Guard, Service Discovery - ETag-Wechsel bei inhaltlicher Änderung
+
+"Der ZETA Guard MUSS für jedes Well-known JSON-Dokument einen eindeutigen ETag-Header generieren und diesen gemäß [RFC 9110] in der HTTP-Antwort bei jeder Anfrage bereitstellen. Bei jeder **inhaltlichen Änderung** oder der Repräsentation der Well-known JSON-Dokumente MUSS der ETag sich ändern. **[<=]**"

@@ -7,7 +7,7 @@ lib:
 #  enableTestSelection: true                 # default is false – allows selection of tests in Workflow UI
 #  javaHome: ""                              # default is system Java – overrides JVM for Tiger library
 #  pauseExecutionTimeoutSeconds: 60          # default is 60 – timeout for pause steps before auto-continue
-  rbelAnsiColors: true                      # default is true – enables ANSI color output in logs
+  rbelAnsiColors: false                      # default is true – enables ANSI color output in logs
 #  rbelLogoFilePath: ""                      # default is empty – optional path to custom logo in reports
 #  rbelPathDebugging: false                  # default is false – enables detailed RBelPath debug output
 #  runTestsOnStart: false                    # default is true – automatically runs tests when Tiger starts

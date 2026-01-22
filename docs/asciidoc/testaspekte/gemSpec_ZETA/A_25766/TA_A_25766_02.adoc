@@ -1,0 +1,3 @@
+[#TA_A_25766_02]
+===== TA_A_25766_02 - Client-Credentials in Form von kryptografischen Schlüsseln - DPoP Key
+"Der ZETA Client MUSS die **Client-Credentials im Form von kryptografischen Schlüsseln gemäß der Festlegungen in [gemSpec_Krypt] (Verfahren, Algorithmen, Schlüssellängen etc.)** unterstützen. **[<=]**"

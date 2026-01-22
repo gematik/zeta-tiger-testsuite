@@ -20,7 +20,6 @@ update-testaspects = "testsuite_docs.update_testaspects:main"
 fetch-youtrack-testaspects = "testsuite_docs.fetch_youtrack_testaspects:main"
 traceability = "testsuite_docs.traceability.__main__:main"
 generate-cucumber-methods = "testsuite_docs.generate_cucumber_methods:main"
-serenity-sync-readme = "testsuite_docs.serenity_readme:main"
 generate-zeta-afos = "testsuite_docs.zeta_afos:main"
 
 [build-system]

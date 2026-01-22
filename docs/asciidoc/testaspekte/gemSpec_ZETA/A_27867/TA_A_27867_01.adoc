@@ -1,0 +1,4 @@
+[#TA_A_27867_01]
+===== TA_A_27867_01 - PDP Authorization Server - Session Management in der PDP Datenbank - Verwaltung Session-Daten
+
+"Die Komponente Authorization Server SOLL die **Session-Daten** gemäß [session.yaml] und die User-Daten gemäß [user-info.yaml] in der PDP Datenbank **verwalten**. **[<=]"**

@@ -31,7 +31,8 @@ TODO
 TODO
 
 | Abgedeckte Testaspekte: |
-TODO
+* <<TA_A_25783_02>>
+* <<TA_A_27007_25>>
 
 |===
 
@@ -46,5 +47,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-TODO
+include::Client_authentisierung_und_autorisierung_software_attest_SC_401.feature[]
 ----

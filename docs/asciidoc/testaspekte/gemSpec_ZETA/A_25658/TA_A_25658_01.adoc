@@ -1,0 +1,4 @@
+[#TA_A_25658_01]
+===== TA_A_25658_01 - PDP - Authentication über SmartCard IDP
+
+"Der PDP Authorization Server MUSS die Nutzer über den zentralen IDP-Dienst (SmartCard-IDP) authentifizieren können. **[<=]**"

@@ -1,0 +1,4 @@
+[#TA_A_28432_01]
+===== TA_A_28432_01 - ZETA Guard, Ingress als optionale Komponente
+
+"Der **Ingress** MUSS als **optionale Komponente** im ZETA Guard angeboten werden. **[<=]**"

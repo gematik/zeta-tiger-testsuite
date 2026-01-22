@@ -1,0 +1,4 @@
+[#TA_A_26661_16]
+===== TA_A_26661_16 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 301 Moved Permanently
+
+"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **301 Moved Permanently** unterstützen. **[<=]"**

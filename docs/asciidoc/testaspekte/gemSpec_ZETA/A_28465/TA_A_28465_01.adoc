@@ -1,0 +1,4 @@
+[#TA_A_28465_01]
+===== TA_A_28465_01 - ZETA Client - Registrierung pro ZETA Guard
+
+"Der ZETA Client MUSS sich einmalig am Authorization Server **pro ZETA Guard** registrieren. **[<=]**"

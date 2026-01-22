@@ -28,14 +28,16 @@ Funktionalität: Smoke Test
 
   @no_proxy
   @staging
-  @smoke
+  @A_26640
   @TA_A_26640_01
+  @smoke
   Szenariogrundriss: Einfache Ressource-Anfrage — Ein Client fordert die "Hello ZETA!" Resource vom Testfachdienst an
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy werden gestoppt
     Und TGR setze lokale Variable "anfrage" auf "<anfrage>"
     Und TGR gebe variable "anfrage" aus
-    Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.httpVersion" überein mit "HTTP/1.1"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"

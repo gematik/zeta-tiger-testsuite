@@ -1,0 +1,5 @@
+[#TA_A_27260_03]
+===== TA_A_27260_03 - ZETA Guard, Telemetrie-Daten Service, Weitergabe der Daten ohne Profilbildung - HTTP Proxy
+
+Der Telemetrie-Daten Service im ZETA Guard MUSS die von den Komponenten des ZETA Guard gesammelten Telemetrie-Daten so verändert an das Monitoring System des Anbieters und an die gematik Telemetriedaten Schnittstelle sowie SIEM der gematik weitergeben, dass eine Profilbildung nicht mehr möglich ist.
+**[<=]**

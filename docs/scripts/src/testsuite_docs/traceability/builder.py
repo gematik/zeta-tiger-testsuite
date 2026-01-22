@@ -1,9 +1,9 @@
 """Traceability helpers for the testsuite documentation.
 
-This module aggregates requirements, test aspects, feature metadata and optional
-execution results into a collection of artefacts consumed by the Asciidoc
-manual. The default configuration focuses on the ``gemSpec_ZETA`` specification,
-which forms the canonical requirements baseline for the project.
+This module aggregates requirements, test aspects and feature metadata into a
+collection of artefacts consumed by the Asciidoc manual. The default
+configuration focuses on the ``gemSpec_ZETA`` specification, which forms the
+canonical requirements baseline for the project.
 
 Entry points deliberately avoid side effects unless ``write_outputs`` is
 explicitly enabled so that higher-level tools can compose the functionality
@@ -13,8 +13,8 @@ without touching the filesystem during dry runs.
 from __future__ import annotations
 
 import csv
-import io
 import json
+import io
 import logging
 import re
 from collections import defaultdict
@@ -89,7 +89,6 @@ PRODUCT_NOT_IMPLEMENTED_TAGS = {
 
 def build_traceability(
     project_root: Optional[Path] = None,
-    cucumber_json: Optional[Path] = None,
     product_status_csv: Optional[Path] = None,
     *,
     write_outputs: bool = True,
@@ -103,8 +102,6 @@ def build_traceability(
   Args:
       project_root: Repository root override. When omitted the path is derived
         from the location of this module.
-      cucumber_json: Optional path to a Cucumber JSON report with execution
-        metadata. Missing files are treated as an empty result set.
       write_outputs: When ``True`` the generated tables, diagrams and JSON
         payload are written to the standard documentation targets.
       product_status_csv: Optional CSV with product implementation flags
@@ -161,16 +158,11 @@ def build_traceability(
       use_case_anchors=use_case_anchors,
   )
 
-  execution_sources = _resolve_execution_sources(root, cucumber_json)
-  execution_results = _load_execution_results(execution_sources,
-                                              use_case_anchors)
-
   records = _build_traceability_records(
       requirements=requirements,
       test_aspects=test_aspects,
       use_cases=use_cases,
       scenarios=scenarios,
-      execution_results=execution_results,
   )
 
   status_path = product_status_csv if product_status_csv is not None else (
@@ -209,8 +201,6 @@ def build_traceability(
   coverage_charts, coverage_summary = _render_coverage_charts(
       records, requirements, test_aspects
   )
-  humanized_last_success = _humanize_timestamps(records, "last_success")
-  humanized_last_run = _humanize_timestamps(records, "last_run")
 
   traceability_links = [
     TraceabilityLink(
@@ -219,15 +209,6 @@ def build_traceability(
         use_case=record.use_case_id,
         implemented=record.implemented,
         product_implemented=record.product_implemented,
-        last_run=_format_timestamp_iso(record.last_run),
-        last_run_human=humanized_last_run.get(
-            (record.test_aspect_id, record.use_case_id or "")
-        ),
-        last_run_status=record.last_run_status,
-        last_success=_format_timestamp_iso(record.last_success),
-        last_success_human=humanized_last_success.get(
-            (record.test_aspect_id, record.use_case_id or "")
-        ),
         scenarios=sorted(record.scenario_names),
     )
     for record in records
@@ -523,207 +504,14 @@ def _parse_feature_files(
                    pending_tags)
 
   return use_cases, scenarios
-
-
-def _load_execution_results(
-    sources: Sequence[Path],
-    use_case_anchors: Dict[str, str],
-) -> Dict[Tuple[str, str], Dict[str, object]]:
-  """Return execution metadata per TA/use-case (status + timestamps)."""
-
-  if not sources:
-    LOGGER.info(
-        "No execution artefacts configured; skipping execution metadata.")
-    return {}
-
-  results: Dict[Tuple[str, str], Dict[str, object]] = {}
-  processed_paths: Set[Path] = set()
-
-  for source in sources:
-    if not source.exists():
-      LOGGER.debug("Execution artefact %s does not exist, skipping.", source)
-      continue
-
-    json_paths: List[Path]
-    if source.is_dir():
-      json_paths = sorted(source.glob("*.json"))
-    else:
-      json_paths = [source]
-
-    for json_path in json_paths:
-      resolved_json = json_path.resolve()
-      if resolved_json in processed_paths:
-        continue
-      processed_paths.add(resolved_json)
-      try:
-        payload = json.loads(json_path.read_text(encoding="utf-8"))
-      except (json.JSONDecodeError, OSError) as exc:
-        LOGGER.warning("Failed to parse %s: %s", json_path, exc)
-        continue
-
-      file_mtime = datetime.fromtimestamp(json_path.stat().st_mtime)
-
-      if isinstance(payload, list):
-        _merge_cucumber_payload(payload, use_case_anchors, results, file_mtime)
-      elif isinstance(payload, dict):
-        _merge_serenity_payload(payload, use_case_anchors, results, file_mtime)
-
-  return results
-
-
-def _merge_cucumber_payload(
-    payload: Sequence[dict],
-    use_case_anchors: Dict[str, str],
-    results: Dict[Tuple[str, str], Dict[str, object]],
-    fallback_timestamp: datetime,
-) -> None:
-  """Merge standard Cucumber JSON data into the result map."""
-
-  for feature in payload:
-    for element in feature.get("elements", []):
-      tags = {tag.get("name", "").lstrip("@") for tag in
-              element.get("tags", [])}
-      use_case_tags = {tag for tag in tags if tag.startswith("UseCase")}
-      test_aspect_tags = {tag for tag in tags if tag.startswith("TA_")}
-      if not use_case_tags or not test_aspect_tags:
-        continue
-
-      steps = element.get("steps", [])
-      status = "passed"
-      for step in steps:
-        result = step.get("result", {})
-        step_status = result.get("status")
-        if step_status is None:
-          continue
-        if step_status == "skipped" and status == "passed":
-          status = "skipped"
-        elif step_status != "passed":
-          status = step_status
-          break
-
-      timestamp = _parse_execution_timestamp(element.get("start_timestamp"),
-                                             fallback_timestamp)
-
-      for use_case in use_case_tags:
-        anchor = use_case_anchors.get(use_case, use_case)
-        for test_aspect in test_aspect_tags:
-          key = (test_aspect, anchor)
-          _merge_execution_result(results, key, status, timestamp)
-
-
-def _merge_serenity_payload(
-    payload: Dict[str, object],
-    use_case_anchors: Dict[str, str],
-    results: Dict[Tuple[str, str], Dict[str, object]],
-    fallback_timestamp: datetime,
-) -> None:
-  """Merge Serenity JSON data into the result map."""
-
-  tags = payload.get("tags")
-  if not isinstance(tags, list):
-    return
-
-  tag_names = {
-    str(tag.get("name", ""))
-    for tag in tags
-    if isinstance(tag, dict) and tag.get("name")
-  }
-
-  use_case_tags = {tag for tag in tag_names if tag.startswith("UseCase")}
-  test_aspect_tags = {tag for tag in tag_names if tag.startswith("TA_")}
-  if not use_case_tags or not test_aspect_tags:
-    return
-
-  result_value = str(payload.get("result", "")).lower()
-  if result_value in {"success", "passed"}:
-    status = "passed"
-  elif result_value in {"pending", "skipped"}:
-    status = "skipped"
-  elif result_value:
-    status = "failed"
-  else:
-    status = "unknown"
-
-  timestamp = _parse_execution_timestamp(
-      payload.get("endTime") or payload.get("startTime"),
-      fallback_timestamp,
-  )
-
-  for use_case in use_case_tags:
-    anchor = use_case_anchors.get(use_case, use_case)
-    for test_aspect in test_aspect_tags:
-      key = (test_aspect, anchor)
-      _merge_execution_result(results, key, status, timestamp)
-
-
-def _merge_execution_result(
-    results: Dict[Tuple[str, str], Dict[str, object]],
-    key: Tuple[str, str],
-    status: str,
-    timestamp: datetime,
-) -> None:
-  """Update the aggregated execution result for a TA/use-case pair."""
-
-  normalised_status = status or "unknown"
-  entry = results.setdefault(
-      key, {
-        "last_run": None,
-        "last_run_status": "unknown",
-        "last_success": None,
-      })
-
-  last_run: Optional[datetime] = entry["last_run"]
-  last_success: Optional[datetime] = entry["last_success"]
-
-  if last_run is None or timestamp >= last_run:
-    entry["last_run"] = timestamp
-    entry["last_run_status"] = normalised_status
-
-  if normalised_status == "passed":
-    if last_success is None or timestamp >= last_success:
-      entry["last_success"] = timestamp
-
-
-def _parse_execution_timestamp(raw_value: Optional[str],
-    fallback: datetime) -> datetime:
-  """Parse ISO-like timestamps with optional zone IDs and nanoseconds."""
-
-  if not raw_value:
-    return fallback
-
-  cleaned = raw_value.split("[", 1)[0]
-  if cleaned.endswith("Z"):
-    cleaned = cleaned[:-1] + "+00:00"
-
-  if "." in cleaned:
-    prefix, rest = cleaned.split(".", 1)
-    tz_pos = max(rest.rfind("+"), rest.rfind("-"))
-    if tz_pos > 0:
-      fraction = rest[:tz_pos]
-      timezone = rest[tz_pos:]
-    else:
-      fraction = rest
-      timezone = ""
-    fraction = (fraction[:6]).ljust(6, "0")
-    cleaned = f"{prefix}.{fraction}{timezone}"
-
-  try:
-    return datetime.fromisoformat(cleaned)
-  except ValueError:
-    LOGGER.debug("Failed to parse timestamp %s, falling back to file time",
-                 raw_value)
-    return fallback
-
-
 def _build_traceability_records(
     *,
     requirements: Dict[str, Requirement],
     test_aspects: Dict[str, TestAspect],
     use_cases: Dict[str, UseCase],
     scenarios: Sequence[ScenarioCoverage],
-    execution_results: Dict[Tuple[str, str], Dict[str, object]],
 ) -> List[TraceabilityRecord]:
-  """Combine static metadata and runtime results into traceability records."""
+  """Combine static metadata into traceability records."""
   ta_to_usecases: Dict[str, Set[str]] = defaultdict(set)
   ta_uc_to_scenarios: Dict[Tuple[str, str], Set[str]] = defaultdict(set)
   ta_uc_product_flags: Dict[Tuple[str, str], bool] = {}
@@ -753,16 +541,12 @@ def _build_traceability_records(
               use_case_id=None,
               implemented=False,
               product_implemented=False,
-              last_run=None,
-              last_run_status=None,
-              last_success=None,
               scenario_names=set(),
           )
       )
       continue
 
     for use_case_id in use_case_ids:
-      exec_entry = execution_results.get((ta_id, use_case_id), {})
       records.append(
           TraceabilityRecord(
               requirement_id=requirement_id,
@@ -771,9 +555,6 @@ def _build_traceability_records(
               implemented=True,
               product_implemented=ta_uc_product_flags.get(
                   (ta_id, use_case_id), True),
-              last_run=exec_entry.get("last_run"),
-              last_run_status=exec_entry.get("last_run_status"),
-              last_success=exec_entry.get("last_success"),
               scenario_names=ta_uc_to_scenarios.get((ta_id, use_case_id),
                                                     set()),
           )
@@ -811,20 +592,9 @@ def _render_features_table(
       entry = ta_usage_by_usecase[record.use_case_id].setdefault(
           record.test_aspect_id, {
               "implemented": False,
-              "last_run": None,
-              "last_run_status": None,
-              "last_success": None,
               "product": None
           })
       entry["implemented"] = True
-      if record.last_run:
-        if (not entry["last_run"] or record.last_run > entry["last_run"]):
-          entry["last_run"] = record.last_run
-          entry["last_run_status"] = record.last_run_status
-      if record.last_success:
-        if (not entry["last_success"] or
-            record.last_success > entry["last_success"]):
-          entry["last_success"] = record.last_success
       csv_flag = product_status.get(record.requirement_id)
       product_flag = _combine_product_flags(csv_flag,
                                             record.product_implemented)
@@ -844,7 +614,6 @@ def _render_features_table(
         "-",
         "-",
         "-",
-        "-",
       ])
       continue
     user_story_cell = _format_reference(user_story)
@@ -857,20 +626,15 @@ def _render_features_table(
           _format_reference(use_case_anchor),
           "-",
           "-",
-          "-",
-          "-",
         ])
         continue
       for test_aspect, flags in sorted(test_aspect_refs.items()):
-        last_run = _format_status_cell(flags.get("last_run_status"),
-                                       flags.get("last_run"))
         rows.append([
           user_story_cell,
           _format_reference(use_case_anchor),
           _format_reference(test_aspect),
           _format_optional_boolean(flags.get("product")),
           _format_boolean(flags.get("implemented", False)),
-          last_run,
         ])
 
   headers = [
@@ -879,14 +643,13 @@ def _render_features_table(
     "Testaspekt",
     "im Produkt umgesetzt",
     "implementiert (Szenario vorhanden)",
-    "letzter Teststatus",
   ]
   _suppress_repeated_cells(rows, (0, 1))
   return _write_asciidoc_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,2a,1,1,2",
+      cols_directive="1,1,2a,1,1",
   )
 
 
@@ -959,9 +722,6 @@ def _render_traceability_matrix(records: Sequence[TraceabilityRecord]) -> str:
                 use_case_id=None,
                 implemented=False,
                 product_implemented=False,
-                last_run=None,
-                last_run_status=None,
-                last_success=None,
                 scenario_names=set(),
           )
         ]
@@ -969,14 +729,11 @@ def _render_traceability_matrix(records: Sequence[TraceabilityRecord]) -> str:
         use_case = _format_reference(
             entry.use_case_id) if entry.use_case_id else "keiner"
         implemented = "ja" if entry.implemented else "nein"
-        last_run_human = _format_status_cell(entry.last_run_status,
-                                             entry.last_run)
         rows.append([
           _format_reference(requirement_id),
           _format_reference(test_aspect_id),
           use_case,
           implemented,
-          last_run_human,
         ])
 
   headers = [
@@ -984,14 +741,13 @@ def _render_traceability_matrix(records: Sequence[TraceabilityRecord]) -> str:
     "Testaspekt",
     "Use Case",
     "implementiert",
-    "letzter Teststatus",
   ]
   _suppress_repeated_cells(rows, (0, 1))
   return _write_asciidoc_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,2,1,2,2",
+      cols_directive="1,2,1,2",
   )
 
 
@@ -1425,75 +1181,6 @@ def _build_gap_entries(
   return entries, summary_counts
 
 
-def _resolve_execution_sources(root: Path, override: Optional[Path]) -> List[
-  Path]:
-  """Collect candidate JSON artefacts with execution information.
-
-  The resolver honours an explicit override first and otherwise probes a
-  number of default Cucumber and Serenity output locations. Directories are
-  preserved so the caller can decide how much detail to parse from them.
-  """
-
-  candidates: List[Path] = []
-  checked: List[Path] = []
-
-  if override is not None:
-    resolved = override if override.is_absolute() else root / override
-    if resolved.exists():
-      LOGGER.debug("Using execution artefact from explicit path %s", resolved)
-      candidates.append(resolved)
-    else:
-      checked.append(resolved)
-
-  default_relatives = [
-    Path("target/cucumber/traceability.json"),
-    Path("target/cucumber/cucumber.json"),
-    Path("target/cucumber.json"),
-    Path("target/cucumber-report/traceability.json"),
-    Path("target/cucumber-report/cucumber.json"),
-    Path("target/cucumber-reports/traceability.json"),
-    Path("target/cucumber-reports/cucumber.json"),
-    Path("target/site/serenity/serenity-summary.json"),
-  ]
-
-  for relative in default_relatives:
-    candidate = root / relative
-    if candidate.exists():
-      candidates.append(candidate)
-    else:
-      checked.append(candidate)
-
-  # If no direct file match was found, include well-known directories so the
-  # loader can inspect individual scenario files (e.g. Serenity per-test JSON).
-  default_directories = [
-    root / "target" / "cucumber",
-    root / "target" / "cucumber-report",
-    root / "target" / "cucumber-reports",
-    root / "target" / "site" / "serenity",
-  ]
-
-  for directory in default_directories:
-    if directory.exists():
-      candidates.append(directory)
-    else:
-      checked.append(directory)
-
-  if not candidates and checked:
-    LOGGER.info(
-        "No execution artefacts found. Checked: %s",
-        ", ".join(str(candidate) for candidate in checked),
-    )
-
-  # Deduplicate while preserving order.
-  seen: Set[Path] = set()
-  deduped: List[Path] = []
-  for candidate in candidates:
-    if candidate not in seen:
-      deduped.append(candidate)
-      seen.add(candidate)
-  return deduped
-
-
 def _dataclass_to_payload(instance, *, path_fields: Tuple[str, ...] = ()) -> \
     Dict[str, object]:
   """Convert dataclass instances into JSON-serialisable dictionaries."""
@@ -1573,6 +1260,19 @@ def _render_coverage_charts(
     "gesamt": total_test_aspects,
   }
 
+  requirements_with_any_coverage = 0
+  for requirement_id in requirements:
+    aspects = requirement_to_test_aspects.get(requirement_id, set())
+    if aspects and aspects & covered_test_aspects:
+      requirements_with_any_coverage += 1
+  requirements_without_any_coverage = max(
+      len(requirements) - requirements_with_any_coverage, 0)
+  any_coverage_summary = {
+    "mit_testabdeckung": requirements_with_any_coverage,
+    "ohne_testabdeckung": requirements_without_any_coverage,
+    "gesamt": len(requirements),
+  }
+
   requirement_pie: List[str] = [
     MERMAID_DISCLAIMER,
     "%% Anteil der Anforderungen je Abdeckungsstatus basierend auf implementierten Testaspekten.",
@@ -1584,6 +1284,21 @@ def _render_coverage_charts(
     count = requirement_summary[label]
     if count:
       requirement_pie.append(f'  "{label}" : {count}')
+
+  any_coverage_pie: List[str] = [
+    MERMAID_DISCLAIMER,
+    "%% Anteil der Anforderungen mit mindestens einem implementierten Testaspekt.",
+    MERMAID_THEME_DIRECTIVE,
+    "pie showData"
+  ]
+  if requirements_with_any_coverage:
+    any_coverage_pie.append(
+        f'  "mindestens ein Testaspekt implementiert" : {requirements_with_any_coverage}'
+    )
+  if requirements_without_any_coverage:
+    any_coverage_pie.append(
+        f'  "kein Testaspekt implementiert" : {requirements_without_any_coverage}'
+    )
 
   test_aspect_pie: List[str] = [
     MERMAID_DISCLAIMER,
@@ -1599,27 +1314,15 @@ def _render_coverage_charts(
 
   diagrams = {
     "traceability-coverage-requirements.mmd": "\n".join(requirement_pie) + "\n",
+    "traceability-coverage-requirements-tested.mmd": "\n".join(
+        any_coverage_pie) + "\n",
     "traceability-coverage-testaspects.mmd": "\n".join(test_aspect_pie) + "\n",
   }
   return diagrams, {
     "requirements": requirement_summary,
+    "requirements_any_coverage": any_coverage_summary,
     "test_aspects": test_aspect_summary,
   }
-
-
-def _humanize_timestamps(
-    records: Sequence[TraceabilityRecord],
-    attribute: str,
-) -> Dict[Tuple[str, str], Optional[str]]:
-  """Format execution timestamps (e.g. last_run/last_success) as readable strings."""
-
-  humanized: Dict[Tuple[str, str], Optional[str]] = {}
-  for record in records:
-    key = (record.test_aspect_id, record.use_case_id or "")
-    value = getattr(record, attribute, None)
-    humanized[key] = _format_human_timestamp(value)
-  return humanized
-
 
 def _format_timestamp_iso(value: Optional[datetime]) -> Optional[str]:
   """Return an ISO-8601 timestamp in UTC (``...Z``) or ``None``."""
@@ -1632,36 +1335,3 @@ def _format_timestamp_iso(value: Optional[datetime]) -> Optional[str]:
     timestamp = timestamp.replace(tzinfo=timezone.utc)
   utc_value = timestamp.astimezone(timezone.utc)
   return utc_value.isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def _format_human_timestamp(value: Optional[datetime]) -> Optional[str]:
-  """Render timestamps in a friendly localised format."""
-
-  if value is None:
-    return None
-
-  timestamp = value
-  if timestamp.tzinfo is None:
-    timestamp = timestamp.replace(tzinfo=timezone.utc)
-
-  return timestamp.astimezone().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _format_status_cell(status: Optional[str],
-                        timestamp: Optional[datetime]) -> str:
-  """Render a combined status + timestamp cell for tables."""
-  if status is None:
-    if timestamp is None:
-      return "nie"
-    status = "unknown"
-  label_map = {
-    "passed": "bestanden",
-    "failed": "fehlgeschlagen",
-    "skipped": "übersprungen",
-    "unknown": "unbekannt",
-  }
-  label = label_map.get(status, status)
-  human_time = _format_human_timestamp(timestamp)
-  if human_time:
-    return f"{label} ({human_time})"
-  return label

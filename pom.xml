@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>0.2.4</version>
+  <version>0.2.5</version>
 
   <!-- Projektlizenzinformationen -->
   <licenses>
@@ -27,8 +27,7 @@
       <properties>
         <traceability.skip>false</traceability.skip>
         <traceability.sync.skip>false</traceability.sync.skip>
-        <serenity.readme.sync.skip>false</serenity.readme.sync.skip>
-        <traceability.phase>verify</traceability.phase>
+        <traceability.phase>generate-resources</traceability.phase>
         <!-- mmdc Wrapper (Unix-like). Windows wird durch OS-Profil überschrieben -->
         <mmdc.cmd>${project.build.directory}/node_modules/.bin/mmdc</mmdc.cmd>
       </properties>
@@ -83,7 +82,7 @@
             <executions>
               <execution>
                 <id>generate-html-doc</id>
-                <phase>verify</phase>
+                <phase>generate-resources</phase>
                 <goals>
                   <goal>process-asciidoc</goal>
                 </goals>
@@ -92,6 +91,8 @@
                   <outputDirectory>${project.build.directory}/docs/html</outputDirectory>
                   <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
                   <attributes>
+                    <revnumber>${project.version}</revnumber>
+                    <revdate>${maven.build.timestamp}</revdate>
                     <data-uri>true</data-uri>
                     <imagesdir>images</imagesdir>
                     <imagesoutdir>${project.build.directory}/docs/html/images</imagesoutdir>
@@ -151,9 +152,11 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
+    <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
 
     <version.maven.failsafe>3.5.4</version.maven.failsafe>
     <version.maven.surefire>3.5.4</version.maven.surefire>
+    <version.maven.jar>3.5.0</version.maven.jar>
     <version.maven.compiler>3.14.1</version.maven.compiler>
     <version.maven.enforcer>3.6.2</version.maven.enforcer>
     <version.maven.exec>3.6.2</version.maven.exec>
@@ -165,14 +168,16 @@
     <version.frontend.maven.plugin>1.15.4</version.frontend.maven.plugin>
     <version.nimbus.jose.jwt>10.6</version.nimbus.jose.jwt>
     <version.node>v25.0.0</version.node>
-    <version.pnpm>10.22.0</version.pnpm>
+    <version.pnpm>10.27.0</version.pnpm>
     <version.checkstyle>12.1.1</version.checkstyle>
     <traceability.skip>true</traceability.skip>
     <traceability.sync.skip>true</traceability.sync.skip>
     <traceability.executable>uv</traceability.executable>
-    <traceability.phase>verify</traceability.phase>
-    <serenity.readme.sync.skip>true</serenity.readme.sync.skip>
+    <traceability.phase>generate-resources</traceability.phase>
+    <serenity.cli.version>4.1.13</serenity.cli.version>
     <version.tyrus>2.2.1</version.tyrus>
+    <version.jib>3.5.1</version.jib>
+    <jib.to.image>testsuite:jib</jib.to.image>
   </properties>
 
   <!-- Zentrale Plugin-Versionsverwaltung befindet sich im Build-Abschnitt weiter unten -->
@@ -211,6 +216,14 @@
       <groupId>org.apache.httpcomponents.client5</groupId>
       <artifactId>httpclient5</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+    </dependency>
 
     <!-- WebSocket Dependencies -->
     <dependency>
@@ -225,6 +238,15 @@
       <groupId>org.glassfish.tyrus.bundles</groupId>
       <artifactId>tyrus-standalone-client</artifactId>
       <version>${version.tyrus}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>de.gematik.test</groupId>
+      <artifactId>tiger-java-agent</artifactId>
     </dependency>
 
 
@@ -284,6 +306,16 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${version.maven.compiler}</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${version.maven.jar}</version>
+        </plugin>
+        <plugin>
+          <groupId>com.google.cloud.tools</groupId>
+          <artifactId>jib-maven-plugin</artifactId>
+          <version>${version.jib}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -331,26 +363,6 @@
                 <argument>sync</argument>
                 <argument>--project</argument>
                 <argument>${project.basedir}/docs/scripts</argument>
-              </arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>sync-serenity-readme</id>
-            <phase>${traceability.phase}</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <skip>${serenity.readme.sync.skip}</skip>
-              <executable>${traceability.executable}</executable>
-              <workingDirectory>${project.basedir}</workingDirectory>
-              <arguments>
-                <argument>run</argument>
-                <argument>--project</argument>
-                <argument>${project.basedir}/docs/scripts</argument>
-                <argument>serenity-sync-readme</argument>
-                <argument>--project-root</argument>
-                <argument>${project.basedir}</argument>
               </arguments>
             </configuration>
           </execution>
@@ -480,6 +492,161 @@
               <artifactId>lombok</artifactId>
             </path>
           </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-test-deps</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeScope>test</includeScope>
+              <outputDirectory>${project.build.directory}/deps</outputDirectory>
+              <useRepositoryLayout>false</useRepositoryLayout>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-tiger-agent</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>de.gematik.test</groupId>
+                  <artifactId>tiger-java-agent</artifactId>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}/agent</outputDirectory>
+                  <destFileName>tiger-java-agent.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
+              <silent>true</silent>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-serenity-cli</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifact>net.serenity-bdd:serenity-cli:${serenity.cli.version}</artifact>
+              <outputDirectory>${project.build.directory}/tools</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>ensure-main-classes-dir</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <mkdir dir="${project.build.outputDirectory}"/>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.google.cloud.tools</groupId>
+        <artifactId>jib-maven-plugin</artifactId>
+        <configuration>
+          <containerizingMode>packaged</containerizingMode>
+          <from>
+            <image>eclipse-temurin:21-jre-alpine</image>
+          </from>
+          <to>
+            <image>${jib.to.image}</image>
+          </to>
+          <container>
+            <entrypoint>
+              <shell>sh</shell>
+              <option>/app/run-tests.sh</option>
+            </entrypoint>
+            <environment>
+              <ZETA_PROXY>no-proxy</ZETA_PROXY>
+              <CUCUMBER_TAGS>@smoke</CUCUMBER_TAGS>
+              <TIGER_ENVIRONMENT>cloud</TIGER_ENVIRONMENT>
+              <SERENITY_AGGREGATE>true</SERENITY_AGGREGATE>
+            </environment>
+            <jvmFlags>
+              <jvmFlag>-javaagent:/app/agent/tiger-java-agent.jar</jvmFlag>
+            </jvmFlags>
+            <workingDirectory>/app</workingDirectory>
+          </container>
+          <extraDirectories>
+            <paths>
+              <path>
+                <from>${project.build.directory}</from>
+                <into>/app</into>
+                <includes>
+                  <include>*-tests.jar</include>
+                </includes>
+              </path>
+              <path>
+                <from>${project.build.directory}/deps</from>
+                <into>/app/deps</into>
+              </path>
+              <path>
+                <from>${project.build.directory}/agent</from>
+                <into>/app/agent</into>
+              </path>
+              <path>
+                <from>${project.build.directory}/tools</from>
+                <into>/app/tools</into>
+              </path>
+              <path>
+                <from>${project.basedir}/tiger</from>
+                <into>/app/tiger</into>
+              </path>
+              <path>
+                <from>${project.basedir}</from>
+                <into>/app</into>
+                <includes>
+                  <include>tiger.yaml</include>
+                </includes>
+              </path>
+              <path>
+                <from>${project.basedir}/docker/quality_gate</from>
+                <into>/app</into>
+                <includes>
+                  <include>run-tests.sh</include>
+                </includes>
+              </path>
+            </paths>
+            <permissions>
+              <permission>
+                <file>/app/run-tests.sh</file>
+                <mode>755</mode>
+              </permission>
+            </permissions>
+          </extraDirectories>
         </configuration>
       </plugin>
     </plugins>

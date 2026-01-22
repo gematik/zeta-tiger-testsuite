@@ -1,0 +1,4 @@
+[#TA_A_26661_12]
+===== TA_A_26661_12 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 401 Unauthorized
+
+"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**

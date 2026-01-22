@@ -1,0 +1,4 @@
+[#TA_A_26661_21]
+===== TA_A_26661_21 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 404 Not Found
+
+"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **404 Not Found** unterstützen. **[<=]"**

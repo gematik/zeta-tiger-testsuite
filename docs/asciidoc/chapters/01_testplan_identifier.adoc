@@ -1,4 +1,25 @@
 == Testplan-Identifier
 
-* Testplan-ID: TP-ZETA-2025-001
-* Version: 0.1 (Draft)
+[cols="2,4",options="header"]
+|===
+|Angabe | Wert
+
+|Dokument-Version
+|{revnumber} ({revdate})
+
+|Referenziertes Testkonzept
+|Testkonzept V0.2.0
+
+|Zielrelease
+|{revnumber}
+
+|Testobjekt(e)
+|ZETA Guard / ZETA Client
+
+|Releasestand
+a|
+* ZETA Guard: {revnumber}
+* ZETA Client: {revnumber}
+* Testsuite: {revnumber}
+
+|===

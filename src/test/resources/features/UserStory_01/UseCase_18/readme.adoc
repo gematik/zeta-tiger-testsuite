@@ -7,44 +7,21 @@
 | *Titel:* | Client ressource anfrage fachdienst SC 404
 
 | Akteur: |
-TODO
 
 | weitere Akteure: |
-TODO
 
 | Auslöser: |
-TODO
 
 | Kurzbeschreibung: |
-TODO
 
 | Vorbedingung: |
-TODO
 
 | Nebenbedingung: |
-TODO
 
 | Ablauf: |
-TODO
 
 | Nachbedingung: |
-TODO
 
 | Abgedeckte Testaspekte: |
-TODO
 
 |===
-
-[mermaid]
-....
-sequenceDiagram
-    %% TODO
-....
-
-[.lead]
-Feature-Datei zu diesem Use Case:
-
-[source]
-----
-TODO
-----

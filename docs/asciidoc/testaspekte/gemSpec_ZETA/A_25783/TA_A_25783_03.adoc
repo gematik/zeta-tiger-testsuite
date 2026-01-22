@@ -1,0 +1,10 @@
+[#TA_A_25783_03]
+===== TA_A_25783_03 - Anweisung befolgen Re-Autorisierung
+
+"Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben der Resource Server und Zero Trust-APIs auswerten und **den Anweisungen daraus folgen** und insbesondere
+
+* eine **Re-Autorisierung** und **erneute Attestation der Client-Instanz**,
+
++++[...]+++
+
+umsetzen. **[<=]**"

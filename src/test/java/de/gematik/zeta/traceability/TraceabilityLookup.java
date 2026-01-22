@@ -119,16 +119,14 @@ public record TraceabilityLookup(
    */
   private static @NotNull String render(@NotNull List<TraceabilityEntry> entries) {
     var builder = new StringBuilder();
-    builder.append("| Anforderung | Testaspekt | Use Case | Letzter Status |\n");
-    builder.append("|-------------|------------|----------|----------------|\n");
+    builder.append("| Anforderung | Testaspekt | Use Case |\n");
+    builder.append("|-------------|------------|----------|\n");
     entries.forEach(entry -> builder.append("| ")
         .append(formatIdentifier(entry.requirementId(), entry.requirementTitle()))
         .append(" | ")
         .append(formatIdentifier(entry.testAspectId(), entry.testAspectTitle()))
         .append(" | ")
         .append(formatUseCase(entry))
-        .append(" | ")
-        .append(entry.lastStatusHuman() == null ? "-" : escape(entry.lastStatusHuman()))
         .append(" |\n"));
     return builder.toString();
   }
@@ -162,26 +160,6 @@ public record TraceabilityLookup(
     }
     builder.append(escape(entry.useCaseTitle()));
     return builder.toString();
-  }
-
-  /**
-   * Combine execution status and timestamp into a compact label.
-   */
-  private static String formatStatus(String status, String lastRunHuman, String lastSuccessHuman) {
-    if ((status == null || status.isBlank()) && (lastRunHuman == null || lastRunHuman.isBlank())) {
-      return lastSuccessHuman;
-    }
-    var label = switch (status == null ? "" : status.toLowerCase()) {
-      case "passed" -> "bestanden";
-      case "failed" -> "fehlgeschlagen";
-      case "skipped" -> "übersprungen";
-      case "unknown" -> "unbekannt";
-      default -> status;
-    };
-    if (lastRunHuman != null && !lastRunHuman.isBlank()) {
-      return label + " (" + lastRunHuman + ")";
-    }
-    return label;
   }
 
   /**
@@ -264,13 +242,10 @@ public record TraceabilityLookup(
               }
             });
           }
-          var lastRunHuman = nullIfBlank(linkNode.path("last_run_human").asText(null));
-          var lastRunStatus = nullIfBlank(linkNode.path("last_run_status").asText(null));
-          var lastSuccess = nullIfBlank(linkNode.path("last_success_human").asText(null));
           return new TraceabilityLinkInfo(requirement, testAspect, useCase,
               linkNode.path("implemented").asBoolean(false),
               linkNode.path("product_implemented").asBoolean(false),
-              lastRunHuman, lastRunStatus, lastSuccess, scenarios);
+              scenarios);
         })
         .filter(Objects::nonNull)
         .toList();
@@ -523,8 +498,7 @@ public record TraceabilityLookup(
         testAspect.title(),
         useCase.anchorId(),
         useCase.title(),
-        useCase.userStoryId(),
-        formatStatus(link.lastRunStatus(), link.lastRunHuman(), link.lastSuccessHuman())
+        useCase.userStoryId()
     );
   }
 
@@ -587,16 +561,12 @@ public record TraceabilityLookup(
    * @param useCaseAnchor      Canonical use case anchor
    * @param implemented        {@code true} if scenarios exist for the combination
    * @param productImplemented {@code true} if tagged as implemented in the product
-   * @param lastRunHuman       Human-readable timestamp of the most recent run
-   * @param lastRunStatus      Status of the most recent run (passed/failed/skipped/unknown)
-   * @param lastSuccessHuman   Human-readable timestamp of the last success
    * @param scenarios          Scenario names that cover this combination
    */
   private record TraceabilityLinkInfo(String requirementId, String testAspectId,
                                       String useCaseAnchor, boolean implemented,
                                       boolean productImplemented,
-                                      String lastRunHuman, String lastRunStatus,
-                                      String lastSuccessHuman, List<String> scenarios) {
+                                      List<String> scenarios) {
 
     private TraceabilityLinkInfo {
       scenarios = scenarios == null ? List.of() : List.copyOf(scenarios);
@@ -613,12 +583,11 @@ public record TraceabilityLookup(
    * @param useCaseAnchor    Use case anchor
    * @param useCaseTitle     Use case title
    * @param userStoryId      User story identifier
-   * @param lastStatusHuman  Last test status incl. timestamp in human readable form
    */
   private record TraceabilityEntry(String requirementId, String requirementTitle,
                                    String testAspectId, String testAspectTitle,
                                    String useCaseAnchor, String useCaseTitle,
-                                   String userStoryId, String lastStatusHuman) {
+                                   String userStoryId) {
 
   }
 

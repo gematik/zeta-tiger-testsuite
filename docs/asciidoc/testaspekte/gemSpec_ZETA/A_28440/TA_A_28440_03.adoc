@@ -1,0 +1,4 @@
+[#TA_A_28440_03]
+===== TA_A_28440_03 - PDP Authorization Server - Auswertung Forwarded-Header - Reihenfolge der Parameter
+
+"Die Komponenten PDP Authorization Server MUSS HTTP-Anfragen mit einem vorhandenen Forwarded-Header auswerten, um die Client-IP Adresse zu ermitteln. Bei der Auswertung ist die Semantik gemäß [RFC 7239] und die **Reihenfolge der Parameter** zu beachten. **[<=]**"

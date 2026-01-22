@@ -1,0 +1,4 @@
+[#TA_A_26661_09]
+===== TA_A_26661_09 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit OIDC und Authorization Code Flow - 403 Forbidden
+
+"Der ZETA Guard MUSS für **Authentifizierung mit OIDC und Authorization Code Flow** den HTTP Statuscode **403 Forbidden** unterstützen. **[<=]"**

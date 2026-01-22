@@ -1,0 +1,4 @@
+[#TA_A_26641_02]
+===== TA_A_26641_02 - PEP HTTP Proxy - HTTP Protokoll-Versionen - HTTP/2
+
+Die Komponente HTTP Proxy **MUSS** das HTTP Protokoll in den Versionen HTTP/1.1, **HTTP/2** und SOLL HTTP/3 unterstützen. **[<=]**

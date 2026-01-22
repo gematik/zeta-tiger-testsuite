@@ -3,7 +3,7 @@ Generate AsciiDoc AFO files from a gematik ZETA Guard requirement XML.
 
 The script reads the gemVZ XML, filters requirements (default: only
 ``Produkttest/Produktübergreifender Test``), writes one ``A_*.adoc`` per
-requirement into a target folder (default: ``docs/asciidoc/afos/gemSpec_ZETA``)
+requirement into a target folder (default: ``docs/asciidoc/afos``)
 and can create a minimal ``readme.adoc`` that lists source documents plus
 includes for all generated requirements.
 """
@@ -19,8 +19,14 @@ from pathlib import Path
 from typing import Iterable, List, Sequence
 
 
-DEFAULT_XML = Path("docs/gemVZ_Afo_ZETA_Guard_V_1.1.0_V1.0.0.xml")
-DEFAULT_OUTPUT = Path("docs/asciidoc/afos/gemSpec_ZETA")
+def _write_file_lf(path: Path, content: str) -> None:
+  """Write UTF-8 text with LF line endings regardless of platform."""
+  with path.open("w", encoding="utf-8", newline="\n") as handle:
+    handle.write(content)
+
+
+DEFAULT_XML = Path("docs/gemVZ_Afo_ZETA_Guard_V_1.2.0_V1.0.0.xml")
+DEFAULT_OUTPUT = Path("docs/asciidoc/afos")
 DEFAULT_TEST_PROCEDURE = (
     'Festlegungen zur funktionalen Eignung "Produkttest/Produktübergreifender Test"'
 )
@@ -107,16 +113,6 @@ def _text(elem) -> str:
   return (elem.text or "").strip() if elem is not None else ""
 
 
-def _strip_html_tags(value: str) -> str:
-  """Remove basic HTML tags; enough for the simple description fragments."""
-  return re.sub(r"<[^>]+>", "", value)
-
-
-def _normalise_whitespace(value: str) -> str:
-  return (value.replace(" \xa0", " ").replace("\xa0 ", " ").replace(
-      "\xa0", " ").strip())
-
-
 def _extract_sources(root: ET.Element) -> List[SourceDocument]:
   docs: List[SourceDocument] = []
   for doc in root.findall(".//document"):
@@ -145,11 +141,12 @@ def _extract_requirements(
         continue
     source = _text(req.find("sourceDocumentId")) or "unknown"
     title = _text(req.find("title"))
-    description = _normalise_whitespace(_text(req.find("description")))
-    if not description:
-      desc_html = _text(req.find("description_html"))
-      if desc_html:
-        description = _normalise_whitespace(_strip_html_tags(desc_html))
+    description_elem = req.find("description")
+    if description_elem is not None and description_elem.text:
+      description_raw = description_elem.text
+    else:
+      description_raw = ""
+    description = " ".join(description_raw.replace("\xa0", " ").split())
     requirements.append(
         Requirement(
             requirement_id=req_id,
@@ -180,8 +177,10 @@ def _write_requirements(grouped: dict[str, list[Requirement]],
     target_dir = output_dir / source
     target_dir.mkdir(parents=True, exist_ok=True)
     for req in reqs:
-      (target_dir / f"{req.requirement_id}.adoc").write_text(
-          req.render_adoc(), encoding="utf-8")
+      _write_file_lf(
+          target_dir / f"{req.requirement_id}.adoc",
+          req.render_adoc(),
+      )
 
 
 def _render_gemspec_zeta_section(
@@ -232,7 +231,7 @@ def _update_root_readme(root_readme: Path, section: str) -> None:
   else:
     updated = lines[:start] + [section.rstrip()] + lines[end:]
 
-  root_readme.write_text("\n".join(updated) + "\n", encoding="utf-8")
+  _write_file_lf(root_readme, "\n".join(updated) + "\n")
 
 
 def _prepare_targets(grouped: dict[str, list[Requirement]],

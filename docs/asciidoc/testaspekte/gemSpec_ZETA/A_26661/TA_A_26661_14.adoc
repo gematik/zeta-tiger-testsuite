@@ -1,0 +1,4 @@
+[#TA_A_26661_14]
+===== TA_A_26661_14 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 409 Conflict
+
+"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **409 Conflict** unterstützen. **[<=]"**

@@ -1,0 +1,4 @@
+[#TA_A_28422_05]
+===== TA_A_28422_05 - ZETA Guard, Service Discovery - Direktive max-age vom Cache-Control Header der JWKS JSON-Dokumente Dauer konfigurierbar
+
+Der ZETA Guard MUSS im HTTP-Response-Header zur Anfrage der Well-Known und **JWKS JSON-Dokumente** einen **Cache-Control-Header** einfügen, der die Direktiven **max-age** und public setzt. Die Dauer der Direktive max-age MUSS **konfigurierbar** sein (Default: 86400 s) . **[<=]**

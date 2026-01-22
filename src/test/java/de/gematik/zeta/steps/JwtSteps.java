@@ -37,6 +37,7 @@ import com.nimbusds.jose.JWSHeader.Builder;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -347,15 +348,16 @@ public class JwtSteps {
 
 
   /**
-   * Verifies the signature of a JWT using a public key provided via jwk or x5c header.
+   * Verifies the ES256 signature of a JWT using a public key provided via jwk or x5c header. For
+   * gematik requirements, only ES256 (ECDSA with P-256 and SHA-256) is supported.
    *
    * <p>If a jwk is present, its EC public key is used. Otherwise, the first certificate in the x5c
    * chain is parsed and its EC public key is used for verification.
    *
    * @param jwt the base64 coded JWT
    */
-  @Und("verifiziere die Signatur des JWT {tigerResolvedString}")
-  @And("verify the signature of the JWT {tigerResolvedString}")
+  @Und("verifiziere die ES256 Signatur des JWT {tigerResolvedString}")
+  @And("verify the ES256 signature of the JWT {tigerResolvedString}")
   public void verifyJwtSignature(String jwt) {
     SignedJWT signedJwt = parseSignedJwt(jwt);
     assertThat(signedJwt.getHeader().getAlgorithm())
@@ -367,6 +369,9 @@ public class JwtSteps {
       assertThat(jwk)
           .as("JWT must use Elliptic Curve key (EC) for gematik requirements")
           .isInstanceOf(ECKey.class);
+      assertThat(((ECKey) jwk).getCurve())
+          .as("JWT must use P-256 curve for gematik requirements")
+          .isEqualTo(Curve.P_256);
       ECPublicKey jwkPublicKey;
       try {
         jwkPublicKey = ((ECKey) jwk).toECPublicKey();
@@ -389,7 +394,12 @@ public class JwtSteps {
         .as("x5c certificate must provide an EC public key")
         .isInstanceOf(ECPublicKey.class);
 
-    verifyWithEcPublicKey(signedJwt, (ECPublicKey) certificate.getPublicKey(), "x5c certificate");
+    ECPublicKey certificatePublicKey = (ECPublicKey) certificate.getPublicKey();
+    assertThat(Curve.forECParameterSpec(certificatePublicKey.getParams()))
+        .as("x5c certificate must use P-256 curve for gematik requirements")
+        .isEqualTo(Curve.P_256);
+
+    verifyWithEcPublicKey(signedJwt, certificatePublicKey, "x5c certificate");
   }
 
 

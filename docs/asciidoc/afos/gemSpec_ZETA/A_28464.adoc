@@ -1,0 +1,4 @@
+[#A_28464]
+==== A_28464 - ZETA Guard, genau ein Authorization Server
+
+Die Komponente PEP HTTP Proxy MUSS das OAuth Protected Resource Well-known so bereitstellen, dass für ZETA Clients der ZETA Guard Authorization Server als genau eine logische Komponente bereitgestellt wird (nur ein Eintrag authorization_servers im OAuth Protected Resource Well-known).

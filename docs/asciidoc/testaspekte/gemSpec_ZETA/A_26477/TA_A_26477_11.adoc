@@ -5,5 +5,5 @@
 
 Zusätzlich MUSS die Konfiguration **pro Endpunkt** unterstützen, dass die **Dauer der Gültigkeit des PoPP Token in Sekunden** seit Ausstellung und **nach** Ausstellungszeitpunkt und **Prüfzeitpunkt innerhalb des gleichen Quartals** eingestellt werden kann.
 
-[...]
++++[...]+++
 **[<=]"**

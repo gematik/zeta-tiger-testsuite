@@ -4,5 +4,5 @@
 "[...]
 Der **claim *actorId* des PoPP Token** MUSS mit dem **Attribut *identifier* aus den zum Access Token** **gehörenden Nutzer-Daten** **übereinstimmen**.
 
-[...]
++++[...]+++
 **[<=]"**

@@ -1,0 +1,11 @@
+[#TA_GS-A_4384-03_02]
+===== TA_GS-A_4384-03_02 - TLS-Verbindungen - ZETA Guard - PEP HTTP Proxy - Ciphersuiten
+
+Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
+
+* [...]
+* Als **Cipher-Suite** MÜSSEN **TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256** und **TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384** unterstützt werden.
+* [...]
+* Es KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1 Tabelle 1] unterstützt werden.
+
+**[<=]**

@@ -1,0 +1,4 @@
+[#TA_A_27867_02]
+===== TA_A_27867_02 - PDP Authorization Server - Session Management in der PDP Datenbank - Session-Daten schemakonform
+
+"Die Komponente Authorization Server SOLL die **Session-Daten** **gemäß [session.yaml]** und die User-Daten gemäß [user-info.yaml] in der PDP Datenbank verwalten. **[<=]"**

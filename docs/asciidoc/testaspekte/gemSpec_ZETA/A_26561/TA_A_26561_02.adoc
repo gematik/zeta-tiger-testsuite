@@ -1,0 +1,4 @@
+[#TA_A_26561_02]
+===== TA_A_26561_02 - PEP HTTP Proxy - Caching - Konfiguration möglich
+
+"Der **PEP HTTP Proxy** MUSS so **konfiguriert** werden können, dass Caching von Inhalten der Response möglich ist. **[<=]"**

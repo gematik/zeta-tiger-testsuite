@@ -1,0 +1,4 @@
+[#TA_A_26661_10]
+===== TA_A_26661_10 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 201 Created
+
+"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **201 Created** unterstützen. **[<=]"**

@@ -1,6 +1,7 @@
 stages:
   - preflight
   - lint
+  - codex
   - test
   - traceability
   - docs
@@ -72,6 +73,122 @@ lint:
       - .m2/repository
     policy: pull-push
   allow_failure: false
+
+codex_review:
+  stage: codex
+  image: node:24
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID != $CI_PROJECT_ID
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CODEX_AUTH_JSON
+      when: on_success
+    - when: never
+  variables:
+    CODEX_QA_PATH: "gl-code-quality-report.json"
+    CODEX_RAW_LOG: "artifacts/codex-raw.log"
+    # Strict prompt: must output a single JSON array (or []), no prose/markdown/placeholders.
+    CODEX_PROMPT: |
+      Review the allowlisted files and output a GitLab Code Quality report in CodeClimate JSON format.
+      This repository is a test suite with German Gherkin feature files (#language:de), Asciidoc docs, and YAML configs.
+      Focus only on concrete, high-signal problems that would likely break execution, traceability, or docs.
+      Ignore formatting, whitespace, and subjective naming/style nits.
+      RULES (must follow exactly):
+      - OUTPUT MUST BE A SINGLE JSON ARRAY. Example: [] or [ {...}, {...} ].
+      - If you find no issues, OUTPUT EXACTLY: []
+      - DO NOT print any prose, backticks, code fences, markdown, or placeholders.
+      - DO NOT write any files. PRINT ONLY between these two lines:
+        === BEGIN_CODE_QUALITY_JSON ===
+        <JSON ARRAY HERE>
+        === END_CODE_QUALITY_JSON ===
+      Each issue object MUST include these fields:
+        "description": String,
+        "check_name": String (short rule name),
+        "fingerprint": String (stable across runs for same issue),
+        "severity": "info"|"minor"|"major"|"critical"|"blocker",
+        "location": { "path": "<repo-relative-file>", "lines": { "begin": <line> } }
+      Requirements:
+      - Use repo-relative paths from the current checkout (no "./", no absolute paths).
+      - Use only files that actually exist in this repo.
+      - No trailing commas. No comments. No BOM.
+      - Prefer concrete, de-duplicated findings. If uncertain, omit the finding.
+  script:
+    - set -euo pipefail
+    - echo "PWD=$(pwd)  CI_PROJECT_DIR=${CI_PROJECT_DIR}"
+    - mkdir -p artifacts
+    - ': > ${CODEX_RAW_LOG}'
+    - ': > ${CODEX_QA_PATH}'
+    - |
+      mkdir -p "${HOME}/.codex"
+      if [ -z "${CODEX_AUTH_JSON:-}" ]; then
+        echo "CODEX_AUTH_JSON missing; writing empty report and exiting."
+        echo "[]" > "${CODEX_QA_PATH}"
+        exit 0
+      fi
+      if [ -f "${CODEX_AUTH_JSON}" ]; then
+        cp "${CODEX_AUTH_JSON}" "${HOME}/.codex/auth.json"
+      else
+        printf '%s' "${CODEX_AUTH_JSON}" > "${HOME}/.codex/auth.json"
+      fi
+      echo "Using CODEX_AUTH_JSON for Codex auth."
+    - apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git
+    - npm -g i @openai/codex@latest
+    - codex login status
+    - codex --version && git --version
+    - |
+      DIFF_BASE=""
+      if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then
+        DIFF_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA}"
+      elif [ -n "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" ]; then
+        DIFF_BASE="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA}"
+      fi
+      if [ -n "${DIFF_BASE}" ]; then
+        FILE_LIST="$(git diff --name-only --diff-filter=ACMRT "${DIFF_BASE}" "${CI_COMMIT_SHA}" | sed 's/^/- /')"
+      else
+        FILE_LIST="$(git ls-files | sed 's/^/- /')"
+      fi
+      if [ -z "${FILE_LIST}" ]; then
+        FILE_LIST="$(git ls-files | sed 's/^/- /')"
+      fi
+      export CODEX_PROMPT="${CODEX_PROMPT}
+      Only report issues in the following existing files (exactly as listed):
+      ${FILE_LIST}"
+    - |
+      set +o pipefail
+      codex exec --sandbox danger-full-access -c approval_policy=never "$CODEX_PROMPT" | tee "${CODEX_RAW_LOG}" >/dev/null
+      CODEX_RC=${PIPESTATUS[0]}
+      set -o pipefail
+      echo "Codex exit code: ${CODEX_RC}"
+    - |
+      if grep -Eqi "quota exceeded|insufficient_quota" "${CODEX_RAW_LOG}"; then
+        echo "Codex quota exceeded; writing empty report and exiting."
+        echo "[]" > "${CODEX_QA_PATH}"
+        exit 0
+      fi
+    - |
+      TMP_OUT="$(mktemp)"
+      sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g' "${CODEX_RAW_LOG}" \
+        | tr -d '\r' \
+        | awk '
+            /^\s*=== BEGIN_CODE_QUALITY_JSON ===\s*$/ {grab=1; next}
+            /^\s*=== END_CODE_QUALITY_JSON ===\s*$/   {grab=0}
+            grab
+          ' > "${TMP_OUT}"
+      if ! node -e 'const f=process.argv[1]; const s=require("fs").readFileSync(f,"utf8").trim(); if(!s || /(<JSON ARRAY HERE>|BEGIN_CODE_QUALITY_JSON|END_CODE_QUALITY_JSON)/.test(s)) process.exit(2); JSON.parse(s);' "${TMP_OUT}"; then
+        echo "WARNING: Extracted content empty/invalid; writing empty [] report."
+        echo "[]" > "${TMP_OUT}"
+      fi
+      mv -f "${TMP_OUT}" "${CODEX_QA_PATH}"
+      if [ "${CODEX_RC}" -ne 0 ]; then
+        echo "WARNING: Codex exited with code ${CODEX_RC}. Proceeding with extracted report." >&2
+      fi
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - artifacts/codex-raw.log
+    expire_in: 14 days
+  allow_failure: true
 
 test:
   stage: test
@@ -207,6 +324,30 @@ docker-image:
         --pull \
         --output=type=registry,oci-mediatypes=false \
         --platform linux/amd64,linux/arm64 \
-        -f Dockerfile \
+        -f docker/frontend/Dockerfile \
         -t "${CI_REGISTRY_IMAGE}:latest" \
+        .
+
+docker-image-qualitygate:
+  stage: container
+  image: docker:29-cli
+  services:
+    - name: docker:29-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: "tcp://docker:2375"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker buildx create --use --name multiarch-builder-qg --driver docker-container
+    - docker buildx inspect --bootstrap
+    - |
+      docker buildx build \
+        --pull \
+        --output=type=registry,oci-mediatypes=false \
+        --platform linux/amd64,linux/arm64 \
+        -f docker/quality_gate/Dockerfile \
+        -t "${CI_REGISTRY_IMAGE}:qualitygate" \
         .

@@ -1,0 +1,5 @@
+==== Testaspekte für die Anforderung A_28431
+
+Folgende Testaspekte testen <<A_28431>>.
+
+include::TA_A_28431_01.adoc[]

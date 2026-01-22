@@ -70,12 +70,7 @@ Keine zusätzlichen Nebenbedingungen.
 "aud": "<AS_Token_Endpoint_URL>",
 "exp": "...",
 "jti": "...",
-// Embed the client_statement
-"urn:gematik:params:oauth:client-attestation:software":
-  {
-    "attestation_data": "<Base64(client_statement)>",
-    "client_statement_format": "client-statement"
-  }
+"client_statement": {}
 }
 (sig by Client_Instance_Private_Key)
 ----

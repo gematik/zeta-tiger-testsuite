@@ -1,0 +1,18 @@
+==== Testaspekte für die Anforderung A_27260
+
+Folgende Testaspekte testen <<A_27260>>.
+
+include::TA_A_27260_01.adoc[]
+
+include::TA_A_27260_02.adoc[]
+
+include::TA_A_27260_03.adoc[]
+
+include::TA_A_27260_04.adoc[]
+
+include::TA_A_27260_05.adoc[]
+
+include::TA_A_27260_06.adoc[]
+
+include::TA_A_27260_07.adoc[]
+

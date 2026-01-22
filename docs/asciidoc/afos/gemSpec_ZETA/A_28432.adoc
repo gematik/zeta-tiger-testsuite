@@ -1,0 +1,4 @@
+[#A_28432]
+==== A_28432 - ZETA Guard, Komponenten Ingress optional
+
+Der Ingress MUSS als optionale Komponente im ZETA Guard angeboten werden.

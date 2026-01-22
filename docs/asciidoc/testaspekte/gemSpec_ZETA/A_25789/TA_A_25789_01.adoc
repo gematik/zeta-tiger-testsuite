@@ -1,0 +1,4 @@
+[#TA_A_25789_01]
+===== TA_A_25789_01 - ZETA Guard-Komponenten - Rollbacks schnell durchführen
+
+"Die Komponenten des ZETA Guard MUSS Rollbacks **schnell** und ohne manuelle Eingriffe durchführen können. **[<=]**"

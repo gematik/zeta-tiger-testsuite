@@ -30,6 +30,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy werden gestoppt
     Und setze Anfrage Timeout für WebSocket Verbindungen auf 5 Sekunden
     Und setze Timeout für WebSocket Nachrichten auf 5 Sekunden
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-WS-ERROR-${free.port.50}"

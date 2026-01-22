@@ -1,0 +1,14 @@
+==== Testaspekte für die Anforderung A_27725
+
+Folgende Testaspekte testen <<A_27725>>.
+
+include::TA_A_27725_01.adoc[]
+
+include::TA_A_27725_02.adoc[]
+
+include::TA_A_27725_03.adoc[]
+
+include::TA_A_27725_04.adoc[]
+
+include::TA_A_27725_05.adoc[]
+

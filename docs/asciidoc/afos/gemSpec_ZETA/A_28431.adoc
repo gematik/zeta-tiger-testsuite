@@ -1,0 +1,4 @@
+[#A_28431]
+==== A_28431 - ZETA Guard, Ablauf Dienst-zu-Dienst Kommunikation
+
+Der ZETA Guard MUSS den Ablauf gemäß Abbildung Abb_ZETA-Guard-Dienst-zu-Dienst-Kommunikation unterstützen.

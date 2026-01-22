@@ -69,12 +69,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 "aud": "<AS_Token_Endpoint_URL>",
 "exp": "...",
 "jti": "...",
-// Embed the client_statement
-"urn:gematik:params:oauth:client-attestation:software":
-  {
-    "attestation_data": "<Base64(client_statement)>",
-    "client_statement_format": "client-statement"
-  }
+"client_statement": {}
 }
 (sig by Client_Instance_Private_Key)
 ----
@@ -230,6 +225,8 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_25762_03>>
 * <<TA_A_25762_04>>
 * <<TA_A_25762_05>>
+* <<TA_A_25766_01>>
+* <<TA_A_25766_02>>
 * <<TA_A_25767_01>>
 * <<TA_A_25767_02>>
 * <<TA_A_26281_01>>
@@ -241,10 +238,10 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_26661_01>>
 * <<TA_A_26944_01>>
 * <<TA_A_26945_01>>
-* <<TA_A_26972_01>>
-* <<TA_A_26972_02>>
-* <<TA_A_26972_03>>
-* <<TA_A_26972_04>>
+* <<TA_A_26972-01_01>>
+* <<TA_A_26972-01_02>>
+* <<TA_A_26972-01_03>>
+* <<TA_A_26972-01_04>>
 * <<TA_A_27007_01>>
 * <<TA_A_27401_01>>
 * <<TA_A_27727_01>>

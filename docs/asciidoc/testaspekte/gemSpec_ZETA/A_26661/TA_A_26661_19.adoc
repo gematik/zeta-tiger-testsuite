@@ -1,0 +1,4 @@
+[#TA_A_26661_19]
+===== TA_A_26661_19 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 401 Unauthorized
+
+"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**

@@ -1,0 +1,4 @@
+[#TA_A_27264_23]
+===== TA_A_27264_23 - ZETA Guard, Telemetrie-Daten - Log - Policy Engine
+
+Alle ZETA Guard-Komponenten mit Ausnahme der Datenbanken MÜSSEN OpenTelemetry konforme Traces, Metriken, and **Logs** erzeugen. **[<=]**

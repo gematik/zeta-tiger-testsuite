@@ -1,0 +1,4 @@
+[#A_28439]
+==== A_28439 - PEP HTTP Proxy - Unterstützung Forwarded-Header
+
+Die Komponente PEP HTTP Proxy MUSS in jeder empfangene HTTP-Anfrage den Forwarded-Header gemäß [RFC 7239] in der weitergeleiteten Anfragen aktualisieren.

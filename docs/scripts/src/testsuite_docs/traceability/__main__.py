@@ -28,11 +28,6 @@ def main(argv: list[str] | None = None) -> int:
     help="Path to the project root (defaults to autodetected repository root).",
   )
   parser.add_argument(
-    "--cucumber-json",
-    type=Path,
-    help="Optional path to a Cucumber JSON file with execution results.",
-  )
-  parser.add_argument(
     "--product-status-csv",
     type=Path,
     help="Optional CSV with product implementation status (defaults to docs/asciidoc/tables/product_implementation.csv).",
@@ -66,7 +61,6 @@ def main(argv: list[str] | None = None) -> int:
 
   report = build_traceability(
     project_root=args.project_root,
-    cucumber_json=args.cucumber_json,
     product_status_csv=args.product_status_csv,
     write_outputs=not args.dry_run,
   )

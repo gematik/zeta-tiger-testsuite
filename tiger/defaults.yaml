@@ -10,3 +10,5 @@ zeta_base_url: zeta-kind.local
 zeta_proxy_url: localhost:9999
 #zeta_proxy: proxy
 zeta_proxy: no-proxy
+
+opensearch_url: localhost:9200

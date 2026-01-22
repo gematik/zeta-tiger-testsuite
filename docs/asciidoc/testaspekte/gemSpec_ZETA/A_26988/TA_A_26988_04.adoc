@@ -1,0 +1,4 @@
+[#TA_A_26988_04]
+===== TA_A_26988_04 - Telemetrie-Daten Service - Fehlermeldungen - PEP Datenbank
+
+Alle Komponenten des ZETA Guard MÜSSEN ihre Fehlermeldungen so bereitstellen, dass der Telemetrie-Daten Service die Fehlermeldungen sammeln und an einen Monitoring Service weiterleileiten kann. **[<=]**

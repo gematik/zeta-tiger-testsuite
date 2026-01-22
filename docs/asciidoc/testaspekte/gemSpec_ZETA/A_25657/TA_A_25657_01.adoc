@@ -1,0 +1,4 @@
+[#TA_A_25657_01]
+===== TA_A_25657_01 - PDP - Authentication über sektoralen IDP
+
+Der PDP Authorization Server MUSS die Nutzer über sektorale IDPs authentifizieren können. **[<=]**

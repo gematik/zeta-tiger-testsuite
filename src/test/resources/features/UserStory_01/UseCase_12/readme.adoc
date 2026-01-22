@@ -32,7 +32,7 @@ Der ZETA Client verfügt über eine bestehende Session mit zugehörigem Access- 
 
 | Nebenbedingung: |
 - Keine Bereitstellung von *PoPP-Token* für Ressourcenanfrage notwendig. <<A_26477>>
-- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492>>
+- Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492-01>>
 - Es wird *HTTP/3* verwendet. (<<TA_A_26640_03>>)
 - Es werden Websocket-Verbindungen für die Ressourcenanfragen seitens ZETA Client & PEP HTTP Proxy verwendet. <<A_26639>> <<A_26195>>
 
@@ -75,8 +75,8 @@ Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen
 * <<TA_A_25762_04>>
 * <<TA_A_25767_02>>
 * <<TA_A_26195_01>>
-* <<TA_A_26492_01>>
-* <<TA_A_26492_02>>
+* <<TA_A_26492-01_01>>
+* <<TA_A_26492-01_02>>
 * <<TA_A_26493_01>>
 * <<TA_A_26493_02>>
 * <<TA_A_26560_01>>
@@ -94,6 +94,8 @@ Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen
 * <<TA_A_27399_01>>
 * <<TA_A_27853_01>>
 * <<TA_A_27853_02>>
+* <<TA_A_25766_02>>
+
 
 |===
 

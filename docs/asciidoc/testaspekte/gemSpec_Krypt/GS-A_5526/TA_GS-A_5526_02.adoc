@@ -1,0 +1,6 @@
+[#TA_GS-A_5526_02]
+===== TA_GS-A_5526_02 - TLS-Renegotiation-Indication-Extension - PIP & PAP - TLS-Renegotiation-Indication-Extension
+
+Alle Produkttypen, die das TLS-Protokoll verwenden, SOLLEN den **RFC 5746** (**TLS-Renegotiation-Indication-Extension** [RFC-5746]) unterstützen.
+
+**[<=]**

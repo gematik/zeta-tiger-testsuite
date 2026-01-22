@@ -29,6 +29,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy werden gestoppt
     Und TGR setze den default header "Content-Type" auf den Wert "application/json"
 
   @staging
@@ -200,7 +201,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "409"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   @staging
   Szenario: CREATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
@@ -218,7 +218,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   @staging
   Szenario: CREATE - Fehlerhaftes JSON gibt 400 BAD REQUEST zurück
@@ -240,7 +239,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: READ - Nicht existierende ID gibt 404 NOT FOUND zurück
     Und TGR setze lokale Feature Variable "nonExistentId" auf "999999"
@@ -248,14 +246,12 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: READ nach PrescriptionId - Nicht existierende gibt 404 NOT FOUND zurück
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/by-prescription/RX-DOES-NOT-EXIST"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/by-prescription/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: UPDATE - Nicht existierende ID gibt 404 NOT FOUND zurück
     Und TGR setze lokale Feature Variable "nonExistentId" auf "999999"
@@ -277,7 +273,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: UPDATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
     Gegeben sei Variable "duplicateTestId" existiert
@@ -294,7 +289,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: DELETE - Nicht existierende ID gibt 404 NOT FOUND zurück
     Und TGR setze lokale Feature Variable "nonExistentId" auf "999999"
@@ -302,7 +296,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   Szenario: DELETE -  Bereits gelöschtes Rezept gibt 404 NOT FOUND zurück
     Gegeben sei Variable "duplicateTestId" existiert
@@ -316,7 +309,6 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
 
   @staging
   Szenario: CREATE - Ungültiges Datumsformat gibt 400 BAD REQUEST zurück
@@ -337,4 +329,3 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"

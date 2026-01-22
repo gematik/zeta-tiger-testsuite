@@ -112,5 +112,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-// TODO: include::client_authentisierung_und_autorisierung_refresh_token_without_attest_sc_200.feature[]
+include::Client_authentisierung_und_autorisierung_refresh_token_without_attest_SC_403.feature[]
 ----

@@ -1,0 +1,17 @@
+==== Testaspekte für die Anforderung A_27399
+
+Folgende Testaspekte testen <<A_27399>>.
+
+include::TA_A_27399_01.adoc[]
+
+include::TA_A_27399_02.adoc[]
+
+include::TA_A_27399_03.adoc[]
+
+include::TA_A_27399_04.adoc[]
+
+include::TA_A_27399_05.adoc[]
+
+include::TA_A_27399_06.adoc[]
+
+include::TA_A_27399_07.adoc[]

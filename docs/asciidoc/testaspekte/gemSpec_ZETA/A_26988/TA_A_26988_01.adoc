@@ -1,0 +1,4 @@
+[#TA_A_26988_01]
+===== TA_A_26988_01 - Telemetrie-Daten Service - Fehlermeldungen - Ingress
+
+Alle Komponenten des ZETA Guard MÜSSEN ihre Fehlermeldungen so bereitstellen, dass der Telemetrie-Daten Service die Fehlermeldungen sammeln und an einen Monitoring Service weiterleileiten kann. **[<=]**

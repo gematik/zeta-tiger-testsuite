@@ -28,15 +28,17 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und TGR setze lokale Variable "proxy" auf "${paths.tigerProxy.baseUrl}"
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
   @no_proxy
+  @A_26639
   @TA_A_26639_01
   Szenario: Ingress unterstützt WebSocket Verbindung
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Dann wird die WebSocket Verbindung geschlossen
 
   @staging
+  @A_28144
   @TA_A_28144_01
   @TA_A_28144_02
   @TA_A_28144_03
@@ -58,6 +60,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
       | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.nonceEndpointPath}" |
 
   @staging
+  @A_28144
   @TA_A_28144_04
   Szenariogrundriss: Nonce ist zufällig
     # erste nonce
@@ -82,14 +85,20 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
       | first_reset                           | first_nonce_request                                                                          | second_reset                          | second_nonce_request                                                                         |
       | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.nonceEndpointPath}" | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.nonceEndpointPath}" |
 
+
   @dev
+  @A_25660
+  @A_25661
+  @A_25760
+  @A_26944
+  @A_27007
   @TA_A_25660_01
   @TA_A_25660_04
-  @TA_A_27007_07
   @TA_A_25661_01
   @TA_A_25661_02
   @TA_A_25760_03
   @TA_A_26944_01
+  @TA_A_27007_07
   Szenario: Die Komponente Authorization Server MUSS Access Token mit Attributen gemäß [access-token.yaml] und Refresh Token ausstellen (Integrationstest)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -101,23 +110,25 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_token"
 
   @dev
-  @TA_A_25664_01
-  @TA_A_25664_02
+  @A_25661
+  @A_25664
+  @A_25739
+  @A_27401
   @TA_A_25661_01
   @TA_A_25661_02
-  @TA_A_27401_01
+  @TA_A_25664_01
+  @TA_A_25664_02
   @TA_A_25739_01
+  @TA_A_27401_01
   Szenario: Policy Decision - Token Ausgabe mit korrekter Laufzeit gemäß OPA
-    Gegeben sei Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
-
     # TTL Werte als Variablen definieren
-    Und TGR setze lokale Variable "accessTokenTtl" auf "60"
+    Gegeben sei TGR setze lokale Variable "accessTokenTtl" auf "60"
     Und TGR setze lokale Variable "refreshTokenTtl" auf "120"
 
     # OPA Response manipulieren: TTL Werte setzen
     # Diese Manipulation wirkt nur auf OPA-Responses (Pfad $.body.result.ttl existiert nur dort)
-    Dann Setze im TigerProxy "${proxy}" für die Nachricht "isResponse" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
-    Und Setze im TigerProxy "${proxy}" für die Nachricht "isResponse" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 1 Ausführungen
+    Dann Setze im TigerProxy für die Nachricht "isResponse" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "isResponse" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 1 Ausführungen
 
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -167,21 +178,24 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
   @no_proxy
   @component
   @dev
+  @A_25660
+  @A_25661
+  @A_26944
+  @A_27007
   @TA_A_25660_01
-  @TA_A_27007_07
   @TA_A_25661_01
   @TA_A_26944_01
+  @TA_A_27007_07
   Szenario: Die Komponente Authorization Server MUSS Access Token mit Attributen gemäß [access-token.yaml] ausstellen (Komponententest)
     Wenn Hole JWT von "${paths.guard.baseUrl}${paths.guard.tokenEndpointPath}" und speichere in der Variable "jwtToken"
-    Dann TGR finde die letzte Anfrage mit dem Pfad ".*/token"
+    Dann TGR finde die letzte Anfrage mit dem Pfad ".*${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" nicht überein mit "200"
 
+
   @dev
+  @A_25662
   @TA_A_25662_03
   Szenario: Neue Authentisierung nach Ablauf der Refresh Token Gültigkeitsdauer
-    # Manipulationen stoppen (von vorherigen Tests)
-    Gegeben sei Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
-
     # TTL-Werte als Variablen definieren (in Sekunden)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "5"
     Und TGR setze lokale Variable "refreshTokenTtl" auf "10"
@@ -189,8 +203,8 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     # OPA Decision manipulieren: Kurze TTL für Refresh Token setzen
     # Die OPA-Response bestimmt die tatsächliche Token-Gültigkeit im Authorization Server
     Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*/v1/data/zeta/authz/decision'"
-    Dann Setze im TigerProxy "${proxy}" für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 3 Ausführungen
-    Und Setze im TigerProxy "${proxy}" für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 3 Ausführungen
+    Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 3 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 3 Ausführungen
 
     # Client zurücksetzen und ersten Token holen
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -253,9 +267,15 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange"
 
   @dev
+  @A_25663
+  @A_25766
+  @A_25762
+  @A_25767
+  @A_27802
+  @TA_A_25663_01
+  @TA_A_25766_02
   @TA_A_25762_04
   @TA_A_25767_02
-  @TA_A_25663_01
   @TA_A_27802_10
   @TA_A_27802_11
   Szenario: DPoP Token Request - Client sendet DPoP Header und erhält DPoP-gebundenen Access Token
@@ -274,7 +294,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     # DPoP JWT Validierung
     Und TGR speichere Wert des Knotens "$.header.dpop" der aktuellen Anfrage in der Variable "dpopJwt"
     Und decodiere und validiere "${dpopJwt}" gegen Schema "schemas/v_1_0/dpop-token.yaml"
-    Und verifiziere Signatur von DPoP JWT "${dpopJwt}"
+    Und verifiziere ES256 Signatur von DPoP JWT "${dpopJwt}"
     Und berechne JKT aus DPoP JWT "${dpopJwt}" und speichere in Variable "dpopJwtJkt"
     # @TA_A_25663_01 - Token Binding: cnf.jkt muss mit DPoP Public Key Thumbprint übereinstimmen
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.access_token.body.cnf.jkt" überein mit "${dpopJwtJkt}"
@@ -306,7 +326,11 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     # Guard MUSS prüfen, dass DPoP nonce mit vom /nonce Endpoint ausgegebener nonce übereinstimmt
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.nonce" überein mit "${tokenNonce}"
 
+
   @dev
+  @A_25762
+  @A_25767
+  @A_27802
   @TA_A_25762_04
   @TA_A_25767_02
   @TA_A_27802_10
@@ -324,32 +348,43 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # Manipulation mit JWK-Ersetzung - Signatur ist gültig, aber JWK ist von anderem Key
     # Der ZETA Guard prüft typ/nonce bevor er das JWK-Binding validiert
-    Dann Setze im TigerProxy "${proxy}" für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
 
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
-    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    # Vorladen der Nachrichten, damit die nachfolgende Suche nach dem manipulierten Wert schneller durchläuft
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+
+    # Finde den manipulierten Request anhand des geänderten Wertes
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "<JwtLocation>.<JwtField>" der mit "<NeuerWert>" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
 
+    # iat in der Vergangenheit (2023-12-01)
+    # iat in der Zukunft (2050-01-01)
     Beispiele: Manipulationen
       | JwtLocation   | JwtField   | NeuerWert               | ResponseCode |
       | $.header.dpop | header.typ | JWT                     | 400          |
       | $.header.dpop | body.nonce | 1234567                 | 400          |
       | $.header.dpop | header.alg | RS999                   | 400          |
-      | $.header.dpop | body.iat   | 1600000000              | 400          |
+      | $.header.dpop | body.iat   | 1701432000              | 400          |
+      | $.header.dpop | body.iat   | 2524608000              | 400          |
       | $.header.dpop | body.htm   | GET                     | 400          |
       | $.header.dpop | body.htu   | https://wrong.url/token | 400          |
 
 
-
   @dev
   @A_25644
+  @A_25762
+  @A_25767
   @A_27007
   @A_27802
-  @TA_A_27007_01
+  @A_25766
   @TA_A_25644_06
   @TA_A_25762_05
+  @TA_A_25766_01
+  @TA_A_25767_01
+  @TA_A_27007_01
   Szenario: Prüfe client-assertion-jwt im Token Exchange Request Body
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -374,7 +409,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     ## Client Assertion JWT Key
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion.header.jwk.use" überein mit "sig"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion.header.jwk.kty" überein mit "EC"
-    Und verifiziere die Signatur des JWT "${CLIENT_ASSERTION_JWT}"
+    Und verifiziere die ES256 Signatur des JWT "${CLIENT_ASSERTION_JWT}"
 
     ## Client Assertion Payload
     # A_27802 - issuer enthält den erwarteten Aussteller (== client_id)
@@ -399,16 +434,15 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion_type" überein mit "urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer"
 
 
-
   @dev
   @A_25337
   @A_25338
   @A_25644
-  @TA_A_25644_06
-  @TA_A_25644_07
   @TA_A_25337_01
   @TA_A_25338_02
   @TA_A_25338_03
+  @TA_A_25644_06
+  @TA_A_25644_07
   Szenario: Client Assertion JWT enthält Software Attestation für Windows/Linux
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -465,13 +499,16 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und TGR speichere Wert des Knotens "$.body.client_private_key" der aktuellen Antwort in der Variable "CLIENT_PRIVATE_KEY"
     Und TGR setze lokale Variable "pathCondition" auf ".*${paths.guard.tokenEndpointPath}"
 
-    Dann Setze im TigerProxy "${proxy}" für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${CLIENT_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${CLIENT_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
 
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
-    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR gebe aktuelle Request als Rbel-Tree aus
+    # Vorladen der Nachrichten, damit die nachfolgende Suche nach dem manipulierten Wert schneller durchläuft
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+
+    # Finde den manipulierten Request anhand des geänderten Wertes
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "<JwtLocation>.<JwtField>" der mit "<NeuerWert>" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
 
     # A_27802 - ZETA Guard, JWT Prüfung
@@ -484,20 +521,24 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     # -- Integrität: Hash-Prüfung
     # -- Schlüsselvalidierung
     Beispiele: Manipulationen
-      | JwtLocation             | JwtField    | NeuerWert                             | ResponseCode |
-      | $.body.client_assertion | header.typ  | dpop+jwt                              | 400          |
-      | $.body.client_assertion | header.alg  | RS999                                 | 400          |
-      | $.body.client_assertion | body.exp    | 1763370594                            | 400          |
-      | $.body.client_assertion | body.aud.0  | https://wrong.url/token               | 400          |
-      | $.body.client_assertion | body.iss    | evil_client                           | 400          |
+      | JwtLocation             | JwtField   | NeuerWert               | ResponseCode |
+      | $.body.client_assertion | header.typ | dpop+jwt                | 400          |
+      | $.body.client_assertion | header.alg | RS999                   | 400          |
+      | $.body.client_assertion | body.exp   | 1763370594              | 400          |
+      | $.body.client_assertion | body.aud.0 | https://wrong.url/token | 400          |
+      | $.body.client_assertion | body.iss   | evil_client             | 400          |
 
-  @A_25650
   @A_25645
-  @TA_A_25650_02
+  @A_25650
+  @A_26972-01
   @TA_A_25645_01
+  @TA_A_25650_02
+  @TA_A_26972-01_01
+  @TA_A_26972-01_02
+  @TA_A_26972-01_03
+  @TA_A_26972-01_04
   Szenario: PDP Client Registrierung - TI-Identität in Attestation - Bindung TelematikID
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und Alle Manipulationen im TigerProxy "${proxy}" werden gestoppt
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
@@ -506,14 +547,27 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR speichere Wert des Knotens "$.body.subject_token.header.x5c.0" der aktuellen Anfrage in der Variable "smcbCertificate"
-    Und schreibe die Telematik ID aus dem SMC-B Zertifikat "${smcbCertificate}" in die Variable "telematikId"
+    Und schreibe Daten aus dem SMC-B Zertifikat "${smcbCertificate}" in die Variable "SMCB-INFO"
 
     # Prüfe die Client-ID und die Telematik ID in der Attestation
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.iss" überein mit "${clientId}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_id" überein mit "${clientId}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion.body.iss" überein mit "${clientId}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.sub" überein mit "${telematikId}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.sub" überein mit "${SMCB-INFO.telematikId}"
 
     Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.BearerToken.body.sub" überein mit "${telematikId}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.BearerToken.body.sub" überein mit "${SMCB-INFO.telematikId}"
+
+
+    Und TGR speichere Wert des Knotens "$.header.authorization.BearerToken.body.udat" der aktuellen Anfrage in der Variable "UDAT"
+    Und validiere "${UDAT}" soft gegen Schema "schemas/v_1_0/user-info.yaml"
+
+    #TA_A_26972-01_01 identifier
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.BearerToken.body.udat.telid" überein mit "${SMCB-INFO.telematikId}"
+    #TA_A_26972-01_02 optional commonName
+    Und prüfe aktuelle Anfrage der Knoten "$.header.authorization.BearerToken.body.udat.commonName" ist nicht vorhanden oder gleich "${SMCB-INFO.commonName}"
+    #TA_A_26972-01_03 professionOID
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.BearerToken.body.udat.prof" überein mit "${SMCB-INFO.professionId}"
+    #TA_A_26972-01_04 optional organizationName
+    Und prüfe aktuelle Anfrage der Knoten "$.header.authorization.BearerToken.body.udat.organizationName" ist nicht vorhanden oder gleich "${SMCB-INFO.organizationName}"

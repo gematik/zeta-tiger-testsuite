@@ -1,0 +1,4 @@
+[#A_28527]
+==== A_28527 - PDP Authorization Server - Gültigkeitsdauer Access und Refresh Token
+
+Die Komponente Authorization Server MUSS beim Ausstellen von Access und Refresh Token die Gültigkeitsdauer aus der Policy Decision übernehmen.

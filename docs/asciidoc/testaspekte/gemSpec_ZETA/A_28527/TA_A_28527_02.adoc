@@ -1,0 +1,4 @@
+[#TA_A_28527_02]
+===== TA_A_28527_02 - PDP Authorization Server - Gültigkeitsdauer Refresh Token
+
+"Die Komponente Authorization Server MUSS beim Ausstellen von Access und **Refresh Token** die **Gültigkeitsdauer** aus der Policy Decision übernehmen. **[<=]**"

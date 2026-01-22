@@ -29,11 +29,14 @@ Funktionalität: Client_ressource_anfrage_Performance_SC_200
   # TODO: Comment on what this test actually does (no real validation or authorization)
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
   @perf
   @dev
-  @A_26486 @TA_A_26486_01
-  @A_26488 @TA_A_26488_01
+  @A_26486
+  @A_26488
+  @TA_A_26486_01
+  @TA_A_26488_01
 #  Szenario: PEP HTTP Proxy - Performance und Last
 #    #TODO: BASE_URL needs to be set correctly as soon as it's known
 #    #TODO: 300 Websockets needs to be connected. This is missing.
@@ -60,8 +63,10 @@ Funktionalität: Client_ressource_anfrage_Performance_SC_200
 
   @perf
   @dev
-  @A_26489 @TA_A_26489_01
-  @A_26491 @TA_A_26491_01
+  @A_26489
+  @A_26491
+  @TA_A_26489_01
+  @TA_A_26491_01
   Szenario: PDP HTTP Proxy - Last und Performance
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     #TODO: BASE_URL for PDP needs to be set correctly as soon as it's known

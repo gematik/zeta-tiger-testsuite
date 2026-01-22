@@ -1,0 +1,22 @@
+==== Testaspekte für die Anforderung GS-A_4384-03
+
+Folgende Testaspekte testen <<GS-A_4384-03>>.
+
+include::TA_GS-A_4384-03_01.adoc[]
+
+include::TA_GS-A_4384-03_02.adoc[]
+
+include::TA_GS-A_4384-03_03.adoc[]
+
+include::TA_GS-A_4384-03_04.adoc[]
+
+include::TA_GS-A_4384-03_05.adoc[]
+
+include::TA_GS-A_4384-03_06.adoc[]
+
+include::TA_GS-A_4384-03_07.adoc[]
+
+include::TA_GS-A_4384-03_08.adoc[]
+
+include::TA_GS-A_4384-03_09.adoc[]
+

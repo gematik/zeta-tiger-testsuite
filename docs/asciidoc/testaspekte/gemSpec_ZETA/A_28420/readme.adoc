@@ -1,0 +1,11 @@
+==== Testaspekte für die Anforderung A_28420
+
+Folgende Testaspekte testen <<A_28420>>.
+
+include::TA_A_28420_01.adoc[]
+
+include::TA_A_28420_02.adoc[]
+
+include::TA_A_28420_03.adoc[]
+
+include::TA_A_28420_04.adoc[]

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -47,9 +46,6 @@ class TraceabilityRecord:
   use_case_id: Optional[str]
   implemented: bool
   product_implemented: bool
-  last_run: Optional[datetime]
-  last_run_status: Optional[str]
-  last_success: Optional[datetime]
   scenario_names: Set[str] = field(default_factory=set)
 
 
@@ -62,11 +58,6 @@ class TraceabilityLink:
   use_case: Optional[str]
   implemented: bool
   product_implemented: bool
-  last_run: Optional[str]
-  last_run_human: Optional[str]
-  last_run_status: Optional[str]
-  last_success: Optional[str]
-  last_success_human: Optional[str]
   scenarios: List[str]
 
 

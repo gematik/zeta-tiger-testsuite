@@ -1,0 +1,4 @@
+[#TA_A_26661_25]
+===== TA_A_26661_25 - ZETA Guard - HTTP Statuscodes - Alle Endpunkte - 429 Too Many Requests
+
+"Der ZETA Guard MUSS für **Alle Endpunkte** den HTTP Statuscode **429 Too Many Requests** unterstützen. **[<=]"**

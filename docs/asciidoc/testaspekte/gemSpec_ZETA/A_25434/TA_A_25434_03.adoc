@@ -1,0 +1,4 @@
+[#TA_A_25434_03]
+===== TA_A_25434_03 - ZETA Client - Clientregistrierung mit bestätigten Umgebungseigenschaften Android - App-Authentizität bestätigen
+
+Der ZETA Client für eine Google-Android basierte Betriebsumgebung MUSS seine Client-Credentials, App-Integrität und **-Authentizität** sowie OS-/FW und HW-Eigenschaften über **Key and ID Attestation** gegenüber PDP Client-Registrierung bestätigen.. **[<=]**

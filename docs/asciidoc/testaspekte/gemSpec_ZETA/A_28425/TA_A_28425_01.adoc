@@ -1,0 +1,4 @@
+[#TA_A_28425_01]
+===== TA_A_28425_01 - ZETA Client, Service Discovery - If-None-Match
+
+"Der ZETA Client MUSS bei der Abfrage der Well-known JSON-Dokumente die HTTP-Header **If-None-Match** und ETag verwenden. **[<=]**"

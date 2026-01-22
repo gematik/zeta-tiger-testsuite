@@ -1,4 +1,0 @@
-[#A_25674]
-==== A_25674 - PIP und PAP - OPA Bundle Signaturprüfung
-
-Der PIP und PAP Service MUSS für alle bereitgestellten OPA Bundles prüfen, ob deren Signatur vorhanden und gültig ist.

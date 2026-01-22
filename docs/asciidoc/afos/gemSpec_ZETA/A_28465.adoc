@@ -1,0 +1,4 @@
+[#A_28465]
+==== A_28465 - ZETA Client, Registrierung mit mehreren ZETA Guard
+
+Der ZETA Client MUSS sich einmalig am Authorization Server pro ZETA Guard registrieren.

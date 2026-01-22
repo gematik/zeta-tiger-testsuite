@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.steps;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import de.gematik.rbellogger.data.RbelElement;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
@@ -58,7 +59,7 @@ public class HelperSteps {
    *
    * @param input   Base64-URL encoded content (supports tigerResolvedString placeholders)
    * @param varName target variable name for the decoded text
-   * @throws RuntimeException if the input cannot be decoded from Base64-URL
+   * @throws AssertionError if the input cannot be decoded from Base64-URL
    */
   @Dann("decodiere {tigerResolvedString} von Base64-URL und speichere in der Variable {tigerResolvedString}")
   @Then("decode {tigerResolvedString} from Base64-URL and save in variable {tigerResolvedString}")
@@ -67,12 +68,22 @@ public class HelperSteps {
     TigerGlobalConfiguration.putValue(varName, decodedText, ConfigurationValuePrecedence.TEST_CONTEXT);
   }
 
+  /**
+   * Decodes a Base64-URL encoded string into a UTF-8 string.
+   *
+   * <p>Accepts the URL-safe alphabet defined in RFC 4648 (section 5), including inputs without
+   * padding characters.</p>
+   *
+   * @param base64UrlString Base64-URL encoded content
+   * @return decoded UTF-8 string
+   * @throws AssertionError if decoding fails due to invalid Base64-URL input
+   */
   private String decodeBase64UrlToString(String base64UrlString) {
     try {
       byte[] decodedBytes = Base64.getUrlDecoder().decode(base64UrlString);
       return new String(decodedBytes, StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
-      throw new RuntimeException("Invalid Base64-URL string: " + e.getMessage(), e);
+      throw new AssertionError("Invalid Base64-URL string: " + e.getMessage(), e);
     }
   }
 
@@ -120,8 +131,13 @@ public class HelperSteps {
    * @param seconds the number of seconds to wait
    */
   @Wenn("warte {int} Sekunden")
-  public void waitSeconds(int seconds) throws InterruptedException {
-    Thread.sleep(seconds * 1000L);
+  public void waitSeconds(int seconds) {
+    try {
+      Thread.sleep(seconds * 1000L);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Wait was interrupted", e);
+    }
   }
 
   /**
@@ -144,16 +160,16 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path is either empty or not equal
+   * Checks if the current request's attribute at the given RBEL path does either not exist or equal
    * to the specified value.
    *
    * @param rbelPath the RBEL path to the attribute in the request
-   * @param value    the value to compare against; the attribute is considered valid if it is empty or
-   *                 not equal to this value
+   * @param value    the value to compare against; the attribute is considered valid if it does not exist or
+   *                 equal to this value
    */
-  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist leer oder ungleich {tigerResolvedString}")
-  @Then("current request the attribute {tigerResolvedString} is empty or not equal {tigerResolvedString}")
-  public void variableIsEmptyOrNotEqual(String rbelPath, String value) {
+  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder gleich {tigerResolvedString}")
+  @Then("current request the attribute {tigerResolvedString} does not exist or is equal {tigerResolvedString}")
+  public void variableDoesNotExistOrIsEqual(String rbelPath, String value) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
     if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
       return;
@@ -169,19 +185,49 @@ public class HelperSteps {
 
     Assertions
         .assertThat(optionalValue.trim())
-        .as("Node value %s should be empty or not equal to '%s'", optionalValue, value)
+        .as("Node value %s should not exist or be equal to '%s'", optionalValue, value)
+        .isEqualTo(value);
+  }
+
+  /**
+   * Checks if the current request's attribute at the given RBEL path does either not exist or not equal
+   * to the specified value.
+   *
+   * @param rbelPath the RBEL path to the attribute in the request
+   * @param value    the value to compare against; the attribute is considered valid if it does not exist or
+   *                 is not equal to this value
+   */
+  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder ungleich {tigerResolvedString}")
+  @Then("current request the attribute {tigerResolvedString} does not exist or is not equal {tigerResolvedString}")
+  public void variableDoesNotExistOrIsNotEqual(String rbelPath, String value) {
+    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
+    if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
+      return;
+    }
+
+    String optionalValue = rbelMessageRetriever
+        .findElementsInCurrentRequest(rbelPath)
+        .stream()
+        .map(RbelElement::getRawStringContent)
+        .filter(Objects::nonNull)
+        .map(String::trim)
+        .collect(Collectors.joining());
+
+    Assertions
+        .assertThat(optionalValue.trim())
+        .as("Node value %s should not exist or not be equal to '%s'", optionalValue, value)
         .isNotEqualTo(value);
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path is either empty or has
+   * Checks if the current request's attribute at the given RBEL path does either not exist or has
    * a timestamp earlier than the current time.
    *
    * @param rbelPath the RBEL path to the attribute (typically a timestamp) in the request
    */
-  @Dann("prüfe aktuelle Anfrage: der Knoten {tigerResolvedString} ist leer oder früher als jetzt")
-  @Then("current request: the attribute {tigerResolvedString} is empty or earlier then now")
-  public void variableIsEmptyOrEarlier(String rbelPath) {
+  @Dann("prüfe aktuelle Anfrage: der Knoten {tigerResolvedString} ist nicht vorhanden oder früher als jetzt")
+  @Then("current request: the attribute {tigerResolvedString} does not exist or is earlier then now")
+  public void variableDoesNotExistOrIsEarlier(String rbelPath) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
     if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
       return;
@@ -198,19 +244,19 @@ public class HelperSteps {
     long value = Instant.now().getEpochSecond();
     Assertions
         .assertThat(Long.parseLong(optionalValue.trim()))
-        .as("Node value %s should be empty or smaller then '%s'", optionalValue, value)
+        .as("Node value %s should not exist or be earlier then '%s'", optionalValue, value)
         .isLessThan(value);
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path is either empty or has
+   * Checks if the current request's attribute at the given RBEL path does either not exist or has
    * a timestamp later than the current time.
    *
    * @param rbelPath the RBEL path to the attribute (typically a timestamp) in the request
    */
-  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist leer oder später als jetzt")
-  @Then("current request the attribute {tigerResolvedString} is empty or later then now")
-  public void variableIsEmptyOrLater(String rbelPath) {
+  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder später als jetzt")
+  @Then("current request the attribute {tigerResolvedString} does not exist or is later then now")
+  public void variableDoesNotExistOrIsLater(String rbelPath) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
     if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
       return;
@@ -227,26 +273,63 @@ public class HelperSteps {
     long value = Instant.now().getEpochSecond();
     Assertions
         .assertThat(Long.parseLong(optionalValue.trim()))
-        .as("Node value %s should be empty or smaller then '%s'", optionalValue, value)
+        .as("Node value %s should not exist or be later then '%s'", optionalValue, value)
         .isGreaterThan(value);
   }
 
   /**
    * Verifies that no element matching the given RBEL path exists in the current request.
+   * Throws an {@link AssertionError} if node exists.
    */
   @Dann("prüfe aktueller Request enthält keinen Knoten {tigerResolvedString}")
   @Then("current request does not contain node {tigerResolvedString}")
-  public void currentRequestMessageNotContainsNode(String rbelPath) {
+  public void checkCurrentRequestMessageNotContainsNode(String rbelPath) {
+    currentRequestMessageNotContainsNode(rbelPath, false);
+  }
+
+  /**
+   * Verifies that no element matching the given RBEL path exists in the current request.
+   * Uses soft assertions instead of throwing an {@link AssertionError} if node exists.
+   */
+  @Dann("prüfe aktueller Request enthält keinen Knoten {tigerResolvedString} und nutze soft assert")
+  @Then("current request does not contain node {tigerResolvedString} with soft assert")
+  public void checkCurrentRequestMessageNotContainsNodeSoft(String rbelPath) {
+    currentRequestMessageNotContainsNode(rbelPath, true);
+  }
+
+  /**
+   * Verifies that no element matching the given RBEL path exists in the current request.
+   *
+   * <p>With the soft option enabled, errors due to an existing node will be logged only
+   * and no exception is thrown.</p>
+   *
+   * <p>If the JSON is empty, cannot be parsed, or an existing node
+   * an {@link AssertionError} is thrown with a detailed error message.
+   *
+   * @param rbelPath    path and name of the node not to be contained
+   * @param soft        if true, errors will only be logged.
+   * @throws AssertionError if check fails
+   */
+  private void currentRequestMessageNotContainsNode(String rbelPath, boolean soft) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
     if (rbelMessageRetriever.getCurrentRequest() == null) {
       throw new AssertionError("No current request message found!");
     }
     List<RbelElement> elems = rbelMessageRetriever.getCurrentRequest()
         .findRbelPathMembers(rbelPath);
-    Assertions
-        .assertThat(elems)
-        .as("Expected current request to not contain node '%s'", rbelPath)
-        .isEmpty();
+    try {
+      Assertions
+          .assertThat(elems)
+          .as("Expected current request to not contain node '%s'", rbelPath)
+          .isEmpty();
+    } catch (AssertionError ex) {
+      if (soft) {
+        log.warn("Expected current request to not contain node {}", rbelPath);
+        SoftAssertionsContext.recordSoftFailure("Expected current request to not contain node " + rbelPath, ex);
+      } else {
+        throw ex;
+      }
+    }
   }
 
   /**

@@ -1,0 +1,4 @@
+[#TA_A_28422_03]
+===== TA_A_28422_03 - ZETA Guard, Service Discovery - Direktive public vom Cache-Control Header der Well-Known enthalten
+
+Der ZETA Guard MUSS im HTTP-Response-Header zur Anfrage der **Well-Known** und JWKS JSON-Dokumente einen **Cache-Control-Header** einfügen, der die Direktiven max-age und **public** setzt. [...] **[<=]**

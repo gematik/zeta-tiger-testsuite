@@ -1,0 +1,4 @@
+[#TA_A_26661_04]
+===== TA_A_26661_04 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 403 Forbidden
+
+"Der ZETA Guard MUSS für **Authentifizierung mit Client Assertion JWT** den HTTP Statuscode **403 Forbidden** unterstützen. **[<=]"**

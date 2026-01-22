@@ -1,0 +1,19 @@
+[#TA_A_21275-01_06]
+===== TA_A_21275-01_06 - TLS-Verbindungen, zulässige Hashfunktionen bei Signaturen im TLS-Handshake - PIP & PAP - ausschließlich und keine anderen Hashfunktionen
+
+Alle Produkttypen, die Übertragungen mittels TLS durchführen, MÜSSEN sicherstellen, dass
+
+. sie im Rahmen der **Erstellung und Prüfung von digitalen Signaturen** im Rahmen des TLS-Handshakes **ausschließlich folgende** kryptographisch geeignete **Hashfunktionen** verwenden:
+.. SHA-256, SHA-384, SHA-512 [FIPS-180-4]
+.. SHA3-256, SHA3-384, SHA3-512 [FIPS-202]
+. [...]
+
+(Bitte die **Umsetzungshinweise in Bezug auf die "signature_algorithms"-Extension** in gemSpec_Krypt#A_21275-* **beachten**.) **[<=]**
+
+
+
+Umsetzungshinweise zu A_21275-*:
+
+Bei den Anwendungsfällen der TI-Anwendungen sind die Mehrzahl der TLS-Verbindungen einseitig authentisiert. D. h. beim TLS-Handshake signiert nur der TLS-Server dessen (EC)DH-Schlüssel. Bei der Initiierung der TLS-Verbindung sendet der TLS-Client in der "signature_algorithms"-Extension beim ClientHello. In der Extension werden alle vom Client unterstützen Hashfunktionen kodiert. Dort muss also nach A_21275-* mindestens SHA-256 enthalten sein. Bei TLS 1.2 wird von fast allen TLS-Bibliotheken ebenfalls SHA-1 angegeben, dieses Verhalten lässt sich im Normalfall nicht ohne Code-Änderungen in den Bibliotheken verändern -- dieses Verhalten widerspricht zunächst A_21275-*.  **Das bloße Aufführen von SHA-1 als grundsätzlich unterstützte Hashfunktion soll nicht als fehlerhaftes Verhalten gelten. Wichtig für die Umsetzung von A_21275- sind die tatsächlich erstellten Signaturen und die Prüfung dieser Signaturen.**
+
+Informationen zu Algorithmen in der "signature_algorithms"-Extension findet man in [RFC-5246#7.4.1.4.1.] und [RFC-8446-4.2.3.], vgl. auch [RFC-9155].

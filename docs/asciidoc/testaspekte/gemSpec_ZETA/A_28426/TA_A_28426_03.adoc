@@ -1,0 +1,4 @@
+[#TA_A_28426_03]
+===== TA_A_28426_03 - ZETA Client, Service Discovery - Service Discovery erneut durchführen
+
+"[...] Der ZETA Client MUSS die **Service Discovery** **erneut durchführen**, wenn beim Kommunikationsaufbau zu den geschützten Ressourcen der HTTP-Statuscodes 404 (Not Found) empfangen wird. **[<=]**"

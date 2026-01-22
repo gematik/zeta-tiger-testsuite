@@ -1,0 +1,4 @@
+[#TA_A_26661_02]
+===== TA_A_26661_02 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 400 Bad Request
+
+"Der ZETA Guard MUSS für **Authentifizierung mit Client Assertion JWT** den HTTP Statuscode **400 Bad Request** unterstützen. **[<=]"**

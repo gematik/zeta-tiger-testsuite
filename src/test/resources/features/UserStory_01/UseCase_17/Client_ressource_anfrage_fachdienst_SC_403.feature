@@ -28,13 +28,15 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_403
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und TGR setze lokale Variable "proxy" auf "${paths.tigerProxy.baseUrl}"
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
   @A_25660
   @A_26477
   @A_26661
   @A_27007
   @TA_A_25660_03
+  @TA_A_26477_02
+  @TA_A_26477_08
   @TA_A_26661_01
   @TA_A_27007_26
   Szenariogrundriss: PoPP Token Manipulation Test - Token Request
@@ -43,15 +45,17 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_403
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Und TGR setze lokale Variable "PoPP_PRIVATE_KEY" auf "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgChSTcLLu6By9RINWnfQdtCqkm8WlOcje4oDnLV5KpmigCgYIKoZIzj0DAQehRANCAARwLyN6z4jOFORwcx0yMnrJ/2XGUR7b/Vcbo5W02kT7b9rKjub8r2tuBEJ/AIEupjjZ3kYSCPKoUS6v1SNOg8Th"
 
-    Und TGR setze lokale Variable "pathCondition" auf ".*/achelos-testfachdienst/hellozeta"
+    Und TGR setze lokale Variable "pathCondition" auf ".*${paths.guard.helloZetaPath}"
 
-    Dann Setze im TigerProxy "${proxy}" für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${PoPP_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${PoPP_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
 
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    Und TGR gebe aktuelle Request als Rbel-Tree aus
+
+    # Finde den manipulierten Request anhand des geänderten Wertes
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.helloZetaPath}" und Knoten "<JwtLocation>.<JwtField>" der mit "<NeuerWert>" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
 
     # 2. Manipuliere die Signatur des PoPP Token
@@ -64,3 +68,54 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_403
       | $.header.popp              | body.iat                 | 1701432000            | 403          |
       | $.header.popp              | body.patientProofTime    | 1701432000            | 403          |
       | $.header.popp              | body.actorId             | evil_client           | 403          |
+
+  @dev
+  @A_26988
+  @TA_A_26988_01
+  Szenariogrundriss: Telemetrie-Daten Service - Fehlermeldungen
+    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
+      | q                                                                                                                                                                      | size |
+      | resource.k8s.namespace.name:zeta-local AND resource.k8s.container.name:<containerName> AND attributes.log.file.path:/var/log/pods/* AND attributes.log.iostream:stderr | 1    |
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für genau diesen Container gibt.
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
+
+    Beispiele:
+      | containerName           |
+
+      # TA_A_26988_01, Ingress
+      | controller              |
+
+      # TODO: TA_A_26988_02, Egress               <- Container/Gateway fehlt noch
+      #| controller-out          |
+
+      # TA_A_26988_03, HTTP Proxy
+      | nginx                   |
+
+      # TA_A_26988_04, PEP Datenbank              <- Container fehlt noch
+      #| database-pep            |
+
+      # TA_A_26988_05, Authorization Server
+      | keycloak                |
+
+      # TA_A_26988_06, PDP Datenbank
+      | postgresql              |
+
+      # TA_A_26988_07, Policy Engine
+      | opa                     |
+
+      # TODO: TA_A_26988_08, Notification Service <- Container fehlt noch
+      #| notification-service    |
+
+      # TODO: TA_A_26988_09, Management Service   <- Container wird wahrscheinlich nicht benötigt
+      #| management-service      |
+
+      # TA_A_26988_10, Telemetrie Daten Service
+      | opentelemetry-collector |
+
+      # Zulieferer für den Telemetrie Daten Service
+      | log-collector           |
+
+      # TA_A_26988_11, Resource Server
+      | testfachdienst          |

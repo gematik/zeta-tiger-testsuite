@@ -41,12 +41,8 @@ Glue/Hook-Klassen für die Testausführung.
 - TLS Test Tool 1.0.1 (abgelegt unter `tools/tls-test-tool-1.0.1`)
 
 Zum Ausführen des Features ```Client_ressource_anfrage_fachdienst_SC_200``` ist die Beschaffung des
-Keykloak-Signaturschlüssels für die jeweilige Umgebung und die Ablage unter 
-```src/test/resources/keys/zeta-achelos.westeurope.cloudapp.azure.com-ecKey.pem```
-```src/test/resources/keys/zeta-cd.westeurope.cloudapp.azure.com-ecKey.pem```
-```src/test/resources/keys/zeta-dev.westeurope.cloudapp.azure.com-ecKey.pem```
-```src/test/resources/keys/zeta-local.westeurope.cloudapp.azure.com-ecKey.pem```
-```src/test/resources/keys/zeta-staging.westeurope.cloudapp.azure.com-ecKey.pem```
+Keykloak-Signaturschlüssels für die jeweilige Umgebung und die Ablage unter z.B.
+```src/test/resources/keys/zeta-kind.local.pem```
 ```src/test/resources/mocks/jwt-sign-key.pem```
 notwendig.
 
@@ -81,71 +77,60 @@ Engine ausgeführt.
 
 ### Ausführen über Docker
 
-Der Multi-Stage-Dockerbuild (`Dockerfile`) funktioniert identisch lokal wie in CI. Typischer Ablauf:
+Die Containerdefinitionen liegen unter `docker/`,
+eine ausführlichere Beschreibung steht in [docker/README.md](docker/README.md).
+Es gibt zwei Images:
+
+- `docker/frontend/Dockerfile`: Maven-basiert (baut & führt die Tests), CI-Tag `:latest`.
+- `docker/quality_gate/Dockerfile`: Runtime-only (gepackte Tests + `/app/run-tests.sh`), CI-Tag
+  `:qualitygate`.
+
+Lokaler Build:
 
 ```bash
-# 1) Image bauen (die Build-Stage cached alle Maven-Dependencies).
-docker build -t testsuite:latest .
+docker build -f docker/frontend/Dockerfile -t testsuite:latest .
+docker build -f docker/quality_gate/Dockerfile -t testsuite:qualitygate .
+```
 
-# 2) Container ausführen (Volume mount nur für Reports nötig).
+Ausführen (EntryPoint ruft `/app/run-tests.sh` auf):
+
+```bash
 docker run --rm \
-  -e ZETA_BASE_URL=https://zeta-kind.local \
+  -e CUCUMBER_TAGS="@smoke" \
   -v "$PWD/target/site/serenity:/app/target/site/serenity" \
   -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
   testsuite:latest
+docker run --rm \
+  -e CUCUMBER_TAGS="@smoke" \
+  -v "$PWD/target/site/serenity:/app/target/site/serenity" \
+  -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
+  testsuite:qualitygate
 ```
 
 > **Wichtig**: `ZETA_BASE_URL` wird unverändert an Maven (`-Dzeta_base_url`)
 > durchgereicht. Ohne diesen Wert greifen die Tests lediglich auf symbolische Hostnamen wie
 `zetaClient`, wodurch die Läufe erwartungsgemäß fehlschlagen.
 
-| Variable              | Default  | Wirkung                                                                                                          |
-|-----------------------|----------|------------------------------------------------------------------------------------------------------------------|
-| `ZETA_BASE_URL`       | (leer)   | Ziel-Host für Cloud-/Stage-Tests; Pflicht sobald externe Services angesprochen werden sollen.                    |
-| `TIGER_ENVIRONMENT`   | `cloud`  | Wählt die Tiger-Konfiguration (`tiger-*.yaml`).                                                                  |
-| `CUCUMBER_TAGS`       | `@smoke` | Szenario-Auswahl analog zu `-Dcucumber.filter.tags`.                                                             |
-| `SERENITY_EXPORT_DIR` | (leer)   | Optionales Ziel (z. B. `/builds/.../target/site/serenity`); wird mit `/app/target/site/serenity` verlinkt.       |
-| `FAILSAFE_EXPORT_DIR` | (leer)   | Optionales Ziel (z. B. `/builds/.../target/failsafe-reports`); wird mit `/app/target/failsafe-reports` verlinkt. |
+| Variable              | Default    | Wirkung                                                                                                    |
+|-----------------------|------------|------------------------------------------------------------------------------------------------------------|
+| `ZETA_BASE_URL`       | (leer)     | Ziel-Host für Cloud-/Stage-Tests; Pflicht sobald externe Services angesprochen werden sollen.              |
+| `ZETA_PROXY`          | `no-proxy` | Proxy-Modus für Maven/Runtime (z. B. `proxy` für Forwarder).                                               |
+| `ZETA_PROXY_URL`      | (leer)     | Proxy-URL für das Maven-basierte Image.                                                                    |
+| `TIGER_ENVIRONMENT`   | `cloud`    | Wählt die Tiger-Konfiguration (`tiger-*.yaml`).                                                            |
+| `CUCUMBER_TAGS`       | `@smoke`   | Szenario-Auswahl analog zu `-Dcucumber.filter.tags`.                                                       |
+| `SERENITY_EXPORT_DIR` | (leer)     | Optionales Ziel (z. B. `/builds/.../target/site/serenity`); wird mit `/app/target/site/serenity` verlinkt. |
+| `CUCUMBER_EXPORT_DIR` | (leer)     | Optionaler Cucumber-JSON-Export zu `/app/target/cucumber-parallel`.                                        |
 
-Der Container führt grundsätzlich `mvn verify` aus.
-
-Alle Varianten laufen headless, da der Container standardmäßig
-`-Dtiger.lib.activateWorkflowUi=false` usw. setzt.
-Zusätzlich installiert das Image den Wrapper `/usr/local/bin/run-tests.sh`,
-der exakt dieselbe Maven-Kommandokette wie der Docker-`CMD` startet
-und so in GitLab-Jobs (oder lokalen Shell-Skripten) ohne Copy & Paste genutzt werden kann.
-Setzen Sie `SERENITY_EXPORT_DIR` bzw. `FAILSAFE_EXPORT_DIR`,
-werden `/app/target/site/serenity` und `/app/target/failsafe-reports` zur Laufzeit
-auf die angegebenen Pfade verlinkt (z. B. `$CI_PROJECT_DIR/target/site/serenity` bzw.
-`$CI_PROJECT_DIR/target/failsafe-reports`),
-sodass GitLab-Artefakte direkt aus der Pipeline-Workspace-Struktur kommen.
+Beide Images laufen headless (`-Dtiger.lib.activateWorkflowUi=false` usw.). Sie verlinken bei Bedarf
+die Reportverzeichnisse auf externe Pfade, sodass GitLab-Artefakte direkt aus dem Workspace kommen.
 
 #### GitLab CI Docker Build
 
-Der Job `docker-image` (Stage `container` in [.gitlab-ci.yml](.gitlab-ci.yml)) baut exakt dieses
-Image und pusht es ins GitLab Container Registry. Er läuft standardmäßig nur auf dem
-Default-Branch und verwendet dieselbe Multi-Stage-Konfiguration inklusive offline Maven-Cache. Der
-Build nutzt `docker buildx build` mit `oci-mediatypes=false`, damit die Registry einen Docker
-Schema-v2-Manifest mit Configuration-Digest erhält; die Inline-Kommentare beschreiben Login und
-Push-Schritte.
-
-Beispieljob zur Nutzung des Images in einer zweiten Pipeline:
-
-```yaml
-testsuite-smoke:
-  image: registry.gitlab.com/<gruppe>/testsuite:latest
-  script:
-    - /usr/local/bin/run-tests.sh
-  variables:
-    ZETA_BASE_URL: https://zeta-kind.local
-    TIGER_ENVIRONMENT: cloud
-    CUCUMBER_TAGS: "@smoke and not @perf"
-    SERENITY_EXPORT_DIR: "$CI_PROJECT_DIR/target/site/serenity"
-    FAILSAFE_EXPORT_DIR: "$CI_PROJECT_DIR/target/failsafe-reports"
-```
-
-Damit entfällt das manuelle Wiederholen des kompletten Maven-Kommandos; Anpassungen erfolgen
-ausschließlich über Variablen.
+Die Pipeline baut beide Images: `docker-image` erzeugt `${CI_REGISTRY_IMAGE}:latest` (frontend),
+`docker-image-qualitygate` `${CI_REGISTRY_IMAGE}:qualitygate` (runtime).
+Beide Jobs nutzen Buildx mit `oci-mediatypes=false` und `platform linux/amd64,linux/arm64`.
+Ein CI-Beispiel für das Quality-Gate-Image steht in [docker/README.md](docker/README.md),
+das frontend-Image wird analog mit `/app/run-tests.sh` genutzt.
 
 #### Preflight-Checks & `.gitattributes`
 

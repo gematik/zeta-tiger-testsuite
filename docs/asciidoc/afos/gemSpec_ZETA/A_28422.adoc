@@ -1,0 +1,4 @@
+[#A_28422]
+==== A_28422 - ZETA Guard, Service Discovery - Cache-Control-Header Direktiven
+
+Der ZETA Guard MUSS im HTTP-Response-Header zur Anfrage der Well-Known und JWKS JSON-Dokumente einen Cache-Control-Header einfügen, der die Direktiven max-age und public setzt. Die Dauer der Direktive max-age MUSS konfigurierbar sein (Default: 86400 s) .

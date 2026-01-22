@@ -1,0 +1,13 @@
+==== Testaspekte für die Anforderung A_25434
+
+Folgende Testaspekte testen <<A_25434>>.
+
+include::TA_A_25434_01.adoc[]
+
+include::TA_A_25434_02.adoc[]
+
+include::TA_A_25434_03.adoc[]
+
+include::TA_A_25434_04.adoc[]
+
+include::TA_A_25434_05.adoc[]

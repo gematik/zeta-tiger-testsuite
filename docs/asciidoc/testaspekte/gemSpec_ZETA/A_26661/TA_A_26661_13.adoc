@@ -1,0 +1,4 @@
+[#TA_A_26661_13]
+===== TA_A_26661_13 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 403 Forbidden
+
+"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **403 Forbidden** unterstützen. **[<=]"**

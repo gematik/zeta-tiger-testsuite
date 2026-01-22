@@ -1,0 +1,9 @@
+[#TA_A_28525_02]
+===== TA_A_28525_02 - PEP HTTP Proxy - Step-up-Bedingung - Audience passt nicht zur Request URL
+
+"Die Komponente HTTP Proxy MUSS dem Client eine **Step-up-Authentifizierung** signalisieren, wenn
+
+* der erforderliche Scope im Access-Token nicht enthalten ist oder
+* die **Audience im Access-Token nicht zur Request URL passt**.
+
+Die angefragte URL MUSS existieren (unterstützte Audience). **[<=]**"

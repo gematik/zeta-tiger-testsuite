@@ -1,0 +1,20 @@
+==== Testaspekte für die Anforderung A_25738
+
+Folgende Testaspekte testen <<A_25738>>.
+
+include::TA_A_25738_01.adoc[]
+
+include::TA_A_25738_02.adoc[]
+
+include::TA_A_25738_03.adoc[]
+
+include::TA_A_25738_04.adoc[]
+
+include::TA_A_25738_05.adoc[]
+
+include::TA_A_25738_06.adoc[]
+
+include::TA_A_25738_07.adoc[]
+
+include::TA_A_25738_08.adoc[]
+

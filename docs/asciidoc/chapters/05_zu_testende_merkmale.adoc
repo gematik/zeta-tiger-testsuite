@@ -3,7 +3,7 @@
 === Zuordnung von User Stories, Use Cases und Testaspekten
 
 Nachfolgend eine initiale Zuordnung der User Stories und Use Cases zu konkreten Testaspekten.
-Die Tabelle gruppiert die Use Cases unter der jeweiligen User Story und zeigt, welche Testaspekte aktuell mit Szenarien hinterlegt und zuletzt erfolgreich gelaufen sind.
+Die Tabelle gruppiert die Use Cases unter der jeweiligen User Story und zeigt, welche Testaspekte aktuell mit Szenarien hinterlegt sind.
 
 include::../tables/features_table.adoc[]
 
@@ -11,16 +11,24 @@ include::../tables/features_table.adoc[]
 
 Diese Übersicht stellt den gemeldeten Umsetzungsstand den bereits durch die Testsuite abgedeckten Anforderungen gegenüber.
 Die Produktstatus-Angaben werden aus ``docs/asciidoc/tables/product_implementation.csv`` gelesen (Beispieldatei: ``docs/asciidoc/tables/product_implementation_example.csv``).
-Die CSV verwendet deutschsprachige Spaltenköpfe (``Anforderung``, optional ``Titel`` als Lesehilfe, ``umgesetzt``, ``Hinweis``); für den Umsetzungsstand bitte ``ja``, ``nein`` oder ``teilweise`` verwenden. Der optionale Titel wird von der Generierung ignoriert.
+Die CSV verwendet deutschsprachige Spaltenköpfe (``Anforderung``, optional ``Titel`` als Lesehilfe, ``umgesetzt``, ``Hinweis``); für den Umsetzungsstand bitte ``ja``, ``nein`` oder ``teilweise`` verwenden.
+Der optionale Titel wird von der Generierung ignoriert.
 Die Spalte „umgesetzt“ zeigt die gemeldete Implementierung, „getestet“ fasst die Testsuite-Abdeckung pro Anforderung zusammen und „Hinweise“ heben Differenzen oder fehlende Angaben hervor.
+Die Testsuite-Abdeckung wird ausschließlich aus Testaspekt-Katalogen und Feature-Tags abgeleitet (keine Laufzeit-Reports).
+Für die Spalte „getestet“ gilt:
+
+* ``ja``: alle Testaspekte der Anforderung sind mit mindestens einem Use-Case-Szenario implementiert.
+* ``teilweise``: mindestens ein Testaspekt ist implementiert, aber nicht alle.
+* ``nein``: kein implementierter Testaspekt oder keine Testaspekte vorhanden.
+
+Die Kategorien entsprechen den Diagrammen zur Testabdeckung in diesem Kapitel.
 
 include::../tables/product_gap_table.adoc[]
 
 === Übersicht Produktumsetzung & Testsuite-Abdeckung
 
-Die folgende Übersicht verdichtet die Kombination aus gemeldetem Umsetzungsstand
-und Testsuite-Abdeckung. Die Grafik zeigt die Anteile, die Tabelle daneben nennt
-die exakten Zahlen.
+Die folgende Übersicht verdichtet die Kombination aus gemeldetem Umsetzungsstand und Testsuite-Abdeckung.
+Die Grafik zeigt die Anteile, die Tabelle daneben nennt die exakten Zahlen.
 
 [mermaid,product-gap-summary,svg]
 ....
@@ -28,3 +36,52 @@ include::../diagrams/product-gap-summary.mmd[]
 ....
 
 include::../tables/product_gap_summary.adoc[]
+
+=== Testabdeckung der Anforderungen
+
+Die Abdeckungsmetriken basieren ausschließlich auf den modellierten Testaspekten und den Feature-Tags (keine Laufzeit-Reports).
+Die Diagramme werden von ``uv run --project docs/scripts traceability build --project-root .``
+generiert (läuft auch im Maven-Profil ``generate-documentation``).
+
+Datenbasis und Regeln:
+
+* Anforderungen: ``docs/asciidoc/afos``.
+* Testaspekte: ``docs/asciidoc/testaspekte`` (Zuordnung über den Ordnernamen der Anforderung).
+* Implementiert: Ein Testaspekt zählt als implementiert, wenn mindestens ein Szenario ihn mittels Testaspekt-Tag referenziert (``TA_*``-Tag).
+* Szenarien ohne Testaspekt-Tag werden für die Metriken ignoriert.
+* ``A_*``-Tags in Szenarien werden für die Abdeckungsmetriken nicht ausgewertet.
+* ``@product_not_impl``-Tags beeinflussen nur die Produktumsetzung in der Zuordnungstabelle, nicht die Testabdeckung.
+* Die Abdeckung zählt eindeutige Testaspekte, nicht die Anzahl der Szenarien.
+
+Definitionen:
+
+* vollständig abgedeckt: alle Testaspekte der Anforderung sind implementiert.
+* teilweise abgedeckt: mindestens ein Testaspekt ist implementiert, aber nicht alle.
+* nicht abgedeckt: Testaspekte vorhanden, aber keiner implementiert.
+* keine Testaspekte: zur Anforderung existiert kein Testaspekt.
+
+[mermaid,traceability-coverage-requirements,svg]
+....
+include::../diagrams/traceability-coverage-requirements.mmd[]
+....
+
+=== Anforderungen mit mindestens einem implementierten Testaspekt
+
+Dieses Diagramm fasst Anforderungen zusammen, die durch mindestens einen implementierten Testaspekt abgedeckt werden.
+Anforderungen ohne Testaspekte gelten hier als „kein Testaspekt implementiert“.
+
+[mermaid,traceability-coverage-requirements-tested,svg]
+....
+include::../diagrams/traceability-coverage-requirements-tested.mmd[]
+....
+
+=== Testabdeckung der Testaspekte
+
+Hier wird analysiert, wie viele Testaspekte bereits von automatisierten Tests ausgeführt werden.
+``implementiert`` bedeutet, dass der Testaspekt-Tag an mindestens einem Szenario hinterlegt ist,
+``offen`` kennzeichnet Testaspekte ohne zugeordnete Szenarien.
+
+[mermaid,traceability-coverage-testaspects,svg]
+....
+include::../diagrams/traceability-coverage-testaspects.mmd[]
+....

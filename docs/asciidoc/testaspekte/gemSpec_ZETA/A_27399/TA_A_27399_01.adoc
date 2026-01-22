@@ -1,0 +1,6 @@
+[#TA_A_27399_01]
+===== TA_A_27399_01 - PDP Datenbank - Löschfristen - User-Daten löschen
+
+Die Komponente PDP Datenbank MUSS **konfigurierbare Inaktivitäts-Löschfristen für** **User-** und Client-**Daten** haben und die Daten **nach** **Ablauf der Fristen löschen**. Der Default-Wert beträgt 1 Jahr.
++++[...]+++
+**[<=]**

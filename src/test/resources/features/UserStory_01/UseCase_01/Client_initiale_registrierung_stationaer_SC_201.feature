@@ -28,6 +28,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
   @dev
   @A_18464
@@ -43,6 +44,8 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
       | ${zeta_base_url} |
 
   @staging
+  @A_26640
+  @A_26641
   @A_27266
   @A_27798
   @TA_A_27266_01
@@ -58,14 +61,14 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "OPR_WELL_KNOWN"
     Und validiere "${OPR_WELL_KNOWN}" gegen Schema "schemas/v_1_0/opr-well-known.yaml"
 
-    @TA_A_26640_01
+    @TA_A_26641_01
     Beispiele: Integrationstest
       | reset_step                                               | request_step                                           | expected_path                                          |
       | TGR sende eine leere GET Anfrage an "${paths.client.reset}" | TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}" | .*${paths.guard.wellKnownOAuthProtectedResourcePath}$ |
 
     @no_proxy
     @component
-    @TA_A_26641_01
+    @TA_A_26640_01
     Beispiele: Komponententest
       | reset_step                             | request_step                                                                  | expected_path                                          |
       | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthProtectedResourcePath}" | .*${paths.guard.wellKnownOAuthProtectedResourcePath}$ |
