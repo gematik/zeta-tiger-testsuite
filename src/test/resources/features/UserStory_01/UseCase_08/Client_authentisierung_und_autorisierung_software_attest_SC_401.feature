@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_08
@@ -33,8 +34,10 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
   @dev
   @A_25783
   @A_27007
+  @A_26661
   @TA_A_25783_02
-  @TA_A_27007_25
+  @TA_A_27007_03
+  @TA_A_26661_03
   Szenario: Erneute Authentifizierung nach 401 Unauthorized
     Gegeben sei TGR setze lokale Variable "unauthorizedCondition" auf "isResponse && request.path =~ '.*${paths.guard.tokenEndpointPath}'"
     Und Setze im TigerProxy für die Nachricht "${unauthorizedCondition}" die Manipulation auf Feld "$.responseCode" und Wert "401" und 1 Ausführungen
@@ -44,17 +47,17 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
 
     # Erste Token-Anfrage mit 401 (manipuliert)
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}"
+    # TA_A_27007_03 - ZETA Client - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 401 Unauthorized
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    # TA_A_25783_02 - Anweisung befolgen erneute Authentifizierung (Nutzer-Token erneuern)
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token"
+    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "firstSubjectToken"
 
     # Nonce-Anfrage nach 401
     Und TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.nonceEndpointPath}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
-    # Zweiter Token-Request (Retry) mit 200
+    # Zweiter Token-Request (Retry)
     Und TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-
-    # Resource-Request erfolgreich
-    Und TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    # TA_A_25783_02 - Anweisung befolgen erneute Authentifizierung
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token" nicht überein mit "${firstSubjectToken}"

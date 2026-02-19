@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -43,24 +43,37 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.WebSocketHttpHeaders;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 /**
  * Manages STOMP session lifecycle, subscriptions, and message handling.
  */
 @Slf4j
+@RequiredArgsConstructor
 public class StompSessionManager {
+
+  private static final List<String> STOMP_PROTOCOLS =
+      List.of("v12.stomp", "v11.stomp", "v10.stomp");
+  private static final String STOMP_ACCEPT_VERSION = "1.2";
 
   @Setter
   private static int connectionTimeout = 5;
@@ -95,80 +108,76 @@ public class StompSessionManager {
    */
   @Getter
   private ReceivedStompMessage lastReceivedMessage;
-
   /**
-   * Constructs a StompSessionManager with the given client factory.
-   *
-   * @param clientFactory The factory for creating WebSocket clients
+   * Persistent raw WebSocket connection for transport-level scenarios.
    */
-  public StompSessionManager(WebSocketClientFactory clientFactory) {
-    this.clientFactory = clientFactory;
-  }
+  private WebSocketSession rawWebSocket;
 
   /**
-   * Connects to a WebSocket endpoint.
+   * Performs a transport-level WebSocket upgrade probe without STOMP.
    *
    * @param url The WebSocket URL
    */
-  public void connect(String url) {
+  public void verifyWebSocketUpgrade(String url) {
     var sanitizedUrl = url.trim();
     validateTargetUrl(sanitizedUrl);
+    SslConfigurationService.configureForTesting();
+    rawWebSocket = openRawWebSocket(sanitizedUrl);
+  }
 
+  /**
+   * Connects STOMP using the already established raw WebSocket endpoint.
+   */
+  public void connectStompUsingExistingWebSocket() {
+    assertRawWebSocketReady();
+    assertThat(rawWebSocket.getUri())
+        .as("Existing raw WebSocket connection must expose a target URI")
+        .isNotNull();
+
+    connectStompInternal(rawWebSocket.getUri().toString());
+  }
+
+  /**
+   * Establishes the STOMP handshake against the provided, already validated WebSocket URL.
+   *
+   * @param sanitizedUrl the target WebSocket URL used for STOMP connect
+   */
+  private void connectStompInternal(String sanitizedUrl) {
     log.info("Connecting to: {}", sanitizedUrl);
 
     // Configure SSL for trust store tweaks once per manager instance.
     SslConfigurationService.configureForTesting();
 
-    // Create WebSocket client
-    var stompClient = clientFactory.create();
+    var webSocketHeaders = new WebSocketHttpHeaders();
+    webSocketHeaders.setSecWebSocketProtocol(STOMP_PROTOCOLS);
 
+    var stompConnectHeaders = new StompHeaders();
+    stompConnectHeaders.setAcceptVersion(STOMP_ACCEPT_VERSION);
+    stompConnectHeaders.setHost(URI.create(sanitizedUrl).getHost());
+
+    // Create WebSocket client directly before connect to keep declaration close to usage.
+    var stompClient = clientFactory.create();
     // Keep handshake state so we can block until the asynchronous connect attempt finishes.
     var connectLatch = new CountDownLatch(1);
     var connectionError = new AtomicReference<Throwable>();
-
-    var sessionHandler = new StompSessionHandlerAdapter() {
-      @Override
-      public void afterConnected(StompSession session, @NotNull StompHeaders connectedHeaders) {
-        log.info("STOMP CONNECTED - Session: {}", session.getSessionId());
-        StompSessionManager.this.session = session;
-        connectLatch.countDown();
-      }
-
-      @Override
-      public void handleTransportError(@NotNull StompSession session,
-          @NotNull Throwable exception) {
-        log.error("Transport error during WebSocket handshake", exception);
-        connectionError.compareAndSet(null, exception);
-        connectLatch.countDown();
-      }
-
-      @Override
-      public void handleException(@NotNull StompSession session, StompCommand command,
-          @NotNull StompHeaders headers,
-          byte @NotNull [] payload, @NotNull Throwable exception) {
-        log.error("STOMP exception during WebSocket handshake (command={}, headers={})",
-            command, headers, exception);
-        connectionError.compareAndSet(null, exception);
-        connectLatch.countDown();
-      }
-    };
+    var sessionHandler = createSessionHandler(connectLatch, connectionError);
 
     // Start the asynchronous WebSocket handshake.
     log.info("Starting WebSocket connection...");
-    stompClient.connectAsync(sanitizedUrl, sessionHandler);
+    stompClient.connectAsync(sanitizedUrl, webSocketHeaders, stompConnectHeaders, sessionHandler);
 
     // Wait for the handshake to complete or time out.
     boolean connected;
     try {
       connected = connectLatch.await(connectionTimeout, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      throw new AssertionError("WebSocket connection failed", connectionError.get());
+      Thread.currentThread().interrupt();
+      throw new AssertionError("WebSocket connection failed", e);
     }
 
     var error = connectionError.get();
     if (error != null) {
-      throw new AssertionError(
-          buildConnectionFailureMessage(sanitizedUrl, error), error);
+      throw new AssertionError(buildConnectionFailureMessage(sanitizedUrl, error), error);
     }
 
     assertThat(connected)
@@ -185,6 +194,82 @@ public class StompSessionManager {
         .isTrue();
 
     log.info("WebSocket connection established");
+  }
+
+  /**
+   * Verifies that a prior raw WebSocket probe exists and is still open.
+   *
+   * <p>This enforces the scenario precondition that transport-level WebSocket validation happens
+   * before STOMP connection setup.
+   */
+  private void assertRawWebSocketReady() {
+    assertThat(rawWebSocket)
+        .as(
+            "Raw WebSocket connection must be opened before STOMP session. "
+                + "Run step 'eine WebSocket Verbindung zu <url> geöffnet wird' first.")
+        .isNotNull();
+    assertThat(rawWebSocket.isOpen())
+        .as("Raw WebSocket connection must still be open before STOMP session")
+        .isTrue();
+  }
+
+  /**
+   * Verifies the endpoint accepts a plain WebSocket upgrade independent of STOMP.
+   *
+   * @param url The WebSocket URL
+   * @return established raw WebSocket session
+   */
+  private WebSocketSession openRawWebSocket(String url) {
+    log.info("Opening raw WebSocket connection for {}", url);
+    try {
+      closeRawConnectionArtifacts();
+
+      var uri = URI.create(url);
+      var probeError = new AtomicReference<Throwable>();
+
+      var handler = new AbstractWebSocketHandler() {
+        @Override
+        public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable error) {
+          probeError.compareAndSet(null, error);
+        }
+      };
+
+      var webSocket = clientFactory.createRawClient()
+          .execute(handler, new WebSocketHttpHeaders(), uri)
+          .get(connectionTimeout, TimeUnit.SECONDS);
+
+      var probeFailure = probeError.get();
+      if (probeFailure != null) {
+        throw new AssertionError("Raw WebSocket probe failed", probeFailure);
+      }
+
+      assertThat(webSocket.isOpen())
+          .as("Raw WebSocket upgrade established and session is open")
+          .isTrue();
+
+      log.info("Raw WebSocket connection established for {}", url);
+      return webSocket;
+    } catch (ExecutionException e) {
+      closeRawConnectionArtifacts();
+      throw new AssertionError("Raw WebSocket upgrade probe failed: " + e.getCause(), e);
+    } catch (TimeoutException e) {
+      closeRawConnectionArtifacts();
+      throw new AssertionError(
+          String.format(
+              "Raw WebSocket connection timed out after %d seconds for '%s'",
+              connectionTimeout,
+              url),
+          e);
+    } catch (Exception e) {
+      closeRawConnectionArtifacts();
+      throw new AssertionError(
+          String.format(
+              "Raw WebSocket open failed for '%s': %s: %s",
+              url,
+              e.getClass().getSimpleName(),
+              e.getMessage()),
+          e);
+    }
   }
 
   /**
@@ -246,13 +331,54 @@ public class StompSessionManager {
    * @return formatted assertion message
    */
   private String buildConnectionFailureMessage(String url, Throwable error) {
-    return error == null
-        ? String.format("WebSocket connection to '%s' not established within %d seconds", url,
-        connectionTimeout)
-        : String.format("WebSocket connection to '%s' failed within %d seconds: %s",
-            url,
-            connectionTimeout,
-            error.getMessage());
+    if (error == null) {
+      return String.format(
+          "WebSocket upgrade to '%s' succeeded, but STOMP CONNECTED was not received within %d seconds."
+              + " Endpoint likely does not speak STOMP or STOMP frames are blocked in transit.",
+          url,
+          connectionTimeout);
+    }
+
+    return String.format(
+        "Raw WebSocket upgrade to '%s' succeeded, but STOMP failed within %d seconds: %s",
+        url,
+        connectionTimeout,
+        error.getMessage());
+  }
+
+  /**
+   * Creates a session handler that tracks STOMP connect success and handshake errors.
+   */
+  private StompSessionHandlerAdapter createSessionHandler(
+      CountDownLatch connectLatch,
+      AtomicReference<Throwable> connectionError) {
+    return new StompSessionHandlerAdapter() {
+      @Override
+      public void afterConnected(@NotNull StompSession connectedSession,
+          @NotNull StompHeaders connectedHeaders) {
+        log.info("STOMP CONNECTED - Session: {}", connectedSession.getSessionId());
+        StompSessionManager.this.session = connectedSession;
+        connectLatch.countDown();
+      }
+
+      @Override
+      public void handleTransportError(@NotNull StompSession activeSession,
+          @NotNull Throwable exception) {
+        log.error("Transport error during WebSocket handshake", exception);
+        connectionError.compareAndSet(null, exception);
+        connectLatch.countDown();
+      }
+
+      @Override
+      public void handleException(@NotNull StompSession activeSession, StompCommand command,
+          @NotNull StompHeaders headers,
+          byte @NotNull [] payload, @NotNull Throwable exception) {
+        log.error("STOMP exception during WebSocket handshake (command={}, headers={})",
+            command, headers, exception);
+        connectionError.compareAndSet(null, exception);
+        connectLatch.countDown();
+      }
+    };
   }
 
   /**
@@ -260,17 +386,8 @@ public class StompSessionManager {
    */
   public void subscribe(String destination, String subscriptionId) {
     log.info("Subscribing to: {} (ID: {})", destination, subscriptionId);
-
-    assertThat(session)
-        .as("STOMP Session must be connected")
-        .isNotNull();
-
-    assertThat(session.isConnected())
-        .as("STOMP Session must be active")
-        .isTrue();
-
-    var headers = new StompHeaders();
-    headers.setDestination(destination);
+    assertConnectedSession();
+    var headers = destinationHeaders(destination);
     headers.setId(subscriptionId);
 
     session.subscribe(headers, new StompFrameHandler() {
@@ -299,10 +416,7 @@ public class StompSessionManager {
    */
   public void send(String destination, Map<String, String> data) {
     log.info("SEND to {}: {}", destination, data);
-
-    assertThat(session)
-        .as("STOMP Session must be connected before sending")
-        .isNotNull();
+    assertConnectedSession();
 
     // Resolve Tiger placeholders in all values
     Map<String, String> resolvedData = new HashMap<>();
@@ -311,10 +425,8 @@ public class StompSessionManager {
       resolvedData.put(key, resolvedValue);
     });
 
-    var headers = new StompHeaders();
-    headers.setDestination(destination);
-
-    session.send(headers, resolvedData.isEmpty() ? Collections.emptyMap() : resolvedData);
+    session.send(destinationHeaders(destination),
+        resolvedData.isEmpty() ? Collections.emptyMap() : resolvedData);
 
     log.info("Message sent successfully");
   }
@@ -324,17 +436,20 @@ public class StompSessionManager {
    */
   public void sendJson(String destination, Map<String, Object> data) {
     log.info("SEND JSON to {}: {}", destination, data);
-
-    assertThat(session)
-        .as("STOMP Session must be connected before sending JSON")
-        .isNotNull();
-
-    var headers = new StompHeaders();
-    headers.setDestination(destination);
-
-    session.send(headers, data.isEmpty() ? Collections.emptyMap() : data);
+    assertConnectedSession();
+    session.send(destinationHeaders(destination), data.isEmpty() ? Collections.emptyMap() : data);
 
     log.info("JSON Message sent successfully");
+  }
+
+  /**
+   * Sends a raw (already serialized) payload to a STOMP destination.
+   */
+  public void sendRaw(String destination, String payload) {
+    log.info("SEND RAW to {}: {}", destination, payload);
+    assertConnectedSession();
+    session.send(destinationHeaders(destination), payload);
+    log.info("Raw message sent successfully");
   }
 
   /**
@@ -390,8 +505,42 @@ public class StompSessionManager {
     } else {
       log.info("WebSocket was already closed or not connected");
     }
+    closeRawConnectionArtifacts();
 
     messageQueue.clear();
+  }
+
+  private void closeRawConnectionArtifacts() {
+    if (rawWebSocket != null) {
+      try {
+        rawWebSocket.close(CloseStatus.NORMAL);
+      } catch (Exception e) {
+        log.warn("Error closing raw WebSocket: {}", e.getMessage());
+      } finally {
+        rawWebSocket = null;
+      }
+    }
+  }
+
+  /**
+   * Ensures a STOMP session exists and is connected.
+   */
+  private void assertConnectedSession() {
+    assertThat(session)
+        .as("STOMP Session must be connected")
+        .isNotNull();
+    assertThat(session.isConnected())
+        .as("STOMP Session must be active")
+        .isTrue();
+  }
+
+  /**
+   * Creates STOMP headers with destination.
+   */
+  private StompHeaders destinationHeaders(String destination) {
+    var headers = new StompHeaders();
+    headers.setDestination(destination);
+    return headers;
   }
 
   /**
@@ -424,8 +573,7 @@ public class StompSessionManager {
    *
    * @param payload The JSON payload (Map or List)
    * @return Map for field access
-   * @throws AssertionError if payload is null, not a Map/List, List is empty, or List elements are
-   *                        not Maps
+   * @throws AssertionError if payload is null, not a Map/List, List is empty, or List elements are not Maps
    */
   public Map<String, Object> extractFirstObjectFromPayload(Object payload) {
     switch (payload) {

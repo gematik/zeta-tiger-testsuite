@@ -1,0 +1,15 @@
+==== Testaspekte für die Anforderung A_25432
+
+Folgende Testaspekte testen <<A_25432>>.
+
+include::TA_A_25432_01.adoc[]
+
+include::TA_A_25432_02.adoc[]
+
+include::TA_A_25432_03.adoc[]
+
+include::TA_A_25432_04.adoc[]
+
+include::TA_A_25432_05.adoc[]
+
+include::TA_A_25432_06.adoc[]

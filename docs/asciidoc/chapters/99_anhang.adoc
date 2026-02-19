@@ -2,24 +2,7 @@
 [#_anforderungen_mappingreferenz]
 == Anforderungen (Mapping/Referenz)
 
-Das nachfolgende Diagramm visualisiert die Beziehungen zwischen Anforderungen, Testaspekten und Use Cases.
 Die Abdeckungsdiagramme befinden sich in Kapitel 5 (Zu testende Merkmale).
-Danach folgt die vollständige Traceability-Matrix.
-
-=== Vernetzung von Anforderungen, Testaspekten und Use Cases
-
-In der Übersicht werden alle Anforderungen (linke Knoten) mit ihren Testaspekten (mittlere Knoten) und – sofern vorhanden – den zugehörigen Use Cases (rechte Knoten) verknüpft.
-Ein Pfeil markiert, dass für die Quelle ein Testaspekt modelliert bzw. durch einen Use Case abgedeckt ist.
-Fehlt eine Verbindung, existiert entweder kein Testaspekt oder noch kein Use Case zur Ausführung.
-
-[mermaid,traceability-overview,svg]
-....
-include::../diagrams/traceability-overview.mmd[]
-....
-
-=== Traceability-Matrix
-
-include::../tables/traceability_matrix.adoc[]
 
 [appendix]
 include::../../cucumber_methods.adoc[]

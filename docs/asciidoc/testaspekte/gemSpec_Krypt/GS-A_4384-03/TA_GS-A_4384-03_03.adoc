@@ -1,5 +1,5 @@
 [#TA_GS-A_4384-03_03]
-===== TA_GS-A_4384-03_03 - TLS-Verbindungen - ZETA Guard - PEP HTTP Proxy - eliptische Kurven
+===== TA_GS-A_4384-03_03 - TLS-Verbindungen - ZETA Guard - PEP HTTP Proxy - elliptische Kurven
 
 Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
 
@@ -9,3 +9,11 @@ Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die 
 * [...]
 
 **[<=]**
+
+Testseitige Konkretisierung für die Featurespezifikation:
+
+Ein gemeinsamer Szenariogrundriss mit lesbaren Gruppenprofilen deckt positive und negative Fälle ab:
+
+* `p256_only` -> `secp256r1 (0017)` -> TLS-Handshake erfolgreich, `Server-Key-Exchange` gesendet
+* `p384_only` -> `secp384r1 (0018)` -> TLS-Handshake erfolgreich, `Server-Key-Exchange` gesendet
+* `unsupported_mix` -> `secp160r1`, `secp192r1`, `secp224r1`, `secp521r1`, `brainpoolP512r1`, `x25519`, `x448`, `ffdhe3072`, `ffdhe4096` -> TLS-Handshake nicht erfolgreich, kein `Server-Key-Exchange`-Datensatz

@@ -1,0 +1,17 @@
+[#M_ZETA_GUARD_FUNKTIONALE_ENDPUNKTE]
+=== Menge: Funktionale Endpunkte ZETA Guard (nach A_27007)
+
+Die Menge enthält die funktionalen Endpunkte gemäß A_27007 (ohne Well-known- und Discovery-Endpunkte). 
+Endpunkte des Kubernetes Cluster IDP sind ausgeschlossen.
+
+// tag::M_ZETA_GUARD_FUNKTIONALE_ENDPUNKTE[]
+.Menge M_ZETA_GUARD_FUNKTIONALE_ENDPUNKTE
+PEP HTTP Proxy::
+- GET /<resource-pfad> (Zugriff auf geschützte Ressource über den Proxy, Host: RS-FQDN)
+
+Authorization Server::
+- GET /authorize (OIDC Authorization Code Flow)
+- GET /nonce (Vorbereitung der Clientregistrierung)
+- POST /token (Client Assertion JWT; OIDC Authorization Code Flow)
+- POST /register (Clientregistrierung)
+// end::M_ZETA_GUARD_FUNKTIONALE_ENDPUNKTE[]

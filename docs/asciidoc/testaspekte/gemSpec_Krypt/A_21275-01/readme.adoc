@@ -10,7 +10,3 @@ include::TA_A_21275-01_03.adoc[]
 
 include::TA_A_21275-01_04.adoc[]
 
-include::TA_A_21275-01_05.adoc[]
-
-include::TA_A_21275-01_06.adoc[]
-

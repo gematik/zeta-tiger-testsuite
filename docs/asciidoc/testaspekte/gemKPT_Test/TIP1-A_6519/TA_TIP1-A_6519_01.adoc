@@ -1,0 +1,4 @@
+[#TA_TIP1-A_6519_01]
+===== TA_TIP1-A_6519_01 - Eigenverantwortlicher Test: Hersteller und Anbieter
+
+Hersteller und Anbieter MÜSSEN im Rahmen der Eigenverantwortlichen Tests ihre Pflichten gemäß Tabelle Tab_Test_005 "Eigenverantwortlicher Test" erfüllen. **[<=]**

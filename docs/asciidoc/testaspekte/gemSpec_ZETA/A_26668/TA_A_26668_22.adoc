@@ -1,0 +1,8 @@
+[#TA_A_26668_22]
+===== TA_A_26668_22 - ZETA Guard - Rate Limit - Header X-Rate-Limit-Limit - Authorization Server - GET /.well-known/openid-configuration
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (**X-Rate-Limit-Limit** (das erlaubte Limit), +++[...]+++ und +++[...]+++). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: GET /.well-known/openid-configuration

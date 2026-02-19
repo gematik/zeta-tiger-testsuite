@@ -2,6 +2,7 @@ client:
   baseUrl: "http://zetaClient"
   helloZeta: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta"
   helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
+  helloZetaProxyError: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta/proxy-error"
   reset: "http://zetaClient/testdriver-api/reset"
   websocketBaseUrl: "wss://${zeta_base_url}/proxy/achelos_testfachdienst/ws"
   storage: "http://zetaClient/testdriver-api/storage"
@@ -21,9 +22,14 @@ erezept:
       updatePrefix: "/achelos_testfachdienst/app/erezept.update."
       deletePrefix: "/achelos_testfachdienst/app/erezept.delete."
 
+fachdienst:
+  helloZetaPath: "/achelos_testfachdienst/hellozeta"
+  helloZetaProxyErrorPath: "/achelos_testfachdienst/hellozeta/proxy-error"
+
 guard:
   baseUrl: "http://zetaGuard"
   helloZetaPath: "/pep/achelos_testfachdienst/hellozeta"
+  helloZetaProxyErrorPath: "/pep/achelos_testfachdienst/hellozeta/proxy-error"
   tokenEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/token"
   registerEndpointPath: "/auth/realms/zeta-guard/clients-registrations/openid-connect"
   nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
@@ -33,15 +39,16 @@ guard:
   managementServicePath: "/managementService"
   ecKeyFile: "src/test/resources/keys/${zeta_base_url}-ecKey.pem"
   helloZetaFullPath: "https://${zeta_base_url}${paths.guard.helloZetaPath}"
-  audPath: "https://${zeta_base_url}"
+  audPath: "https://${zeta_base_url}/auth/"
 
 tigerProxy:
   baseUrl: "http://${zeta_proxy_url}"
   modifyJwsTokenPath: "/manipulation/modifyJwsToken"
+  manipulationPath: "/manipulation/modification"
   modificationPath: "/modification"
-  resetJwtManipulationPath: "/resetJwtManipulation"
-  keyPath: "/key"
-  modifyJwtPath: "/modifyJwt"
+  resetJwtManipulationPath: "/manipulation/resetJwtManipulation"
+  keyPath: "/manipulation/key"
+  modifyJwtPath: "/manipulation/modifyJwt"
 
 opa:
   decisionPath: "/v1/data/zeta/authz/decision"
@@ -53,3 +60,9 @@ openSearch:
   baseUrl: "http://${opensearch_url}"
   openTelemetryLogsSearchPath: "/otel-logs-*/_search"
   openTelemetryLogsSearchPathPattern: "/otel-logs-.*/_search.*"
+
+jaeger:
+  baseUrl: "https://${zeta_base_url}"
+  jaegerTracesSearchPath: "/jaeger/ui/api/traces"
+  jaegerTracesSearchPathPattern: "/jaeger/ui/api/traces.*"
+

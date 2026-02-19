@@ -1,14 +1,18 @@
-environment: cloud
-
-# Environment `cloud` loads `tiger-cloud.yaml`. Keep this value; adapt the host with the setting below.
-
 # Hostname (without scheme) for the external ZETA deployment.
-# The value is reused for HTTPS and WSS targets by the features and the tiger-cloud profile.
+# The value is reused for HTTPS and WSS targets by the features and the tiger config.
 # Override via environment variable ZETA_BASE_URL or Maven property -Dzeta_base_url=....
 zeta_base_url: zeta-kind.local
 
 zeta_proxy_url: localhost:9999
-#zeta_proxy: proxy
-zeta_proxy: no-proxy
 
+zeta_k8s_namespace: zeta-local
+
+allow_deployment_modification: false
+
+zeta_k8s_command_timeout: 60
+
+zeta_k8s_pod_ready_timeout: 120
+
+# OpenSearch host (without scheme) for telemetry lookups.
+# Override via environment variable OPENSEARCH_URL or Maven property -Dopensearch_url=....
 opensearch_url: localhost:9200

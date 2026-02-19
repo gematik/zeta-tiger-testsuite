@@ -1,0 +1,4 @@
+[#TA_A_25782_04]
+===== TA_A_25782_04 - ZETA Client - OAuth2 Session Management - Erneuerung abgelaufener Access Token ueber Refresh Token
+
+"Der ZETA Client MUSS [...], nach Bedarf **abgelaufene Access Token über Refresh Token erneuern** und [...] **[<=]**"

@@ -1,0 +1,16 @@
+[#US_Telemetrie]
+== UserStory_Telemetrie: Querschnittliche Telemetrie-Validierung
+
+Als Testsuite-Team möchte ich Telemetrie-Tests ohne dedizierten fachlichen Trigger in einer eigenen User Story bündeln, damit querschnittliche OpenTelemetry-Anforderungen klar getrennt von funktionalen Use Cases geprüft werden.
+
+Abgrenzung:
+
+* In dieser User Story werden nur Telemetrie-Testaspekte geprüft,
+* die keinen dedizierten Trigger benötigen,
+* und die nicht sinnvoll in einen bestehenden fachlichen Ablauf passen.
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+include::UseCase_01/readme.adoc[]
+:leveloffset: -2

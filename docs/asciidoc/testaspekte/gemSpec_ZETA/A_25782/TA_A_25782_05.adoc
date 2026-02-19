@@ -1,0 +1,4 @@
+[#TA_A_25782_05]
+===== TA_A_25782_05 - ZETA Client - OAuth2 Session Management - Refresh Token-Rotation
+
+"Der ZETA Client MUSS [...], [...] und eine **Refresh Token-Rotation gemäß [RFC6749#10.4]** unterstützen. **[<=]**"

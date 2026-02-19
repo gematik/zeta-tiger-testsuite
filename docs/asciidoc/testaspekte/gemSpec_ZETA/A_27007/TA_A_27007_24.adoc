@@ -1,9 +1,9 @@
 [#TA_A_27007_24]
-===== TA_A_27007_24 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 400 Bad Request
+===== TA_A_27007_24 - ZETA Client - HTTP Statuscodes - HTTP Proxy - 504 Gateway Timeout
 
 "Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
 
-Tabelle 5: ZT_HTTP_Statuscodes
+Tabelle 6: ZT_HTTP_Statuscodes
 
 +++[...]+++
 
@@ -11,7 +11,7 @@ Tabelle 5: ZT_HTTP_Statuscodes
 
 | **Endpunkte** | **HTTP Statuscodes** |
 | --- | --- |
-| **HTTP Proxy** | +++[...]+++ +++<br />+++**400 Bad Request**: Ungültige Anfrage an den Proxy. Der Client sollte die Anfrage überprüfen und sicherstellen, dass sie korrekt formatiert und vollständig ist, bevor er sie erneut sendet.+++<br />+++[...] |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**504 Gateway Timeout**: Der Proxy hat auf eine Antwort vom Upstream-Server gewartet, diese aber nicht innerhalb des Timeouts erhalten. Der Client sollte die Anfrage nach einer angemessenen Wartezeit erneut versuchen und den Nutzer darüber informieren, dass der Server nicht rechtzeitig geantwortet hat.+++<br />+++[...] |
 
 |===
 

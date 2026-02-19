@@ -1,4 +1,18 @@
 [#TA_A_26661_17]
 ===== TA_A_26661_17 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 302 Found
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **302 Found** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**302 Found**: Temporäre Weiterleitung durch den Proxy. Der Client sollte der Weiterleitung folgen, um die angeforderte Ressource zu erhalten, aber die ursprüngliche URL für zukünftige Anfragen beibehalten.+++<br />+++[...] |
+
+|===
+
+[...]"

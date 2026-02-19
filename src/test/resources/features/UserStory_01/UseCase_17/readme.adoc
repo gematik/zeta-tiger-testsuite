@@ -63,8 +63,8 @@ Der Abruf der geschützten Ressource vom MA über den ZETA Client war nicht erfo
 * <<TA_A_25660_03>>
 * <<TA_A_26477_09>>
 * <<TA_A_26477_10>>
-* <<TA_A_26661_01>>
-* <<TA_A_27007_26>>
+* <<TA_A_26661_20>>
+* <<TA_A_27007_20>>
 
 |===
 

@@ -16,7 +16,3 @@ include::TA_GS-A_4384-03_06.adoc[]
 
 include::TA_GS-A_4384-03_07.adoc[]
 
-include::TA_GS-A_4384-03_08.adoc[]
-
-include::TA_GS-A_4384-03_09.adoc[]
-

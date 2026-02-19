@@ -1,4 +1,18 @@
 [#TA_A_26661_16]
 ===== TA_A_26661_16 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 301 Moved Permanently
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **301 Moved Permanently** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**301 Moved Permanently**: Permanente Weiterleitung der Anfrage durch den Proxy. Der Client sollte die neue URL speichern und zukünftige Anfragen an diese Adresse senden.+++<br />+++[...] |
+
+|===
+
+[...]"

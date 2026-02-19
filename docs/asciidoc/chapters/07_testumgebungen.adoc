@@ -1,55 +1,40 @@
 == Testumgebungen
 
-Die Idee ist, hier alle definierten und zu nutzenden Umgebungen aufzuführen.
-Die einzelnen genutzten Umgebung werden dann dementsprechend mit sogenannten Tiger Konfigurationsdateien genutzt.
+Die Testsuite wird in zwei Zielumgebungen betrieben.
+Beide verwenden die gleiche logische Architektur und unterscheiden sich nur im Betriebskontext (realer Cluster vs. lokale Simulation).
 
-=== Kubernetes Cloud
+=== Produktiver Kubernetes-Cluster
 
-Die erste Testumgebung beschreibt das (produktive) Cloud-Deployment auf dem Kubernetes Cluster der akquinet.
-Hier sind alle drei Komponenten (ZETA-Client, ZETA-Guard und Testfachdienst) ansprechbar und ohne dazwischenliegenden Tiger Proxies.
-Dabei ist noch zu erwähnen, dass die Kommunikation zwischen ZETA-Guard und Testfachdienst nicht in der Testsuite mitgelesen werden kann, da die Testsuite nur durch den ZETA-Guard erreichbar ist.
+Die produktive Testumgebung ist ein Kubernetes-Cluster.
+Der Zugriff erfolgt über einen Ingress.
+Die Testsuite kommuniziert mit dem ZETA Guard und ZETA Client ausschließlich über HTTP(S).
 
 Die Konfigurationsdatei für die Testsuite sieht folgendermaßen aus:
 
 [source,yaml]
 ----
-include::../../../tiger/tiger-cloud.yaml[]
+include::../../../tiger.yaml[]
 ----
 
-NOTE: Die konkreten Hostnamen werden nicht mehr direkt in den tiger-cloud*-Konfigurationen hinterlegt.
-Setzen Sie stattdessen den Wert `zeta_base_url` (nur Hostname, ohne Schema) in der `defaults.yaml`.
+NOTE: Stattdessen wird der Wert `zeta_base_url` (nur Hostname, ohne Schema) in der `defaults.yaml` gesetzt.
 Die Tests leiten daraus automatisch `https://`- und `wss://`-Zugriffe ab.
-Sie können den Wert lokal über die kommentierten Beispiele in der `defaults.yaml` wählen, per Umgebungsvariable `ZETA_BASE_URL` oder über den Maven-Aufruf, z. B. `mvn -Dzeta_base_url=beispiel-host.tld test`.
 
-Die Tiger-Proxy-Erfassung für den Cluster-Traffic ist über `tiger-proxy.yaml` standardmäßig aktiv und erwartet den via Port-Forward freigegebenen Admin-Port unter `http://localhost:9999`.
-Die eigenständige Datei erleichtert es, abweichende Proxy-Konfigurationen in CI-Stages ohne Änderungen an `tiger.yaml` zu hinterlegen.
-Stellen Sie sicher, dass vor dem Teststart ein Port-Forward (z. B. `kubectl port-forward svc/tiger-proxy 9999:9999`) aktiv ist.
-Wenn Sie den Proxy temporär nicht benötigen, entfernen Sie den Eintrag in `tiger.yaml` oder überschreiben Sie die Einstellung `additionalConfigurationFiles` für den jeweiligen Lauf.
+Die Tiger-Proxy-Erfassung für den Cluster-Traffic kann per Profil aktiviert werden:
+Mit `PROFILE=proxy`, wird die Proxy-Konfiguration geladen und via Port-Forward wird der Admin-Port unter `http://localhost:9999` erreicht.
 
-Der `environment`-Schalter im `defaults.yaml` bleibt dabei auf `cloud`, sodass unabhängig von der Zielumgebung stets `tiger-cloud.yaml` geladen wird.
+=== Simulierter Kubernetes-Cluster (kind)
 
-Das Architekturdiagramm dazu ist wie folgt:
+Für lokale und CI-nahe Tests kann die gleiche Architektur mit kind simuliert werden.
+Die Testsuite verwendet dabei dieselben Tiger-Konfigurationen, lediglich die Hostnamen und Port-Forwardings werden auf die lokale Umgebung angepasst.
+Die Simulation dient der schnellen Reproduzierbarkeit von Testszenarien sowie der Validierung der Testsuite ohne Zugriff auf den produktiven Cluster.
+
+Das folgende Architekturdiagramm gilt für beide Umgebungen.
+Im kind-Betrieb werden die Kubernetes-Komponenten lokal ausgeführt.
+Die Testsuite liegt außerhalb des Clusters, der Testtreiber läuft innerhalb des Clusters und routet dennoch über den Ingress, um das reale Zugriffsverhalten zu simulieren.
+Der gesamte Testverkehr wird dabei über den Tiger Proxy geführt.
 
 [#testumgebung_kubernetes_cloud]
 [mermaid,testumgebung-kubernetes-cloud,svg]
-....
-C4Context
-    title ZETA tiger-cloud Setup
-
-    System_Ext(ts, "Tiger Testsuite", "(achelos)")
-
-    Boundary(k8s, "Kubernetes Cluster (akquinet)") {
-        Boundary(clientProxy, "ZETA-Client") {
-            System(client, "ZETA-Client", "(HTTP-Proxy)")
-            Component(sdk, "ZETA SDK")
-        }
-      System(guard, "ZETA-Guard", "(akquinet)")
-      System(tfd, "Testfachdienst", "(achelos)")
-    }
-
-    Rel(ts, guard, "HTTP")
-    Rel(ts, client, "HTTP")
-    Rel(guard, tfd, "HTTP")
-    Rel(client, sdk, "Interner Aufruf")
-    Rel(sdk, guard, "HTTP")
-....
+----
+include::../diagrams/testumgebungen.mmd[]
+----

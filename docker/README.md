@@ -1,54 +1,108 @@
-# Docker images
+# Docker-Images
 
-This repo ships two Docker images side by side:
+Dieses Repo liefert zwei Docker-Images:
 
-- `docker/frontend/Dockerfile` → Maven-in-container image (builds and runs the testsuite). Pushed as `:latest`.
-- `docker/quality_gate/Dockerfile` → Runtime-only image (JRE + packaged testsuite, no Maven) with its own `run-tests.sh`. Pushed as `:qualitygate`.
+- `docker/frontend/Dockerfile` → Maven-im-Container (baut und führt die Testsuite aus). Tag
+  `:latest`.
+- `docker/quality_gate/Dockerfile` → Runtime-only (JRE + gepackte Testsuite, ohne Maven) mit
+  eigener `run-tests.sh`. Tag `:qualitygate`.
 
-## CI build (GitLab)
+## CI-Build (GitLab)
 
-CI builds both images via Buildx:
+CI baut beide Images via Buildx:
 
 - `docker buildx build -f docker/frontend/Dockerfile -t ${CI_REGISTRY_IMAGE}:latest .`
 - `docker buildx build -f docker/quality_gate/Dockerfile -t ${CI_REGISTRY_IMAGE}:qualitygate .`
 
-## Local build & run
+## Lokal bauen und ausführen
 
-Build the Maven-based image:
+Maven-basiertes Image bauen:
 
 ```sh
 docker build -f docker/frontend/Dockerfile -t testsuite:latest .
 ```
 
-Build the runtime-only image:
+Runtime-only Image bauen:
 
 ```sh
 docker build -f docker/quality_gate/Dockerfile -t testsuite:qualitygate .
 ```
 
-Run (shared defaults):
+Ausführen (EntryPoint ruft `/app/run-tests.sh` auf):
 
 ```sh
-# Maven-based (runs mvn verify inside)
-docker run --rm -e CUCUMBER_TAGS="@smoke" testsuite:latest
+# Maven-basiert (führt mvn verify im Container aus)
+docker run --rm -e CUCUMBER_TAGS="@smoke" -e ZETA_BASE_URL="zeta-kind.local" testsuite:latest
 
-# Runtime-only (uses packaged artefacts + run-tests.sh)
-docker run --rm -e CUCUMBER_TAGS="@smoke" testsuite:qualitygate
+# Runtime-only (nutzt gepackte Artefakte + run-tests.sh)
+docker run --rm -e CUCUMBER_TAGS="@smoke" -e ZETA_BASE_URL="zeta-kind.local" testsuite:qualitygate
 ```
 
-Common env vars (shared by both images):
+Ausführen mit gemounteten Report-Verzeichnissen:
 
-- `CUCUMBER_TAGS` - tag filter (default `@smoke`)
-- `ZETA_PROXY` - proxy mode (`no-proxy` by default)
-- `ZETA_PROXY_URL` - proxy URL
-- `ZETA_BASE_URL` - target base URL
-- `TIGER_ENVIRONMENT` - Tiger environment (default `cloud`)
-- `SERENITY_EXPORT_DIR` - optional output path for Serenity reports
-- `CUCUMBER_EXPORT_DIR` - optional Cucumber JSON output path
+```sh
+docker run --rm \
+  -e CUCUMBER_TAGS="@smoke" \
+  -e ZETA_BASE_URL="zeta-kind.local" \
+  -v "$PWD/target/site/serenity:/app/target/site/serenity" \
+  -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
+  -v "$PWD/target/allure-results:/app/target/allure-results" \
+  testsuite:latest
+docker run --rm \
+  -e CUCUMBER_TAGS="@smoke" \
+  -e ZETA_BASE_URL="zeta-kind.local" \
+  -v "$PWD/target/site/serenity:/app/target/site/serenity" \
+  -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
+  -v "$PWD/target/allure-results:/app/target/allure-results" \
+  testsuite:qualitygate
+```
 
-## GitLab CI usage for the quality gate
+Umgebungsvariablen (beide Images, außer angegeben):
 
-To run the quality gate image inside a GitLab CI job (pulling the prebuilt image):
+| Variable              | Pflicht                | Default    | Beschreibung                                                                                                                                                    |
+|-----------------------|------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `CUCUMBER_TAGS`       | nein                   | `@smoke`   | Tag-Filter für die Szenario-Auswahl.                                                                                                                            |
+| `ZETA_PROXY_URL`      | nein                   | (leer)     | Proxy-URL.                                                                                                                                                      |
+| `ZETA_BASE_URL`       | ja (für externe Ziele) | (leer)     | Ziel-Base-URL für Cloud-/Stage-Tests (leer -> `https://:443`).                                                                                                  |
+| `OPENSEARCH_URL`      | nein                   | (leer)     | OpenSearch-URL (Telemetry-Logs), ohne Scheme, z. B. `opensearch:9200`.                                                                                           |
+| `PROFILE`             | nein                   | (leer)     | Optionales Tiger-Profil (z. B. `proxy`).                                                                                                                        |
+| `SERENITY_EXPORT_DIR` | nein                   | (leer)     | Optionaler Ausgabeordner für Serenity-Reports.                                                                                                                  |
+| `CUCUMBER_EXPORT_DIR` | nein                   | (leer)     | Optionaler Ausgabeordner für Cucumber-JSON.                                                                                                                     |
+| `ALLURE_RESULTS_DIR`  | nein                   | (leer)     | Optionaler Ausgabeordner für Allure-Ergebnisse (Quality-Gate-Image; Maven nutzt `/app/target/allure-results` oder `MAVEN_OPTS=-Dallure.results.directory=...`). |
+
+Wichtig:
+
+- `ZETA_BASE_URL` wird als `-Dzeta_base_url` durchgereicht. Ist der Wert leer, greifen die Tests
+  auf symbolische Hosts wie `zetaClient` zu und schlagen erwartungsgemäß fehl.
+- `OPENSEARCH_URL` wird als `-Dopensearch_url` durchgereicht und steuert die Telemetrie-Log-Abfragen.
+
+Beispiele:
+
+Frontend-Image mit Proxy und @staging:
+
+```bash
+docker run --rm \
+  -e PROFILE=proxy \
+  -e CUCUMBER_TAGS="@staging" \
+  -e ZETA_BASE_URL="zeta-kind.local" \
+  -e ZETA_PROXY_URL="zeta-kind.local:9999" \
+  testsuite-frontend
+```
+
+Quality-Gate-Image mit Proxy und @staging:
+
+```bash
+docker run --rm \
+  -e PROFILE=proxy \
+  -e CUCUMBER_TAGS="@staging" \
+  -e ZETA_BASE_URL="zeta-kind.local" \
+  -e ZETA_PROXY_URL="zeta-kind.local:9999" \
+  testsuite-qualitygate
+```
+
+## GitLab CI Nutzung für das Quality-Gate
+
+Das Quality-Gate-Image kann in einem GitLab-CI-Job so genutzt werden:
 
 ```yaml
 quality-gate:
@@ -58,8 +112,8 @@ quality-gate:
     - /app/run-tests.sh
   variables:
     CUCUMBER_TAGS: "@smoke"
-    ZETA_PROXY: "no-proxy"
-    TIGER_ENVIRONMENT: "cloud"
+    # PROFILE: "proxy"  # nur bei Bedarf für Proxy-Erfassung setzen
+    # OPENSEARCH_URL: "localhost:9200"  # optional für Telemetrie-Log-Abfragen
   artifacts:
     when: always
     paths:
@@ -69,6 +123,36 @@ quality-gate:
       junit: target/cucumber-parallel/cucumber.xml
 ```
 
-Notes:
-- Adjust `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL` as needed.
-- Mount extra outputs by setting `SERENITY_EXPORT_DIR` / `CUCUMBER_EXPORT_DIR`.
+Hinweise:
+
+- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL` nach Bedarf setzen.
+- Zusätzliche Ausgabeordner per `SERENITY_EXPORT_DIR` / `CUCUMBER_EXPORT_DIR` mounten.
+- `ALLURE_RESULTS_DIR` wird von beiden Images ausgewertet (das Maven-Image symlinkt
+  `/app/target/allure-results` auf den Export-Ordner).
+- Die Docker-Images enthalten nur das Alpine-Binary des TLS-Tools (
+  `tools/tls-test-tool-1.0.1/TlsTestTool-alpine`).
+
+## TLS-Handshake Troubleshooting
+
+Konkrete Optionen:
+
+1. Truststores im Thin-Image angleichen.
+   CA-Bundle installieren und interne CA in den Java-Truststore importieren.
+   Beispiel (in `docker/quality_gate/Dockerfile` Runtime-Stage):
+
+   ```dockerfile
+   RUN apk add --no-cache ca-certificates && update-ca-certificates
+   # Wenn eine interne CA vorhanden ist:
+   # COPY ci/certs/internal-ca.crt /usr/local/share/ca-certificates/internal-ca.crt
+   # RUN update-ca-certificates \
+   # && keytool -importcert -noprompt -alias internal-ca \
+   # -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit \
+   # -file /usr/local/share/ca-certificates/internal-ca.crt
+   ```
+2. Proxy-CA verwenden, die bereits vertraut wird.
+   `tigerProxy.tls.serverRootCa` in `tiger/*.yaml` konfigurieren, damit der Proxy Zertifikate mit
+   einer bekannten CA ausstellt.
+3. Sicherstellen, dass der Proxy sich nicht selbst proxyt.
+   Wenn `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` zwischen Jobs abweichen, kann die Verbindung durch
+   den lokalen Proxy schleifen und TLS-Fehler auslösen. Einheitliche Umgebungen (insb. `NO_PROXY`)
+   vermeiden das.

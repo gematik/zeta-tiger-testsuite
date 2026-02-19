@@ -1,3 +1,27 @@
+#
+# #%L
+# ZETA Testsuite
+# %%
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
+# %%
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# *******
+#
+# For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
+# #L%
+#
+
 """Traceability helpers for the testsuite documentation.
 
 This module aggregates requirements, test aspects and feature metadata into a
@@ -78,6 +102,8 @@ SCENARIO_PATTERN = re.compile(
     r"^Szenario(?:grundriss)?(?::|\s+Outline:)\s*(?P<name>.+?)\s*$",
     re.IGNORECASE)
 TAG_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)")
+EXAMPLES_PATTERN = re.compile(r"^Beispiele(?::\s*(?P<label>.+))?\s*$",
+                               re.IGNORECASE)
 PRODUCT_NOT_IMPLEMENTED_TAGS = {
   "product_not_impl",
   "produkt_not_impl",
@@ -85,6 +111,50 @@ PRODUCT_NOT_IMPLEMENTED_TAGS = {
   "not_implemented",
   "canary",
 }
+
+
+def collect_testaspect_tag_locations(
+    features_root: Path,
+    *,
+    include_feature_tags: bool = True,
+) -> Dict[str, List[Tuple[Path, int]]]:
+  """Collect TA tags and their line numbers from feature files."""
+  tag_locations: Dict[str, List[Tuple[Path, int]]] = {}
+  for feature_path in sorted(features_root.rglob("*.feature")):
+    feature_tags: Set[str] = set()
+    pending_tags: List[str] = []
+    for idx, raw_line in enumerate(feature_path.read_text(encoding="utf-8").splitlines(), start=1):
+      stripped = raw_line.strip()
+      if not stripped:
+        continue
+      if stripped.startswith("@"):
+        pending_tags.extend(TAG_PATTERN.findall(stripped))
+        continue
+      examples_match = EXAMPLES_PATTERN.match(stripped)
+      if examples_match:
+        if pending_tags:
+          for tag in pending_tags:
+            if tag.startswith("TA_"):
+              tag_locations.setdefault(tag, []).append((feature_path, idx))
+          pending_tags = []
+        continue
+      feature_match = FEATURE_NAME_PATTERN.match(stripped)
+      if feature_match:
+        feature_tags = set(pending_tags)
+        pending_tags = []
+        continue
+      scenario_match = SCENARIO_PATTERN.match(stripped)
+      if scenario_match:
+        scenario_tags = set(pending_tags)
+        pending_tags = []
+        tags = feature_tags | scenario_tags if include_feature_tags else scenario_tags
+        for tag in tags:
+          if tag.startswith("TA_"):
+            tag_locations.setdefault(tag, []).append((feature_path, idx))
+        continue
+    if pending_tags:
+      LOGGER.debug("Unconsumed tags at end of %s: %s", feature_path, pending_tags)
+  return tag_locations
 
 
 def build_traceability(
@@ -185,7 +255,7 @@ def build_traceability(
     if story
   }
   features_table = _render_features_table(
-      use_cases, records, sorted(known_user_stories), product_status)
+      use_cases, records, sorted(known_user_stories))
   product_gap_table, gap_summary = _render_product_gap_table(
       requirements,
       test_aspects,
@@ -196,8 +266,6 @@ def build_traceability(
   gap_summary_chart, gap_summary_table = _render_product_gap_summary(
       gap_summary)
   traceability_table = _render_traceability_matrix(records)
-  mermaid_diagram = _render_mermaid_diagram(records, requirements, test_aspects,
-                                            use_cases)
   coverage_charts, coverage_summary = _render_coverage_charts(
       records, requirements, test_aspects
   )
@@ -247,8 +315,6 @@ def build_traceability(
                      gap_summary_table)
     _write_text_file(tables_dir / "traceability_matrix.adoc",
                      traceability_table)
-    _write_text_file(diagrams_dir / "traceability-overview.mmd",
-                     mermaid_diagram)
     _write_text_file(diagrams_dir / "product-gap-summary.mmd",
                      gap_summary_chart)
     for filename, content in coverage_charts.items():
@@ -404,6 +470,61 @@ def _parse_feature_files(
   use_cases: Dict[str, UseCase] = {}
   scenarios: List[ScenarioCoverage] = []
 
+  def append_scenario_coverage(
+      *,
+      scenario_name: str,
+      tags: Set[str],
+      feature_path: Path,
+      feature_rel: Path,
+      feature_name: Optional[str],
+      user_story_id: str,
+  ) -> None:
+    product_implemented = not _has_not_implemented_tag(tags)
+
+    use_case_tags = {tag for tag in tags if tag.startswith("UseCase")}
+    if not use_case_tags:
+      inferred = _infer_use_case_from_path(feature_rel)
+      if inferred:
+        use_case_tags = {inferred}
+
+    test_aspect_tags = {tag for tag in tags if tag.startswith("TA_")}
+    requirement_tags = {tag for tag in tags if re.match(r"A_\d+", tag)}
+
+    if not use_case_tags:
+      LOGGER.debug(
+          "Skipping scenario without UseCase tag %s in %s",
+          scenario_name,
+          feature_rel,
+      )
+      return
+
+    anchor_ids = set()
+    for tag in use_case_tags:
+      anchor_id = use_case_anchors.get(tag, tag)
+      anchor_ids.add(anchor_id)
+      use_case = use_cases.setdefault(
+          anchor_id,
+          UseCase(
+              tag_id=tag,
+              anchor_id=anchor_id,
+              title=feature_name or tag,
+              user_story_id=user_story_id,
+          ),
+      )
+      if feature_path not in use_case.feature_files:
+        use_case.feature_files.append(feature_path)
+
+    scenarios.append(
+        ScenarioCoverage(
+            scenario_name=scenario_name,
+            feature=feature_path,
+            use_cases=anchor_ids,
+            test_aspects=test_aspect_tags,
+            requirements=requirement_tags,
+            product_implemented=product_implemented,
+        )
+    )
+
   for feature_path in sorted(features_root.rglob("*.feature")):
     feature_rel = feature_path.relative_to(features_root)
     story_key = _story_key_from_path(feature_rel)
@@ -414,6 +535,8 @@ def _parse_feature_files(
     feature_tags: Set[str] = set()
     pending_tags: List[str] = []
     feature_name: Optional[str] = None
+    current_scenario_name: Optional[str] = None
+    current_scenario_tags: Set[str] = set()
 
     for raw_line in file_content:
       stripped = raw_line.strip()
@@ -421,6 +544,21 @@ def _parse_feature_files(
         continue
       if stripped.startswith("@"):
         pending_tags.extend(TAG_PATTERN.findall(stripped))
+        continue
+      examples_match = EXAMPLES_PATTERN.match(stripped)
+      if examples_match:
+        if pending_tags:
+          if current_scenario_name:
+            example_tags = set(pending_tags)
+            append_scenario_coverage(
+                scenario_name=current_scenario_name,
+                tags=current_scenario_tags | example_tags,
+                feature_path=feature_path,
+                feature_rel=feature_rel,
+                feature_name=feature_name,
+                user_story_id=user_story_id,
+            )
+          pending_tags = []
         continue
       feature_match = FEATURE_NAME_PATTERN.match(stripped)
       if feature_match:
@@ -454,49 +592,16 @@ def _parse_feature_files(
         pending_tags = []
         scenario_name = scenario_match.group("name").strip()
         tags = feature_tags | scenario_tags
-        product_implemented = not _has_not_implemented_tag(tags)
+        current_scenario_name = scenario_name
+        current_scenario_tags = set(tags)
 
-        use_case_tags = {tag for tag in tags if tag.startswith("UseCase")}
-        if not use_case_tags:
-          inferred = _infer_use_case_from_path(feature_rel)
-          if inferred:
-            use_case_tags = {inferred}
-
-        test_aspect_tags = {tag for tag in tags if tag.startswith("TA_")}
-        requirement_tags = {tag for tag in tags if re.match(r"A_\d+", tag)}
-
-        if not use_case_tags:
-          LOGGER.debug(
-              "Skipping scenario without UseCase tag %s in %s", scenario_name,
-              feature_rel
-          )
-          continue
-
-        anchor_ids = set()
-        for tag in use_case_tags:
-          anchor_id = use_case_anchors.get(tag, tag)
-          anchor_ids.add(anchor_id)
-          use_case = use_cases.setdefault(
-              anchor_id,
-              UseCase(
-                  tag_id=tag,
-                  anchor_id=anchor_id,
-                  title=feature_name or tag,
-                  user_story_id=user_story_id,
-              ),
-          )
-          if feature_path not in use_case.feature_files:
-            use_case.feature_files.append(feature_path)
-
-        scenarios.append(
-            ScenarioCoverage(
-                scenario_name=scenario_name,
-                feature=feature_path,
-                use_cases=anchor_ids,
-                test_aspects=test_aspect_tags,
-                requirements=requirement_tags,
-                product_implemented=product_implemented,
-            )
+        append_scenario_coverage(
+            scenario_name=scenario_name,
+            tags=tags,
+            feature_path=feature_path,
+            feature_rel=feature_rel,
+            feature_name=feature_name,
+            user_story_id=user_story_id,
         )
 
     if pending_tags:
@@ -575,30 +680,14 @@ def _render_features_table(
     use_cases: Dict[str, UseCase],
     records: Sequence[TraceabilityRecord],
     user_story_ids: Sequence[str],
-    product_status: Dict[str, Optional[str]],
 ) -> str:
-  """Render the user-story to test-aspect table as Asciidoc.
-
-  The product column respects feedback from the product CSV (``ja``/``nein``/
-  ``teilweise``); otherwise it remains ``unbekannt`` instead of assuming
-  availability.
-  """
+  """Render the user-story to test-aspect table as Asciidoc."""
   user_story_to_usecases: Dict[str, List[UseCase]] = defaultdict(list)
-  ta_usage_by_usecase: Dict[str, Dict[str, Dict[str, object]]] = defaultdict(
-      dict)
+  ta_usage_by_usecase: Dict[str, Dict[str, bool]] = defaultdict(dict)
 
   for record in records:
     if record.use_case_id and record.implemented:
-      entry = ta_usage_by_usecase[record.use_case_id].setdefault(
-          record.test_aspect_id, {
-              "implemented": False,
-              "product": None
-          })
-      entry["implemented"] = True
-      csv_flag = product_status.get(record.requirement_id)
-      product_flag = _combine_product_flags(csv_flag,
-                                            record.product_implemented)
-      entry["product"] = _merge_product_flags(entry["product"], product_flag)
+      ta_usage_by_usecase[record.use_case_id][record.test_aspect_id] = True
 
   for use_case in use_cases.values():
     user_story_to_usecases[use_case.user_story_id].append(use_case)
@@ -610,7 +699,6 @@ def _render_features_table(
     if not entries:
       rows.append([
         _format_reference(user_story),
-        "-",
         "-",
         "-",
         "-",
@@ -628,20 +716,18 @@ def _render_features_table(
           "-",
         ])
         continue
-      for test_aspect, flags in sorted(test_aspect_refs.items()):
+      for test_aspect, implemented in sorted(test_aspect_refs.items()):
         rows.append([
           user_story_cell,
           _format_reference(use_case_anchor),
           _format_reference(test_aspect),
-          _format_optional_boolean(flags.get("product")),
-          _format_boolean(flags.get("implemented", False)),
+          _format_boolean(implemented),
         ])
 
   headers = [
     "User Story",
     "Use Case",
     "Testaspekt",
-    "im Produkt umgesetzt",
     "implementiert (Szenario vorhanden)",
   ]
   _suppress_repeated_cells(rows, (0, 1))
@@ -649,7 +735,7 @@ def _render_features_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,2a,1,1",
+      cols_directive="1,1,2a,1",
   )
 
 
@@ -666,26 +752,32 @@ def _render_product_gap_table(
 
   rows: List[List[str]] = []
   for entry in entries:
+    coverage_progress = _format_coverage_progress(
+        int(entry["tas_covered"]),
+        int(entry["tas_total"]),
+    )
     rows.append([
       str(entry["index"]),
       _format_reference(entry["requirement_id"]),
       _format_optional_boolean(entry["product_flag"]),
       entry["coverage_label"],
+      coverage_progress,
       entry["status"],
     ])
 
   headers = [
     "Nr.",
     "Anforderung",
-    "umgesetzt",
+    "im Produkt umgesetzt",
     "getestet",
+    "Testabdeckung",
     "Hinweise",
   ]
   table = _write_asciidoc_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,1,1,2",
+      cols_directive="1,1,1,1,2,2",
   )
   prefix: List[str] = []
   if status_path:
@@ -895,54 +987,6 @@ def _suppress_repeated_cells(
         previous = value
 
 
-def _render_mermaid_diagram(
-    records: Sequence[TraceabilityRecord],
-    requirements: Dict[str, Requirement],
-    test_aspects: Dict[str, TestAspect],
-    use_cases: Dict[str, UseCase],
-) -> str:
-  """Render the traceability graph as Mermaid markup."""
-  lines: List[str] = [
-    MERMAID_DISCLAIMER,
-    "%% Links requirements to their test aspects and, where available, the executing use cases.",
-    MERMAID_THEME_DIRECTIVE,
-    "graph LR",
-  ]
-
-  seen_nodes: Set[str] = set()
-  edges: Set[Tuple[str, str]] = set()
-
-  for record in records:
-    req = requirements.get(record.requirement_id)
-    ta = test_aspects.get(record.test_aspect_id)
-    uc = use_cases.get(record.use_case_id or "", None)
-
-    if req and req.requirement_id not in seen_nodes:
-      label = _escape_mermaid_label(f"{req.requirement_id}<br>{req.title}")
-      lines.append(f'  {req.requirement_id}["{label}"]')
-      seen_nodes.add(req.requirement_id)
-
-    if ta and ta.test_aspect_id not in seen_nodes:
-      label = _escape_mermaid_label(f"{ta.test_aspect_id}<br>{ta.title}")
-      lines.append(f'  {ta.test_aspect_id}["{label}"]')
-      seen_nodes.add(ta.test_aspect_id)
-
-    if uc and uc.anchor_id not in seen_nodes:
-      label = _escape_mermaid_label(f"{uc.anchor_id}<br>{uc.title}")
-      lines.append(f'  {uc.anchor_id}["{label}"]')
-      seen_nodes.add(uc.anchor_id)
-
-    if req and ta:
-      edges.add((req.requirement_id, ta.test_aspect_id))
-    if ta and uc:
-      edges.add((ta.test_aspect_id, uc.anchor_id))
-
-  for source, target in sorted(edges):
-    lines.append(f"  {source} --> {target}")
-
-  return "\n".join(lines) + "\n"
-
-
 def _write_text_file(path: Path, content: str) -> None:
   """Write ``content`` to ``path`` only when changes are detected."""
   existing = path.read_text(encoding="utf-8") if path.exists() else None
@@ -1007,13 +1051,6 @@ def _has_not_implemented_tag(tags: Set[str]) -> bool:
   return any(tag.lower() in PRODUCT_NOT_IMPLEMENTED_TAGS for tag in tags)
 
 
-def _escape_mermaid_label(label: str) -> str:
-  """Sanitise Mermaid node labels to avoid syntax issues."""
-  sanitised = label.replace("\n", "<br>")
-  sanitised = sanitised.replace('"', "&quot;")
-  return sanitised
-
-
 def _format_reference(identifier: Optional[str]) -> str:
   """Wrap identifiers as Asciidoc anchors when possible."""
   if not identifier:
@@ -1043,6 +1080,19 @@ def _format_optional_boolean(value: Optional[object]) -> str:
   if isinstance(value, bool):
     return _format_boolean(value)
   return str(value)
+
+
+def _format_coverage_progress(covered: int, total: int) -> str:
+  """Render coverage as percentage with covered/total counts."""
+  if total <= 0:
+    percent = 0
+  else:
+    percent = int(round((covered / total) * 100))
+  if percent < 0:
+    percent = 0
+  if percent > 100:
+    percent = 100
+  return f"{percent}% ({covered}/{total})"
 
 
 def _normalise_product_flag(raw_value: str) -> Optional[str]:
@@ -1176,6 +1226,8 @@ def _build_gap_entries(
       "product_flag": product_flag,
       "coverage_label": coverage_label,
       "status": status,
+      "tas_total": tas_total,
+      "tas_covered": tas_covered,
     })
 
   return entries, summary_counts

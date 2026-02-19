@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_10
@@ -38,20 +39,22 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.nonceEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Antwort in der Variable "SUBJECT_TOKEN"
-    Und validiere "${SUBJECT_TOKEN}" gegen Schema "schemas/v_1_0/smb-id-token-jwt.yaml"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "tokenNonce"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
-
-    Und TGR speichere Wert des Knotens "$.body.client_public_key" der aktuellen Antwort in der Variable "smcbPublicKey"
-    Und TGR speichere Wert des Knotens "$.body.client_private_key" der aktuellen Antwort in der Variable "smcbPrivateKey"
     Und TGR speichere Wert des Knotens "$.body.client_registration_by_auth_server.*.client_id" der aktuellen Antwort in der Variable "client_id"
-    Und Sende TigerProxy den Key "SMCB" mit dem Inhalt "${smcbPrivateKey}" und dem Algorithmus "EC"
 
-    #[RFC7519] - JWT-Subject Token Pflichtfelder
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "SUBJECT_TOKEN"
+    Und decodiere und validiere "${SUBJECT_TOKEN}" gegen Schema "schemas/v_1_0/smb-id-token-jwt.yaml"
+    Und TGR speichere Wert des Knotens "$.body.subject_token.header.x5c.0" der aktuellen Anfrage in der Variable "smcbCertificate"
+    Und schreibe Daten aus dem SMC-B Zertifikat "${smcbCertificate}" in die Variable "SMCB-INFO"
+
+    #[RFC7523] - JWT-Subject Token Pflichtfelder
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.header.typ"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.header.x5c"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.header.alg"
@@ -61,43 +64,42 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.body.iat"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.body.exp"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.body.nonce"
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.body.jti"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token.signature"
 
     #[RFC 7523] - Werte auf Gültigkeit prüfen
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.header.alg" überein mit "ES256"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.header.typ" überein mit "JWT"
     Und TGR speichere Wert des Knotens "$.body.subject_token.body.exp" der aktuellen Anfrage in der Variable "subjectTokenExp"
-    Und prüfe dass Timestamp "${subjectTokenExp}" in der Zukunft liegt
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.aud" überein mit "${audPath}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.nonce" überein mit "${nonce}"
+    Und TGR speichere Wert des Knotens "$.body.subject_token.body.iat" der aktuellen Anfrage in der Variable "subjectTokenIat"
+    Und validiere, dass der Zeitstempel "${subjectTokenExp}" später als "${subjectTokenIat}" liegt
+
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.aud.0" überein mit "${paths.guard.audPath}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.nonce" überein mit "${tokenNonce}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.iss" überein mit "${client_id}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.sub" überein mit "${SMCB-INFO.telematikId}"
     Und TGR speichere Wert des Knotens "$.body.subject_token.body.jti" der aktuellen Anfrage in der Variable "jti"
 
-    #[RFC7519] - Optionale Felder
+    #[RFC7523] - Optionale Felder
     Und prüfe aktuelle Anfrage: der Knoten "$.body.subject_token.body.nbf" ist nicht vorhanden oder früher als jetzt
 
-    # JTI darf in 60 sekunden nicht doppelt vorkommen
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.jti" nicht überein mit "${jti}"
+    ## Request Body
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.grant_type"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange"
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token_type"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token_type" überein mit "urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt"
+    Und TGR prüfe aktueller Request enthält Knoten "$.body.client_id"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_id" überein mit "${client_id}"
 
     # Fehlerhafte Signatur muss abgelehnt werden
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Dann TGR setze lokale Variable "msg" auf "$.path == '${paths.guard.tokenEndpointPath}' and $.method == 'POST'"
-    Dann Setze im TigerProxy für die Nachricht "${msg}" die Manipulation auf Feld "$.body.subject_token.signature" und Wert "TQPW2s0Ld7O943iLo81jv0E7q3f56JZGwoFqpCyNgP2ZlyGS5iw-s3b5FkLgn091-oFmM9Kc2kiTdzIpeg1Wpg"
+    Und TGR lösche aufgezeichnete Nachrichten
+    # JWT-Payload ändern ohne Neusignierung => Signatur ungültig
+    Und Setze im TigerProxy für JWT in "$.body.subject_token" das Feld "body.jti" auf Wert "changed-jti" für Pfad ".*${paths.guard.tokenEndpointPath}" und 1 Ausführungen
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
-
-    #[RFC7519] - doppelte Verwendung muss geblockt werden
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Dann TGR setze lokale Variable "msg" auf "$.path == '${paths.guard.tokenEndpointPath}' and $.method == 'POST'"
-    Dann Setze im TigerProxy für die Nachricht "${msg}" die Manipulation auf Feld "$.body.subject_token.body.jti" und Wert "${jti}"
-    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.subject_token.body.jti" der mit "changed-jti" übereinstimmt
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
 
   @A_25762
   @A_25766
@@ -141,10 +143,9 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htm" überein mit "POST"
     Und TGR speichere Wert des Knotens "$.header.X-Forwarded-Proto" der aktuellen Anfrage in der Variable "requestScheme"
     Und TGR speichere Wert des Knotens "$.header.X-Forwarded-Host" der aktuellen Anfrage in der Variable "requestHost"
+    Und TGR ersetze ":443$" mit "" im Inhalt der Variable "requestHost"
     Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "requestPath"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu" überein mit "${requestScheme}://${requestHost}${requestPath}"
-    Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "tokenRequestPath"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu.path" überein mit "${tokenRequestPath}"
     Und TGR speichere Wert des Knotens "$.header.dpop.body.iat" der aktuellen Anfrage in der Variable "iat"
     Und prüfe dass Timestamp "${iat}" in der Vergangenheit liegt
     # @TA_A_27802_11 - nonce Validierung
@@ -191,4 +192,3 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
       | $.header.dpop | body.iat   | 2524608000              | 400          |
       | $.header.dpop | body.htm   | DELETE                  | 400          |
       | $.header.dpop | body.htu   | https://wrong.url/token | 400          |
-

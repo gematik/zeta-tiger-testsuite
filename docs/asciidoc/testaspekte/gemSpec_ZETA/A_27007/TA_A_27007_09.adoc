@@ -1,9 +1,9 @@
 [#TA_A_27007_09]
-===== TA_A_27007_09 - ZETA Client - HTTP Statuscodes - Authentifizierung - OIDC - 400 Bad Request
+===== TA_A_27007_09 - ZETA Client - HTTP Statuscodes - Authentifizierung mit OIDC und Authorization Code Flow - 403 Forbidden
 
 "Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
 
-Tabelle 5: ZT_HTTP_Statuscodes
+Tabelle 6: ZT_HTTP_Statuscodes
 
 +++[...]+++
 
@@ -11,7 +11,7 @@ Tabelle 5: ZT_HTTP_Statuscodes
 
 | **Endpunkte** | **HTTP Statuscodes** |
 | --- | --- |
-| **Authentifizierung mit OIDC und Authorization Code Flow**+++<br />+++ | +++[...]+++ +++<br />+++**400 Bad Request**: Fehlerhafte Anfrage, z.B. fehlende oder ungültige Parameter (z.B. falscher "redirect_uri", "client_id"). Der Client sollte die Anfrageparameter überprüfen und sicherstellen, dass alle erforderlichen Parameter korrekt sind. Eine erneute Anfrage kann nötig sein.+++<br />+++[...] |
+| **Authentifizierung mit OIDC und Authorization Code Flow**+++<br />+++ | +++[...]+++ +++<br />+++**403 Forbidden**: Autorisierung fehlgeschlagen, z.B. fehlende Zugriffsrechte. Der Client hat möglicherweise keine Berechtigung, die angeforderte Ressource zu nutzen. Der Client sollte den Nutzer darüber informieren und keine weiteren Anfragen stellen.+++<br />+++[...] |
 
 |===
 

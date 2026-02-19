@@ -1,0 +1,4 @@
+[#TA_A_26964_04]
+===== TA_A_26964_04 - ZETA Guard - OCSP Stapling - max_allowed_validity_period konfigurierbar
+
+Die Werte für **max_allowed_validity_period** (default Wert = 1 Tag) und percentage_of_validity_period (default Wert = 60%) MÜSSEN konfigurierbar sein. **[<=]**

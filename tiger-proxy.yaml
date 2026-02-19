@@ -1,0 +1,6 @@
+tigerProxy:
+  proxyId: Cluster
+  downloadInitialTrafficFromEndpoints: false
+  skipTrafficEndpointSubscription: false
+  trafficEndpoints:
+    - "http://${zeta_proxy_url}"

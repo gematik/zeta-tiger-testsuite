@@ -44,7 +44,7 @@ Der Ressourcenzugriff wurde abgewiesen. Der MA muss eine erneute Authentisierung
 | Abgedeckte Testaspekte: |
 * <<TA_A_25733_02>>
 * <<TA_A_26661_01>>
-* <<TA_A_27007_25>>
+* <<TA_A_27007_19>>
 
 |===
 [#usecase_01_16_sequence]

@@ -1,4 +1,5 @@
-product_id: 'test_proxy'
+product_id: 'test-proxy'
+semVer: '0.2.6'
 
 # Erwartete Fehlermeldungen für Policy-Ablehnungen (TA_A_25752_01)
 # Diese Texte müssen mit der tatsächlichen Implementierung des Authorization Servers abgeglichen werden.

@@ -1,4 +1,18 @@
 [#TA_A_26661_12]
 ===== TA_A_26661_12 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 401 Unauthorized
 
-"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Clientregistrierung** | +++[...]+++ +++<br />+++**401 Unauthorized**: Fehlende oder ungültige Authentifizierung bei der Registrierung. Der Client muss sicherstellen, dass er korrekt authentifiziert ist. Er sollte die Authentifizierungsdaten überprüfen und erneut versuchen, sich zu registrieren.+++<br />+++[...] |
+
+|===
+
+[...]"

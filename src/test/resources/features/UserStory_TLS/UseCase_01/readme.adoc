@@ -1,0 +1,82 @@
+[#UC_TLS_01]
+== UseCase_TLS_01: TLS-Konformität ZETA Guard
+
+.UseCase_TLS_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | TLS-Konformität ZETA Guard
+
+| Akteur: |
+*Testsuite*
+
+| weitere Akteure: |
+*ZETA Guard*
+
+| Auslöser: |
+Der Client (Testsuite) versucht, eine TLS-Verbindung zu einem ZETA Guard Endpunkt herzustellen.
+
+| Kurzbeschreibung: |
+Die Testsuite prüft, dass der ZETA Guard nur zulässige TLS-Versionen, Signatur-Hash-Algorithmen, Ciphersuites und Kurven akzeptiert und unzulässige Kombinationen ablehnt.
+
+| Vorbedingung: |
+. Der ZETA Guard Endpunkt ist ohne bekannte Störungen online.
+. Der ZETA Guard Endpunkt akzeptiert TLS-Verbindungen.
+
+| Nebenbedingung: |
+NA
+
+| Ablauf: |
+. Der TLS ClientHello bietet gezielt Protokollversionen, Hashfunktionen, Ciphersuites und Kurven an.
+. Der ZETA Guard akzeptiert zulässige Konfigurationen und lehnt unzulässige Konfigurationen mit TLS Alerts ab.
+
+| Nachbedingung: |
+Die TLS-Konformität des ZETA Guard Endpunkts ist verifiziert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_18464_01>>
+* <<TA_GS-A_5542_01>>
+* <<TA_GS-A_5526_01>>
+* <<TA_A_21275-01_01>>
+* <<TA_A_21275-01_03>>
+* <<TA_GS-A_4384-03_01>>
+* <<TA_GS-A_4384-03_02>>
+* <<TA_GS-A_4384-03_03>>
+* <<TA_GS-A_4384-03_04>>
+
+|===
+
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::tls_guard.feature[]
+----
+
+[.lead]
+Szenariohinweise zu elliptischen Kurven (`TA_GS-A_4384-03_03`)
+
+Für die Prüfung der unterstützten Kurven werden TLS-1.2-ClientHello-Nachrichten mit gezielt gesetzter `supported_groups`-Extension erzeugt.
+
+Es wird ein gemeinsamer Szenariogrundriss mit lesbaren Gruppenprofilen verwendet:
+
+* `p256_only` -> `P-256` (`secp256r1`, `0017`), Extension-Wert `000a000400020017`, Erwartung: Handshake erfolgreich, `Server-Key-Exchange` gesendet
+* `p384_only` -> `P-384` (`secp384r1`, `0018`), Extension-Wert `000a000400020018`, Erwartung: Handshake erfolgreich, `Server-Key-Exchange` gesendet
+* `unsupported_mix` -> `secp160r1`, `secp192r1`, `secp224r1`, `secp521r1`, `brainpoolP512r1`, `x25519`, `x448`, `ffdhe3072`, `ffdhe4096`, Extension-Wert `000a001400120010001300150019001c001d001e01010102`, Erwartung: Handshake nicht erfolgreich, `Server-Key-Exchange` nicht gesendet
+
+Für die Prüfung der verpflichtenden Ciphersuiten (`TA_GS-A_4384-03_02`) wird ebenfalls ein lesbares Ciphersuite-Profil verwendet:
+
+* `ecdhe_rsa_aes_128_gcm_sha256` -> `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` -> `(0xC0,0x2F)` -> Erwartung: Handshake erfolgreich
+* `ecdhe_rsa_aes_256_gcm_sha384` -> `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384` -> `(0xC0,0x30)` -> Erwartung: Handshake erfolgreich
+
+[.lead]
+Hinweise zur Fehlersuche
+
+Bei TLS-Fehlschlägen enthalten die Assertions eine kompakte `Alert summary` aus den TLS-Test-Tool-Logs.
+Diese Zusammenfassung enthält unter anderem:
+
+* Alert-Level und Alert-Description
+* Fehlermeldung zum Handshake-Abbruch bzw. die letzte Logzeile
+* ausgewählte Cipher-Suite
+* ausgewählten TLS-1.2 Hash-Algorithmus (`selected_hash`, Format z. B. `SHA256(4/0x04)`)
+* ausgewählten TLS-1.2 Signatur-Algorithmus (`selected_signature`, Format z. B. `ECDSA(3/0x03)`)

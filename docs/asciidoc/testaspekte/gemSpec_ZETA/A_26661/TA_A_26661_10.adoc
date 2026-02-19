@@ -1,4 +1,18 @@
 [#TA_A_26661_10]
 ===== TA_A_26661_10 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 201 Created
 
-"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **201 Created** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Clientregistrierung** | **201 Created**: Client erfolgreich registriert. Der Client sollte die Registrierungsdaten sicher speichern und mit der weiteren Interaktion fortfahren. +++<br />+++[...] |
+
+|===
+
+[...]"

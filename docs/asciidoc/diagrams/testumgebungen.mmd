@@ -1,0 +1,36 @@
+C4Context
+    title ZETA Testumgebungen (Kubernetes & kind)
+    System_Ext(ts, "Tiger Testsuite", "(außerhalb Cluster)")
+
+    Boundary(k8s, "Kubernetes Cluster") {
+        Boundary(testdriver, "Testtreiber") {
+            Component(testdriverApi, "HTTP Testtreiber")
+            Component(sdk, "ZETA SDK")
+        }
+        Boundary(guard, "ZETA Guard") {
+            Component(ingress, "Ingress und Egress")
+            Component(pep, "PEP HTTP Proxy")
+            Component(pepdb, "PEP Datenbank")
+            Component(authorizationserver, "Authorization Server")
+            Component(pdpdb, "PDP Datenbank")
+            Component(policyengine, "Policy Engine")
+            Component(notificationservice, "Notification Service")
+            Component(telemetry, "Telemetrie Daten Service")
+        }
+        Component(tigerProxy, "Tiger Proxy")
+        Component(resource, "Testfachdienst / Resource Server")
+    }
+
+    Rel(ts, tigerProxy, "HTTP")
+    Rel(tigerProxy, ingress, "HTTP")
+    Rel(ingress, testdriverApi, "HTTP")
+    Rel(testdriverApi, ingress, "HTTP")
+    Rel(ingress, tigerProxy, "HTTP")
+    Rel(tigerProxy, pep, "HTTP")
+    Rel(pep, tigerProxy, "HTTP")
+    Rel(tigerProxy, resource, "HTTP")
+    Rel(pep, policyengine, "Policy Decision")
+    Rel(pep, pepdb, "DB")
+    Rel(authorizationserver, pdpdb, "DB")
+    Rel(testdriverApi, sdk, "Interner Aufruf")
+    Rel(sdk, pep, "HTTP")

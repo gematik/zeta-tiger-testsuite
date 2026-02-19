@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -42,13 +42,19 @@ class SchemaValidationStepsTest {
 
   private static final String WELL_KNOWN_SCHEMA = "schemas/v_1_0/as-well-known.yaml";
   private static final String ACCESS_TOKEN_SCHEMA = "schemas/v_1_0/access-token.yaml";
-  private static final String CLIENT_ASSERTION_JWT_SCHEMA = "client-assertion-jwt.yaml";
-  // private static final String POPP_TOKEN_SCHEMA = "popp-token.yaml";
-  private static final String POPP_TOKEN_SCHEMA = "schemas/mock/popp-token-gemspec_popp.yaml";
+  private static final String CLIENT_ASSERTION_JWT_SCHEMA = "schemas/v_1_0/client-assertion-jwt.yaml";
+  private static final String POPP_TOKEN_SCHEMA = "schemas/v_1_0/popp-token.yaml";
+  private static final String POPP_TOKEN_GEMSPEC_POPP_SCHEMA = "schemas/mock/popp-token-gemspec_popp.yaml";
 
   private final SchemaValidationSteps steps = new SchemaValidationSteps();
 
   private static final String ENCODED_POPP_TOKEN = loadResource("mocks/encoded_popp_token.jwt");
+  private static final String EXAMPLE_POPP_TOKEN = loadResource("mocks/example_popp_token.json");
+  private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/example_client-assertion-jwt.json");
+  /**
+   * The signature of this JWT is not valid, but that doesn't matter for the schema validation.
+   */
+  private static final String ENCODED_CLIENT_ASSERTION_JWT = loadResource("mocks/encoded_client-assertion-token.jwt");
 
   private static String loadResource(String resource) {
     final String normalized = resource.startsWith("/") ? resource.substring(1) : resource;
@@ -62,93 +68,6 @@ class SchemaValidationStepsTest {
       throw new UncheckedIOException("Failed to read resource: " + normalized, e);
     }
   }
-
-  private static final String EXAMPLE_POPP_TOKEN = loadResource("mocks/example_popp_token.json");
-
-  /**
-   * The sub-element "client_statement" comes from referenced schema file.
-   */
-  private static final String VALID_CLIENT_ASSERTION_JWT = """
-      {
-          "header": {
-              "typ": "jwt",
-              "alg": "ES256",
-              "jwk": {
-                  "kid": "tXz0SP3vfu_KzENmVDbZNtcg5uP-ogpk_9QZT8dDe3o",
-                  "kty": "EC",
-                  "alg": "ES256",
-                  "use": "sig",
-                  "crv": "P-256",
-                  "x": "bN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuw",
-                  "y": "KnHyxGQqrng_2ocR13Ss-X7KoxyXS5xE-qXGdJ2zQp4"
-              }
-          },
-          "payload": {
-              "iss": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
-              "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
-              "aud": [
-                  "https://zeta-kind.local/auth/realms/zeta-guard/protocol/openid-connect/token"
-              ],
-              "exp": 1764599351,
-              "jti": "[B@1f54480b",
-              "client_statement": {
-                  "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
-                  "platform": "linux",
-                  "posture": {
-                      "platform_product_id": {
-                          "platform": "linux",
-                          "packaging_type": "deb",
-                          "application_id": "org.mozilla.firefox"
-                      },
-                      "product_id": "test_proxy",
-                      "product_version": "0.1.0",
-                      "os": "Linux",
-                      "os_version": "5.15.167.4-microsoft-standard-WSL2",
-                      "arch": "amd64",
-                      "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
-                      "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE="
-                  },
-                  "product_id": "test_proxy",
-                  "product_version": "0.1.0",
-                  "os": "Linux",
-                  "os_version": "5.15.167.4-microsoft-standard-WSL2",
-                  "arch": "amd64",
-                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
-                  "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE=",
-                  "attestation_timestamp": 1764599321
-              }
-          }
-      }
-      """;
-
-  /**
-   * The signature of this JWT is not valid, but that doesn't matter for the schema validation.
-   */
-  private static final String ENCODED_CLIENT_ASSERTION_JWT =
-      "eyJ0eXAiOiJqd3QiLCJhbGciOiJFUzI1NiIsImp3ayI6eyJraWQiOiJ0WHowU1AzdmZ1X0t6RU5tVkRiWk50Y2c1dVA"
-          + "tb2dwa185UVpUOGREZTNvIiwia3R5IjoiRUMiLCJhbGciOiJFUzI1NiIsInVzZSI6InNpZyIsImNydiI6IlAt"
-          + "MjU2IiwieCI6ImJONVhjTkR0TnhFX3lfT1lLdXhnNFZzbmNkWklHUnNYeHZLVm9CVHNldXciLCJ5IjoiS25Ie"
-          + "XhHUXFybmdfMm9jUjEzU3MtWDdLb3h5WFM1eEUtcVhHZEoyelFwNCJ9fQ"
-          + "."
-          + "eyJpc3MiOiJiOGU4ODk5Yy0xNGUxLTQxNWYtYjUzNC0xNDQ4ZThhYTNiNTciLCJzdWIiOiJiOGU4ODk5Yy0xN"
-          + "GUxLTQxNWYtYjUzNC0xNDQ4ZThhYTNiNTciLCJhdWQiOlsiaHR0cHM6Ly96ZXRhLWxvY2FsLndlc3RldXJvcG"
-          + "UuY2xvdWRhcHAuYXp1cmUuY29tL2F1dGgvcmVhbG1zL3pldGEtZ3VhcmQvcHJvdG9jb2wvb3BlbmlkLWNvbm5"
-          + "lY3QvdG9rZW4iXSwiZXhwIjoxNzY0NTk5MzUxLCJqdGkiOiJbQkAxZjU0NDgwYiIsImNsaWVudF9zdGF0ZW1l"
-          + "bnQiOnsic3ViIjoiYjhlODg5OWMtMTRlMS00MTVmLWI1MzQtMTQ0OGU4YWEzYjU3IiwicGxhdGZvcm0iOiJsa"
-          + "W51eCIsInBvc3R1cmUiOnsicHJvZHVjdF9pZCI6InRlc3RfcHJveHkiLCJwcm9kdWN0X3ZlcnNpb24iOiIwLj"
-          + "EuMCIsIm9zIjoiTGludXgiLCJvc192ZXJzaW9uIjoiNS4xNS4xNjcuNC1taWNyb3NvZnQtc3RhbmRhcmQtV1N"
-          + "MMiIsImFyY2giOiJhbWQ2NCIsInB1YmxpY19rZXkiOiJNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFj"
-          + "RFFnQUViTjVYY05EdE54RV95X09ZS3V4ZzRWc25jZFpJR1JzWHh2S1ZvQlRzZXV3cWNmTEVaQ3F1ZURfYWh4S"
-          + "FhkS3o1ZnNxakhKZExuRVQ2cGNaMG5iTkNuZyIsImF0dGVzdGF0aW9uX2NoYWxsZW5nZSI6Im5CZllmcXk5MV"
-          + "pyNmdqak1uOUovQ003Q0g0NlZvRDFEbVV2K1JYS3ZYWUU9In0sInByb2R1Y3RfaWQiOiJ0ZXN0X3Byb3h5Iiw"
-          + "icHJvZHVjdF92ZXJzaW9uIjoiMC4xLjAiLCJvcyI6IkxpbnV4Iiwib3NfdmVyc2lvbiI6IjUuMTUuMTY3LjQt"
-          + "bWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIiLCJhcmNoIjoiYW1kNjQiLCJwdWJsaWNfa2V5IjoiTUZrd0V3WUhLb"
-          + "1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYk41WGNORHROeEVfeV9PWUt1eGc0VnNuY2RaSUdSc1h4dktWb0"
-          + "JUc2V1d3FjZkxFWkNxdWVEX2FoeEhYZEt6NWZzcWpISmRMbkVUNnBjWjBuYk5DbmciLCJhdHRlc3RhdGlvbl9"
-          + "jaGFsbGVuZ2UiOiJuQmZZZnF5OTFacjZnampNbjlKL0NNN0NINDZWb0QxRG1VditSWEt2WFlFPSIsImF0dGVz"
-          + "dGF0aW9uX3RpbWVzdGFtcCI6MTc2NDU5OTMyMX19"
-          + "."
-          + "W3F0yI-EoA6AdPlsOVLPBOnqa-ZbgD2hD8efWxC47TKIBryP0kMuvWK17VU5cewDy9B0LJa2hDl-fHDNw495Dw";
 
   /**
    * Verifies that missing required .well-known fields trigger validation errors.
@@ -292,7 +211,7 @@ class SchemaValidationStepsTest {
 
     assertDoesNotThrow(
         () -> steps.validateJsonAgainstYamlSchema(EXAMPLE_POPP_TOKEN,
-            POPP_TOKEN_SCHEMA));
+                POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
   }
 
   /**
@@ -303,7 +222,7 @@ class SchemaValidationStepsTest {
 
     assertDoesNotThrow(
         () -> steps.validateEncodedJwtAgainstYamlSchema(ENCODED_POPP_TOKEN,
-            POPP_TOKEN_SCHEMA));
+                POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
 
   }
 }

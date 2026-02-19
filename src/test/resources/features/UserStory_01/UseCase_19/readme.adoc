@@ -7,21 +7,67 @@
 | *Titel:* | Client ressource anfrage fachdienst SC 405
 
 | Akteur: |
+*MA einer LEI*
 
 | weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
 
 | Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an, verwendet aber eine für den Endpunkt nicht erlaubte HTTP Methode.
 
 | Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit gültigem Access Token und DPoP Nachweis an den PEP HTTP Proxy.
+Der Endpunkt unterstützt die verwendete HTTP Methode nicht, daher liefert der PEP HTTP Proxy
+``405 Method Not Allowed`` und verweigert den Zugriff.
 
 | Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert.
 
 | Nebenbedingung: |
+Der PEP HTTP Proxy ist so konfiguriert, dass der Endpunkt nur eine bestimmte HTTP Methode (z. B. ``GET``) erlaubt.
 
 | Ablauf: |
+1. MA startet den Abruf einer geschützten Ressource über den ZETA Client mit einer nicht erlaubten HTTP Methode.
+2. Der ZETA Client erstellt einen *DPoP Nachweis*.
+3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``POST /resource`` (Beispiel für nicht erlaubte Methode)
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+4. Der PEP HTTP Proxy validiert die Nachweise und prüft die HTTP Methode.
+5. Der PEP HTTP Proxy antwortet mit ``405 Method Not Allowed``.
+6. Der ZETA Client informiert den MA, dass die Anfrage mit der gewählten HTTP Methode nicht unterstützt wird.
 
 | Nachbedingung: |
+Der Ressourcenzugriff wurde abgewiesen.
 
 | Abgedeckte Testaspekte: |
-
+* <<TA_A_26661_22>>
+* <<TA_A_27007_22>>
 |===
+
+[#usecase_01_19_sequence]
+[mermaid,usecase-01-19-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource (nicht erlaubte Methode)
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: POST /resource (Access Token + DPoP)
+    PEP-HP->>PEP-HP: Token validieren und Methode prüfen
+    PEP-HP-->>-ZC: 405 Method Not Allowed
+    ZC-->>-MA: HTTP Methode für Endpunkt nicht erlaubt
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::client_ressource_anfrage_fachdienst_sc_405.feature[]
+----

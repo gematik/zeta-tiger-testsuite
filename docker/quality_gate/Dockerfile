@@ -27,21 +27,27 @@ COPY --from=build /app/target/*-tests.jar /app/tests.jar
 COPY --from=build /app/target/deps /app/libs
 COPY --from=build /app/target/agent/tiger-java-agent.jar /app/agent/tiger-java-agent.jar
 COPY --from=build /app/tiger.yaml /app/tiger.yaml
+COPY --from=build /app/tiger-proxy.yaml /app/tiger-proxy.yaml
 COPY --from=build /app/tiger /app/tiger
+COPY --from=build /app/docs/asciidoc/tables/product_implementation.csv /app/docs/asciidoc/tables/product_implementation.csv
+COPY --from=build /app/docs/asciidoc/testaspekte /app/docs/asciidoc/testaspekte
+COPY --from=build /app/tools/tls-test-tool-1.0.1/TlsTestTool-alpine /app/tools/tls-test-tool-1.0.1/TlsTestTool-alpine
 COPY --from=build /app/src/test/resources/mocks /app/src/test/resources/mocks
 COPY --from=build /app/src/test/resources/keys /app/src/test/resources/keys
 COPY --from=build /app/src/test/resources/schemas /app/src/test/resources/schemas
 COPY --from=build /app/serenity-cli/serenity-cli-${SERENITY_CLI_VERSION}.jar /app/tools/serenity-cli.jar
+COPY --from=build /app/docker/run-tests-common.sh /app/run-tests-common.sh
 COPY docker/quality_gate/run-tests.sh /app/run-tests.sh
 RUN chmod +x /app/run-tests.sh
 
 # Default runtime toggles; can be overridden at `docker run`.
 ENV ZETA_BASE_URL="" \
     ZETA_PROXY_URL="" \
-    ZETA_PROXY="no-proxy" \
+    OPENSEARCH_URL="" \
+    PROFILE="" \
     CUCUMBER_TAGS="@smoke" \
-    TIGER_ENVIRONMENT="cloud" \
     SERENITY_EXPORT_DIR="" \
-    CUCUMBER_EXPORT_DIR=""
+    CUCUMBER_EXPORT_DIR="" \
+    ALLURE_RESULTS_DIR=""
 
 ENTRYPOINT ["/app/run-tests.sh"]

@@ -7,21 +7,70 @@
 | *Titel:* | Client ressource anfrage fachdienst SC 400
 
 | Akteur: |
+*MA einer LEI*
 
 | weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
 
 | Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
 
 | Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Der DPoP Header fehlt, obwohl er nach Richtlinie zwingend erforderlich ist.
+Der PEP HTTP Proxy beantwortet die Anfrage mit ``400 Bad Request``.
 
 | Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert.
+Die Resource-Anfrage erfordert einen DPoP Nachweis (``DPoP``-Header).
 
 | Nebenbedingung: |
+Der DPoP Header wird beim Versand der Anfrage unterdrückt oder vom Client nicht übermittelt.
 
 | Ablauf: |
+. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+. Der ZETA Client erzeugt oder lädt das Access Token sowie den DPoP Nachweis.
+. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- **kein** ``DPoP``-Header liegt bei der Anfrage vor.
+. Der PEP HTTP Proxy prüft die übermittelten Header und stellt fest, dass der DPoP Nachweis fehlt, obwohl er zwingend verlangt wird.
+. Der PEP HTTP Proxy antwortet mit ``400 Bad Request`` und erläutert im Fehlertext die fehlende PoP-Information.
+. Der ZETA Client informiert den MA, dass die Anfrage unvollständig war und der DPoP Nachweis ergänzt werden muss.
 
 | Nachbedingung: |
+Der Ressourcenzugriff wurde abgewiesen.
+Der Ressourcenzugriff wurde abgewiesen. Der MA muss die Anfrage mit PoPP-Header erneut senden.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_26661_18>>
+* <<TA_A_27007_18>>
 
 |===
+
+[#usecase_01_15_sequence]
+[mermaid,usecase-01-15-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource (Access Token, kein DPoP Header)
+    PEP-HP->>PEP-HP: Prüfe Access Token & DPoP Header
+    PEP-HP-->>-ZC: 400 Bad Request (fehlender DPoP Header)
+    ZC-->>-MA: Hinweis auf fehlenden DPoP Nachweis
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::client_ressource_anfrage_fachdienst_sc_400.feature[]
+----

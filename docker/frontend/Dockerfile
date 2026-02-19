@@ -7,14 +7,16 @@ WORKDIR /app
 COPY pom.xml .
 
 # Download all dependencies/plugins once so later runs can stay offline.
-#   -DincludeParents=true            -> fetch parent POMs to avoid re-resolution when modules inherit from them
-#   -DincludeDependencies=true       -> pull regular compile/test dependencies into the cache
-#   -DincludePluginDependencies=true -> ensure Maven plugins bring their own dependency trees along (e.g. surefire)
-#   -DincludePlugins=true            -> download the plugin artifacts themselves, not just their dependencies
-#   -DincludeReports=true            -> include reporting plugins (Surefire/Failsafe reports, etc.) used later in CI
+#   -DincludeParents=true                   -> fetch parent POMs to avoid re-resolution when modules inherit from them
+#   -DincludeDependencies=true              -> pull regular compile/test dependencies into the cache
+#   -Dmaven.repo.local=/tmp/.m2/repository  -> set local m2 repository path
+#   -DincludePluginDependencies=true        -> ensure Maven plugins bring their own dependency trees along (e.g. surefire)
+#   -DincludePlugins=true                   -> download the plugin artifacts themselves, not just their dependencies
+#   -DincludeReports=true                   -> include reporting plugins (Surefire/Failsafe reports, etc.) used later in CI
 RUN mvn -B dependency:go-offline \
       -DincludeParents=true \
       -DincludeDependencies=true \
+      -Dmaven.repo.local=/tmp/.m2/repository \
       -DincludePluginDependencies=true \
       -DincludePlugins=true \
       -DincludeReports=true
@@ -24,6 +26,7 @@ COPY . .
 
 # Run a dependency-only build (tests off) to prime the target directory & plugins.
 RUN mvn -B -DskipTests=true -DskipITs=true \
+    -Dmaven.repo.local=/tmp/.m2/repository \
     -Dtraceability.skip=true -Dtraceability.sync.skip=true -Dserenity.readme.sync.skip=true \
     verify
 
@@ -34,18 +37,20 @@ WORKDIR /app
 
 # Copy the prepared sources as well as the primed ~/.m2 directory from the build stage.
 COPY --from=build /app /app
-COPY --from=build /root/.m2/ /root/.m2/
+COPY --from=build /tmp/.m2/ /tmp/.m2/
+COPY --from=build /app/docker/run-tests-common.sh /app/run-tests-common.sh
 COPY docker/frontend/run-tests.sh /app/run-tests.sh
 RUN chmod +x /app/run-tests.sh
 
 # Default runtime toggles; can be overridden via `docker run -e ...`.
 ENV ZETA_BASE_URL="" \
     ZETA_PROXY_URL="" \
-    ZETA_PROXY="no-proxy" \
+    OPENSEARCH_URL="" \
+    PROFILE="" \
     CUCUMBER_TAGS="@smoke" \
-    TIGER_ENVIRONMENT="cloud" \
     SERENITY_EXPORT_DIR="" \
-    CUCUMBER_EXPORT_DIR=""
+    CUCUMBER_EXPORT_DIR="" \
+    ALLURE_RESULTS_DIR=""
 
 # Exec-form entrypoint to preserve signals and args.
 ENTRYPOINT ["/app/run-tests.sh"]

@@ -13,7 +13,8 @@ Diese Übersicht stellt den gemeldeten Umsetzungsstand den bereits durch die Tes
 Die Produktstatus-Angaben werden aus ``docs/asciidoc/tables/product_implementation.csv`` gelesen (Beispieldatei: ``docs/asciidoc/tables/product_implementation_example.csv``).
 Die CSV verwendet deutschsprachige Spaltenköpfe (``Anforderung``, optional ``Titel`` als Lesehilfe, ``umgesetzt``, ``Hinweis``); für den Umsetzungsstand bitte ``ja``, ``nein`` oder ``teilweise`` verwenden.
 Der optionale Titel wird von der Generierung ignoriert.
-Die Spalte „umgesetzt“ zeigt die gemeldete Implementierung, „getestet“ fasst die Testsuite-Abdeckung pro Anforderung zusammen und „Hinweise“ heben Differenzen oder fehlende Angaben hervor.
+Die Spalte „im Produkt umgesetzt“ zeigt die gemeldete Implementierung, „getestet“ fasst die Testsuite-Abdeckung pro Anforderung zusammen und „Hinweise“ heben Differenzen oder fehlende Angaben hervor.
+Die Spalte „Testabdeckung“ zeigt den Anteil implementierter Testaspekte pro Anforderung als Prozentwert (implementiert/gesamt).
 Die Testsuite-Abdeckung wird ausschließlich aus Testaspekt-Katalogen und Feature-Tags abgeleitet (keine Laufzeit-Reports).
 Für die Spalte „getestet“ gilt:
 
@@ -50,7 +51,7 @@ Datenbasis und Regeln:
 * Implementiert: Ein Testaspekt zählt als implementiert, wenn mindestens ein Szenario ihn mittels Testaspekt-Tag referenziert (``TA_*``-Tag).
 * Szenarien ohne Testaspekt-Tag werden für die Metriken ignoriert.
 * ``A_*``-Tags in Szenarien werden für die Abdeckungsmetriken nicht ausgewertet.
-* ``@product_not_impl``-Tags beeinflussen nur die Produktumsetzung in der Zuordnungstabelle, nicht die Testabdeckung.
+* ``@product_not_impl``-Tags werden für die Abdeckungsmetriken nicht ausgewertet.
 * Die Abdeckung zählt eindeutige Testaspekte, nicht die Anzahl der Szenarien.
 
 Definitionen:
@@ -85,3 +86,10 @@ Hier wird analysiert, wie viele Testaspekte bereits von automatisierten Tests au
 ....
 include::../diagrams/traceability-coverage-testaspects.mmd[]
 ....
+
+=== Traceability-Matrix
+
+Die Matrix stellt die Zuordnung von Anforderungen zu Testaspekten und Use Cases dar.
+Sie zeigt pro Kombination, ob ein Szenario vorhanden ist.
+
+include::../tables/traceability_matrix.adoc[]

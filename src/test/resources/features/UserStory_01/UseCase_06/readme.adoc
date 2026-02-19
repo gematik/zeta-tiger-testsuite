@@ -35,17 +35,17 @@ Der Client hat keine bestehende Session (kein gültiges Refresh Token).
 Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 
 | Ablauf: |
-1. MA startet *Authentisierung/Autorisierung-Prozess (Token-Austausch)* über den ZETA Client.
-2. Der ZETA Client fordert beim PDP Authorization Server eine Nonce an:
+. MA startet *Authentisierung/Autorisierung-Prozess (Token-Austausch)* über den ZETA Client.
+. Der ZETA Client fordert beim PDP Authorization Server eine Nonce an:
 - ``GET /nonce`` (HTTP/2)
-3. Der PDP Authorization Server liefert ``200 OK`` mit einer neuen Nonce zurück.
-4. Der ZETA Client erstellt ein *DPoP Key Pair* (sitzungsbasiert).
+. Der PDP Authorization Server liefert ``200 OK`` mit einer neuen Nonce zurück.
+. Der ZETA Client erstellt ein *DPoP Key Pair* (sitzungsbasiert).
 - Zweck: Bindung für den späteren Token-Austausch.
 
-5. Der ZETA Client berechnet eine *attestation challenge*:
+. Der ZETA Client berechnet eine *attestation challenge*:
 - ``attestation_challenge = HASH(pubKeyHash + nonce)``
 
-6. Der ZETA Client erstellt ein *Client Statement* mit *posture-software*.
+. Der ZETA Client erstellt ein *Client Statement* mit *posture-software*.
 +
 .client_statement:
 [source,txt]
@@ -58,7 +58,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 ----
 +
 
-7. Der ZETA Client erstellt ein *Client Assertion JWT*.
+. Der ZETA Client erstellt ein *Client Assertion JWT*.
 +
 .Client Assertion JWT Claims (with Attestation):
 [source,json]
@@ -75,7 +75,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 ----
 +
 
-8. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
+. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
 +
 .SMC-B Access Token Claims:
 [source,json]
@@ -92,14 +92,13 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 ----
 +
 
-9. Der ZETA Client initiiert eine *External Authenticate*-Anfrage beim Konnektor / TI-Gateway:
+. Der ZETA Client initiiert eine *External Authenticate*-Anfrage beim Konnektor / TI-Gateway:
 - Übermittlung des JWT-Hash.
-10. Der KTG reicht den Hash an die SMC-B weiter.
-11. Die SMC-B antwortet mit signiertem Hash.
-12. Der KTG liefert die *JWT-Signatur* zurück an den ZETA Client.
-
-13. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
-14. Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
+. Der KTG reicht den Hash an die SMC-B weiter.
+. Die SMC-B antwortet mit signiertem Hash.
+. Der KTG liefert die *JWT-Signatur* zurück an den ZETA Client.
+. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+. Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
 - Enthält Claims für den Token Request.
 +
 .DPoP Proof JWT Claims (for Token Exchange):
@@ -118,7 +117,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 ----
 +
 
-15. Der ZETA Client sendet einen *Token Request* (<<RFC8693, RFC 8693>>, HTTP/2) an den PDP Authorization Server:
+. Der ZETA Client sendet einen *Token Request* (<<RFC8693, RFC 8693>>, HTTP/2) an den PDP Authorization Server:
 - Enthält ``DPoP: signed_dpop_jwt``.
 +
 .Token Exchange Request Body:
@@ -132,14 +131,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 ----
 +
 
-16. Der PDP Authorization Server validiert den Request:
+. Der PDP Authorization Server validiert den Request:
 - Client Assertion
 - Attestation
 - DPoP Proof
 - Subject Token
-17. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
+. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
 - ``POST /v1/data/authz`` mit Input-Parametern.
-18. Der PDP-PE antwortet mit ``200 OK``, z. B.
+. Der PDP-PE antwortet mit ``200 OK``, z. B.
 +
 [source,txt]
 ----
@@ -155,10 +154,10 @@ status: 200 OK,
 ----
 +
 
-19. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*.
-20. Der PDP Authorization Server aktualisiert die Client-, Session- und Nutzerdaten in der PDP Datenbank.
-21. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
-22. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
+. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*.
+. Der PDP Authorization Server aktualisiert die Client-, Session- und Nutzerdaten in der PDP Datenbank.
+. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
+. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
 +
 .Token Response Body:
 [source,json]
@@ -173,15 +172,13 @@ status: 200 OK,
 ----
 +
 
-23. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
+. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
 
 | Nachbedingung: |
 Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. dieser ist authentisiert und autorisiert.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_18464_02>>
 * <<TA_A_21275-01_03>>
-* <<TA_A_21275-01_04>>
 * <<TA_A_25337_01>>
 * <<TA_A_25338_01>>
 * <<TA_A_25338_02>>
@@ -233,16 +230,14 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_26585_01>>
 * <<TA_A_26585_02>>
 * <<TA_A_26586_01>>
-* <<TA_A_26586_02>>
+* <<TA_A_26586_03>>
 * <<TA_A_26640_02>>
 * <<TA_A_26661_01>>
+* <<TA_A_26661_02>>
 * <<TA_A_26944_01>>
 * <<TA_A_26945_01>>
-* <<TA_A_26972-01_01>>
-* <<TA_A_26972-01_02>>
-* <<TA_A_26972-01_03>>
-* <<TA_A_26972-01_04>>
 * <<TA_A_27007_01>>
+* <<TA_A_27007_02>>
 * <<TA_A_27401_01>>
 * <<TA_A_27727_01>>
 * <<TA_A_27802_01>>
@@ -269,9 +264,12 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_28144_02>>
 * <<TA_A_28144_03>>
 * <<TA_A_28144_04>>
+* <<TA_A_28440_01>>
+* <<TA_A_28440_02>>
+* <<TA_A_28440_03>>
+* <<TA_A_28527_01>>
+* <<TA_A_28527_02>>
 * <<TA_GS-A_5542_03>>
-* <<TA_GS-A_5542_04>>
-
 
 |===
 

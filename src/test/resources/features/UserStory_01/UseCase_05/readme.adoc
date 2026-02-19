@@ -7,38 +7,58 @@
 | *Titel:* | Client registrierung stationaer SC 409
 
 | Akteur: |
-TODO
+*MA einer LEI*
 
 | weitere Akteure: |
-TODO
+- *ZETA Client*
+- *PDP Authorization Server*
 
 | Auslöser: |
-TODO
+Ein MA einer LEI versucht, einen stationären ZETA Client zu registrieren, obwohl bereits eine Registrierung für diesen Client existiert.
 
 | Kurzbeschreibung: |
-TODO
+Der ZETA Client sendet eine Dynamic Client Registration an den PDP Authorization Server.
+Aufgrund eines bestehenden Konflikts (z. B. bereits registrierter Client) lehnt der PDP Authorization Server die Anfrage mit ``409 Conflict`` ab.
+Der ZETA Client informiert den MA, dass keine weitere Registrierung möglich ist.
 
 | Vorbedingung: |
-TODO
+Der stationäre ZETA Client ist bereits beim ZETA Guard registriert oder es existiert ein Konflikt mit einer bestehenden Registrierung.
 
 | Nebenbedingung: |
-TODO
+Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
-TODO
+. Der MA startet die *initiale Registrierung* im ZETA Client.
+. Der ZETA Client generiert ein *Client Instance Key Pair*.
+. Der ZETA Client sendet eine *Dynamic Client Registration (DCR)* an den PDP Authorization Server (``POST /register``).
+. Der PDP Authorization Server erkennt einen Konflikt (z. B. bereits vorhandene Registrierung).
+. Der PDP Authorization Server antwortet mit ``409 Conflict``.
+. Der ZETA Client informiert den MA, dass der Client bereits registriert ist und keine weitere Registrierung erfolgen darf.
 
 | Nachbedingung: |
-TODO
+Es wurde keine neue Registrierung erzeugt.
+Die bestehende Registrierung bleibt unverändert.
 
 | Abgedeckte Testaspekte: |
-TODO
+* <<TA_A_26661_14>>
 
 |===
 
 [mermaid]
 ....
 sequenceDiagram
-    %% TODO
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PDP-AS as PDP Authorization<br>Server
+
+    MA->>+ZC: Start initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register
+    PDP-AS->>PDP-AS: Konfliktprüfung (bestehende Registrierung)
+    PDP-AS-->>-ZC: 409 Conflict
+    ZC-->>-MA: Registrierung nicht möglich<br>Client bereits registriert
 ....
 
 [.lead]

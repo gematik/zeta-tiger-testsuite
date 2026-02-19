@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -24,7 +24,6 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import de.gematik.rbellogger.data.RbelElement;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
@@ -190,6 +189,94 @@ public class HelperSteps {
   }
 
   /**
+   * Checks an optional expected value against a request node.
+   *
+   * <p>If the expected value is blank (null/empty/"null"), the node must be absent.
+   * Otherwise the node must exist and match the expected value.</p>
+   *
+   * @param rbelPath the RBEL path to the attribute in the request
+   * @param expectedValue the optional value to compare (may be empty)
+   */
+  @Dann("prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich")
+  @Then("check optional: node {tigerResolvedString} is absent when {tigerResolvedString} is empty, otherwise equal")
+  public void checkOptionalValueAgainstNode(String rbelPath, String expectedValue) {
+    checkOptionalValueAgainstNodeInternal(rbelPath, expectedValue, false);
+  }
+
+  /**
+   * Soft-asserting variant of {@link #checkOptionalValueAgainstNode(String, String)}.
+   *
+   * @param rbelPath the RBEL path to the attribute in the request
+   * @param expectedValue the optional value to compare (may be empty)
+   */
+  @Dann("prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich und nutze soft assert")
+  @Then("check optional: node {tigerResolvedString} is absent when {tigerResolvedString} is empty, otherwise equal with soft assert")
+  public void checkOptionalValueAgainstNodeSoft(String rbelPath, String expectedValue) {
+    checkOptionalValueAgainstNodeInternal(rbelPath, expectedValue, true);
+  }
+
+  private void checkOptionalValueAgainstNodeInternal(String rbelPath, String expectedValue, boolean soft) {
+    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
+    if (rbelMessageRetriever.getCurrentRequest() == null) {
+      var ex = new AssertionError("No current request message found!");
+      if (soft) {
+        SoftAssertionsContext.recordSoftFailure("No current request message found", ex);
+        return;
+      }
+      throw ex;
+    }
+
+    if (rbelPath == null || rbelPath.isBlank() || !rbelPath.trim().startsWith("$.")) {
+      var ex = new AssertionError("RbelPath expressions always start with $. (got '" + rbelPath + "')");
+      if (soft) {
+        SoftAssertionsContext.recordSoftFailure("Invalid RBEL path: " + rbelPath, ex);
+        return;
+      }
+      throw ex;
+    }
+
+    String normalized = expectedValue == null ? "" : expectedValue.trim();
+    boolean hasExpectedValue = !normalized.isBlank() && !"null".equalsIgnoreCase(normalized);
+
+    List<RbelElement> elems = rbelMessageRetriever.getCurrentRequest()
+        .findRbelPathMembers(rbelPath);
+
+    try {
+      if (!hasExpectedValue) {
+        Assertions
+            .assertThat(elems)
+            .as("Node '%s' must be absent when expected value is empty", rbelPath)
+            .isEmpty();
+        return;
+      }
+
+      Assertions
+          .assertThat(elems)
+          .as("Expected node '%s' to be present", rbelPath)
+          .isNotEmpty();
+
+      String actualValue = rbelMessageRetriever
+          .findElementsInCurrentRequest(rbelPath)
+          .stream()
+          .map(RbelElement::getRawStringContent)
+          .filter(Objects::nonNull)
+          .map(String::trim)
+          .collect(Collectors.joining());
+
+      Assertions
+          .assertThat(actualValue)
+          .as("Node value %s should be equal to '%s'", actualValue, normalized)
+          .isEqualTo(normalized);
+    } catch (AssertionError ex) {
+      if (soft) {
+        SoftAssertionsContext.recordSoftFailure("Optional node check failed for " + rbelPath, ex);
+      } else {
+        throw ex;
+      }
+    }
+  }
+
+  /**
    * Checks if the current request's attribute at the given RBEL path does either not exist or not equal
    * to the specified value.
    *
@@ -326,6 +413,61 @@ public class HelperSteps {
       if (soft) {
         log.warn("Expected current request to not contain node {}", rbelPath);
         SoftAssertionsContext.recordSoftFailure("Expected current request to not contain node " + rbelPath, ex);
+      } else {
+        throw ex;
+      }
+    }
+  }
+
+  /**
+   * Verifies that no element matching the given RBEL path exists in the current response.
+   * Throws an {@link AssertionError} if node exists.
+   */
+  @Dann("prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString}")
+  @Then("current response does not contain node {tigerResolvedString}")
+  public void checkCurrentResponseMessageNotContainsNode(String rbelPath) {
+    currentResponseMessageNotContainsNode(rbelPath, false);
+  }
+
+  /**
+   * Verifies that no element matching the given RBEL path exists in the current response.
+   * Uses soft assertions instead of throwing an {@link AssertionError} if node exists.
+   */
+  @Dann("prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString} und nutze soft assert")
+  @Then("current response does not contain node {tigerResolvedString} with soft assert")
+  public void checkCurrentResponseMessageNotContainsNodeSoft(String rbelPath) {
+    currentResponseMessageNotContainsNode(rbelPath, true);
+  }
+
+  /**
+   * Verifies that no element matching the given RBEL path exists in the current response.
+   *
+   * <p>With the soft option enabled, errors due to an existing node will be logged only
+   * and no exception is thrown.</p>
+   *
+   * <p>If the JSON is empty, cannot be parsed, or an existing node
+   * an {@link AssertionError} is thrown with a detailed error message.
+   *
+   * @param rbelPath    path and name of the node not to be contained
+   * @param soft        if true, errors will only be logged.
+   * @throws AssertionError if check fails
+   */
+  private void currentResponseMessageNotContainsNode(String rbelPath, boolean soft) {
+    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
+    if (rbelMessageRetriever.getCurrentResponse() == null) {
+      throw new AssertionError("No current response message found!");
+    }
+    List<RbelElement> elems = rbelMessageRetriever.getCurrentResponse()
+        .findRbelPathMembers(rbelPath);
+    try {
+      Assertions
+          .assertThat(elems)
+          .as("Expected current response to not contain node '%s'", rbelPath)
+          .isEmpty();
+    } catch (AssertionError ex) {
+      if (soft) {
+        log.warn("Expected current response to not contain node {}", rbelPath);
+        SoftAssertionsContext.recordSoftFailure("Expected current response to not contain node " + rbelPath, ex);
       } else {
         throw ex;
       }

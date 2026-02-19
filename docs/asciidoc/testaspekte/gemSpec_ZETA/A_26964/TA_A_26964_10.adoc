@@ -1,0 +1,4 @@
+[#TA_A_26964_10]
+===== TA_A_26964_10 - ZETA Guard - OCSP Stapling - OCSP Responder - exponential Backoff
+
+Sollte vom entsprechenden OCSP Responder trotz regelmäßigen Versuchens keine OCSP Response bezogen werden können, so MUSS die jüngste zur Verfügung stehende OCSP Response verwendet werden und es MUSS **mit exponential Backoff weiter probiert** werden. **[<=]**

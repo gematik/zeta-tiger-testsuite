@@ -17,7 +17,8 @@ Die Testsuite baut eine native WebSocket-Verbindung auf, sendet CRUD-Operationen
 Zusätzlich werden Fehlerfälle wie Duplikate, Konflikte und Validierungsfehler ausgelöst.
 
 | Vorbedingung: |
-WebSocket-Endpunkt ``${paths.guard.websocketBaseUrl}`` ist erreichbar, Testfachdienst subscribt auf die relevanten Channels.
+WebSocket-Endpunkt ``${paths.client.websocketBaseUrl}`` ist erreichbar, Testfachdienst subscribt auf die relevanten Channels.
+Vor STOMP-Nutzung prüft die Testsuite zuerst den reinen WebSocket-Upgrade (Transport), um Transport- von STOMP-Fehlern zu trennen.
 
 | Nebenbedingung: |
 Keine zusätzlichen Nebenbedingungen.

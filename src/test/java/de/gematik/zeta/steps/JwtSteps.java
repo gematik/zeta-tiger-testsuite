@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -54,11 +54,15 @@ import io.restassured.response.Response;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.Security;
+import java.security.Signature;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -72,6 +76,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.teletrust.TeleTrusTObjectIdentifiers;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
  * Cucumber step definitions for JWT (JSON Web Token) operations.
@@ -349,10 +361,10 @@ public class JwtSteps {
 
   /**
    * Verifies the ES256 signature of a JWT using a public key provided via jwk or x5c header. For
-   * gematik requirements, only ES256 (ECDSA with P-256 and SHA-256) is supported.
+   * gematik requirements, ES256 is supported with P-256 and brainpoolP256r1 curves.
    *
-   * <p>If a jwk is present, its EC public key is used. Otherwise, the first certificate in the x5c
-   * chain is parsed and its EC public key is used for verification.
+   * <p>If a jwk is present, its EC public key (P-256 or brainpoolP256r1) is used. Otherwise, the
+   * first certificate in the x5c chain is parsed and its EC public key is used for verification.
    *
    * @param jwt the base64 coded JWT
    */
@@ -369,9 +381,9 @@ public class JwtSteps {
       assertThat(jwk)
           .as("JWT must use Elliptic Curve key (EC) for gematik requirements")
           .isInstanceOf(ECKey.class);
-      assertThat(((ECKey) jwk).getCurve())
-          .as("JWT must use P-256 curve for gematik requirements")
-          .isEqualTo(Curve.P_256);
+      assertThat(isAllowedEcCurve(((ECKey) jwk).getCurve()))
+          .as("JWT must use P-256 or brainpoolP256r1 curve for gematik requirements")
+          .isTrue();
       ECPublicKey jwkPublicKey;
       try {
         jwkPublicKey = ((ECKey) jwk).toECPublicKey();
@@ -395,14 +407,90 @@ public class JwtSteps {
         .isInstanceOf(ECPublicKey.class);
 
     ECPublicKey certificatePublicKey = (ECPublicKey) certificate.getPublicKey();
-    assertThat(Curve.forECParameterSpec(certificatePublicKey.getParams()))
-        .as("x5c certificate must use P-256 curve for gematik requirements")
-        .isEqualTo(Curve.P_256);
+    Curve certCurve = Curve.forECParameterSpec(certificatePublicKey.getParams());
+    assertThat(isAllowedEcCurve(certCurve) || isBrainpoolP256r1Certificate(certificate))
+        .as("x5c certificate must use P-256 or brainpoolP256r1 curve for gematik requirements")
+        .isTrue();
 
     verifyWithEcPublicKey(signedJwt, certificatePublicKey, "x5c certificate");
   }
 
+  /**
+   * Verifies that the JWT header contains an x5c certificate chain and that the first certificate
+   * is self-signed (subject equals issuer and the certificate validates with its own public key).
+   *
+   * @param jwt the base64 coded JWT
+   */
+  @Und("prüfe JWT {tigerResolvedString} verwendet ein self-signed x5c Zertifikat")
+  @And("check JWT {tigerResolvedString} uses a self-signed x5c certificate")
+  public void verifyJwtUsesSelfSignedX5cCertificate(String jwt) {
+    SignedJWT signedJwt = parseSignedJwt(jwt);
 
+    List<com.nimbusds.jose.util.Base64> certChain = signedJwt.getHeader().getX509CertChain();
+    assertThat(certChain)
+        .as("JWT must contain x5c certificate chain in header")
+        .isNotNull()
+        .isNotEmpty();
+
+    assertThat(certChain)
+        .as("Self-signed x5c certificate chain should contain exactly one certificate")
+        .hasSize(1);
+    
+    X509Certificate certificate = parseCertificateFromX5c(certChain.get(0));
+    assertThat(certificate.getSubjectX500Principal())
+        .as("x5c certificate must be self-signed")
+        .isEqualTo(certificate.getIssuerX500Principal());
+
+    try {
+      certificate.verify(certificate.getPublicKey());
+    } catch (GeneralSecurityException e) {
+      throw new AssertionError("x5c certificate must be self-signed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Checks whether the curve is allowed for gematik requirements (P-256 or brainpoolP256r1).
+   *
+   * @param curve the JOSE curve to check
+   * @return true if the curve is allowed
+   */
+  private boolean isAllowedEcCurve(Curve curve) {
+    if (curve == null) {
+      return false;
+    }
+    if (Curve.P_256.equals(curve)) {
+      return true;
+    }
+    return "brainpoolP256r1".equalsIgnoreCase(curve.getName());
+  }
+
+  /**
+   * Determines whether an X.509 certificate uses the brainpoolP256r1 curve by inspecting the
+   * algorithm parameters.
+   *
+   * @param certificate the certificate to inspect
+   * @return true if the certificate uses brainpoolP256r1
+   */
+  private boolean isBrainpoolP256r1Certificate(X509Certificate certificate) {
+    try {
+      SubjectPublicKeyInfo spki = SubjectPublicKeyInfo.getInstance(
+          certificate.getPublicKey().getEncoded());
+      ASN1Encodable params = spki.getAlgorithm().getParameters();
+      if (params instanceof ASN1ObjectIdentifier) {
+        return TeleTrusTObjectIdentifiers.brainpoolP256r1.equals(params);
+      }
+    } catch (RuntimeException e) {
+      log.debug("Failed to resolve EC curve OID from certificate: {}", e.getMessage(), e);
+    }
+    return false;
+  }
+
+  /**
+   * Parses a compact serialized JWT into a {@link SignedJWT}.
+   *
+   * @param jwt the compact serialized JWT
+   * @return the parsed {@link SignedJWT}
+   */
   private SignedJWT parseSignedJwt(String jwt) {
     try {
       return SignedJWT.parse(jwt);
@@ -411,14 +499,28 @@ public class JwtSteps {
     }
   }
 
+  /**
+   * Verifies a JWT signature using the given EC public key. If Nimbus fails (e.g., unsupported
+   * curve handling), falls back to Bouncy Castle verification.
+   *
+   * @param signedJwt the parsed, signed JWT
+   * @param publicKey the EC public key used for verification
+   * @param keySource human-readable description of the key source (e.g., jwk header, x5c)
+   */
   private void verifyWithEcPublicKey(SignedJWT signedJwt, ECPublicKey publicKey, String keySource) {
     boolean valid;
     try {
       JWSVerifier verifier = new ECDSAVerifier(publicKey);
       valid = signedJwt.verify(verifier);
     } catch (JOSEException e) {
-      throw new AssertionError(
-          "Failed to verify JWT signature using " + keySource + ": " + e.getMessage(), e);
+      try {
+        valid = verifyWithBcEcdsa(signedJwt, publicKey, keySource);
+      } catch (AssertionError bcError) {
+        AssertionError combined = new AssertionError(
+            "Failed to verify JWT signature using " + keySource + ": " + e.getMessage(), e);
+        combined.addSuppressed(bcError);
+        throw combined;
+      }
     }
 
     assertThat(valid)
@@ -428,6 +530,64 @@ public class JwtSteps {
     log.info("JWT signature verified successfully using {}", keySource);
   }
 
+  /**
+   * Verifies a JWT ECDSA signature using Bouncy Castle (SHA256withECDSA).
+   *
+   * @param signedJwt the parsed, signed JWT
+   * @param publicKey the EC public key used for verification
+   * @param keySource human-readable description of the key source (e.g., jwk header, x5c)
+   * @return true if the signature verifies
+   */
+  private boolean verifyWithBcEcdsa(
+      SignedJWT signedJwt, ECPublicKey publicKey, String keySource) {
+    try {
+      if (Security.getProvider("BC") == null) {
+        Security.addProvider(new BouncyCastleProvider());
+      }
+      Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
+      signature.initVerify(publicKey);
+      signature.update(signedJwt.getSigningInput());
+      byte[] jwsSignature = signedJwt.getSignature().decode();
+      return signature.verify(jwsEcdsaSignatureToDer(jwsSignature));
+    } catch (GeneralSecurityException e) {
+      throw new AssertionError(
+          "Failed to verify JWT signature using " + keySource + ": " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Converts a JWS ECDSA signature (raw R||S) into DER encoding.
+   *
+   * @param jwsSignature the raw JWS signature bytes
+   * @return DER-encoded ECDSA signature
+   */
+  private byte[] jwsEcdsaSignatureToDer(byte[] jwsSignature) {
+    if (jwsSignature.length % 2 != 0) {
+      throw new AssertionError("Invalid JWS ECDSA signature length: " + jwsSignature.length);
+    }
+    int partLen = jwsSignature.length / 2;
+    byte[] bytesPartR = new byte[partLen];
+    byte[] bytesPartS = new byte[partLen];
+    System.arraycopy(jwsSignature, 0, bytesPartR, 0, partLen);
+    System.arraycopy(jwsSignature, partLen, bytesPartS, 0, partLen);
+    BigInteger r = new BigInteger(1, bytesPartR);
+    BigInteger s = new BigInteger(1, bytesPartS);
+    ASN1EncodableVector v = new ASN1EncodableVector();
+    v.add(new ASN1Integer(r));
+    v.add(new ASN1Integer(s));
+    try {
+      return new DERSequence(v).getEncoded();
+    } catch (IOException e) {
+      throw new AssertionError("Failed to encode ECDSA signature: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Parses the first x5c certificate entry from a JWT header into an {@link X509Certificate}.
+   *
+   * @param base64Certificate the base64-encoded certificate (x5c entry)
+   * @return parsed {@link X509Certificate}
+   */
   private X509Certificate parseCertificateFromX5c(
       com.nimbusds.jose.util.Base64 base64Certificate) {
     try {

@@ -15,13 +15,14 @@ achelos GmbH
 :sectlinks:
 :icons: font
 :source-highlighter: rouge
-:source-linenums-option:
 :source-language: gherkin
 :imagesdir: images
 :diagram-format: svg
 :mermaid-config: mermaid-config.json
 
 :project-name: ZETA-Testsuite
+ifndef::revnumber[:revnumber: dev]
+ifndef::revdate[:revdate: {localdate}]
 
 include::afos/readme_aliases.adoc[]
 
@@ -32,6 +33,8 @@ include::chapters/01_testplan_identifier.adoc[]
 include::chapters/02_referenzen.adoc[]
 
 include::chapters/03_einleitung.adoc[]
+
+include::definitions/readme.adoc[]
 
 include::../../src/test/resources/features/readme.adoc[]
 

@@ -53,16 +53,3 @@ include::TA_A_27007_24.adoc[]
 include::TA_A_27007_25.adoc[]
 
 include::TA_A_27007_26.adoc[]
-
-include::TA_A_27007_27.adoc[]
-
-include::TA_A_27007_28.adoc[]
-
-include::TA_A_27007_29.adoc[]
-
-include::TA_A_27007_30.adoc[]
-
-include::TA_A_27007_31.adoc[]
-
-include::TA_A_27007_32.adoc[]
-

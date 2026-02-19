@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_24
@@ -107,5 +108,7 @@ Funktionalität: Client_ressource_anfrage_Performance_SC_200
     Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.managementServicePath}" mit folgenden Headern:
       | Authorization | ${tokens.managementServiceHeaderToken} |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.managementServicePath}"
+    # TA_A_27853_07 - ZETA Guard, Responses mit Header ZETA-API-Version - Management Service
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.ZETA-API-Version"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.ZETA-API-Version" überein mit "${regex.zetaApiVersion}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.ZETA-API-Version" überein mit "${testdata.semVer}"

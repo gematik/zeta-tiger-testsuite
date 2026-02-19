@@ -25,6 +25,9 @@ deklarierten Abhängigkeiten.
   und verknüpfte TestAspekte direkt aus YouTrack ab und gibt eine strukturierte Übersicht aus.
 - [generate_cucumber_methods.py](src/testsuite_docs/generate_cucumber_methods.py): erzeugt eine
   generierte TGR/Cucumber-Step-Tabelle aus projektinternem Glue.
+- [gitlab_issue_sync.py](src/testsuite_docs/gitlab_issue_sync.py): erstellt/aktualisiert GitLab-Issues
+  für AFOs/Testaspekte, schließt Testaspekte mit @TA_-Szenario-Tags und synchronisiert AFO-Issues
+  (open/closed).
   der Feature-Struktur eine Markdown-Datei für Serenity (setzt `pydowndoc[bin]` voraus, wird beim
   `uv sync` automatisch installiert).
 
@@ -65,8 +68,8 @@ Szenarien oder ganze Features, bei denen der Testaspekt *noch nicht* im Produkt 
 werden mit `@product_not_impl` (bzw. `@produkt_not_impl`, `@canary`, `@not_impl`,
 `@not_implemented`) getaggt.
 Ohne Tag wird von einer Umsetzung im Produkt ausgegangen.
-Die generierte Tabelle der User Stories/Use Cases weist dies in der Spalte „im Produkt umgesetzt“
-aus und zeigt in „implementiert (Szenario vorhanden)“ die vorhandene Verknüpfung.
+Die generierte Tabelle der User Stories/Use Cases zeigt in
+„implementiert (Szenario vorhanden)“ die vorhandene Verknüpfung.
 
 Für die Lückenanalyse zwischen Produktumsetzung und Testsuite-Abdeckung kann optional eine CSV
 unter `docs/asciidoc/tables/product_implementation.csv` hinterlegt werden (Spalten:
@@ -74,7 +77,8 @@ unter `docs/asciidoc/tables/product_implementation.csv` hinterlegt werden (Spalt
 optional `Hinweis`). Der Titel wird von der Generierung ignoriert.
 Die Traceability-Generierung erzeugt daraus die Tabelle
 `docs/asciidoc/tables/product_gap_table.adoc`, die pro Anforderung den gemeldeten
-Umsetzungsstand, die Testsuite-Abdeckung (`ja`/`teilweise`/`nein`) sowie Hinweise zur Lücke zeigt.
+Umsetzungsstand, die Testsuite-Abdeckung (`ja`/`teilweise`/`nein`), die prozentuale
+Testabdeckung (implementierte/gesamte Testaspekte) sowie Hinweise zur Lücke zeigt.
 
 Die Abdeckungsmetriken werden konsistent aus den Testaspekt-Katalogen und
 Feature-Tags berechnet:
@@ -179,3 +183,16 @@ Optional:
 
 - `--glue-dir`: anderer Glue-Root (Standard: `src/test/java`).
 - `--output`: eigener Zielpfad (Standard: `docs/asciidoc/tables/cucumber_methods_table.adoc`).
+
+### Skript: [gitlab_issue_sync.py](src/testsuite_docs/gitlab_issue_sync.py)
+
+```bash
+uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token --issue-state all
+```
+
+Hinweise:
+
+- Standardmäßig Dry-Run; Änderungen erst mit `--apply`.
+- Szenario-Tags werden immer verarbeitet (TA-Tag vorhanden → schließen, entfernt → wieder öffnen).
+- GitLab.com unterstützt das Statusfeld „In progress/Done“ nicht per API-Update; das Skript nutzt open/close.
+- Tokenquelle: `/tmp/gitlab_token`, `GITLAB_TOKEN` oder `CI_JOB_TOKEN`.

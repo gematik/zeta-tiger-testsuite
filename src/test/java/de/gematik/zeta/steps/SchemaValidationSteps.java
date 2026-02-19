@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -160,8 +160,8 @@ public class SchemaValidationSteps {
    * @param encodedJwt the Base64 coded JWT to be validated
    * @param schemaName relative path of the schema under {@code resources}
    */
-  @Dann("decodiere und validiere {tigerResolvedString} gegen Schema {string} (soft assert)")
-  @Then("decode and validate {tigerResolvedString} against schema {string} (soft assert)")
+  @Dann("decodiere und validiere {tigerResolvedString} gegen Schema {string} soft assert")
+  @Then("decode and validate {tigerResolvedString} against schema {string} soft assert")
   public void softlyValidateEncodedJwtAgainstYamlSchema(String encodedJwt,
       String schemaName) {
 

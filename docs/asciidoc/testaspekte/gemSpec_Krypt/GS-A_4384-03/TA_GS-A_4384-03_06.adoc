@@ -1,11 +1,11 @@
 [#TA_GS-A_4384-03_06]
-===== TA_GS-A_4384-03_06 - TLS-Verbindungen - PIP & PAP - eliptische Kurven
+===== TA_GS-A_4384-03_06 - TLS-Verbindungen - ZETA Guard - PDP Authorization Server - Ciphersuiten
 
 Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
 
 * [...]
+* Als **Cipher-Suite** MÜSSEN **TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256** und **TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384** unterstützt werden.
 * [...]
-* Beim **ephemeren Elliptic-Curve-Diffie-Hellman-Schlüsselaustausch** (vgl. "ECDHE" im Namen der Cipher-Suites) MÜSSEN die **Kurven P-256** und **P-384** [FIPS-186-5] **unterstützt werden.** Es SOLLEN die Kurven brainpoolP256r1 und brainpoolP384r1 (vgl. [RFC-5639] und [RFC-7027]) unterstützt werden. ***Andere Kurven als in GS-A_4384-**** **aufgeführt DÜRFEN NICHT verwendet werden.**
-* [...]
+* Es KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1 Tabelle 1] unterstützt werden.
 
 **[<=]**

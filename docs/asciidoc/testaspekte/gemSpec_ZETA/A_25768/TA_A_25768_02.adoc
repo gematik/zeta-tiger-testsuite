@@ -1,0 +1,4 @@
+[#TA_A_25768_02]
+===== TA_A_25768_02 - ZETA Client - Clientregistrierung mit bestätigten Umgebungseigenschaften Apple - App Integrität über DCAppAttest
+
+Der ZETA Client für eine Apple-basierte Betriebsumgebung (iOS, macOS) MUSS die Client-Credentials, **App Integrität** und Authentizität über **DCAppAttest** gegenüber dem PDP Authorization Server bestätigen. Eigenschaften der Laufzeitumgebung MÜSSEN durch das Clientsystem über einen geprüften Prozess bestätigt werden. **[<=]**
