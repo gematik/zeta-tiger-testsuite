@@ -1,4 +1,18 @@
 [#TA_A_26661_03]
 ===== TA_A_26661_03 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 401 Unauthorized
 
-"Der ZETA Guard MUSS für **Authentifizierung mit Client Assertion JWT** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Authentifizierung mit Client Assertion JWT** | +++[...]+++ +++<br />+++**401 Unauthorized**: Authentifizierung fehlgeschlagen, z.B. aufgrund einer ungültigen Signatur oder eines abgelaufenen JWT. Der Client sollte überprüfen, ob das JWT korrekt signiert und nicht abgelaufen ist. Er kann ein neues JWT generieren und die Anfrage erneut senden. +++<br />+++[...] |
+
+|===
+
+[...]"

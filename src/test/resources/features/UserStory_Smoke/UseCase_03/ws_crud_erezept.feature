@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 
 #language:de
 
+@websocket
+@stomp
 @no_proxy
 @UseCase_Smoke_03
 Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
@@ -37,6 +39,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
 
   Szenario: CREATE - Rezept erstellen und ID speichern
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-create" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
@@ -71,6 +74,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Szenario: READ - Rezept mit Datenbank-ID lesen
     Gegeben sei Variable "wsCreatedId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-read" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -92,6 +96,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
 
   Szenario: Alle Rezepte AUFLISTEN
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-list" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.list}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -100,6 +105,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Szenario: UPDATE - Rezeptstatus auf SIGNED aktualisieren
     Gegeben sei Variable "wsCreatedId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-update" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.updatePrefix}${wsCreatedId}" mit folgenden JSON Daten gesendet wird:
       """
@@ -121,6 +127,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Szenario: Aktualisierten Status als gespeichert verifizieren
     Gegeben sei Variable "wsCreatedId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-verify" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -143,6 +150,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Szenario: DELETE - Rezept löschen
     Gegeben sei Variable "wsCreatedId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-delete" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -158,6 +166,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Szenario: Gelöschtes Rezept verifizieren (Fehlermeldung)
     Gegeben sei Variable "wsCreatedId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-verify-delete" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen

@@ -20,11 +20,27 @@ rbel:                                       # default is 5 – request wait time
   request:
     timeout: 20
 
+logging:
+  level:
+    de.gematik.test.tiger: INFO
+    de.gematik.test.tiger.proxy: DEBUG
+
+servers:
+  # Note that the zetaClient needs '/proxy/' as path before the correct path.
+  zetaClient:
+    type: externalUrl
+    source:
+      - "https://${zeta_base_url}/"
+    healthcheckUrl: "https://${zeta_base_url}/health"
+
+  zetaGuard:
+    type: externalUrl
+    source:
+      - "https://${zeta_base_url}/"
+    healthcheckUrl: "https://${zeta_base_url}/actuator/health"
+
 additionalConfigurationFiles:
   - filename: tiger/defaults.yaml
-  - filename: tiger/tiger-${zeta_proxy}.yaml
-  - filename: tiger/tiger-${environment}.yaml
-    baseKey: tiger
   - filename: tiger/paths.yaml
     baseKey: paths
   - filename: tiger/eRezeptTestData.yaml
@@ -35,3 +51,5 @@ additionalConfigurationFiles:
     baseKey: testdata
   - filename: tiger/tokens.yaml
     baseKey: tokens
+  - filename: tiger/zeta-deployment-config.yaml
+    baseKey: zetaDeploymentConfig

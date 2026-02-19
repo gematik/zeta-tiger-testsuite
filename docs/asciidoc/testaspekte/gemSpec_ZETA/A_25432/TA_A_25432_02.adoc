@@ -1,0 +1,8 @@
+[#TA_A_25432_02]
+===== TA_A_25432_02 - ZETA Client - Ablauf Clientregistrierung - Authentifizierung mittels OpenID Connect
+
+Der mobile ZETA Client MUSS, sofern es an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, in dem es 
+
+* **den/die Benutzer:in mittels OpenID Connect authentifiziert**
+
+**[<=]**

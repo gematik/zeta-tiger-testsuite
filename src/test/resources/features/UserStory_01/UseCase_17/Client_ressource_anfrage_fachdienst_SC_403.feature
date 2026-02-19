@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_17
@@ -33,12 +34,9 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_403
   @A_25660
   @A_26477
   @A_26661
-  @A_27007
   @TA_A_25660_03
-  @TA_A_26477_02
   @TA_A_26477_08
-  @TA_A_26661_01
-  @TA_A_27007_26
+  @TA_A_26661_20
   Szenariogrundriss: PoPP Token Manipulation Test - Token Request
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -68,54 +66,3 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_403
       | $.header.popp              | body.iat                 | 1701432000            | 403          |
       | $.header.popp              | body.patientProofTime    | 1701432000            | 403          |
       | $.header.popp              | body.actorId             | evil_client           | 403          |
-
-  @dev
-  @A_26988
-  @TA_A_26988_01
-  Szenariogrundriss: Telemetrie-Daten Service - Fehlermeldungen
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                      | size |
-      | resource.k8s.namespace.name:zeta-local AND resource.k8s.container.name:<containerName> AND attributes.log.file.path:/var/log/pods/* AND attributes.log.iostream:stderr | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für genau diesen Container gibt.
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-
-    Beispiele:
-      | containerName           |
-
-      # TA_A_26988_01, Ingress
-      | controller              |
-
-      # TODO: TA_A_26988_02, Egress               <- Container/Gateway fehlt noch
-      #| controller-out          |
-
-      # TA_A_26988_03, HTTP Proxy
-      | nginx                   |
-
-      # TA_A_26988_04, PEP Datenbank              <- Container fehlt noch
-      #| database-pep            |
-
-      # TA_A_26988_05, Authorization Server
-      | keycloak                |
-
-      # TA_A_26988_06, PDP Datenbank
-      | postgresql              |
-
-      # TA_A_26988_07, Policy Engine
-      | opa                     |
-
-      # TODO: TA_A_26988_08, Notification Service <- Container fehlt noch
-      #| notification-service    |
-
-      # TODO: TA_A_26988_09, Management Service   <- Container wird wahrscheinlich nicht benötigt
-      #| management-service      |
-
-      # TA_A_26988_10, Telemetrie Daten Service
-      | opentelemetry-collector |
-
-      # Zulieferer für den Telemetrie Daten Service
-      | log-collector           |
-
-      # TA_A_26988_11, Resource Server
-      | testfachdienst          |

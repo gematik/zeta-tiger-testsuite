@@ -7,38 +7,60 @@
 | *Titel:* | Client registrierung stationaer SC 400
 
 | Akteur: |
-TODO
+*MA einer LEI*
 
 | weitere Akteure: |
-TODO
+- *ZETA Client*
+- *PDP Authorization Server*
+- *PDP Datenbank*
 
 | Auslöser: |
-TODO
+Ein MA einer LEI startet die Registrierung eines stationären ZETA Clients mit fehlerhaften oder unvollständigen Registrierungsdaten.
 
 | Kurzbeschreibung: |
-TODO
+Der ZETA Client sendet eine Dynamic Client Registration mit ungültigen oder unvollständigen Angaben an den PDP Authorization Server.
+Der Server weist die Registrierung mit ``400 Bad Request`` zurück.
+Der ZETA Client informiert den MA, dass die Registrierung
+aufgrund fehlerhafter Daten fehlgeschlagen ist und korrigiert werden muss.
 
 | Vorbedingung: |
-TODO
+Der stationäre ZETA Client ist noch nicht beim ZETA Guard registriert.
 
 | Nebenbedingung: |
-TODO
+Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
-TODO
+. Der MA startet die *initiale Registrierung* im ZETA Client.
+. Der ZETA Client generiert ein *Client Instance Key Pair*.
+. Der ZETA Client sendet eine *Dynamic Client Registration (DCR)* an den PDP Authorization Server (``POST /register``) mit ungültigen oder unvollständigen Registrierungsdaten.
+. Der PDP Authorization Server prüft die DCR auf Vollständigkeit und Gültigkeit.
+. Der PDP Authorization Server antwortet mit ``400 Bad Request`` und einer Fehlermeldung zur Registrierung.
+. Der ZETA Client informiert den MA, dass die Registrierungsdaten zu korrigieren sind.
 
 | Nachbedingung: |
-TODO
+Der stationäre ZETA Client besitzt keine ``client_id``.
+Es wurde keine Registrierung in der PDP Datenbank gespeichert.
 
 | Abgedeckte Testaspekte: |
-TODO
+* <<TA_A_26661_11>>
 
 |===
 
 [mermaid]
 ....
 sequenceDiagram
-    %% TODO
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PDP-AS as PDP Authorization<br>Server
+
+    MA->>+ZC: Start initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register (ungültige Daten)
+    PDP-AS->>PDP-AS: Validierung der DCR
+    PDP-AS-->>-ZC: 400 Bad Request (Fehlerdetails)
+    ZC-->>-MA: Registrierung fehlgeschlagen<br>Registrierungsdaten korrigieren
 ....
 
 [.lead]
@@ -46,5 +68,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-TODO
+include::client_registrierung_stationaer_sc_400.feature[]
 ----

@@ -1,44 +1,96 @@
 [#UC_01_23]
 == UseCase_01_23: Client ressource anfrage fachdienst ClientDaten-Header SC 200
 
-.UseCase_01_21
+.UseCase_01_23
 [cols="1,1a",options="autowidth"]
 |===
 | *Titel:* | Client ressource anfrage fachdienst ClientDaten-Header SC 200
 
 | Akteur: |
-TODO
+*MA einer LEI*
 
 | weitere Akteure: |
-TODO
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *PDP Datenbank*
+- *Resource Server*
 
 | Auslöser: |
-TODO
+Ein MA einer LEI möchte über den ZETA Client eine geschützte Ressource abrufen und benutzen.
 
 | Kurzbeschreibung: |
-TODO
+Der ZETA Client sendet eine Anfrage mit Access Token und DPoP Nachweis an den PEP HTTP Proxy.
+Der Proxy verifiziert die Tokens, fragt die Client-Daten anhand des ``sub``-Claims aus der PDP Datenbank ab und fügt diese als ``ZETA-Client-Data`` Header ein.
+Der Request wird an den Resource Server weitergeleitet und mit ``200 OK`` beantwortet.
 
 | Vorbedingung: |
-TODO
+Der stationäre ZETA Client ist registriert und verfügt über ein gültiges Access Token.
 
 | Nebenbedingung: |
-TODO
+Die Weiterleitung der Client-Daten ist für den angefragten Endpunkt im PEP HTTP Proxy aktiviert. <<A_26492-01>>
 
 | Ablauf: |
-TODO
+. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+. Der ZETA Client erstellt einen *DPoP Nachweis*.
+. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+. Der PEP HTTP Proxy prüft das *Access Token*.
+. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+. Der PEP HTTP Proxy fragt die Client-Daten anhand des ``sub``-Claims des Access Tokens in der PDP Datenbank ab.
+. Die PDP Datenbank liefert ``200 OK`` mit den Client-Daten.
+. Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
+* *ZETA-User-Info*:
+** Format: ``Base64-URL kodierte JSON Struktur des User-Info Inhalts``
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/user-info.yaml[user-info.yaml]
+* *ZETA-Client-Data*:
+** Format: ``Base64-URL kodierte JSON Struktur der Client-Daten``
+. Gleichnamige HTTP-Header aus dem ursprünglichen Request werden entfernt bzw. überschrieben.
+. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter:
+* ``GET /resource``-Anfrage
+** mit vorhandenen HTTP headers
+** zusätzlich erstellten Headern
+*** ``ZETA-User-Info`` und
+*** explizit ``ZETA-Client-Data``
+. Der Resource Server antwortet mit ``200 OK`` und der angeforderten Ressource.
+. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
+. Der ZETA Client liefert die Ressource an den MA.
 
 | Nachbedingung: |
-TODO
+Der MA hat die geschützte Ressource erfolgreich abgerufen und die Anfrage wurde mit ``ZETA-Client-Data`` weitergeleitet.
 
 | Abgedeckte Testaspekte: |
-TODO
-
+* <<TA_A_25669_03>>
+* <<TA_A_25669_06>>
+* <<TA_A_26492-01_03>>
+* <<TA_A_26590_01>>
 |===
 
 [mermaid]
 ....
 sequenceDiagram
-    %% TODO
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant PDP-DB as PDP Datenbank
+    participant RS as Resource Server
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource
+
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP->>+PDP-DB: Anfrage von Client-Daten (sub Claim)
+    PDP-DB-->>-PEP-HP: 200 OK, Client-Daten
+    PEP-HP->>PEP-HP: Erzeuge ZETA-Client-Data Header
+    PEP-HP->>+RS: Weiterleiten GET /resource
+    RS-->>-PEP-HP: 200 OK, Ressource
+    PEP-HP-->>-ZC: 200 OK, Ressource
+    ZC-->>-MA: Ressource
 ....
 
 [.lead]

@@ -1,0 +1,10 @@
+[#TA_A_26964_02]
+===== TA_A_26964_02 - ZETA Guard - OCSP Stapling - OCSP Abfrageintervall - Minimum
+
+Das OCSP Abfrageintervall MUSS das **Minimum aus ``dynamic_validity_period`` und ``max_allowed_validity_period``** sein, wenn ``NextUpdate`` in der OCSP Response angegeben ist. 
+
++++[...]+++
+
+Dabei gilt: ``dynamic_validity_period`` = (``percentage_of_validity_period`` * (``NextUpdate`` - ``ThisUpdate``)) / 100
+
+**[<=]**

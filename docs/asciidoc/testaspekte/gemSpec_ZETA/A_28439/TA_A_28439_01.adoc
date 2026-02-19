@@ -1,0 +1,4 @@
+[#TA_A_28439_01]
+===== TA_A_28439_01 - PEP HTTP Proxy - Forwarded-Header aktualisieren
+
+Die Komponente PEP HTTP Proxy MUSS in jeder empfangene HTTP-Anfrage den **Forwarded-Header** gemäß [RFC 7239] in der weitergeleiteten Anfragen **aktualisieren**. **[<=]**

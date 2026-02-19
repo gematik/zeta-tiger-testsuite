@@ -1,4 +1,18 @@
 [#TA_A_26661_21]
 ===== TA_A_26661_21 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 404 Not Found
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **404 Not Found** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**404 Not Found**: Die angeforderte Ressource wurde nicht gefunden.+++<br />+++[...] |
+
+|===
+
+[...]"

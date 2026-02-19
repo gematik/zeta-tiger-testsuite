@@ -1,0 +1,55 @@
+[#UC_Telemetrie_01]
+== UseCase_Telemetrie_01: OpenTelemetry-Basisprüfungen ohne fachlichen Trigger
+
+.UseCase_Telemetrie_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | OpenTelemetry-Basisprüfungen ohne fachlichen Trigger
+
+| Akteur: |
+*Testsuite*
+
+| weitere Akteure: |
+*ZETA Guard*
+
+| Auslöser: |
+Die Testsuite prüft vorhandene Telemetriedaten in OpenSearch ohne vorgelagerten fachlichen End-to-End-Ablauf.
+
+| Kurzbeschreibung: |
+Es wird geprüft, dass zentrale ZETA Guard Komponenten OpenTelemetry-konforme Logs bereitstellen und über den Telemetrie-Pfad auffindbar sind.
+
+| Vorbedingung: |
+. OpenSearch ist erreichbar.
+. Die ZETA Guard Umgebung erzeugt und exportiert Telemetriedaten.
+
+| Nebenbedingung: |
+Nur Testaspekte ohne dedizierten Trigger und ohne passende Zuordnung zu einem fachlichen Use Case werden hier geprüft.
+
+| Ablauf: |
+. Die Testsuite fragt OpenSearch mit komponentenspezifischen Suchkriterien ab.
+. Die Antwort wird auf HTTP-Status und vorhandene Treffer validiert.
+
+| Nachbedingung: |
+Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifiziert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25796_01>>
+* <<TA_A_25796_30>>
+* <<TA_A_26988_01>>
+* <<TA_A_27264_19>>
+* <<TA_A_27264_21>>
+* <<TA_A_27264_22>>
+* <<TA_A_27264_23>>
+* <<TA_A_27264_26>>
+* <<TA_A_27264_27>>
+* <<TA_A_27492-01_03>>
+
+|===
+
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::telemetrie_ohne_trigger.feature[]
+----

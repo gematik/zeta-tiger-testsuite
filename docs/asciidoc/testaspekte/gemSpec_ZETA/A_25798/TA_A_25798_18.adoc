@@ -1,0 +1,4 @@
+[#TA_A_25798_18]
+===== TA_A_25798_18 - ZETA Guard-Komponenten - Regelmäßige Selbstüberprüfung - Abhängigkeiten - Ingress
+
+"Die Komponenten des ZETA Guard MUSS in der Lage sein, **regelmäßige Selbstüberprüfungen durchzuführen**, um interne Funktionen und **Abhängigkeiten** zu verifizieren und sicherzustellen, dass sie korrekt arbeiten. **[<=]**"

@@ -1,41 +1,31 @@
 #!/bin/sh
 set -eu
 
+common_lib="/app/run-tests-common.sh"
+if [ ! -f "${common_lib}" ]; then
+  common_lib="$(dirname "$0")/../run-tests-common.sh"
+fi
+# shellcheck source=/app/run-tests-common.sh
+. "${common_lib}" || { echo "Failed to load ${common_lib}" >&2; exit 1; }
+
 # GitLab runner sets CWD to /builds/...; ensure Maven sees the POM in /app.
-cd /app || { echo "Expected /app to exist in the frontend image." >&2; exit 1; }
+tiger_cd_app "/app"
 
-serenity_dir="/app/target/site/serenity"
-cucumber_dir="/app/target/cucumber-parallel"
+tiger_set_defaults
 
-normalize_dir() {
-  # Treat file-like paths (ending with .json/.xml/etc.) as a directory by stripping the filename.
-  path="$1"
-  case "${path}" in
-    *.json|*.xml) dirname "$(realpath -m "$(dirname "${path}")")" ;;
-    *) realpath -m "${path}" ;;
-  esac
-}
+tiger_setup_report_dirs "symlink" \
+  "/app/target/site/serenity" \
+  "/app/target/cucumber-parallel" \
+  "/app/target/allure-results"
 
-maybe_link() {
-  target_dir="$1"; default_dir="$2"
-  # If the target looks like a file path, use its parent directory.
-  target_dir="$(normalize_dir "${target_dir}")"
-  if [ -n "${target_dir}" ] && [ "${target_dir}" != "${default_dir}" ]; then
-    mkdir -p "${target_dir}"
-    mkdir -p "$(dirname "${default_dir}")"
-    rm -rf "${default_dir}"
-    ln -s "${target_dir}" "${default_dir}"
-  else
-    mkdir -p "${default_dir}"
-  fi
-}
-
-maybe_link "${SERENITY_EXPORT_DIR:-}" "${serenity_dir}"
-maybe_link "${CUCUMBER_EXPORT_DIR:-}" "${cucumber_dir}"
-mkdir -p "${serenity_dir}" "${cucumber_dir}"
+profile_arg=""
+if [ -n "${PROFILE}" ]; then
+  profile_arg="-DPROFILE=${PROFILE}"
+fi
 
 set +e
 mvn -o -B \
+  -Dmaven.repo.local=/tmp/.m2/repository \
   -Djava.awt.headless=true \
   -Dtiger.lib.activateWorkflowUi=false \
   -Dtiger.lib.startBrowser=false \
@@ -43,10 +33,10 @@ mvn -o -B \
   -Dtiger.lib.rbelAnsiColors=false \
   -Dtiger.lib.runTestsOnStart=true \
   -Dfailsafe.testFailureIgnore=false \
-  "-Denvironment=${TIGER_ENVIRONMENT}" \
+  ${profile_arg:+${profile_arg}} \
   "-Dzeta_base_url=${ZETA_BASE_URL}" \
   "-Dzeta_proxy_url=${ZETA_PROXY_URL}" \
-  "-Dzeta_proxy=${ZETA_PROXY}" \
+  "-Dopensearch_url=${OPENSEARCH_URL}" \
   "-Dcucumber.filter.tags=${CUCUMBER_TAGS}" \
   verify
 MVN_RESULT=$?

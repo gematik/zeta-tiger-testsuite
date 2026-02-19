@@ -1,4 +1,18 @@
 [#TA_A_26661_20]
 ===== TA_A_26661_20 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 403 Forbidden
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **403 Forbidden** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**403 Forbidden**: Zugriff auf die angeforderte Ressource durch den Proxy verweigert. Der Client darf keine weiteren Anfragen an diese Ressource senden und soll den Nutzer über die fehlende Berechtigung informieren.+++<br />+++[...] |
+
+|===
+
+[...]"

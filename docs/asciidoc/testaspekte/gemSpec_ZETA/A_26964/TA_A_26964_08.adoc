@@ -1,0 +1,4 @@
+[#TA_A_26964_08]
+===== TA_A_26964_08 - ZETA Guard - OCSP Stapling - OCSP Abfrage - Warnung
+
+Es MUSS eine **Warnung bereitgestellt** werden, wenn eine OCSP Abfrage fehlschlägt. **[<=]**

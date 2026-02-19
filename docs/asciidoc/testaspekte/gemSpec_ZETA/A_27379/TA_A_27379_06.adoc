@@ -1,0 +1,4 @@
+[#TA_A_27379_06]
+===== TA_A_27379_06 - ZETA Client  - OCSP Stapling Unterstützung - OCSP-Antwort - Abgleich aktuelles Zertifikat
+
+Der ZETA Client MUSS überprüfen, ob die OCSP-Antwort zum **aktuellen Zertifikat** passt. **[<=]**

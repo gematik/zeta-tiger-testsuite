@@ -209,7 +209,9 @@ Der stationäre ZETA Client besitzt kein gültiges Access- oder Refresh-Token.
 * <<TA_A_25748_02>>
 * <<TA_A_25752_01>>
 * <<TA_A_26661_01>>
-* <<TA_A_27007_17>>
+* <<TA_A_26661_04>>
+* <<TA_A_27007_04>>
+* <<TA_A_27007_13>>
 
 |===
 

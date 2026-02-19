@@ -1,0 +1,15 @@
+==== Testaspekte für die Anforderung A_25652
+
+Folgende Testaspekte testen <<A_25652>>.
+
+include::TA_A_25652_01.adoc[]
+
+include::TA_A_25652_02.adoc[]
+
+include::TA_A_25652_03.adoc[]
+
+include::TA_A_25652_04.adoc[]
+
+include::TA_A_25652_05.adoc[]
+
+include::TA_A_25652_06.adoc[]

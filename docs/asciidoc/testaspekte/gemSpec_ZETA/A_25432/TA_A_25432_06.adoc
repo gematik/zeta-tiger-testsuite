@@ -1,0 +1,8 @@
+[#TA_A_25432_06]
+===== TA_A_25432_06 - ZETA Client - Ablauf Clientregistrierung - Zusätzliche Benutzerbestätigung mittels One-Time-Passwort
+
+Der mobile ZETA Client MUSS, sofern es an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, in dem es 
+
+* **eine zusätzliche Benutzerbestätigung mittels One-Time-Passwort** (gemäß [TR-03107-1]) **über einen zweiten Kommunikationsweg (z. B. E-Mailbestätigung) startet**. 
+
+**[<=]**

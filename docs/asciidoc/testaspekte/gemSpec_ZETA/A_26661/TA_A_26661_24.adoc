@@ -1,4 +1,18 @@
 [#TA_A_26661_24]
 ===== TA_A_26661_24 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 504 Gateway Timeout
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **504 Gateway Timeout** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**504 Gateway Timeout**: Der Proxy hat auf eine Antwort vom Upstream-Server gewartet, diese aber nicht innerhalb des Timeouts erhalten. Der Client sollte die Anfrage nach einer angemessenen Wartezeit erneut versuchen und den Nutzer darüber informieren, dass der Server nicht rechtzeitig geantwortet hat.+++<br />+++[...] |
+
+|===
+
+[...]"

@@ -4,7 +4,17 @@ target
 out
 perf
 tools
+!tools/tls-test-tool-1.0.1/
+!tools/tls-test-tool-1.0.1/TlsTestTool-alpine
 docs
+!docs/
+!docs/asciidoc/
+!docs/asciidoc/tables/
+!docs/asciidoc/tables/product_implementation.csv
+!docs/asciidoc/testaspekte/
+!docs/asciidoc/testaspekte/**
 config
+!config/license-header.txt
+!config/tiger-driver-template.jtmpl
 jmeter.log
 *.iml

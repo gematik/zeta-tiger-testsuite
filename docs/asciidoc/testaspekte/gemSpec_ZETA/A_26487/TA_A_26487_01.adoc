@@ -1,0 +1,4 @@
+[#TA_A_26487_01]
+===== TA_A_26487_01 - PEP HTTP Proxy - horizontal skalierbar
+
+"Die Komponente PEP HTTP Proxy MUSS **horizontal skalierbar** sein, sodass **mit jedem zusätzlichen Pod** **mindestens 75% der Leistung eines einzigen Pods** verfügbar werden. **[<=]**"

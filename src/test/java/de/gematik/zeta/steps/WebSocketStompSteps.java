@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -90,16 +90,25 @@ public class WebSocketStompSteps {
   }
 
   /**
-   * Opens a WebSocket connection.
+   * Opens a raw WebSocket transport connection (upgrade probe only).
    *
-   * @param url The WebSocket URL to connect to
+   * @param url The WebSocket URL to probe
    */
   @Wenn("eine WebSocket Verbindung zu {tigerResolvedString} geöffnet wird")
   @When("a WebSocket to {tigerResolvedString} is opened")
   public void openWebSocket(String url) {
-    // Resolve Tiger placeholders (e.g. environment endpoints) before connecting.
-    sessionManager.connect(url);
-    log.info("Websocket connection to {} established.", url);
+    sessionManager.verifyWebSocketUpgrade(url);
+    log.info("Raw WebSocket transport to {} is reachable.", url);
+  }
+
+  /**
+   * Opens a STOMP session based on the previously opened WebSocket connection.
+   */
+  @Wenn("eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird")
+  @When("a STOMP session based on the previously opened WebSocket connection is opened")
+  public void openStompSessionFromExistingWebSocket() {
+    sessionManager.connectStompUsingExistingWebSocket();
+    log.info("STOMP session based on existing WebSocket connection established.");
   }
 
   /**
@@ -160,9 +169,9 @@ public class WebSocketStompSteps {
           });
       sessionManager.sendJson(resolvedChannel, payloadMap);
     } catch (JsonProcessingException e) {
-      // For invalid JSON (negative testing), send raw string
+      // For invalid JSON (negative testing), send the unparsed payload string as-is.
       log.info("JSON parsing failed (expected for negative tests), sending raw string");
-      sessionManager.sendJson(resolvedChannel, Map.of("raw", resolvedJson));
+      sessionManager.sendRaw(resolvedChannel, resolvedJson);
     } catch (Exception e) {
       throw new AssertionError(
           "Failed to send JSON to channel '" + resolvedChannel + "': " + e.getMessage(), e);
@@ -256,8 +265,8 @@ public class WebSocketStompSteps {
   }
 
   /**
-   * Verifies the last received WebSocket message matches expected JSON (similar to TGR step). Only
-   * checks fields that are present in expected JSON (partial match).
+   * Verifies the last received WebSocket message matches expected JSON (similar to TGR step). Only checks fields that are present in
+   * expected JSON (partial match).
    *
    * @param expectedJson The expected JSON string (supports Tiger placeholders)
    */

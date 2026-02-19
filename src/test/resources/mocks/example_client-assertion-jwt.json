@@ -1,0 +1,52 @@
+
+{
+  "header": {
+    "typ": "jwt",
+    "alg": "ES256",
+    "jwk": {
+      "kid": "tXz0SP3vfu_KzENmVDbZNtcg5uP-ogpk_9QZT8dDe3o",
+      "kty": "EC",
+      "alg": "ES256",
+      "use": "sig",
+      "crv": "P-256",
+      "x": "bN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuw",
+      "y": "KnHyxGQqrng_2ocR13Ss-X7KoxyXS5xE-qXGdJ2zQp4"
+    }
+  },
+  "payload": {
+    "iss": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
+    "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
+    "aud": [
+      "https://zeta-kind.local/auth/realms/zeta-guard/protocol/openid-connect/token"
+    ],
+    "exp": 1764599351,
+    "jti": "[B@1f54480b",
+    "client_statement": {
+      "sub": "b8e8899c-14e1-415f-b534-1448e8aa3b57",
+      "platform": "linux",
+      "posture_type": "software",
+      "posture": {
+        "platform_product_id": {
+          "platform": "linux",
+          "packaging_type": "deb",
+          "application_id": "org.mozilla.firefox"
+        },
+        "product_id": "test_proxy",
+        "product_version": "0.1.0",
+        "os": "Linux",
+        "os_version": "5.15.167.4-microsoft-standard-WSL2",
+        "arch": "amd64",
+        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
+        "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE="
+      },
+      "product_id": "test_proxy",
+      "product_version": "0.1.0",
+      "os": "Linux",
+      "os_version": "5.15.167.4-microsoft-standard-WSL2",
+      "arch": "amd64",
+      "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
+      "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE=",
+      "attestation_timestamp": 1764599321
+    }
+  }
+}

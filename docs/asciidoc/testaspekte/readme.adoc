@@ -7,3 +7,4 @@ include::gemSpec_Krypt/readme.adoc[]
 
 include::gemSpec_ZETA/readme.adoc[]
 
+include::gemKPT_Test/readme.adoc[]

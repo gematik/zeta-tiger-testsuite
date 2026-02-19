@@ -7,39 +7,76 @@
 | *Titel:* | Client authentisierung und autorisierung software attest SC 401
 
 | Akteur: |
-TODO
+*MA einer LEI*
 
 | weitere Akteure: |
-TODO
+- *ZETA Client*
+- *PDP Authorization Server*
 
 | Auslöser: |
-TODO
+Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafür authentisieren und autorisieren.
 
 | Kurzbeschreibung: |
-TODO
+Um auf einen Resource Server zugreifen zu können, benötigt der
+Client ein Access Token vom PDP Authorization Server.
+Stationäre ZETA Clients verwenden dafür den Token Exchange Flow mittels Software-Attestierung.
+Der erste Token-Request wird aufgrund eines ungültigen DPoP Proofs mit ``401 Unauthorized`` beantwortet.
+Der ZETA Client befolgt die Anweisung zur erneuten Authentifizierung, führt den Token Exchange erneut aus und erhält anschließend gültige Access Tokens.
 
 | Vorbedingung: |
-TODO
+Der stationäre ZETA Client ist beim ZETA Guard registriert und besitzt eine ``client_id`` samt Schlüsselpaar.
+Es liegt kein gültiges Access Token vor.
 
 | Nebenbedingung: |
-TODO
+Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
-TODO
+1. MA startet den *Authentisierung-/Autorisierungs-Prozess* im ZETA Client.
+2. Der ZETA Client fordert beim PDP Authorization Server eine Nonce an (``GET /nonce``).
+3. Der PDP Authorization Server antwortet mit ``200 OK`` und Nonce.
+4. Der ZETA Client erstellt Client Assertion und ungültigen (z.B. abgelaufenen)  DPoP Proof für den Token-Austausch (Software-Attestierung).
+5. Der ZETA Client sendet den Token-Request an den PDP Authorization Server (``POST /token``).
+6. Der PDP Authorization Server antwortet mit ``401 Unauthorized``.
+7. Der ZETA Client fordert erneut eine Nonce an (``GET /nonce``).
+8. Der PDP Authorization Server antwortet mit ``200 OK`` und Nonce.
+9. Der ZETA Client erstellt Client Assertion und DPoP Proof erneut.
+10. Der ZETA Client sendet den Token-Request erneut (``POST /token``).
+11. Der PDP Authorization Server antwortet mit ``200 OK`` und Access bzw. Refresh Token.
+12. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
 
 | Nachbedingung: |
-TODO
+Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. dieser ist authentisiert und autorisiert.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25783_02>>
-* <<TA_A_27007_25>>
+* <<TA_A_27007_03>>
+* <<TA_A_26661_03>>
 
 |===
 
 [mermaid]
 ....
 sequenceDiagram
-    %% TODO
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PDP-AS as PDP Authorization<br>Server
+
+    MA->>+ZC: Start Authentisierung/Autorisierung
+    ZC->>+PDP-AS: GET /nonce
+    PDP-AS-->>-ZC: 200 OK (nonce)
+    ZC->>ZC: Erstelle Client Assertion + ungültigen DPoP Proof
+    ZC->>+PDP-AS: POST /token
+    PDP-AS-->>-ZC: 401 Unauthorized
+
+    ZC->>+PDP-AS: GET /nonce (erneut)
+    PDP-AS-->>-ZC: 200 OK (nonce)
+    ZC->>ZC: Erstelle Client Assertion + DPoP Proof (erneut)
+    ZC->>+PDP-AS: POST /token (Retry)
+    PDP-AS-->>-ZC: 200 OK (Access/Refresh Token)
+
+    ZC-->>-MA: "Zugriff gestattet"
 ....
 
 [.lead]

@@ -7,38 +7,58 @@
 | *Titel:* | Client registrierung stationaer SC 401
 
 | Akteur: |
-TODO
+*MA einer LEI*
 
 | weitere Akteure: |
-TODO
+- *ZETA Client*
+- *PDP Authorization Server*
 
 | Auslöser: |
-TODO
+Ein MA einer LEI startet die Registrierung eines stationären ZETA Clients, die notwendige Authentifizierung für die Registrierung ist jedoch ungültig oder fehlt.
 
 | Kurzbeschreibung: |
-TODO
+Der ZETA Client sendet eine Dynamic Client Registration an den PDP Authorization Server, ohne die erforderliche
+Authentifizierung korrekt nachzuweisen. Der PDP Authorization Server weist die Anfrage mit ``401 Unauthorized`` zurück.
+Der ZETA Client informiert den MA über die fehlgeschlagene Registrierung und fordert eine erneute Authentifizierung.
 
 | Vorbedingung: |
-TODO
+Der stationäre ZETA Client ist noch nicht beim ZETA Guard registriert.
 
 | Nebenbedingung: |
-TODO
+Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
-TODO
+. Der MA startet die *initiale Registrierung* im ZETA Client.
+. Der ZETA Client generiert ein *Client Instance Key Pair*.
+. Der ZETA Client sendet eine *Dynamic Client Registration (DCR)* an den PDP Authorization Server (``POST /register``),
+   jedoch ohne gültige Authentisierungsnachweise.
+. Der PDP Authorization Server prüft die Authentisierung der Registrierung.
+. Der PDP Authorization Server antwortet mit ``401 Unauthorized``.
+. Der ZETA Client informiert den MA, dass eine erneute Authentisierung erforderlich ist.
 
 | Nachbedingung: |
-TODO
+Der stationäre ZETA Client besitzt keine ``client_id``. Es wurde keine Registrierung in der PDP Datenbank gespeichert.
 
 | Abgedeckte Testaspekte: |
-TODO
+* <<TA_A_26661_12>>
 
 |===
 
 [mermaid]
 ....
 sequenceDiagram
-    %% TODO
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PDP-AS as PDP Authorization<br>Server
+
+    MA->>+ZC: Start initiale Registrierung
+    ZC->>ZC: Generiere Client Instance Key Pair
+    ZC->>+PDP-AS: POST /register (ohne gültige Authentifizierung)
+    PDP-AS->>PDP-AS: Prüfung der Authentifizierung
+    PDP-AS-->>-ZC: 401 Unauthorized
+    ZC-->>-MA: Registrierung fehlgeschlagen<br>erneute Authentifizierung erforderlich
 ....
 
 [.lead]
@@ -46,5 +66,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-TODO
+include::client_registrierung_stationaer_sc_401.feature[]
 ----

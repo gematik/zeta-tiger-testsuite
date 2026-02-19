@@ -1,9 +1,11 @@
 [#TA_GS-A_4384-03_04]
-===== TA_GS-A_4384-03_04 - TLS-Verbindungen - PIP & PAP - X.509-Identität
+===== TA_GS-A_4384-03_04 - TLS-Verbindungen - ZETA Guard - PEP HTTP Proxy - weitere Cipher-Suiten die nicht in TR-02102-2, Abschnitt 3.3.1 Tabelle 1 aufgeführt sind, werden nicht unterstützt
 
 Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
 
-* Zur **Authentifizierung** MUSS eine **X.509-Identität** gemäß [gemSpec_Krypt#**GS-A_4359**-*] verwendet werden.
 * [...]
+* [...]
+* [...]
+* **Es KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1 Tabelle 1] unterstützt werden.**.
 
 **[<=]**

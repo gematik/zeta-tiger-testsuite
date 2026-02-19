@@ -5,6 +5,7 @@ Der Telemetrie-Daten Service im ZETA Guard MUSS im Parameter *http.status* einen
 
 Tabelle 12: Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes
 
+|===
 | HTTP-Statuscodes+++<br />+++ | Name der Statuscodegruppe | Beschreibung+++<br />+++ |
 | --- | --- | --- |
 | **1xx** | **INFORMATIONAL** | **Der Server hat die Anfrage erhalten und befindet sich in der Bearbeitung.** |
@@ -12,6 +13,7 @@ Tabelle 12: Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes
 | 3xx | REDIRECTION | Der Client muss zusätzliche Maßnahmen ergreifen, um die Anfrage abzuschließen. |
 | 4xx+++<br />+++ | CLIENT_ERROR+++<br />+++ | Ein Client-seitiger Fehler verhindert die erfolgreiche Durchführung der Operation.+++<br />+++ |
 | 5xx+++<br />+++ | SERVER_ERROR+++<br />+++ | Ein Server-seitiger Fehler verhindert die erfolgreiche Durchführung der Operation.+++<br />+++ |
+|===
 
 **[<=]**
 

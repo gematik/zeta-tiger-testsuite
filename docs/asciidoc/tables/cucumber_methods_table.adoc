@@ -1,166 +1,421 @@
-// Dieses Tabellenfragment wird automatisch von generate-tgr-methods erzeugt.
+// Dieses Tabellenfragment wird automatisch von generate-cucumber-methods erzeugt.
 // Nicht manuell bearbeiten; Änderungen an Glue-Klassen + Skript neu ausführen.
 
-[cols="<165, <156, <69, <120", options="header"]
+[cols="<165, <156, <69, <137", options="header"]
 |===
 ^|Deutsch
 ^|Englisch
 ^|Datei
 ^|Beschreibung
 
-|Alle Manipulationen im TigerProxy {tigerResolvedString} werden gestoppt
-|Reset all manipulation in the TigerProxy {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|aktiviere den Additional Security Layer im Zeta Deployment
+|activate the Additional Security Layer in Zeta deployment
+|src/test/java/de/gematik/zeta/steps/DeploymentManipulationSteps.java
+|Cucumber step to enable the Additional Security Layer in a Zeta Guard deployment.
+
+|akzeptiert der Zeta Guard Endpunkt das ClientHello nicht und sendet eine Alert Nachricht mit Description Id {string}
+|the Zeta Guard endpoint does not accept the ClientHello and sends an alert message with the description id {string}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a TLS “alert” has been received.
+
+|Alle Manipulationen im TigerProxy werden gestoppt
+|Reset all manipulation in the TigerProxy
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
 |Clears all existing manipulations configured in the TigerProxy instance.
 
 |Anfrage an Kanal {tigerResolvedString} mit folgenden JSON Daten gesendet wird:
 |request is sent to channel {tigerResolvedString} with following JSON data:
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Sends a request with JSON payload to a STOMP channel.
 
 |decodiere Base64Url {tigerResolvedString} und prüfe das die Länge {int} bit ist
 |-
-|src\test\java\de\gematik\zeta\steps\NonceSteps.java
+|src/test/java/de/gematik/zeta/steps/NonceSteps.java
 |Cucumber step definition for validating a Base64Url encoded string and it's length.
 
 |decodiere und validiere {tigerResolvedString} gegen Schema {string}
 |decode and validate {tigerResolvedString} against schema {string}
-|src\test\java\de\gematik\zeta\steps\SchemaValidationSteps.java
+|src/test/java/de/gematik/zeta/steps/SchemaValidationSteps.java
 |Cucumber step definition for validating a Base64 coded JSON string against a schema loaded from the resources directory.
+
+|decodiere und validiere {tigerResolvedString} gegen Schema {string} soft assert
+|decode and validate {tigerResolvedString} against schema {string} soft assert
+|src/test/java/de/gematik/zeta/steps/SchemaValidationSteps.java
+|Soft-asserting variant of the schema validation of a Base64 coded JSON string.
+
+|decodiere {tigerResolvedString} von Base64-URL und speichere in der Variable {tigerResolvedString}
+|decode {tigerResolvedString} from Base64-URL and save in variable {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Decodes a Base64-URL encoded string and stores the UTF-8 result in the Tiger test context under the given variable name.
 
 |der Kanal {tigerResolvedString} mit ID {tigerResolvedString} abonniert wird
 |the channel {tigerResolvedString} with ID {tigerResolvedString} is subscribed
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Subscribes to a STOMP channel.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString}
+|The TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.2.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das Ciphersuite-Profil {tlsCipherSuiteProfile}
+|the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the ciphersuite profile {tlsCipherSuiteProfile}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs TLS 1.2 for a readable ciphersuite profile.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das Unterstützte-Gruppen-Profil {tlsSupportedGroupProfile}
+|the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the supported-group profile {tlsSupportedGroupProfile}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs TLS 1.2 for a readable supported-groups profile.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die nicht unterstützten Ciphersuiten
+|the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the unsupported ciphersuites
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.2.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die Unterstützte Gruppe {string}
+|the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the supported groups {string}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.2.
+
+|die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für TLS Renegotiation
+|the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for TLS Renegotiation
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.2.
+
+|die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden nicht unterstützten Hashfunktionen wurden festgelegt:
+|the TlsTestTool configuration data for the host {tigerResolvedString} has been set using the following unsupported hash functions:
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for hash functions < SHA-256.
+
+|die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden TLS 1.2 Signatur-Hash-Algorithmen wurden festgelegt:
+|The TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.2 signature hash algorithms:
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.2 with unsupported RSA Signature and hash algorithms.
+
+|die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden TLS 1.3 Signature-Schemes wurden festgelegt:
+|The TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.3 signature schemes:
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.3 with unsupported RSA Signature Schemes.
+
+|die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden unterstützten Hashfunktionen wurden festgelegt:
+|the TlsTestTool configuration data for the host {tigerResolvedString} has been set with the following supported hash functions:
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for supported hash algorithms.
+
+|die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit nur TLS 1.1 wurde erstellt
+|the TlsTestTool configuration data for the host {tigerResolvedString} with only TLS 1.1 is created
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Configures and runs the TLS test tool for TLS 1.1.
 
 |eine Anfrage mit folgenden mehrzeiligen Daten an Kanal {tigerResolvedString} gesendet wird:
 |a request with following multi-line data is sent to channel {tigerResolvedString}:
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Sends a request with data to a STOMP channel (using DataTable).
 
 |eine leere Anfrage an Kanal {tigerResolvedString} gesendet wird
 |an empty request is sent to channel {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Sends an empty request to a STOMP channel.
+
+|eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
+|a STOMP session based on the previously opened WebSocket connection is opened
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
+|Opens a STOMP session based on the previously opened WebSocket connection.
 
 |eine WebSocket Verbindung zu {tigerResolvedString} geöffnet wird
 |a WebSocket to {tigerResolvedString} is opened
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
-|Opens a WebSocket connection.
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
+|Opens a raw WebSocket transport connection (upgrade probe only).
+
+|erhält der Client ein X.509-Zertifikat gemäß [gemSpec_Krypt#GS-A_4359-*] vom Server
+|the Client receives a X.509-Certificate that conforms to [gemSpec_Krypt#GS-A_4359-*] from the server
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a X509 Certificate is received.
 
 |erstelle die JMeter-Zusammenfassung aus {string} nach {string}
 |create the JMeter summary from {string} to {string}
-|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|src/test/java/de/gematik/zeta/steps/JMeterSteps.java
 |Summarizes a JTL file into a CSV summary.
 
 |gebe die Antwortzeit vom aktuellen Nachrichtenpaar aus
 |show response time of current message pair
-|src\test\java\de\gematik\zeta\steps\TimingGlue.java
+|src/test/java/de/gematik/zeta/steps/TimingGlue.java
 |Computes and reports the response time for the currently active request/response pair.
 
 |hat die empfangene Nachricht im Feld {string} den Wert {tigerResolvedString}
 |the received message has field {string} with value {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Verifies a field in the last received message.
 
 |Hole JWT für Client {tigerResolvedString} mit zusätzlichem Header {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
 |Get JWT for Client {tigerResolvedString} with additional header {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|src/test/java/de/gematik/zeta/steps/JwtSteps.java
 |Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
 
 |Hole JWT für Client {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
 |Get JWT for Client {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|src/test/java/de/gematik/zeta/steps/JwtSteps.java
 |Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
 
 |Hole JWT mit zusätzlichem Header {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
 |Get JWT with additional header {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|src/test/java/de/gematik/zeta/steps/JwtSteps.java
 |Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
 
 |Hole JWT von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}
 |Get JWT from {tigerResolvedString} and store in variable {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\JwtSteps.java
+|src/test/java/de/gematik/zeta/steps/JwtSteps.java
 |Retrieves a JWT token from a specified URL and stores it in a Tiger configuration variable.
 
 |ich JMeter mit dem Plan {tigerResolvedString} starte
 |I start JMeter with plan {tigerResolvedString}
-|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|src/test/java/de/gematik/zeta/steps/JMeterSteps.java
 |Runs a JMeter plan with optional CLI-like arguments from a DataTable.
+
+|ist der TLS-Handshake {tlsHandshakeExpectation}
+|the TLS handshake is {tlsHandshakeExpectation}
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether the TLS handshake matches the expected result.
+
+|ist die Erweiterung renegotiation_info im Server-Hello vorhanden
+|the renegotiation_info extension is present in the Server Hello
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether the sever sends a renegotiation_info extension in the server hello record.
+
+|ist die TLS-Handshake-renegotiation erfolgreich
+|the TLS handshake renegotiation is successful
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether the handshake renegotiation was successful.
 
 |logge alle Nachrichten
 |log all messages
-|src\test\java\de\gematik\zeta\steps\TimingGlue.java
+|src/test/java/de/gematik/zeta/steps/TimingGlue.java
 |Logs a summary of all RBEL messages captured in the current test run.
 
-|set connection timeout for websocket connections to {int} seconds
+|prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder gleich {tigerResolvedString}
+|current request the attribute {tigerResolvedString} does not exist or is equal {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Checks if the current request's attribute at the given RBEL path does either not exist or equal to the specified value.
+
+|prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder später als jetzt
+|current request the attribute {tigerResolvedString} does not exist or is later then now
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp later than the current time.
+
+|prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder ungleich {tigerResolvedString}
+|current request the attribute {tigerResolvedString} does not exist or is not equal {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Checks if the current request's attribute at the given RBEL path does either not exist or not equal to the specified value.
+
+|prüfe aktuelle Anfrage: der Knoten {tigerResolvedString} ist nicht vorhanden oder früher als jetzt
+|current request: the attribute {tigerResolvedString} does not exist or is earlier then now
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp earlier than the current time.
+
+|prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString}
+|current response does not contain node {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Verifies that no element matching the given RBEL path exists in the current response.
+
+|prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString} und nutze soft assert
+|current response does not contain node {tigerResolvedString} with soft assert
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Verifies that no element matching the given RBEL path exists in the current response.
+
+|prüfe aktueller Request enthält keinen Knoten {tigerResolvedString}
+|current request does not contain node {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Verifies that no element matching the given RBEL path exists in the current request.
+
+|prüfe aktueller Request enthält keinen Knoten {tigerResolvedString} und nutze soft assert
+|current request does not contain node {tigerResolvedString} with soft assert
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Verifies that no element matching the given RBEL path exists in the current request.
+
+|prüfe Knoten {tigerResolvedString} enthält mindestens alle Header aus {tigerResolvedString}
+|check node {tigerResolvedString} contains at least all headers of {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Verifies that a header object/string ({@code nodeToBeChecked}) contains all headers from the reference ({@code parentOfChildren}).
+
+|prüfe Knoten {tigerResolvedString} enthält mindestens alle Header aus {tigerResolvedString} und nutze soft assert
+|check node {tigerResolvedString} contains at least all headers of {tigerResolvedString} and use soft assert
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Verifies that a header object/string ({@code nodeToBeChecked}) contains all headers from the reference ({@code parentOfChildren}).
+
+|prüfe Knoten {tigerResolvedString} enthält mindestens alle Kindknoten von {tigerResolvedString}
+|check node {tigerResolvedString} contains at least all child nodes of {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Asserts that the JSON object {@code nodeToBeChecked} contains every child (name and value) from the JSON object {@code parentOfChildren}.
+
+|prüfe Knoten {tigerResolvedString} enthält mindestens alle Kindknoten von {tigerResolvedString} und nutze soft assert
+|check node {tigerResolvedString} contains at least all child nodes of {tigerResolvedString} and use soft assert
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Asserts that the JSON object {@code nodeToBeChecked} contains every child (name and value) from the JSON object {@code parentOfChildren}.
+
+|prüfe ob der Knoten {tigerResolvedString} {limit} {int} Byte groß ist
+|verify if length of node {tigerResolvedString} is {limit} {int} Byte
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Asserts that the length of the given node string meets the provided limit (MAX/MIN/EQUALS) when interpreted as bytes/characters.
+
+|prüfe ob der Knoten {tigerResolvedString} {limit} {int} Byte groß ist und nutze soft assert
+|verify if length of node {tigerResolvedString} is {limit} {int} Byte and use soft assert
+|src/test/java/de/gematik/zeta/steps/CheckMessageSteps.java
+|Asserts that the length of the given node string meets the provided limit (MAX/MIN/EQUALS) when interpreted as bytes/characters.
+
+|prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich
+|check optional: node {tigerResolvedString} is absent when {tigerResolvedString} is empty, otherwise equal
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Checks an optional expected value against a request node.
+
+|prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich und nutze soft assert
+|check optional: node {tigerResolvedString} is absent when {tigerResolvedString} is empty, otherwise equal with soft assert
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Soft-asserting variant of {@link #checkOptionalValueAgainstNode(String, String)}.
+
+|prüfe {tigerResolvedString} ist striktes Base64-URL Format
+|check {tigerResolvedString} is strict Base64-URL format
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Validates that a string is strictly Base64-URL encoded (RFC 4648 Section 5).
+
+|schreibe Daten aus dem SMC-B Zertifikat {tigerResolvedString} in die Variable {string}
 |-
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/SmcbSteps.java
+|Extracts Telematik-ID from SMC-B certificate and stores it in Tiger test variable.
+
+|Sende TigerProxy den Key {string} aus der Datei {tigerResolvedString} mit dem Algorithmus {string}
+|Send the TigerProxy the key {string} from file {tigerResolvedString} with algorithm {string}
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
+|Sends a key from a file with the specified algorithm to the TigerProxy instance.
+
+|Sende TigerProxy den Key {string} mit dem Inhalt {tigerResolvedString} und dem Algorithmus {string}
+|Send the TigerProxy the key {string} with content {tigerResolvedString} and algorithm {string}
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
+|Sends a key with the specified algorithm to the TigerProxy instance.
+
+|setze Anfrage Timeout für WebSocket Verbindungen auf {int} Sekunden
+|set connection timeout for websocket connections to {int} seconds
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Sets the connection timeout for websocket connections.
 
-|set message timeout for websocket messages to {int} seconds
-|-
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
-|Sets the message timeout for websocket messages.
-
-|Setze im TigerProxy {string} die JwtManipulation auf Feld {string} und Wert {string}
-|Set the JwtManipulation in the TigerProxy {string} to field {string} and value {string}
-|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|Setze im TigerProxy die JwtManipulation auf Feld {string} und Wert {tigerResolvedString}
+|Set the JwtManipulation in the TigerProxy to field {string} and value {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
 |Sends a manipulation request to the TigerProxy to apply a specific modification on intercepted messages.
 
-|Setze im TigerProxy {tigerResolvedString} für die Nachricht {tigerResolvedString} die Manipulation auf
-|Set the manipulation in the TigerProxy {tigerResolvedString} for message {tigerResolvedString} to
-|src\test\java\de\gematik\zeta\steps\TigerProxyManipulationsSteps.java
+|Setze im TigerProxy für Access Token das Feld {string} auf Wert {tigerResolvedString}
+|Set in TigerProxy for access token the field {string} to value {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
+|Configures a JWT manipulation on the TigerProxy for Authorization header (access token) with automatic DPoP ath update.
+
+|Setze im TigerProxy für die Nachricht {tigerResolvedString} die Manipulation auf
+|Set the manipulation in the TigerProxy for message {tigerResolvedString} to
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
 |Sends a manipulation request to the TigerProxy to modify intercepted messages based on specified criteria.
+
+|Setze im TigerProxy für die Nachricht {tigerResolvedString} die Regex-Manipulation auf
+|Set the regex manipulation in the TigerProxy for message {tigerResolvedString} to
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
+|Sends a manipulation request to the TigerProxy to modify intercepted messages using regex replacement.
+
+|Setze im TigerProxy für JWT in {string} das Feld {string} auf Wert {tigerResolvedString}
+|Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString}
+|src/test/java/de/gematik/zeta/steps/TigerProxyManipulationsSteps.java
+|Configures a JWT manipulation on the TigerProxy without re-signing.
+
+|setze Timeout für WebSocket Nachrichten auf {int} Sekunden
+|set message timeout for websocket messages to {int} seconds
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
+|Sets the message timeout for websocket messages.
 
 |stelle sicher, dass im JMeter-Summary {string} das Label {string} {jmeterMetric} <= {double}
 |ensure that in the JMeter summary {string} the label {string} has {jmeterMetric} <= {double}
-|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|src/test/java/de/gematik/zeta/steps/JMeterSteps.java
 |Asserts that a metric of a label is ≤ threshold.
 
 |stelle sicher, dass im JMeter-Summary {string} das Label {string} {jmeterMetric} >= {double}
 |ensure that in the JMeter summary {string} the label {string} has {jmeterMetric} >= {double}
-|src\test\java\de\gematik\zeta\steps\JMeterSteps.java
+|src/test/java/de/gematik/zeta/steps/JMeterSteps.java
 |Asserts that a metric of a label is ≥ threshold.
 
 |stelle sicher, dass in {string} für die Spalte {tigerMetric} der {metric}-Wert <= {int} ms ist
 |ensure that in {string}, for column {tigerMetric}, the {metric} value is <= {int} ms
-|src\test\java\de\gematik\zeta\steps\PerfSteps.java
+|src/test/java/de/gematik/zeta/steps/PerfSteps.java
 |Asserts a metric (percentile/max/min/avg) for a Tiger column is ≤ threshold.
 
 |stimmt empfangene Nachricht als JSON überein mit:
 |received message matches following JSON:
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Verifies the last received WebSocket message matches expected JSON (similar to TGR step).
 
 |validiere {tigerResolvedString} gegen Schema {string}
 |validate {tigerResolvedString} against schema {string}
-|src\test\java\de\gematik\zeta\steps\SchemaValidationSteps.java
+|src/test/java/de/gematik/zeta/steps/SchemaValidationSteps.java
 |Cucumber step definition for validating a JSON string against a schema loaded from the resources directory.
+
+|validiere {tigerResolvedString} soft gegen Schema {string}
+|soft-validate {tigerResolvedString} against schema {string}
+|src/test/java/de/gematik/zeta/steps/SchemaValidationSteps.java
+|Soft-asserting variant of the schema validation that collects failures until the end of the scenario instead of aborting immediately.
 
 |Variable {tigerResolvedString} existiert
 |-
-|src\test\java\de\gematik\zeta\steps\HelperSteps.java
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
 |Cucumber step for checking if a tiger variable is set.
+
+|verwendet der Server-Schlüsselaustausch eine der unterstützten Hashfunktionen
+|the server key exchange uses one of the supported hash functions
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a Server Key exchange uses one of the supported hash functions.
+
+|warte {int} Sekunden
+|-
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Cucumber step for waiting/sleeping for a specified number of seconds.
+
+|warte {tigerResolvedString} Sekunden
+|-
+|src/test/java/de/gematik/zeta/steps/HelperSteps.java
+|Cucumber step for waiting/sleeping for a specified number of seconds.
+
+|wird der Server-Hello Record nicht empfangen
+|the server hello record is not received
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a Server Hello record was not received.
+
+|wird der Server-Key-Exchange-Datensatz gesendet
+|the server key exchange record is sent
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a Server Key exchange record is sent.
+
+|wird der Server-Key-Exchange-Datensatz nicht gesendet
+|the server key exchange record is not sent
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether a Server Key exchange uses one of the curves.
 
 |wird der Wert des Knotens {string} der empfangenen Nachricht in der Variable {string} gespeichert
 |value of node {string} from received message is stored in variable {string}
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Saves a value from the received message using JSON path (like TGR step).
 
 |wird die empfangene ID in der Variable {string} gespeichert
 |received ID is stored in variable {string}
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Saves the received ID to a Tiger variable (legacy step - kept for backwards compatibility).
+
+|wird die TLS-Handshake-renegotiation gestartet
+|the TLS handshake renegotiation is triggered
+|src/test/java/de/gematik/zeta/steps/TlsTestToolSteps.java
+|Checks whether the handshake renegotiation is initiated.
 
 |wird die WebSocket Verbindung geschlossen
 |WebSocket connection is closed
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Closes the WebSocket connection.
 
 |wird eine Nachricht auf dem Kanal {tigerResolvedString} empfangen
 |a message on channel {tigerResolvedString} is received
-|src\test\java\de\gematik\zeta\steps\WebSocketStompSteps.java
+|src/test/java/de/gematik/zeta/steps/WebSocketStompSteps.java
 |Waits for a message on the specified channel.
 |===
 

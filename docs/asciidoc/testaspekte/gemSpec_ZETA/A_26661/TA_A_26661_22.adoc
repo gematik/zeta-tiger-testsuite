@@ -1,4 +1,18 @@
 [#TA_A_26661_22]
 ===== TA_A_26661_22 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 405 Method Not Allowed
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **405 Method Not Allowed** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**405 Method Not Allowed**: Die verwendete HTTP Methode wird nicht unterstützt für den Endpunkt.+++<br />+++[...] |
+
+|===
+
+[...]"

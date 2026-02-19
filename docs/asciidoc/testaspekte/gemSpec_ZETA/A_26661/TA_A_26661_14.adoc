@@ -1,4 +1,18 @@
 [#TA_A_26661_14]
 ===== TA_A_26661_14 - ZETA Guard - HTTP Statuscodes - Clientregistrierung - 409 Conflict
 
-"Der ZETA Guard MUSS für **Clientregistrierung** den HTTP Statuscode **409 Conflict** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **Clientregistrierung** | +++[...]+++ +++<br />+++**409 Conflict**: Konflikt bei der Registrierung, z.B. ein Client mit der gleichen ID existiert bereits. Der Client darf keine weiteren Registrierungsversuche senden und soll den Nutzer über die das Serverproblem informieren.+++<br />+++[...] |
+
+|===
+
+[...]"

@@ -1,0 +1,8 @@
+[#TA_A_26668_32]
+===== TA_A_26668_32 - ZETA Guard - Rate Limit - Header X-Rate-Limit-Reset - Authorization Server - GET /nonce
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (+++[...]+++, +++[...]+++ und **X-Rate-Limit-Reset** (Zeitpunkt, an dem das Limit zurückgesetzt wird)). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: GET /nonce

@@ -1,4 +1,18 @@
 [#TA_A_26661_18]
 ===== TA_A_26661_18 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 400 Bad Request
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **400 Bad Request** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**400 Bad Request**: Ungültige Anfrage an den Proxy. Der Client sollte die Anfrage überprüfen und sicherstellen, dass sie korrekt formatiert und vollständig ist, bevor er sie erneut sendet.+++<br />+++[...] |
+
+|===
+
+[...]"

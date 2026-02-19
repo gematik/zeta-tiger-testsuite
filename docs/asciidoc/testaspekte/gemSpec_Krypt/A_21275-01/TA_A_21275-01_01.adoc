@@ -5,6 +5,6 @@
 
 . sie im Rahmen der **Erstellung und Prüfung von digitalen Signaturen** im Rahmen des TLS-Handshakes ausschließlich **folgende** kryptographisch geeignete **Hashfunktionen** verwenden:
 .. **SHA-256, SHA-384, SHA-512 [FIPS-180-4]**
-.. **SHA3-256, SHA3-384, SHA3-512 [FIPS-202]**
+.. SHA3-256, SHA3-384, SHA3-512 [FIPS-202]
 
 [...] **[<=]"**

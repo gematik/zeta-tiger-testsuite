@@ -1,0 +1,4 @@
+[#TA_A_27379_12]
+===== TA_A_27379_12 - ZETA Client - OCSP Stapling Unterstützung - Fallback ohne OCSP Stapling - OCSP Responder abfragen
+
+Wenn OCSP Stapling nicht angeboten wird, MUSS der ZETA Client entweder die CRL laden oder den **OCSP Responder des Zertifikats direkt abfragen**. **[<=]**

@@ -1,0 +1,8 @@
+[#TA_A_26668_33]
+===== TA_A_26668_33 - ZETA Guard - Rate Limit - konfigurierbar - Authorization Server - POST /register
+
+"Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein **Rate Limit konfigurierbar einstellen** können. +++[...]+++ **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: POST /register

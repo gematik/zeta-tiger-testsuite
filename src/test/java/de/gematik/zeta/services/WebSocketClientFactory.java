@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -24,19 +24,22 @@
 
 package de.gematik.zeta.services;
 
+import java.util.List;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
 import org.glassfish.tyrus.client.SslEngineConfigurator;
+import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 /**
- * Factory for creating configured WebSocket STOMP clients. Uses native WebSocket connections with
- * Tyrus (JSR 356 reference implementation).
+ * Factory for creating configured WebSocket STOMP clients. Uses native WebSocket connections with Tyrus (JSR 356 reference
+ * implementation).
  */
 @Slf4j
 public class WebSocketClientFactory {
@@ -49,9 +52,17 @@ public class WebSocketClientFactory {
    * Creates a configured WebSocketStompClient with native WebSocket support.
    *
    * @return Configured WebSocketStompClient
-   * @throws IllegalStateException if SSL context creation fails
    */
   public WebSocketStompClient create() {
+    return configureStompClient(createRawClient());
+  }
+
+  /**
+   * Creates a configured native WebSocket client (without STOMP wrappers).
+   *
+   * @return configured StandardWebSocketClient
+   */
+  public StandardWebSocketClient createRawClient() {
     try {
       SSLContext sslContext = SslConfigurationService.getTrustAllSslContext();
 
@@ -65,13 +76,11 @@ public class WebSocketClientFactory {
       clientManager.getProperties().put(
           ClientProperties.SSL_ENGINE_CONFIGURATOR,
           sslEngineConfigurator);
-
-      StandardWebSocketClient webSocketClient = new StandardWebSocketClient(clientManager);
-
-      return configureStompClient(webSocketClient);
+      return new StandardWebSocketClient(clientManager);
     } catch (Exception e) {
-      log.error("Failed to create WebSocket client", e);
-      throw new AssertionError("Failed to create WebSocket client: " + e.getMessage(), e);
+      log.error("Failed to create native WebSocket client", e);
+      throw new AssertionError(
+          "Failed to create native WebSocket client: " + e.getMessage(), e);
     }
   }
 
@@ -81,12 +90,16 @@ public class WebSocketClientFactory {
   private WebSocketStompClient configureStompClient(StandardWebSocketClient wsClient) {
 
     WebSocketStompClient stompClient = new WebSocketStompClient(wsClient);
-    stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+    stompClient.setMessageConverter(new CompositeMessageConverter(List.of(
+        new StringMessageConverter(),
+        new MappingJackson2MessageConverter()
+    )));
 
     // Task Scheduler for Heartbeats
     ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
     taskScheduler.setPoolSize(TASK_SCHEDULER_POOL_SIZE);
     taskScheduler.setThreadNamePrefix("stomp-");
+    taskScheduler.setDaemon(true);
     taskScheduler.afterPropertiesSet();
     stompClient.setTaskScheduler(taskScheduler);
 

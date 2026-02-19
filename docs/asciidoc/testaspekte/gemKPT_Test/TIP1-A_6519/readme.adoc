@@ -1,0 +1,5 @@
+==== Testaspekte für die Anforderung TIP1-A_6519
+
+Folgende Testaspekte testen <<TIP1-A_6519>>.
+
+include::TA_TIP1-A_6519_01.adoc[]

@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,17 +21,78 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_22
-Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200
+Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_403
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
 
+  @dev
+  @A_26477
+  @A_26661
+  @TA_A_26477_09
+  @TA_A_26661_20
+  Szenario: PoPP Token mit ungültiger Signatur wird abgelehnt
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+
+    # Erster erfolgreicher Flow - Client erhält gültiges PoPP-Token
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR speichere Wert des Knotens "$.header.popp.body.insurerId" der aktuellen Anfrage in der Variable "PoPP_INSURER_ID"
+    Und TGR setze lokale Variable "PoPP_PRIVATE_KEY" auf "!{file('src/test/resources/keys/popp-token-foreign_ecKey.pem')}"
+    Und TGR setze lokale Variable "pathCondition" auf ".*${paths.guard.helloZetaPath}"
+
+    # PoPP-Token mit fremdem Key neu signieren, aber JWK NICHT ersetzen
+    # Feldwahl ist absichtlich "harmlos", damit die Ablehnung nur auf die Signatur zurückzuführen ist
+    Dann Setze im TigerProxy für JWT in "$.header.popp" das Feld "body.insurerId" auf Wert "${PoPP_INSURER_ID}" mit privatem Schlüssel "${PoPP_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen
+
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    # Prüfe, dass die Manipulation angewendet wurde und der Token weiterhin schema-konform ist
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.helloZetaPath}" und Knoten "$.header.popp.body.insurerId" der mit "${PoPP_INSURER_ID}" übereinstimmt
+    Und TGR speichere Wert des Knotens "$.header.popp" der aktuellen Anfrage in der Variable "PoPP_TOKEN"
+    Und decodiere und validiere "${PoPP_TOKEN}" gegen Schema "schemas/mock/popp-token-gemspec_popp.yaml"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
+
+  @dev
+  @A_26477
+  @A_26661
+  @TA_A_26477_06
+  @TA_A_26661_20
+  Szenario: PoPP Token mit fremdem Schlüssel signiert wird abgelehnt
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+
+    # Erster erfolgreicher Flow - Client erhält gültiges PoPP-Token
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR speichere Wert des Knotens "$.header.popp.body.insurerId" der aktuellen Anfrage in der Variable "PoPP_INSURER_ID"
+    Und TGR setze lokale Variable "PoPP_PRIVATE_KEY" auf "!{file('src/test/resources/keys/popp-token-foreign_ecKey.pem')}"
+    Und TGR setze lokale Variable "pathCondition" auf ".*${paths.guard.helloZetaPath}"
+
+    # PoPP-Token mit fremdem Key neu signieren UND JWK ersetzen
+    # Signatur ist mathematisch gültig, aber Key ist nicht im JWKS des PoPP Servers
+    Dann Setze im TigerProxy für JWT in "$.header.popp" das Feld "body.insurerId" auf Wert "${PoPP_INSURER_ID}" mit privatem Schlüssel "${PoPP_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    # Prüfe, dass die Manipulation angewendet wurde und der Token weiterhin schema-konform ist
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.helloZetaPath}" und Knoten "$.header.popp.body.insurerId" der mit "${PoPP_INSURER_ID}" übereinstimmt
+    Und TGR speichere Wert des Knotens "$.header.popp" der aktuellen Anfrage in der Variable "PoPP_TOKEN"
+    Und decodiere und validiere "${PoPP_TOKEN}" gegen Schema "schemas/mock/popp-token-gemspec_popp.yaml"
+    Und verifiziere die ES256 Signatur des JWT "${PoPP_TOKEN}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
+
   @A_26493
+  @A_27007
+  @A_26661
   @TA_A_26493_01
+  @TA_A_26661_20
   @longrunning
   Szenario: PoPP JWKS wird nach einem zweiten Ablauf nicht weiterverwendet, wenn kein neues JWKS ladbar ist
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -81,4 +142,3 @@ Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
-    

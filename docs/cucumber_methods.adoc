@@ -16,18 +16,9 @@ ____
 === Automatisch generierte Projektschritte (Cucumber Glue)
 
 Die projektspezifischen Glue-Schritte (Deutsch/Englisch) werden aus den Cucumber-Annotationen unter `src/test/java` ausgelesen.
-Aktualisiere die Tabelle nach neuen oder geänderten Steps mit:
-
-[source,bash]
-----
-uv run --project docs/scripts generate-cucumber-methods
-----
-
-Die generierte Tabelle liegt unter `docs/asciidoc/tables/cucumber_methods_table.adoc` und wird hier
-eingebunden:
 
 include::asciidoc/tables/cucumber_methods_table.adoc[]
 
 *Schlussbemerkung*
 
-Diese Referenz ist das zentrale Nachschlagewerk im Repository für alle TGR-Steps in deutschen Feature-Files.
+Diese Referenz ist das zentrale Nachschlagewerk im Repository für alle Cucumber-Steps in deutschen Feature-Dateien.

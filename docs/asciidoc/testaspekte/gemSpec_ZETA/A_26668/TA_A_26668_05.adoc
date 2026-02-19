@@ -1,0 +1,8 @@
+[#TA_A_26668_05]
+===== TA_A_26668_05 - ZETA Guard - Rate Limit - konfigurierbar - PEP HTTP Proxy - GET /.well-known/oauth-protected-resource
+
+"Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein **Rate Limit konfigurierbar einstellen** können. +++[...]+++ **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- PEP HTTP Proxy: GET /.well-known/oauth-protected-resource

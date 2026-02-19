@@ -1,0 +1,7 @@
+=== Testaspekte aus gemKPT_Test
+
+include::A_27438/readme.adoc[]
+
+include::TIP1-A_6519/readme.adoc[]
+
+include::TIP1-A_6519-01/readme.adoc[]

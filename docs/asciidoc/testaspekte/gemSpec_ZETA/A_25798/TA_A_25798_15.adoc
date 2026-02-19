@@ -1,0 +1,4 @@
+[#TA_A_25798_15]
+===== TA_A_25798_15 - ZETA Guard-Komponenten - Regelmäßige Selbstüberprüfung - interne Funktionen - Telemetrie-Daten Service
+
+"Die Komponenten des ZETA Guard MUSS in der Lage sein, **regelmäßige Selbstüberprüfungen durchzuführen**, um **interne Funktionen** und Abhängigkeiten zu verifizieren und sicherzustellen, dass sie korrekt arbeiten. **[<=]**"

@@ -1,0 +1,6 @@
+== Mengendefinitionen
+
+Die folgenden Mengen definieren wiederverwendbare Bezugsräume für Testaspekte.
+
+include::zeta_guard_funktionale_endpunkte.adoc[]
+include::zeta_guard_komponenten.adoc[]

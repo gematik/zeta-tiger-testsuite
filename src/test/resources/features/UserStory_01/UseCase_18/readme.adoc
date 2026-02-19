@@ -7,21 +7,73 @@
 | *Titel:* | Client ressource anfrage fachdienst SC 404
 
 | Akteur: |
+*MA einer LEI*
 
 | weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *Resource Server*
 
 | Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an, die unter dem angefragten Pfad nicht existiert.
 
 | Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit gültigem Access Token und DPoP Nachweis an den PEP HTTP Proxy.
+Die angeforderte Ressource ist nicht vorhanden, daher liefert der PEP HTTP Proxy ``404 Not Found``.
 
 | Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert.
 
 | Nebenbedingung: |
+Der angefragte Pfad ist für den Resource Server nicht bekannt oder die Ressource wurde entfernt.
 
 | Ablauf: |
+. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+. Der ZETA Client erstellt einen *DPoP Nachweis*.
+. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource/unknown`` (Beispiel fuer nicht vorhandene Ressource)
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+. Der PEP HTTP Proxy validiert die Nachweise.
+. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
+. Der Resource Server antwortet mit ``404 Not Found``.
+. Der PEP HTTP Proxy antwortet mit ``404 Not Found``.
+. Der ZETA Client informiert den MA, dass die Ressource nicht gefunden wurde.
 
 | Nachbedingung: |
+Der Ressourcenzugriff wurde abgewiesen.
 
 | Abgedeckte Testaspekte: |
-
+* <<TA_A_26661_21>>
+* <<TA_A_27007_21>>
+* <<TA_A_28426_03>>
 |===
+
+[#usecase_01_18_sequence]
+[mermaid,usecase-01-18-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant RS as Resource Server
+
+    MA->>+ZC: Abruf geschützter Ressource (nicht vorhanden)
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource/unknown (Access Token + DPoP)
+    PEP-HP->>PEP-HP: Token validieren
+    PEP-HP->>+RS: Anfrage weiterleiten
+    RS->>-PEP-HP: 404 Not Found
+    PEP-HP-->>-ZC: 404 Not Found
+    ZC-->>-MA: Ressource nicht gefunden
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::client_ressource_anfrage_fachdienst_sc_404.feature[]
+----

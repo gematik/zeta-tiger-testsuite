@@ -1,0 +1,19 @@
+[#M_ZETA_GUARD_KOMPONENTEN]
+=== Menge: Komponenten des ZETA Guard
+
+Die Menge enthält die Komponenten des ZETA Guard.
+Quelle: {gemSpec_ZETA}[gemSpec_ZETA], Abschnitt 3 "Einordnung in die TI 2.0",
+Abbildung 2 "Zero Trust-Architektur der TI 2.0".
+
+// tag::M_ZETA_GUARD_KOMPONENTEN[]
+.Menge M_ZETA_GUARD_KOMPONENTEN
+- HTTP Proxy
+- Authorization Server
+- PDP Datenbank
+- Policy Engine
+- Notification Service
+- Management Service
+- Telemetrie-Daten Service
+- Ingress
+- Egress
+// end::M_ZETA_GUARD_KOMPONENTEN[]

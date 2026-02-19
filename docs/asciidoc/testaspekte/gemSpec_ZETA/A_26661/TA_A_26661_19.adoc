@@ -1,4 +1,18 @@
 [#TA_A_26661_19]
 ===== TA_A_26661_19 - ZETA Guard - HTTP Statuscodes - HTTP Proxy - 401 Unauthorized
 
-"Der ZETA Guard MUSS für **HTTP Proxy** den HTTP Statuscode **401 Unauthorized** unterstützen. **[<=]"**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+
+Tabelle 6: ZT_HTTP_Statuscodes
+
++++[...]+++
+
+|===
+
+| **Endpunkte** | **HTTP Statuscodes** |
+| --- | --- |
+| **HTTP Proxy** | +++[...]+++ +++<br />+++**401 Unauthorized**: Fehlende oder ungültige Authentifizierung.+++<br />+++[...] |
+
+|===
+
+[...]"

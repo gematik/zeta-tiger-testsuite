@@ -1,0 +1,4 @@
+[#TA_A_25799_04]
+===== TA_A_25799_04 - ZETA Guard-Komponenten - Protokollierung von Health Check Ergebnissen - PDP Datenbank
+
+"Die Komponenten des ZETA Guard MUSS die **Ergebnisse der Health Checks protokollieren**, um eine Historie ihrer Betriebszustände und eventuell aufgetretener Probleme zu erhalten. **[<=]**"

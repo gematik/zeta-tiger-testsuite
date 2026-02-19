@@ -1,4 +1,4 @@
-/*-
+/*
  * #%L
  * ZETA Testsuite
  * %%
@@ -91,6 +91,7 @@ public final class TigerTestsuiteMain {
     var cucumberOutputDir =
         System.getProperty(CUCUMBER_OUTPUT_DIR_PROPERTY, DEFAULT_CUCUMBER_OUTPUT_DIR);
     ensureDir(cucumberOutputDir);
+    ensureDir(System.getProperty("allure.results.directory"));
 
     List<DiscoverySelector> selectors = new ArrayList<>();
     selectors.add(DiscoverySelectors.selectClasspathResource("features"));
@@ -137,14 +138,16 @@ public final class TigerTestsuiteMain {
 
     setIfAbsent("zeta_base_url", env.get("ZETA_BASE_URL"));
     setIfAbsent("zeta_proxy_url", env.get("ZETA_PROXY_URL"));
-    setIfAbsent("zeta_proxy", env.get("ZETA_PROXY"));
-    setIfAbsent("environment", env.get("TIGER_ENVIRONMENT"));
+    setIfAbsent("opensearch_url", env.get("OPENSEARCH_URL"));
+    setIfAbsent("PROFILE", env.get("PROFILE"));
     setIfAbsent("cucumber.filter.tags",
         firstNonEmpty(env.get("CUCUMBER_FILTER_TAGS"), env.get("CUCUMBER_TAGS")));
     setIfAbsent("tiger.testenv.cfgfile",
         firstNonEmpty(env.get("TIGER_TESTENV_CFGFILE"), existingTigerConfigPath()));
     setIfAbsent("serenity.outputDirectory",
         env.getOrDefault("SERENITY_EXPORT_DIR", "target/site/serenity"));
+    setIfAbsent("allure.results.directory",
+        env.getOrDefault("ALLURE_RESULTS_DIR", "target/allure-results"));
 
     setIfAbsent(CUCUMBER_OUTPUT_DIR_PROPERTY,
         firstNonEmpty(env.get("CUCUMBER_EXPORT_DIR"), DEFAULT_CUCUMBER_OUTPUT_DIR));
@@ -163,7 +166,9 @@ public final class TigerTestsuiteMain {
   private static String defaultPlugin(String cucumberOutputDir) {
     return "io.cucumber.core.plugin.TigerSerenityReporterPlugin"
         + ",json:" + cucumberOutputDir + "/main.json"
-        + ",junit:" + cucumberOutputDir + "/cucumber.xml";
+        + ",junit:" + cucumberOutputDir + "/cucumber.xml"
+        + ",io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+        + ",de.gematik.zeta.traceability.RuntimeCoveragePlugin";
   }
 
   /**

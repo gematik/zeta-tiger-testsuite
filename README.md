@@ -3,8 +3,8 @@
 # ZETA Tiger Testsuite Repository
 
 > **Zweck**  
-> Dieses Repository enthält die TIGER/Cucumber-basierte Testsuite für ZETA (PEP / ZETA Guard /
-> Testfachdienst).  
+> Dieses Repository enthält die TIGER/Cucumber-basierte Testsuite für ZETA (PEP / ZETA Guard,
+> Testfachdienst indirekt über den Guard).  
 > Ziel ist: wiederholbare, dokumentierte End-2-End Tests (Userstories / UseCases) mit möglichst
 > wenigen Custom-Glue-Klassen — stattdessen sollen die TGR-Hilfssteps (Tiger Glue / TGR) verwendet
 > werden.
@@ -17,7 +17,7 @@
 - [Voraussetzungen](#voraussetzungen)
 - [Schnellstart](#schnellstart)
 - [Tiger-Konfigurationen](#tiger-konfigurationen)
-- [TGR Methoden](#tgr-methoden)
+- [GitLab-Issue-Sync](#gitlab-issue-sync)
 - [Troubleshooting & Tipps](#troubleshooting--tipps)
 - [Wo TGR-Methoden dauerhaft ablegen](#wo-tgr-methoden-dauerhaft-ablegen)
 - [Dokumentation (AsciiDoc/Mermaid)](#dokumentation-asciidocmermaid)
@@ -39,6 +39,7 @@ Glue/Hook-Klassen für die Testausführung.
 - IntelliJ mit Cucumber-Plugin
 - Apache JMeter 5.6.3 (abgelegt unter `tools/apache-jmeter-5.6.3`)
 - TLS Test Tool 1.0.1 (abgelegt unter `tools/tls-test-tool-1.0.1`)
+- Docker images include only the Alpine binary (`tools/tls-test-tool-1.0.1/TlsTestTool-alpine`).
 
 Zum Ausführen des Features ```Client_ressource_anfrage_fachdienst_SC_200``` ist die Beschaffung des
 Keykloak-Signaturschlüssels für die jeweilige Umgebung und die Ablage unter z.B.
@@ -54,14 +55,14 @@ notwendig.
 # Ausführen aller Scenarien der Testsuite
 mvn verify
 
-# Ausführen von getaggten Scenarien
+# Ausführen von getaggten Scenarien mit Standalone Tiger Proxy via profile proxy
 # Optionen:
 # Smoke Tests         @smoke
 # Status ok           @staging
 # Status fail         @dev
 # Performance         @perf
 # AFO Aspects         @TA_A_xxxx
-mvn verify "-Dcucumber.filter.tags=@TA_A_25761_02 or @TA_A_27802_01"
+mvn verify -Pproxy "-Dcucumber.filter.tags=@TA_A_25761_02 or @TA_A_27802_01"
 
 # Ausführen gegen eine bestimmte Stage (Cloud)
 # 1. Setzen Sie den gewünschten Host (ohne Scheme) via ENV oder Maven:
@@ -75,62 +76,14 @@ mvn verify -Denvironment=cloud
 Cucumber-Features (unter `src/test/resources/features`) werden von der JUnit Platform / Cucumber
 Engine ausgeführt.
 
+Hinweis: Die Tests laufen mit der JVM-Einstellung `java.net.preferIPv4Stack=true`, damit lokale
+Proxy-/WebSocket-Verbindungen in WSL nicht an einer IPv6-only `localhost`-Auflösung scheitern.
+Das Verhalten ist in `pom.xml` fest verdrahtet und gilt für alle Maven-Runs. Unter Windows hat
+die Einstellung in typischen IPv4/IPv6-Setups keinen negativen Einfluss.
+
 ### Ausführen über Docker
 
-Die Containerdefinitionen liegen unter `docker/`,
-eine ausführlichere Beschreibung steht in [docker/README.md](docker/README.md).
-Es gibt zwei Images:
-
-- `docker/frontend/Dockerfile`: Maven-basiert (baut & führt die Tests), CI-Tag `:latest`.
-- `docker/quality_gate/Dockerfile`: Runtime-only (gepackte Tests + `/app/run-tests.sh`), CI-Tag
-  `:qualitygate`.
-
-Lokaler Build:
-
-```bash
-docker build -f docker/frontend/Dockerfile -t testsuite:latest .
-docker build -f docker/quality_gate/Dockerfile -t testsuite:qualitygate .
-```
-
-Ausführen (EntryPoint ruft `/app/run-tests.sh` auf):
-
-```bash
-docker run --rm \
-  -e CUCUMBER_TAGS="@smoke" \
-  -v "$PWD/target/site/serenity:/app/target/site/serenity" \
-  -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
-  testsuite:latest
-docker run --rm \
-  -e CUCUMBER_TAGS="@smoke" \
-  -v "$PWD/target/site/serenity:/app/target/site/serenity" \
-  -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
-  testsuite:qualitygate
-```
-
-> **Wichtig**: `ZETA_BASE_URL` wird unverändert an Maven (`-Dzeta_base_url`)
-> durchgereicht. Ohne diesen Wert greifen die Tests lediglich auf symbolische Hostnamen wie
-`zetaClient`, wodurch die Läufe erwartungsgemäß fehlschlagen.
-
-| Variable              | Default    | Wirkung                                                                                                    |
-|-----------------------|------------|------------------------------------------------------------------------------------------------------------|
-| `ZETA_BASE_URL`       | (leer)     | Ziel-Host für Cloud-/Stage-Tests; Pflicht sobald externe Services angesprochen werden sollen.              |
-| `ZETA_PROXY`          | `no-proxy` | Proxy-Modus für Maven/Runtime (z. B. `proxy` für Forwarder).                                               |
-| `ZETA_PROXY_URL`      | (leer)     | Proxy-URL für das Maven-basierte Image.                                                                    |
-| `TIGER_ENVIRONMENT`   | `cloud`    | Wählt die Tiger-Konfiguration (`tiger-*.yaml`).                                                            |
-| `CUCUMBER_TAGS`       | `@smoke`   | Szenario-Auswahl analog zu `-Dcucumber.filter.tags`.                                                       |
-| `SERENITY_EXPORT_DIR` | (leer)     | Optionales Ziel (z. B. `/builds/.../target/site/serenity`); wird mit `/app/target/site/serenity` verlinkt. |
-| `CUCUMBER_EXPORT_DIR` | (leer)     | Optionaler Cucumber-JSON-Export zu `/app/target/cucumber-parallel`.                                        |
-
-Beide Images laufen headless (`-Dtiger.lib.activateWorkflowUi=false` usw.). Sie verlinken bei Bedarf
-die Reportverzeichnisse auf externe Pfade, sodass GitLab-Artefakte direkt aus dem Workspace kommen.
-
-#### GitLab CI Docker Build
-
-Die Pipeline baut beide Images: `docker-image` erzeugt `${CI_REGISTRY_IMAGE}:latest` (frontend),
-`docker-image-qualitygate` `${CI_REGISTRY_IMAGE}:qualitygate` (runtime).
-Beide Jobs nutzen Buildx mit `oci-mediatypes=false` und `platform linux/amd64,linux/arm64`.
-Ein CI-Beispiel für das Quality-Gate-Image steht in [docker/README.md](docker/README.md),
-das frontend-Image wird analog mit `/app/run-tests.sh` genutzt.
+Alle Docker-Details (Build, Run, CI, Variablen) stehen in [docker/README.md](docker/README.md).
 
 #### Preflight-Checks & `.gitattributes`
 
@@ -150,30 +103,47 @@ checkout -- <file>`) aus oder normalisieren Sie alles mit `git add --renormalize
 
 ## Tiger-Konfigurationen
 
+Hinweis: Die Cucumber-Driver-Klassen werden durch das Tiger Maven Plugin mit dem Template
+`config/tiger-driver-template.jtmpl` erzeugt, damit Allure-Ergebnisse standardmäßig mitlaufen.
+
 * **[tiger.yaml](tiger.yaml)**: Hauptkonfiguration.
-* **[tiger-local.yaml](tiger/tiger-local.yaml)**: lokale Variante.
-* **[tiger-cloud.yaml](tiger/tiger-cloud.yaml)**: wenn Services extern bereitgestellt werden
-  (einheitliches Cloud-Profil).
-* **[tiger-proxy-overlay.yaml](tiger/tiger-proxy-overlay.yaml)**: standardmäßig aktiviertes Overlay,
-  das
-  den per Port-Forward bereitgestellten Tiger-Proxy (`http://localhost:9999`) nutzt und als separate
-  Datei verbleibt, damit Sie alternative Proxy-Setups ohne Änderungen an [tiger.yaml](tiger.yaml)
-  einbinden können.
 
 Konfigurieren Sie den Cloud-Host zentral über `zeta_base_url` in der `defaults.yaml`.
 Alternativ können Sie beim Start `ZETA_BASE_URL` oder einen Maven-Parameter wie
-`-Dzeta_base_url=https://zeta-kind.local` setzen. Belassen Sie `environment` auf `cloud`. Der
-Proxy-Overlay ist bereits eingebunden und nutzt den via Port-Forward erreichbaren Admin-Port
-(`http://localhost:9999`). Stellen Sie sicher, dass vor dem Teststart ein entsprechender
+`-Dzeta_base_url=zeta-kind.local` setzen.
+
+Für jene Testfälle, die eine Modifikation des ZETA Guard Deployments vornehmen, muss der Name des
+Kubernetes Namespace in `zeta_k8s_namespace` in der `defaults.yaml` gesetzt sein. 
+Alternativ kann dieser Wert über den Maven-Parameter `-Dzeta_k8s_namespace=zeta-local` gesetzt werden. 
+Die Ausführung dieser Gruppe von Testfälle kann über den Schalter `allow_deployment_modification` in der `defaults.yaml`
+oder über den Maven-Parameter `-Dallow_deployment_modification=true` gesteuert werden.
+
+Für OpenTelemetry-Log-Abfragen wird `opensearch_url` verwendet (OpenSearch-Host ohne Scheme).
+Sie können `OPENSEARCH_URL` setzen oder `-Dopensearch_url=localhost:9200` verwenden.
+
+Für die Proxy-Erfassung stehen Profile zur Verfügung:
+`PROFILE=proxy` aktiviert die Tiger-Proxy-Erfassung und erwartet den via Port-Forward erreichbaren
+Admin-Port (`http://localhost:9999`). Stellen Sie sicher, dass vor dem Teststart ein entsprechender
 Port-Forward aktiv ist (z. B. `kubectl port-forward svc/tiger-proxy 9999:9999`).
-Falls Sie den Proxy für einen Lauf deaktivieren möchten, entfernen Sie den Eintrag im Abschnitt
-`additionalConfigurationFiles` oder überschreiben Sie ihn per Umgebungsvariable/Maven-Property.
+Ohne Angabe wird kein Proxy-Profil geladen.
 
 ### Proxy-Tags
 
 - Szenarien, die ohne Standalone-Tiger-Proxy laufen, mit `@no_proxy` taggen.
-- Alle anderen Szenarien setzen einen konfigurierten Proxy voraus. Ist `zeta_proxy` ≠ `proxy`
-  (z. B. via `-Dzeta_proxy=no-proxy`), werden nicht getaggte Szenarien automatisch übersprungen.
+- Alle anderen Szenarien setzen einen konfigurierten Proxy voraus. Ist `PROFILE` nicht `proxy`,
+  werden nicht getaggte Szenarien automatisch übersprungen.
+
+### ZETA Guard Deployment Modifikation
+- grundsätzlich steuert der Schalter `allow_deployment_modification` ob die Testsuite überhaupt 
+  Modifikationen am ZETA Guard Deployment vornehmen darf
+- Szenarien, welche direkt Werte im Deployment des ZETA Guard verändern, müssen mit 
+  `@deployment_modification` getaggt werden
+- Voraussetzungen:
+  - das Tool [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) muss in der `PATH` Umgebungsvariable 
+  des Systems vorhanden sein und ausführbar sein
+  - `kubectl` muss Zugriff auf eine gültige `kubeconfig` für den gewünschten 
+  Namespace (`zeta_k8s_namespace`) haben
+  
 
 ### Tiger Optionen
 
@@ -197,6 +167,32 @@ um das Verhalten der Tiger-Laufzeit und der Workflow-UI zu steuern.
   ausführen.
 * Eine vollständige Beschreibung aller Optionen befindet sich in der
   [Tiger-User-Manual-Dokumentation](https://gematik.github.io/app-Tiger/Tiger-User-Manual.html).
+
+---
+
+## GitLab-Issue-Sync
+
+Für die Pflege von AFO- und Testaspekt-Issues gibt es ein Skript:
+
+- `docs/scripts/src/testsuite_docs/gitlab_issue_sync.py`: Erstellt fehlende AFO/TA-Issues, verlinkt sie, schließt TA-Issues mit @TA_-Szenario-Tags, kommentiert Feature-Links und synchronisiert AFO-Issues (open/closed).
+
+Hinweise:
+
+- Zugriff per Token: `/tmp/gitlab_token`, `GITLAB_TOKEN` oder `CI_JOB_TOKEN` (nicht ins Repo committen).
+- Standardmäßig Dry-Run; Änderungen erst mit `--apply`.
+- GitLab.com unterstützt das Statusfeld „In progress/Done“ nicht per API-Update, daher nutzt der Workflow nur open/close.
+
+Beispiele:
+
+```bash
+# Dry-Run: prüfen, ob neue Issues angelegt würden
+uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token --issue-state all
+
+# Voller Sync (inkl. Szenario-Tags), erst Dry-Run, dann Apply
+uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token --issue-state all --process-mrs --include-mr-ta
+uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token --issue-state all --process-mrs --include-mr-ta --apply
+
+```
 
 ---
 

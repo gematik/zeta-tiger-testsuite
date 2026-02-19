@@ -7,21 +7,79 @@
 | *Titel:* | Client ressource anfrage fachdienst SC 502
 
 | Akteur: |
+*MA einer LEI*
 
 | weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *Resource Server*
 
 | Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
 
 | Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter, erhält jedoch eine ungültige Antwort. +
+Der PEP HTTP Proxy antwortet deshalb mit ``502 Bad Gateway``.
+Der ZETA Client informiert den MA und empfiehlt,
+die Anfrage später erneut zu versuchen.
 
 | Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert.
 
 | Nebenbedingung: |
+Der Resource Server liefert eine ungültige Antwort auf die Anfrage.
 
 | Ablauf: |
+. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+. Der ZETA Client erstellt einen *DPoP Nachweis*.
+. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+- ``GET /resource``
+- ``Authorization: DPoP ... (Access Token)``
+- ``DPoP: ... (DPoP Token)``
+. Der PEP HTTP Proxy prüft das *Access Token*.
+. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
+. Der Resource Server liefert eine ungültige Antwort.
+. Der PEP HTTP Proxy antwortet mit ``502 Bad Gateway``.
+. Der ZETA Client informiert den MA über die fehlerhafte Antwort und weist auf einen erneuten Versuch zu einem späteren Zeitpunkt hin.
 
 | Nachbedingung: |
+Die Ressource wurde nicht geliefert.
+Der MA ist informiert und kann die Anfrage zu einem späteren Zeitpunkt erneut stellen.
 
 | Abgedeckte Testaspekte: |
-
+* <<TA_A_26661_23>>
+* <<TA_A_26661_23>>
+* <<TA_A_27007_23>>
 |===
+
+[#usecase_01_20_sequence]
+[mermaid,usecase-01-20-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor MA as MA einer LEI
+    participant ZC as ZETA Client
+    participant PEP-HP as PEP HTTP Proxy
+    participant RS as Resource Server
+
+    MA->>+ZC: Abruf geschützter Ressource
+    ZC->>ZC: Erstellen von DPoP Nachweis
+    ZC->>+PEP-HP: GET /resource
+    PEP-HP->>PEP-HP: Verifiziere Access Token
+    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    PEP-HP->>+RS: Weiterleiten GET /resource
+    RS-->>-PEP-HP: Ungültige Antwort
+    PEP-HP-->>-ZC: 502 Bad Gateway
+    ZC-->>-MA: Hinweis auf fehlerhafte Antwort
+....
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+//include::Client_ressource_anfrage_fachdienst_SC_502.feature[]
+----

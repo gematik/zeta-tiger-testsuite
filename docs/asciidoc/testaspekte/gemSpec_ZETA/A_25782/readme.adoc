@@ -1,0 +1,13 @@
+==== Testaspekte für die Anforderung A_25782
+
+Folgende Testaspekte testen <<A_25782>>.
+
+include::TA_A_25782_01.adoc[]
+
+include::TA_A_25782_02.adoc[]
+
+include::TA_A_25782_03.adoc[]
+
+include::TA_A_25782_04.adoc[]
+
+include::TA_A_25782_05.adoc[]

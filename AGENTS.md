@@ -10,7 +10,7 @@
 - `src/test/resources/features/`: Gherkin features (German `#language:de`) grouped by `userstories/<UserStory>/<UseCase>/` and `smoke/`.
 - `docs/`: Asciidoc sources, aliases, architecture notes, and `package.json` for Mermaid/Puppeteer.
 - No wrapper scripts are needed; Mermaid CLI is invoked directly by Maven (local) and by the CI Asciidoctor image.
-- `tiger.yaml` plus configs under `tiger/` (`defaults.yaml`, `paths.yaml`, `tiger-*.yaml`, `eRezeptTestData.yaml`): Test environment/configuration inputs for the Tiger test framework.
+- `tiger.yaml` plus configs under `tiger/` (`defaults.yaml`, `paths.yaml`, `eRezeptTestData.yaml`): Test environment/configuration inputs for the Tiger test framework. Profile overlays live next to `tiger.yaml` (e.g. `tiger-proxy.yaml`).
 
 ## Gherkin & Implementation Rules
 - Use existing TGR steps (e.g., “Hole JWT…”, “TGR prüfe…”, “decodiere und validiere …”). Only add new step definitions if the test cannot be covered with the steps documented in `docs/Tiger-User-Manual.html` or `docs/asciidoc/tables/cucumber_methods_table.adoc`.
@@ -22,6 +22,7 @@
 - `mvn test`: Run tests without packaging.
 - `mvn -Pgenerate-documentation generate-resources`: Generate docs (HTML) into `target/docs/html`. Uses Node/Yarn via the frontend plugin and Mermaid for diagrams (inkl. `uv sync`).
 - `mvn -Pgenerate-documentation -DskipTests package`: Package and generate docs in one go.
+- `uv run --project docs/scripts generate-cucumber-methods`: Regenerate `docs/asciidoc/tables/cucumber_methods_table.adoc` after adding/removing/changing cucumber step definitions.
 
 ## Coding Style & Naming Conventions
 - **Gherkin**: German keywords, 2-space indentation, descriptive scenario names. Place files under `src/test/resources/features/...` using lowercase snake_case file names.
@@ -39,4 +40,4 @@
 
 ## Security & Configuration Tips
 - Do not commit credentials. Externalize secrets via environment variables or local, untracked overrides.
-- Choose/adjust environment configs via the provided `tiger*.yaml` files; prefer `tiger-local.yaml` for local runs and keep cloud settings separate.
+- Choose/adjust environment configs via the provided `tiger*.yaml` files; keep the cloud settings in `tiger.yaml` and use profile overlays like `tiger-proxy.yaml` if needed.

@@ -79,6 +79,7 @@ Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen
 * <<TA_A_26477_07>>
 * <<TA_A_26477_08>>
 * <<TA_A_26477_11>>
+* <<TA_A_26661_20>>
 
 |===
 
@@ -115,5 +116,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-TODO
+include::Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200.feature[]
 ----

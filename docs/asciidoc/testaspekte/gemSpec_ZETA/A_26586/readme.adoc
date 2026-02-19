@@ -6,3 +6,4 @@ include::TA_A_26586_01.adoc[]
 
 include::TA_A_26586_02.adoc[]
 
+include::TA_A_26586_03.adoc[]

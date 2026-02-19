@@ -1,0 +1,8 @@
+[#TA_A_26668_28]
+===== TA_A_26668_28 - ZETA Guard - Rate Limit - Header X-Rate-Limit-Reset - Authorization Server - GET /openid/v1/jwks
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (+++[...]+++, +++[...]+++ und **X-Rate-Limit-Reset** (Zeitpunkt, an dem das Limit zurückgesetzt wird)). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: GET /openid/v1/jwks

@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 # For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
 # #L%
 #
+
 #language:de
 
 @UseCase_01_09
@@ -33,8 +34,10 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_403
   @dev
   @A_25661
   @A_27401
+  @A_26661
   @TA_A_25661_03
-  @TA_A_26661_01
+  @TA_A_26661_04
+  @TA_A_26662_01
   @TA_A_27401_01
   Szenario: Policy Decision - Zugriffsverweigerung bei allow=false liefert HTTP 403
     # OPA Response manipulieren: allow auf false setzen
@@ -49,17 +52,22 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_403
 
     # TA_A_27401_01: OPA Response Schema-Validierung
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "PDP_DECISION"
+    # TA_A_27401_01 - PDP Policy Engine - Decision Eigenschaften - schemakonform
     Und validiere "${PDP_DECISION}" soft gegen Schema "schemas/v_1_0/pdp-decision.yaml"
 
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.result"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.result.allow"
     # Manipulation verifizieren: allow sollte false sein
+    # TA_A_25661_03 - PDP Authorization Server - Umsetzung der Policy Decision - Zugriffsverweigerung
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.result.allow" überein mit "false"
 
     # TA_A_25661_03: Token Request muss mit 403 Forbidden fehlschlagen
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    # TA_A_25661_03 - PDP Authorization Server - Umsetzung der Policy Decision - Zugriffsverweigerung
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
 
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
+    # TA_A_26662_01 - ZETA Guard, HTTP Fehlerdetails
     Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
-
+    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.access_token"
+    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.refresh_token"

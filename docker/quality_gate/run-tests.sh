@@ -1,20 +1,22 @@
 #!/bin/sh
 set -u
 
+common_lib="/app/run-tests-common.sh"
+if [ ! -f "${common_lib}" ]; then
+  common_lib="$(dirname "$0")/../run-tests-common.sh"
+fi
+# shellcheck source=/app/run-tests-common.sh
+. "${common_lib}" || { echo "Failed to load ${common_lib}" >&2; exit 1; }
+
 # GitLab runners reset the working directory to /builds/...; keep JEXL file() paths stable.
-cd /app || { echo "Expected /app to exist in the quality gate image." >&2; exit 1; }
+tiger_cd_app "/app"
 
 # Default Tiger config when no explicit path is provided (helpful in CI where CWD != /app)
 : "${TIGER_TESTENV_CFGFILE:=/app/tiger.yaml}"
 export TIGER_TESTENV_CFGFILE
 
-serenity_dir="${SERENITY_EXPORT_DIR:-/app/target/site/serenity}"
-cucumber_dir="${CUCUMBER_EXPORT_DIR:-/app/target/cucumber-parallel}"
-
-mkdir -p "${serenity_dir}" "${cucumber_dir}" || {
-  echo "Failed to ensure report directories exist: ${serenity_dir}, ${cucumber_dir}" >&2
-  exit 1
-}
+tiger_set_defaults
+tiger_setup_report_dirs "direct" "/app/target/site/serenity" "/app/target/cucumber-parallel"
 
 agent="/app/agent/tiger-java-agent.jar"
 [ -f "${agent}" ] || agent="$(find /app/libs -name 'tiger-*-agent*.jar' | head -n1 || true)"
@@ -24,14 +26,19 @@ tests_jar="$(find /app -maxdepth 1 -name '*-tests.jar' | head -n1 || true)"
 [ -n "${tests_jar}" ] || tests_jar="/app/tests.jar"
 classpath="${tests_jar}:/app/libs/*"
 
+profile_arg=""
+if [ -n "${PROFILE}" ]; then
+  profile_arg="-DPROFILE=${PROFILE}"
+fi
+
 set +e
 java -Dserenity.outputDirectory="${serenity_dir}" \
   "-Dzeta.cucumber.outputDirectory=${cucumber_dir}" \
-  "-Denvironment=${TIGER_ENVIRONMENT:-cloud}" \
-  "-Dzeta_base_url=${ZETA_BASE_URL:-}" \
-  "-Dzeta_proxy_url=${ZETA_PROXY_URL:-}" \
-  "-Dzeta_proxy=${ZETA_PROXY:-no-proxy}" \
-  "-Dcucumber.filter.tags=${CUCUMBER_TAGS:-@smoke}" \
+  ${profile_arg:+${profile_arg}} \
+  "-Dzeta_base_url=${ZETA_BASE_URL}" \
+  "-Dzeta_proxy_url=${ZETA_PROXY_URL}" \
+  "-Dopensearch_url=${OPENSEARCH_URL}" \
+  "-Dcucumber.filter.tags=${CUCUMBER_TAGS}" \
   -javaagent:"${agent}" \
   -cp "${classpath}" \
   de.gematik.zeta.TigerTestsuiteMain "$@"

@@ -2,7 +2,7 @@
 # #%L
 # ZETA Testsuite
 # %%
-# (C) 2025 achelos GmbH, licensed for gematik GmbH
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
 # %%
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 
 #language:de
 
+@websocket
+@stomp
 @no_proxy
 @UseCase_Smoke_03
 Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
@@ -40,6 +42,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: CREATE - Doppelte PrescriptionId gibt Konflikt zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-dup1" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
@@ -56,7 +59,6 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
       """
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und wird der Wert des Knotens "$.id" der empfangenen Nachricht in der Variable "duplicateTestId" gespeichert
-
     Wenn Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
       {
@@ -76,6 +78,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: CREATE - Fehlende Pflichtfelder geben Validierungsfehler zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-validation" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
@@ -92,6 +95,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: CREATE - Fehlerhaftes JSON gibt BAD REQUEST zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-invalid-json" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
@@ -113,6 +117,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: CREATE - Ungültiges Datumsformat gibt BAD REQUEST zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-invalid-date" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
@@ -133,6 +138,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: READ - Nicht existierende ID gibt NOT FOUND zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-notfound" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${nonExistentId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -141,6 +147,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: UPDATE - Nicht existierende ID gibt NOT FOUND zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-update-notfound" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.updatePrefix}${nonExistentId}" mit folgenden JSON Daten gesendet wird:
       """
@@ -160,6 +167,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
   Szenario: UPDATE - Fehlende Pflichtfelder geben BAD REQUEST zurück
     Gegeben sei Variable "duplicateTestId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-update-validation" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.updatePrefix}${duplicateTestId}" mit folgenden JSON Daten gesendet wird:
       """
@@ -177,6 +185,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: DELETE - Nicht existierende ID gibt NOT FOUND zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-delete-notfound" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${nonExistentId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -186,11 +195,11 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
   Szenario: DELETE - Bereits gelöschtes Rezept gibt NOT FOUND zurück
     Gegeben sei Variable "duplicateTestId" existiert
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-double-delete" abonniert wird
     Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${duplicateTestId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und hat die empfangene Nachricht im Feld "status" den Wert "deleted"
-
     Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${duplicateTestId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und hat die empfangene Nachricht im Feld "status" den Wert "404"
@@ -198,6 +207,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Szenario: UPDATE - PrescriptionId Konflikt gibt Fehler zurück
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
+    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-conflict" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """

@@ -1,0 +1,4 @@
+[#TA_A_25799_03]
+===== TA_A_25799_03 - ZETA Guard-Komponenten - Protokollierung von Health Check Ergebnissen - Authorization Server
+
+"Die Komponenten des ZETA Guard MUSS die **Ergebnisse der Health Checks protokollieren**, um eine Historie ihrer Betriebszustände und eventuell aufgetretener Probleme zu erhalten. **[<=]**"

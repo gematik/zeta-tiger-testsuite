@@ -1,6 +1,6 @@
 [project]
 name = "testsuite-docs-tools"
-version = "0.1.0"
+version = "0.3.0"
 description = "Python utilities supporting the docs toolchain for the testsuite project."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,6 +21,7 @@ fetch-youtrack-testaspects = "testsuite_docs.fetch_youtrack_testaspects:main"
 traceability = "testsuite_docs.traceability.__main__:main"
 generate-cucumber-methods = "testsuite_docs.generate_cucumber_methods:main"
 generate-zeta-afos = "testsuite_docs.zeta_afos:main"
+gitlab-issue-sync = "testsuite_docs.gitlab_issue_sync:main"
 
 [build-system]
 requires = ["setuptools>=80.9.0"]

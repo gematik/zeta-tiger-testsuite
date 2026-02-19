@@ -1,9 +1,9 @@
 [#TA_A_27007_01]
-===== TA_A_27007_01 - ZETA Client - HTTP Statuscodes - Authentifizierung - Client Assertion - 200 OK
+===== TA_A_27007_01 - ZETA Client - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 200 OK
 
 "Der ZETA Client MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
 
-Tabelle 5: ZT_HTTP_Statuscodes
+Tabelle 6: ZT_HTTP_Statuscodes
 
 +++[...]+++
 

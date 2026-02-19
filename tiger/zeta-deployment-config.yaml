@@ -1,0 +1,34 @@
+namespace: ${zeta_k8s_namespace}
+command_timeout: ${zeta_k8s_command_timeout}
+pod_ready_timeout: ${zeta_k8s_pod_ready_timeout}
+pep:
+  podName: "pep-deployment"
+  nginx:
+    configMapName: "pep-test-nginx-conf"
+    keySegments:
+      "0": "data"
+      "1": "nginx.conf"
+    asl:
+      nginxConfigAnchorRegex: "location\\s+/.well-known/\\s+\\{[^}]*}"
+      nginxConfigRegex: "location\\s+/ASL\\s+\\{[^}]*}"
+      nginxConfig: |
+        location /ASL {
+          pep                   on;
+          asl                   on;
+          pep_require_aud       https://${zeta_base_url};
+          # pep_require_scope     "";
+          # pep_leeway           60; # s
+        }
+    popp:
+      nginxConfigRegex:    "pep_require_popp\\s+(on|off)\\s*;"
+      nginxConfigEnabled:  "pep_require_popp      on;"
+      nginxConfigDisabled: "pep_require_popp      off;"
+  wellKnown:
+    configMapName: "pep-well-known"
+    keySegments:
+      "0": "data"
+      "1": "oauth-protected-resource"
+    asl:
+      resourceRegex: "\"zeta_asl_use\"\\s*:\\s*\"[^\"]+\""
+      aslEnabledValue: "\"zeta_asl_use\":\"required\""
+      aslDisabledValue: "\"zeta_asl_use\":\"not_supported\""
