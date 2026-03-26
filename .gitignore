@@ -366,10 +366,9 @@ reports/
 .githubignore
 # private key
 src/test/resources/mocks/jwt-sign-key.pem
-src/test/resources/keys/**
+src/test/resources/keys/*.pem
 # 3rd party tools
 tools/**
 src/test/resources/features/UserStory_01/orphan
 docs/scripts/src/testsuite_docs/fetch_youtrack_testaspects.py
 .gitlab-ci.yml
-
