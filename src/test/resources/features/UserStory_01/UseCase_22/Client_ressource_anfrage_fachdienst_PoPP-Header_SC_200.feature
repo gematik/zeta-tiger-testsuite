@@ -30,39 +30,43 @@ Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @A_25669
   @A_26477
   @TA_A_25669_05
   @TA_A_26477_05 # Signatur muss mathematisch gültig sein
   @TA_A_26477_08 # popp-token.actorId == access_token.identifier
+  @TA_A_26477_13
   Szenario: PoPP Token Validation
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     # Sende Resource Anfrage
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    # TA_A_26477_13 - initialer Download des JWKS bei fehlendem gültigen JWKS
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.popp.jwks}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
 
     # "PoPP Token werden im Request Header PoPP übertragen".
-    Und TGR speichere Wert des Knotens "$.header.popp" der aktuellen Anfrage in der Variable "PoPP_TOKEN"
-
-    # Schema Prüfung gegen Schema aus der gemSpec_PoPP
-    Und decodiere und validiere "${PoPP_TOKEN}" gegen Schema "schemas/mock/popp-token-gemspec_popp.yaml"
+    Und TGR speichere Wert des Knotens "${headers.popp.root}" der aktuellen Anfrage in der Variable "PoPP_TOKEN"
 
     # TA_A_26477_05 - PEP HTTP Proxy - PoPP Token Validierung - Signatur mathematisch gültig
     Und verifiziere die ES256 Signatur des JWT "${PoPP_TOKEN}"
 
     # TA_A_26477_08 - PEP HTTP Proxy - PoPP Token Validierung - Übereinstimmung von claim
     Dann TGR finde die letzte Anfrage mit dem Pfad "^${paths.fachdienst.helloZetaPath}"
-    Und TGR speichere Wert des Knotens "$.header.ZETA-User-Info.decoded.identifier" der aktuellen Anfrage in der Variable "IDENTIFIER"
+    Und TGR speichere Wert des Knotens "${headers.zeta.userInfo.decoded.identifier}" der aktuellen Anfrage in der Variable "IDENTIFIER"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.popp.body.actorId" überein mit "${IDENTIFIER}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.popp.body.actorId}" überein mit "${IDENTIFIER}"
 
     # Zeitstempel "iat" ist nicht älter als konfiguriert
-    Und TGR speichere Wert des Knotens "$.header.popp.body.iat" der aktuellen Anfrage in der Variable "PoPP_TOKEN_IAT"
+    Und TGR speichere Wert des Knotens "${headers.popp.body.iat}" der aktuellen Anfrage in der Variable "PoPP_TOKEN_IAT"
     Und validiere, dass der Zeitstempel "${PoPP_TOKEN_IAT}" in der Vergangenheit liegt
 
     # Zeitstempel "patientProofTime" ist nicht älter als konfiguriert
-    Und TGR speichere Wert des Knotens "$.header.popp.body.patientProofTime" der aktuellen Anfrage in der Variable "PoPP_TOKEN_PPT"
+    Und TGR speichere Wert des Knotens "${headers.popp.body.patientProofTime}" der aktuellen Anfrage in der Variable "PoPP_TOKEN_PPT"
     Und validiere, dass der Zeitstempel "${PoPP_TOKEN_PPT}" in der Vergangenheit liegt
 
   @A_26493

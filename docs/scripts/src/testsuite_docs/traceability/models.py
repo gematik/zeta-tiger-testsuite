@@ -22,6 +22,8 @@
 # #L%
 #
 
+"""Datamodels shared by traceability builder and CLI outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -31,6 +33,8 @@ from typing import Dict, List, Optional, Set
 
 @dataclass(frozen=True, slots=True)
 class Requirement:
+  """Requirement catalogue entry parsed from Asciidoc sources."""
+
   requirement_id: str
   title: str
   source: Path
@@ -38,6 +42,8 @@ class Requirement:
 
 @dataclass(frozen=True, slots=True)
 class TestAspect:
+  """Test aspect metadata and owning requirement reference."""
+
   test_aspect_id: str
   title: str
   requirement_id: str
@@ -46,6 +52,8 @@ class TestAspect:
 
 @dataclass(slots=True)
 class UseCase:
+  """Use-case metadata with links to associated feature files."""
+
   tag_id: str
   anchor_id: str
   title: str
@@ -55,6 +63,8 @@ class UseCase:
 
 @dataclass(slots=True)
 class ScenarioCoverage:
+  """Coverage facts extracted from one feature scenario."""
+
   scenario_name: str
   feature: Path
   use_cases: Set[str]
@@ -65,6 +75,8 @@ class ScenarioCoverage:
 
 @dataclass(slots=True)
 class TraceabilityRecord:
+  """Internal aggregation row before serialisation to output links."""
+
   requirement_id: str
   test_aspect_id: str
   use_case_id: Optional[str]

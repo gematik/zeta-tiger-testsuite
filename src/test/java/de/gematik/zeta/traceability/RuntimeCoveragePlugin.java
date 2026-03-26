@@ -71,7 +71,7 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
       Pattern.CASE_INSENSITIVE);
   private static final String DEFAULT_OUTPUT = "target/traceability/runtime_coverage.csv";
   private static final Path PRODUCT_STATUS_CSV =
-      Path.of("docs/asciidoc/tables/product_implementation.csv");
+      Path.of("docs/asciidoc/tables/source/product_implementation.csv");
   private static final Path TEST_ASPECTS_ROOT = Path.of("docs/asciidoc/testaspekte");
   private static final String CUCUMBER_OUTPUT_DIR_PROPERTY = "zeta.cucumber.outputDirectory";
   private static final String DEFAULT_CUCUMBER_OUTPUT_DIR = "target/cucumber-parallel";

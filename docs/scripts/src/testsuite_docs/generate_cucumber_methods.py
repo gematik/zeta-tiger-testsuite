@@ -28,7 +28,7 @@ Extracts:
 * Local glue steps (Cucumber annotations) with short descriptions derived from Javadoc.
 
 Output: an Asciidoc table (German text) for inclusion in the docs; by default written to
-`docs/asciidoc/tables/cucumber_methods_table.adoc`.
+`docs/asciidoc/tables/generated/cucumber_methods_table.adoc`.
 """
 
 from __future__ import annotations
@@ -42,7 +42,8 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 import pandas as pd
-from pytablewriter import AsciiDocTableWriter
+
+from testsuite_docs.asciidoc_tables import write_asciidoc_table
 
 
 @dataclass(frozen=True)
@@ -229,20 +230,17 @@ def render_asciidoc_table(
     ]
   )
 
-  writer = AsciiDocTableWriter()
-  writer.headers = list(df.columns)
-  writer.value_matrix = df.values.tolist()
-  table = writer.dumps()
+  table = write_asciidoc_table(
+      headers=list(df.columns),
+      rows=df.values.tolist(),
+      cols_directive="2,2,3,5",
+      autowidth=True,
+  )
   header = (
     "// Dieses Tabellenfragment wird automatisch von generate-cucumber-methods erzeugt.\n"
     "// Nicht manuell bearbeiten; Änderungen an Glue-Klassen + Skript neu ausführen.\n\n"
   )
-  return header + table + "\n"
-
-
-def escape_pipes(value: str) -> str:
-  """Escape table cell separators in Asciidoc content."""
-  return value.replace("|", "\\|")
+  return header + table
 
 
 def build_parser(default_repo: Path) -> argparse.ArgumentParser:
@@ -270,15 +268,15 @@ def build_parser(default_repo: Path) -> argparse.ArgumentParser:
     default=None,
     help=(
       "Target Asciidoc file. Defaults to "
-      "`docs/asciidoc/tables/cucumber_methods_table.adoc`."
+      "`docs/asciidoc/tables/generated/cucumber_methods_table.adoc`."
     ),
   )
   return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-  repo_root = find_repo_root(Path(__file__).resolve())
-  parser = build_parser(default_repo=repo_root)
+  default_repo_root = find_repo_root(Path(__file__).resolve())
+  parser = build_parser(default_repo=default_repo_root)
   args = parser.parse_args(argv)
 
   repo_root = args.project_root.resolve()
@@ -288,11 +286,8 @@ def main(argv: list[str] | None = None) -> int:
 
   document = render_asciidoc_table(project_steps, repo_root)
 
-  if args.output:
-    output_path = args.output.resolve()
-  else:
-    output_path = (repo_root / "docs" / "asciidoc" / "tables" /
-                   "cucumber_methods_table.adoc").resolve()
+  output_path = (args.output or repo_root / "docs" / "asciidoc" / "tables" /
+                 "generated" / "cucumber_methods_table.adoc").resolve()
 
   output_path.parent.mkdir(parents=True, exist_ok=True)
   output_path.write_text(document, encoding="utf-8")

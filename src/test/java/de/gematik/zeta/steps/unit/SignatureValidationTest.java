@@ -38,9 +38,56 @@ import org.junit.jupiter.api.Test;
  */
 class SignatureValidationTest {
 
-  private static final String ENCODED_POPP_TOKEN_RESOURCE = "mocks/encoded_popp_token.jwt";
+  private static final String ENCODED_POPP_TOKEN_RESOURCE = "mocks/popp-token_gemspec-popp_encoded.jwt";
 
   private final JwtSteps validator = new JwtSteps();
+
+  @Test
+  public void testVerifyJwtSignatureFromCertsResponse() {
+    var certsResponse = """
+        {
+          "keys": [
+            {
+              "kid": "3Uc_qfgy3NM9l_k0Fs3ExYeDt3Fl8rCM7JyUcaMPI7k",
+              "kty": "EC",
+              "alg": "ES256",
+              "use": "sig",
+              "crv": "P-256",
+              "x": "648xZLyAJcbWJeAqXW-E8-8YoqMfM9_JHwjyHXR9j1g",
+              "y": "-RhgANrdzCawTwdNRnuQFRuO0l9wXbmDkEthqRhUiVk"
+            }
+          ]
+        }
+        """;
+
+    var accessTokenJwt =
+        "eyJhbGciOiJFUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICIzVWNfcWZneTNOTTlsX2swRnMzRXhZZUR0M0ZsOH"
+            + "JDTTdKeVVjYU1QSTdrIn0"
+            + ".eyJleHAiOjE3NzMyMzYwMDIsImlhdCI6MTc3MzIzNTcwMiwianRpIjoib25ydHRlOmNh"
+            + "YjEwZTI0LTJjOWQtNTRkYy05ZDRkLWEyMWYzODg4NzY3ZCIsImlzcyI6Imh0dHBzOi8vemV0YS1raW5kLmxvY2FsL2"
+            + "F1dGgvcmVhbG1zL3pldGEtZ3VhcmQiLCJhdWQiOiJodHRwczovL3pldGEta2luZC5sb2NhbCIsInN1YiI6IjEtMjAw"
+            + "MTQwNjA2MjUiLCJ0eXAiOiJEUG9QIiwiYXpwIjoiYTg4MTk0NTMtNzIyZC00NjI0LTk1N2UtNjE4MmQ5Y2YxMmQzIi"
+            + "wic2lkIjoiNkNfbjlGdU9ibngydld0dk9hY3dRc01QIiwiYWNyIjoiMSIsImNuZiI6eyJqa3QiOiJMV2VlVU9wTEZC"
+            + "UmlkdVJMakQ5bzZ6VDFNemlHeFpGV3g1enN0MHVncHEwIn0sInNjb3BlIjoiemVybzphdWRpZW5jZSBwcm9maWxlIG"
+            + "VtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJ1ZGF0Ijp7InRlbGlkIjoiMS0yMDAxNDA2MDYyNSIsInByb2Yi"
+            + "OiIxLjIuMjc2LjAuNzYuNC41MCJ9LCJuYW1lIjoiY0wtYzhsc2FXWTc4YlhlQ0lXcGdWM3RfYl9WemgxTUg5T29INm"
+            + "ltcEU4VSBjTC1jOGxzYVdZNzhiWGVDSVdwZ1YzdF9iX1Z6aDFNSDlPb0g2aW1wRThVIiwiY2RhdCI6eyJuYW1lIjoi"
+            + "IiwiY2xpZW50X2lkIjoiYTg4MTk0NTMtNzIyZC00NjI0LTk1N2UtNjE4MmQ5Y2YxMmQzIiwibWFudWZhY3R1cmVyX2"
+            + "lkIjoiIiwibWFudWZhY3R1cmVyX25hbWUiOiIiLCJvd25lcl9tYWlsIjoidGVzdEBlbWFpbHRlc3QuZGUiLCJyZWdp"
+            + "c3RyYXRpb25fdGltZXN0YW1wIjoxNzczMjM1NzAxLCJwbGF0Zm9ybV9wcm9kdWN0X2lkIjp7InBsYXRmb3JtIjoibG"
+            + "ludXgiLCJwYWNrYWdpbmdfdHlwZSI6InBhY2thZ2luZ1R5cGUiLCJhcHBsaWNhdGlvbl9pZCI6InRlc3QtZHJpdmVy"
+            + "In19LCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJjbC1jOGxzYXd5NzhieGVjaXdwZ3YzdF9iX3Z6aDFtaDlvb2g2aW1wZT"
+            + "h1IiwiZ2l2ZW5fbmFtZSI6ImNMLWM4bHNhV1k3OGJYZUNJV3BnVjN0X2JfVnpoMU1IOU9vSDZpbXBFOFUiLCJmYW1p"
+            + "bHlfbmFtZSI6ImNMLWM4bHNhV1k3OGJYZUNJV3BnVjN0X2JfVnpoMU1IOU9vSDZpbXBFOFUiLCJlbWFpbCI6ImNsLW"
+            + "M4bHNhd3k3OGJ4ZWNpd3BndjN0X2JfdnpoMW1oOW9vaDZpbXBlOHVAZ2VtYXRpay5kZSJ9"
+            + ".fhQ3PnRmc60a9FdvPQ6"
+            + "HrRT6OFxxGxcpZytSVd4mjTEoHXNx-Gdd_yD-AHPNTOzhZT4yH3fg06GJcq0eXAsyhA";
+
+    assertDoesNotThrow(
+        () -> validator.verifyJwtSignatureFromKid(accessTokenJwt, certsResponse),
+        "signature verification was not successful");
+
+  }
 
 
   /**
@@ -84,9 +131,11 @@ class SignatureValidationTest {
   }
 
   private static String loadEncodedPoppToken() {
+
     final String normalized = ENCODED_POPP_TOKEN_RESOURCE;
+
     try (InputStream in =
-        SignatureValidationTest.class.getClassLoader().getResourceAsStream(normalized)) {
+             SignatureValidationTest.class.getClassLoader().getResourceAsStream(normalized)) {
       if (in == null) {
         throw new IllegalArgumentException("Resource not found: " + normalized);
       }

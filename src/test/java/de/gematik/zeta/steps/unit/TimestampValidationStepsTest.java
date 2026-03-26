@@ -60,6 +60,18 @@ class TimestampValidationStepsTest {
   }
 
   /**
+   * Verifies boundary behavior: "now" is accepted as expired.
+   */
+  @Test
+  void testTimestampIsExpiredNowBoundary() {
+    Instant now = Instant.now();
+
+    assertDoesNotThrow(
+        () -> validator.validateTimestampIsExpired(String.valueOf(now.getEpochSecond())),
+        "Current timestamp should be accepted as expired");
+  }
+
+  /**
    * Verifies the method "timestampIsNotYetExpired".
    */
   @Test

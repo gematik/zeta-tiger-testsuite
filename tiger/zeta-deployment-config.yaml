@@ -4,6 +4,7 @@ pod_ready_timeout: ${zeta_k8s_pod_ready_timeout}
 pep:
   podName: "pep-deployment"
   nginx:
+    containerName: "nginx"
     configMapName: "pep-test-nginx-conf"
     keySegments:
       "0": "data"
@@ -23,6 +24,10 @@ pep:
       nginxConfigRegex:    "pep_require_popp\\s+(on|off)\\s*;"
       nginxConfigEnabled:  "pep_require_popp      on;"
       nginxConfigDisabled: "pep_require_popp      off;"
+  image:
+    versionUpdate: "main"
+    versionDowngrade: "0.3.0"
+    versionInvalid: "nonexistent-rollout-test-20260311"
   wellKnown:
     configMapName: "pep-well-known"
     keySegments:

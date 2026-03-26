@@ -1,0 +1,78 @@
+# NOTE:
+# Prefer nested full keys (e.g. ${headers.dpop.body.jti}).
+# Do not compose paths via concatenation like ${headers.dpop}.body.jti.
+
+authorization:
+  root: "$.header.['authorization']"
+  dpopToken:
+    root: "$.header.['authorization'].DpopToken"
+    body:
+      sub: "$.header.['authorization'].DpopToken.body.sub"
+      cdat:
+        root: "$.header.['authorization'].DpopToken.body.cdat"
+        client_id: "$.header.['authorization'].DpopToken.body.cdat.client_id"
+      udat:
+        root: "$.header.['authorization'].DpopToken.body.udat"
+        telid: "$.header.['authorization'].DpopToken.body.udat.telid"
+        prof: "$.header.['authorization'].DpopToken.body.udat.prof"
+        commonName: "$.header.['authorization'].DpopToken.body.udat.commonName"
+        organizationName: "$.header.['authorization'].DpopToken.body.udat.organizationName"
+
+dpop:
+  root: "$.header.dpop"
+  header:
+    root: "$.header.dpop.header"
+    typ: "$.header.dpop.header.typ"
+    alg: "$.header.dpop.header.alg"
+    jwk:
+      root: "$.header.dpop.header.jwk"
+      kty: "$.header.dpop.header.jwk.kty"
+      crv: "$.header.dpop.header.jwk.crv"
+      x: "$.header.dpop.header.jwk.x"
+      y: "$.header.dpop.header.jwk.y"
+  body:
+    jti: "$.header.dpop.body.jti"
+    htm: "$.header.dpop.body.htm"
+    htu:
+      root: "$.header.dpop.body.htu"
+      path: "$.header.dpop.body.htu.path"
+    iat: "$.header.dpop.body.iat"
+    nonce: "$.header.dpop.body.nonce"
+    ath: "$.header.dpop.body.ath"
+
+popp:
+  root: "$.header.popp"
+  lineRegex: '(?m)^popp:\s*[^\n]*\n?'
+  body:
+    root: "$.header.popp.body"
+    actorId: "$.header.popp.body.actorId"
+    insurerId: "$.header.popp.body.insurerId"
+    iat: "$.header.popp.body.iat"
+    patientProofTime: "$.header.popp.body.patientProofTime"
+
+forwarded:
+  root: "$.header.forwarded"
+  xForwardedHost: "$.header.['x-forwarded-host']"
+  xForwardedProto: "$.header.['x-forwarded-proto']"
+
+zeta:
+  userInfo:
+    root: "$.header.['zeta-user-info']"
+    decoded:
+      identifier: "$.header.['zeta-user-info'].decoded.identifier"
+      professionOid: "$.header.['zeta-user-info'].decoded.professionOID"
+  poppTokenContent: "$.header.['zeta-popp-token-content']"
+  clientData: "$.header.['zeta-client-data']"
+  clientDataDecodedClientId: "$.header.['zeta-client-data'].decoded.client_id"
+  apiVersion: "$.header.['zeta-api-version']"
+  cause: "$.header.['zeta-cause']"
+
+cacheControl: "$.header.['cache-control']"
+contentType: "$.header.['content-type']"
+eTag: "$.header.etag"
+host: "$.header.host"
+ifNoneMatch: "$.header.['if-none-match']"
+rateLimit:
+  limit: "$.header.['x-rate-limit-limit']"
+  remaining: "$.header.['x-rate-limit-remaining']"
+  reset: "$.header.['x-rate-limit-reset']"

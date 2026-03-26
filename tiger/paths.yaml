@@ -31,6 +31,7 @@ guard:
   helloZetaPath: "/pep/achelos_testfachdienst/hellozeta"
   helloZetaProxyErrorPath: "/pep/achelos_testfachdienst/hellozeta/proxy-error"
   tokenEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/token"
+  certsEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/certs"
   registerEndpointPath: "/auth/realms/zeta-guard/clients-registrations/openid-connect"
   nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
   wellKnownOAuthServerPath: "/.well-known/oauth-authorization-server"
@@ -43,15 +44,13 @@ guard:
 
 tigerProxy:
   baseUrl: "http://${zeta_proxy_url}"
-  modifyJwsTokenPath: "/manipulation/modifyJwsToken"
   manipulationPath: "/manipulation/modification"
   modificationPath: "/modification"
   resetJwtManipulationPath: "/manipulation/resetJwtManipulation"
-  keyPath: "/manipulation/key"
   modifyJwtPath: "/manipulation/modifyJwt"
 
 opa:
-  decisionPath: "/v1/data/zeta/authz/decision"
+  decisionPath: "/v1/data/policies/zeta/authz/decision"
 
 popp:
   jwks: "/jwks.json"
@@ -61,8 +60,12 @@ openSearch:
   openTelemetryLogsSearchPath: "/otel-logs-*/_search"
   openTelemetryLogsSearchPathPattern: "/otel-logs-.*/_search.*"
 
+prometheus:
+  baseUrl: "http://${prometheus_url}"
+  prometheusMetricsSearchPath: "/api/v1/query"
+  prometheusMetricsSearchPathPattern: "/api/v1/query.*"
+
 jaeger:
   baseUrl: "https://${zeta_base_url}"
   jaegerTracesSearchPath: "/jaeger/ui/api/traces"
   jaegerTracesSearchPathPattern: "/jaeger/ui/api/traces.*"
-

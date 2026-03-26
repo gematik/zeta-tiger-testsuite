@@ -37,9 +37,12 @@ import com.nimbusds.jose.JWSHeader.Builder;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
@@ -269,7 +272,7 @@ public class JwtSteps {
   @Dann("Hole JWT mit zusätzlichem Header {tigerResolvedString} von {tigerResolvedString} und speichere in der Variable {tigerResolvedString}")
   @Then("Get JWT with additional header {tigerResolvedString} from {tigerResolvedString} and store in variable {tigerResolvedString}")
   public void getJwtTokenWithManipulatedHeader(String additionalHeader, String url,
-      String varName) {
+                                               String varName) {
     getJwtToken(DEFAULT_CLIENT_ID, additionalHeader, url, varName);
   }
 
@@ -287,7 +290,7 @@ public class JwtSteps {
       "Setze {tigerResolvedString} im JWT-Token {tigerResolvedString} auf den Wert {tigerResolvedString} "
           + "und signiere mit dem Key {tigerResolvedString} und speichere in der Variable {tigerResolvedString}")
   public void manipulateJwtToken(String path, String token, String value, String keyFile,
-      String varName) {
+                                 String varName) {
     String[] atoms = path.toLowerCase().split("\\.");
     String[] parts = token.split("\\.");
     String name = atoms[0];
@@ -401,7 +404,7 @@ public class JwtSteps {
         .isNotNull()
         .isNotEmpty();
 
-    X509Certificate certificate = parseCertificateFromX5c(certChain.get(0));
+    X509Certificate certificate = parseCertificateFromX5c(certChain.getFirst());
     assertThat(certificate.getPublicKey())
         .as("x5c certificate must provide an EC public key")
         .isInstanceOf(ECPublicKey.class);
@@ -435,8 +438,8 @@ public class JwtSteps {
     assertThat(certChain)
         .as("Self-signed x5c certificate chain should contain exactly one certificate")
         .hasSize(1);
-    
-    X509Certificate certificate = parseCertificateFromX5c(certChain.get(0));
+
+    X509Certificate certificate = parseCertificateFromX5c(certChain.getFirst());
     assertThat(certificate.getSubjectX500Principal())
         .as("x5c certificate must be self-signed")
         .isEqualTo(certificate.getIssuerX500Principal());
@@ -598,6 +601,133 @@ public class JwtSteps {
       throw new AssertionError("Failed to parse x5c certificate from JWT header: "
           + e.getMessage(), e);
     }
+  }
+
+
+  /**
+   * Verifies the signature of a JWT which has only a keyId/kid in the header and not
+   * the complete JWK parameters. The key will be extracted from the keyStore
+   *
+   * @param jwt a JWT which has only a keyId in the header
+   * @param keyStore a JSON structure containing the key
+   */
+  @Und("verifiziere die ES256 Signatur des JWT {tigerResolvedString} mit KeyStore {tigerResolvedString}")
+  @And("verify the ES256 signature of the JWT {tigerResolvedString} with keystore {tigerResolvedString}")
+  public void verifyJwtSignatureFromKid(String jwt, String keyStore) {
+    SignedJWT signedJwt = parseSignedJwt(jwt);
+    var kid = signedJwt.getHeader().getKeyID();
+
+    var key = parseCertResponse(keyStore).get(kid);
+
+    assertThat(kid)
+        .as("JWT must contain kid in header")
+        .isNotBlank();
+    assertThat(key)
+        .as("Key for kid '%s' must be present in cert response", kid)
+        .isNotNull()
+        .isInstanceOf(JWK.class);
+
+    verifyWithJwk(signedJwt, (JWK) key, kid);
+  }
+
+
+
+
+  /**
+   * This method parses the given jsonString which contains various certs and public keys and puts them
+   * in a map, using the keyID or kid as identifiers.
+   *
+   * @param jsonString JSON structure containing various certs
+   * @return the map with the keys
+   */
+  public Map<Object, Object> parseCertResponse(String jsonString) {
+    if (jsonString == null || jsonString.isBlank()) {
+      return Map.of();
+    }
+
+    Map<Object, Object> certsStore = new HashMap<>();
+    try {
+      JWKSet jwkSet = JWKSet.parse(jsonString);
+      for (JWK jwk : jwkSet.getKeys()) {
+        String kid = jwk.getKeyID();
+        if (kid == null || kid.isBlank()) {
+          continue;
+        }
+        JWK resolvedJwk = jwk;
+        if (requiresCertFallback(jwk)) {
+          List<com.nimbusds.jose.util.Base64> certChain = jwk.getX509CertChain();
+          if (certChain == null || certChain.isEmpty()) {
+            throw new AssertionError(
+                "Failed to extract public key for kid '" + kid + "': no x5c chain provided");
+          }
+          X509Certificate certificate = parseCertificateFromX5c(certChain.getFirst());
+          try {
+            resolvedJwk = JWK.parse(certificate);
+          } catch (JOSEException e) {
+            throw new AssertionError(
+                "Failed to parse x5c certificate into JWK for kid '" + kid + "': "
+                    + e.getMessage(), e);
+          }
+        }
+        certsStore.put(kid, resolvedJwk);
+      }
+    } catch (ParseException e) {
+      throw new AssertionError("Failed to parse cert response JSON: " + e.getMessage(), e);
+    }
+    return certsStore;
+  }
+
+  private boolean requiresCertFallback(JWK jwk) {
+    if (jwk instanceof ECKey ecKey) {
+      return ecKey.getX() == null || ecKey.getY() == null;
+    }
+    if (jwk instanceof RSAKey rsaKey) {
+      return rsaKey.getModulus() == null || rsaKey.getPublicExponent() == null;
+    }
+    // For other JWK types, assume no certificate fallback is needed
+    // since this method is specifically for EC/RSA key validation
+    return false;
+  }
+
+  /**
+   * Verifies a JWT signature using a JWK directly.
+   *
+   * @param signedJwt the parsed, signed JWT
+   * @param jwk the JWK used for verification
+   * @param keySource human-readable description of the key source (e.g., jwks, keystore)
+   */
+  public void verifyWithJwk(SignedJWT signedJwt, JWK jwk, String keySource) {
+    boolean valid;
+    try {
+      if (jwk instanceof ECKey ecKey) {
+        JWSVerifier verifier = new ECDSAVerifier(ecKey);
+        valid = signedJwt.verify(verifier);
+      } else if (jwk instanceof RSAKey rsaKey) {
+        JWSVerifier verifier = new RSASSAVerifier(rsaKey);
+        valid = signedJwt.verify(verifier);
+      } else {
+        throw new AssertionError("Unsupported JWK key type for verification: "
+            + jwk.getKeyType());
+      }
+    } catch (JOSEException e) {
+      if (jwk instanceof ECKey ecKey) {
+        try {
+          verifyWithEcPublicKey(signedJwt, ecKey.toECPublicKey(), keySource);
+          return;
+        } catch (JOSEException e2) {
+          throw new AssertionError(
+              "Failed to extract EC public key from JWK: " + e2.getMessage(), e2);
+        }
+      }
+      throw new AssertionError(
+          "Failed to verify JWT signature using " + keySource + ": " + e.getMessage(), e);
+    }
+
+    assertThat(valid)
+        .as("JWT signature must verify with public key from " + keySource)
+        .isTrue();
+
+    log.info("JWT signature verified successfully using {}", keySource);
   }
 
 }

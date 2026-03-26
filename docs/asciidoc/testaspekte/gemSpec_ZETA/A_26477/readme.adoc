@@ -25,3 +25,5 @@ include::TA_A_26477_10.adoc[]
 include::TA_A_26477_11.adoc[]
 
 include::TA_A_26477_12.adoc[]
+
+include::TA_A_26477_13.adoc[]

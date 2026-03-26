@@ -30,6 +30,7 @@ Funktionalität: client_ressource_anfrage_fachdienst_sc_400
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @A_26477
   @A_26661
@@ -40,8 +41,8 @@ Funktionalität: client_ressource_anfrage_fachdienst_sc_400
   Szenario: Fehlender PoPP-Header bei Ressource-Anfrage
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "poppHeaderCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
-    Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "(?m)^popp:\s*[^\n]*\n?" und Wert ""
+    Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "${headers.popp.lineRegex}" und Wert ""
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    Und prüfe aktueller Request enthält keinen Knoten "$.header.popp"
+    Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.popp.root}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"

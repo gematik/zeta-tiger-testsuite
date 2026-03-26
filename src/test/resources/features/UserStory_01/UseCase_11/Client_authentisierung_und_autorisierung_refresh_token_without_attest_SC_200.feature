@@ -30,6 +30,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
     # TTL-Werte als Variablen definieren (in Sekunden)
     Und TGR setze lokale Variable "accessTokenTtl" auf "5"
 
@@ -196,7 +197,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     # TA_A_25660_05: Validiere dass das zuvor ausgegebene Refresh Token verwendet wird
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.refresh_token" überein mit "${firstRefreshToken}"
     # TA_A_26972-01: Refresh ohne erneutes Subject-Token (Persistenz-Indiz)
-    Und prüfe aktueller Request enthält keinen Knoten "$.body.subject_token"
+    Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.subject_token"
 
     # TA_A_25660_05: Verwaltung bedeutet Rotation - neue Tokens müssen unterschiedlich sein
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.access_token" nicht überein mit "${firstAccessToken}"
@@ -211,12 +212,14 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.identifier" überein mit "${SMCB-INFO.telematikId}"
     # TA_A_26972-01_03 professionOID
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.professionOID" überein mit "${SMCB-INFO.professionId}"
+    # TA_A_26972-01_04 optional organizationName
+    Und prüfe optional: Knoten "$.body.input.user_info.organizationName" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
     # TA_A_26972-01_02 optional commonName
-    Und prüfe optional: Knoten "$.header.authorization.DpopToken.body.udat.commonName" fehlt wenn "${SMCB-INFO.commonName}" leer ist, sonst gleich und nutze soft assert
+    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.udat.commonName}" fehlt wenn "${SMCB-INFO.commonName}" leer ist, sonst gleich und nutze soft assert
     # TA_A_26972-01_04 optional organizationName
-    Und prüfe optional: Knoten "$.header.authorization.DpopToken.body.udat.organizationName" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
+    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.udat.organizationName}" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
 
   @dev
   @A_25663
@@ -252,7 +255,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
     # DPoP JWT aus Request Header extrahieren und JKT berechnen
-    Und TGR speichere Wert des Knotens "$.header.dpop" der aktuellen Anfrage in der Variable "dpopJwt"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "dpopJwt"
     Und berechne JKT aus DPoP JWT "${dpopJwt}" und speichere in Variable "dpopJktFirstRequest"
 
     # TA_A_25663_01: Access Token ist an DPoP Key gebunden (cnf.jkt)
@@ -282,8 +285,8 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.refresh_token" überein mit "${boundRefreshToken}"
 
     # DPoP Header muss auch beim Refresh Request gesendet werden
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop"
-    Und TGR speichere Wert des Knotens "$.header.dpop" der aktuellen Anfrage in der Variable "refreshDpopJwt"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.root}"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "refreshDpopJwt"
     Und verifiziere ES256 Signatur von DPoP JWT "${refreshDpopJwt}"
     Und berechne JKT aus DPoP JWT "${refreshDpopJwt}" und speichere in Variable "dpopJktRefreshRequest"
 
@@ -416,7 +419,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     #           obtain the refresh token each time that refresh token is used"
     # Dieser Test verletzt diese Anforderung absichtlich mit einem anderen Key
     Wenn TGR setze lokale Variable "dpopCondition" auf "isRequest && request.path =~ '.*${paths.guard.tokenEndpointPath}'"
-    Dann Setze im TigerProxy für JWT in "$.header.dpop" das Feld "body.jti" auf Wert "attacker-jti" mit privatem Schlüssel "${attackerDpopKey}" für Pfad "${dpopCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.root}" das Feld "body.jti" auf Wert "attacker-jti" mit privatem Schlüssel "${attackerDpopKey}" für Pfad "${dpopCondition}" und 1 Ausführungen und ersetze JWK
 
     Und TGR lösche aufgezeichnete Nachrichten
 
@@ -429,10 +432,12 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
 
     # VERIFIZIERUNG: Token-Endpoint MUSS Refresh mit falschem DPoP-Key ablehnen
     # Erwarteter Fehler: 401 Unauthorized (DPoP Key Thumbprint != jkt im gebundenen Refresh Token)
-    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.header.dpop.body.jti" der mit "attacker-jti" übereinstimmt
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "${headers.dpop.body.jti}" der mit "attacker-jti" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
 
+  @A_25660
   @A_27867
+  @TA_A_25660_02
   @TA_A_27867_01
   Szenario: Session-Daten werden verwaltet (indirekter Nachweis)
     # expires_in Manipulation aktivieren BEVOR der erste HelloZeta Request

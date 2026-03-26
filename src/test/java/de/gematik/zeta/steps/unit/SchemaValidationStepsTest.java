@@ -40,26 +40,40 @@ import org.junit.jupiter.api.Test;
  */
 class SchemaValidationStepsTest {
 
-  private static final String WELL_KNOWN_SCHEMA = "schemas/v_1_0/as-well-known.yaml";
+  /* Schemas */
+  private static final String AS_WELL_KNOWN_SCHEMA = "schemas/v_1_0/as-well-known.yaml";
   private static final String ACCESS_TOKEN_SCHEMA = "schemas/v_1_0/access-token.yaml";
   private static final String CLIENT_ASSERTION_JWT_SCHEMA = "schemas/v_1_0/client-assertion-jwt.yaml";
-  private static final String POPP_TOKEN_SCHEMA = "schemas/v_1_0/popp-token.yaml";
+  /** Schema according to gemspec_PoPP. */
   private static final String POPP_TOKEN_GEMSPEC_POPP_SCHEMA = "schemas/mock/popp-token-gemspec_popp.yaml";
 
-  private final SchemaValidationSteps steps = new SchemaValidationSteps();
+  /* JSON Examples */
+  private static final String ENCODED_POPP_TOKEN = loadResource("mocks/popp-token_gemspec-popp_encoded.jwt");
+  private static final String EXAMPLE_POPP_TOKEN = loadResource("mocks/popp-token_gemspec-popp_example.json");
+  private static final String EXAMPLE_ACCESS_TOKEN = loadResource("mocks/access-token_example.json");
+  private static final String EXAMPLE_ACCESS_TOKEN_INVALID_HEADER = loadResource("mocks/access-token_example_invalid-header.json");
+  private static final String EXAMPLE_ACCESS_TOKEN_INVALID_PAYLOAD = loadResource("mocks/access-token_example_invalid-payload.json");
+  private static final String EXAMPLE_AS_WELL_KNOWN = loadResource("mocks/as-well-known_example.json");
+  // private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt-software_example-payload.json");
+  private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt_example.json");
 
-  private static final String ENCODED_POPP_TOKEN = loadResource("mocks/encoded_popp_token.jwt");
-  private static final String EXAMPLE_POPP_TOKEN = loadResource("mocks/example_popp_token.json");
-  private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/example_client-assertion-jwt.json");
   /**
    * The signature of this JWT is not valid, but that doesn't matter for the schema validation.
    */
-  private static final String ENCODED_CLIENT_ASSERTION_JWT = loadResource("mocks/encoded_client-assertion-token.jwt");
+  private static final String ENCODED_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt_encoded.jwt");
 
+  private final SchemaValidationSteps steps = new SchemaValidationSteps();
+
+  /**
+   * Reads the content of the resource.
+   *
+   * @param resource a path to a text file
+   * @return  a string containing the content of the resource
+   */
   private static String loadResource(String resource) {
     final String normalized = resource.startsWith("/") ? resource.substring(1) : resource;
     try (InputStream in =
-        SchemaValidationStepsTest.class.getClassLoader().getResourceAsStream(normalized)) {
+             SchemaValidationStepsTest.class.getClassLoader().getResourceAsStream(normalized)) {
       if (in == null) {
         throw new IllegalArgumentException("Resource not found: " + normalized);
       }
@@ -81,7 +95,7 @@ class SchemaValidationStepsTest {
         """;
 
     assertThrows(AssertionError.class,
-        () -> steps.validateJsonAgainstYamlSchema(payload, WELL_KNOWN_SCHEMA));
+        () -> steps.validateJsonAgainstYamlSchema(payload, AS_WELL_KNOWN_SCHEMA));
   }
 
 
@@ -90,25 +104,9 @@ class SchemaValidationStepsTest {
    */
   @Test
   void wellKnown_passesWithRequiredFields() {
-    var payload = """
-        {
-          "issuer": "https://issuer.example",
-          "authorization_endpoint": "https://issuer.example/auth",
-          "token_endpoint": "https://issuer.example/token",
-          "nonce_endpoint": "https://issuer.example/nonce",
-          "openid_providers_endpoint": "https://issuer.example/openid",
-          "jwks_uri": "https://issuer.example/jwks.json",
-          "scopes_supported": ["openid"],
-          "response_types_supported": ["code"],
-          "grant_types_supported": ["authorization_code"],
-          "token_endpoint_auth_methods_supported": ["private_key_jwt"],
-          "token_endpoint_auth_signing_alg_values_supported": ["ES256"],
-          "ui_locales_supported": ["de-DE"],
-          "code_challenge_methods_supported": ["S256"]
-        }
-        """;
 
-    assertDoesNotThrow(() -> steps.validateJsonAgainstYamlSchema(payload, WELL_KNOWN_SCHEMA));
+    assertDoesNotThrow(() -> steps.validateJsonAgainstYamlSchema(EXAMPLE_AS_WELL_KNOWN,
+        AS_WELL_KNOWN_SCHEMA));
   }
 
   /**
@@ -116,28 +114,8 @@ class SchemaValidationStepsTest {
    */
   @Test
   void accessToken_payloadValidated() {
-    var accessTokenJson = """
-        {
-          "header": {
-            "typ": "at+jwt",
-            "alg": "ES256",
-            "x5c": ["BASE64CERT"]
-          },
-          "payload": {
-            "iss": "https://issuer.example",
-            "exp": 1914067200,
-            "aud": ["api"],
-            "sub": "subject",
-            "client_id": "client-123",
-            "iat": 1914067100,
-            "jti": "id-123",
-            "scope": "openid",
-            "cnf": { "jkt": "thumbprint" }
-          }
-        }
-        """;
 
-    assertDoesNotThrow(() -> steps.validateJsonAgainstYamlSchema(accessTokenJson,
+    assertDoesNotThrow(() -> steps.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN,
         ACCESS_TOKEN_SCHEMA));
   }
 
@@ -146,27 +124,13 @@ class SchemaValidationStepsTest {
    */
   @Test
   void accessToken_missingRequiredClaimFails() {
-    var accessTokenJson = """
-        {
-          "header": {
-            "typ": "at+jwt",
-            "alg": "ES256",
-            "x5c": ["BASE64CERT"]
-          },
-          "payload": {
-            "iss": "https://issuer.example",
-            "exp": 1914067200,
-            "aud": ["api"],
-            "client_id": "client-123",
-            "iat": 1914067100,
-            "jti": "id-123",
-            "cnf": { "jkt": "thumbprint" }
-          }
-        }
-        """;
 
     assertThrows(AssertionError.class,
-        () -> steps.validateJsonAgainstYamlSchema(accessTokenJson, ACCESS_TOKEN_SCHEMA));
+        () -> steps.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN_INVALID_HEADER,
+            ACCESS_TOKEN_SCHEMA));
+    assertThrows(AssertionError.class,
+        () -> steps.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN_INVALID_PAYLOAD,
+            ACCESS_TOKEN_SCHEMA));
   }
 
   /**
@@ -204,25 +168,25 @@ class SchemaValidationStepsTest {
   }
 
   /**
-   * Verifies that a jwt verifies correct against a schema with referenced schema.
+   * Verifies that a popp token verifies correct against the schema.
    */
   @Test
-  public void testPoppTokenVerifiesAgainstSchemaWithRef() {
+  public void testPoppTokenVerifiesAgainstSchema() {
 
     assertDoesNotThrow(
         () -> steps.validateJsonAgainstYamlSchema(EXAMPLE_POPP_TOKEN,
-                POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
+            POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
   }
 
   /**
-   * Verifies that a base64 encoded token is correctly decoded and validated.
+   * Verifies that a base64 encoded popp token is correctly decoded and validated.
    */
   @Test
   public void testBase64EncodedPoppTokenVerifiesAgainstSchema() {
 
     assertDoesNotThrow(
         () -> steps.validateEncodedJwtAgainstYamlSchema(ENCODED_POPP_TOKEN,
-                POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
+            POPP_TOKEN_GEMSPEC_POPP_SCHEMA));
 
   }
 }

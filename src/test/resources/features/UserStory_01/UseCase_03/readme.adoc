@@ -61,6 +61,7 @@ sequenceDiagram
     ZC-->>-MA: Registrierung fehlgeschlagen<br>erneute Authentifizierung erforderlich
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -68,3 +69,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::client_registrierung_stationaer_sc_401.feature[]
 ----
+endif::[]

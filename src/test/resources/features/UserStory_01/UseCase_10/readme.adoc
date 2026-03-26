@@ -26,6 +26,7 @@
 
 |===
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -33,3 +34,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::Client_authentisierung_und_autorisierung_client_attest_SC_200.feature[]
 ----
+endif::[]

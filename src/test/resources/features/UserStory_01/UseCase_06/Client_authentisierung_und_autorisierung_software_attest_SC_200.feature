@@ -30,6 +30,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @no_proxy
   @A_26639
@@ -39,7 +40,19 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Dann wird die WebSocket Verbindung geschlossen
 
-  @staging
+  @require_kubectl
+  @A_28432
+  @TA_A_28432_01
+  Szenario: Ingress ist vorhanden und wird für den Client-Pfad verwendet
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und ermittle aus den Pods im Namespace "${zetaDeploymentConfig.namespace}" den Wert aus der Spalte "IP" der Zeile mit "ingress" und speichere in der Variable "INGRESS_IP"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.nonceEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body"
+    Und TGR prüfe aktueller Request enthält Knoten "$.sender.domain"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.sender.domain" überein mit "${INGRESS_IP}"
+
   @A_28144
   @TA_A_28144_01
   @TA_A_28144_02
@@ -91,7 +104,6 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
   @A_25660
   @A_25661
   @A_25760
-  @A_26281
   @A_26661
   @A_26944
   @A_27007
@@ -100,19 +112,24 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
   @TA_A_25661_01
   @TA_A_25661_02
   @TA_A_25760_03
-  @TA_A_26281_01
   @TA_A_26661_01
   @TA_A_26944_01
   @TA_A_27007_01
   Szenario: Die Komponente Authorization Server MUSS Access Token mit Attributen gemäß [access-token.yaml] und Refresh Token ausstellen (Integrationstest)
+    Gegeben sei TGR sende eine leere "GET" Anfrage an "${paths.guard.baseUrl}${paths.guard.certsEndpointPath}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.certsEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "KEY_STORE"
+
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "JWT_TOKEN"
     Und decodiere und validiere "${JWT_TOKEN}" gegen Schema "schemas/v_1_0/access-token.yaml" soft assert
-    # TA_A_26281_01 - Self-signed Zertifikat
-    Und prüfe JWT "${JWT_TOKEN}" verwendet ein self-signed x5c Zertifikat
+    # TA_A_26281_01 - kann nicht getestet werden, weil kein Zertifikat bereitgestellt sondern nur public point
+    Und verifiziere die ES256 Signatur des JWT "${JWT_TOKEN}" mit KeyStore "${KEY_STORE}"
+
     # TA_A_25660_04, TA_A_25760_03, TA_A_25661_02 - Refresh Token muss vorhanden sein
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_token"
     Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
@@ -207,7 +224,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Gegeben sei TGR setze lokale Variable "clientIp" auf "198.51.100.60"
     Und TGR setze lokale Variable "forwardedHeader" auf "for=${clientIp}"
     Und TGR setze lokale Variable "forwardedCondition" auf "isRequest && request.path =~ '.*${paths.guard.tokenEndpointPath}'"
-    Und Setze im TigerProxy für die Nachricht "${forwardedCondition}" die Manipulation auf Feld "$.header.Forwarded" und Wert "${forwardedHeader}"
+    Und Setze im TigerProxy für die Nachricht "${forwardedCondition}" die Manipulation auf Feld "${headers.forwarded.root}" und Wert "${forwardedHeader}"
     Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.opa.decisionPath}"
@@ -244,7 +261,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # OPA Decision manipulieren: Kurze TTL für Refresh Token setzen
     # Die OPA-Response bestimmt die tatsächliche Token-Gültigkeit im Authorization Server
-    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*/v1/data/zeta/authz/decision'"
+    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
     Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 3 Ausführungen
     Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 3 Ausführungen
 
@@ -282,7 +299,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # Warte bis das Refresh Token und damit session_expiry abgelaufen ist
     Und warte "${refreshTokenWait}" Sekunden
-    Und prüfe dass Timestamp "${session_expiry}" in der Vergangenheit liegt
+    Und validiere, dass der Zeitstempel "${session_expiry}" in der Vergangenheit liegt
 
     # Nachrichten löschen für die finale Phase
     Und TGR lösche aufgezeichnete Nachrichten
@@ -330,7 +347,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # OPA Decision manipulieren: Kurze TTL für Refresh Token setzen
     # Die OPA-Response bestimmt die tatsächliche Token-Gültigkeit im Authorization Server
-    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*/v1/data/zeta/authz/decision'"
+    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
     Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 3 Ausführungen
     Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 3 Ausführungen
 
@@ -361,7 +378,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # Warte bis das Refresh Token und damit session_expiry abgelaufen ist
     Und warte "${refreshTokenWait}" Sekunden
-    Und prüfe dass Timestamp "${session_expiry}" in der Vergangenheit liegt
+    Und validiere, dass der Zeitstempel "${session_expiry}" in der Vergangenheit liegt
 
     # Nachrichten löschen für die finale Phase
     Und TGR lösche aufgezeichnete Nachrichten
@@ -384,8 +401,8 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # TA_A_25649_01: Neue Session erfordert Client-Attestierung, aber client_statement wurde entfernt
     Und TGR prüfe aktueller Request enthält Knoten "$.body.client_assertion"
-    Und prüfe aktueller Request enthält keinen Knoten "$.body.client_assertion.body.client_statement.attestation_timestamp"
-    Und prüfe aktueller Request enthält keinen Knoten "$.body.client_assertion.body.client_statement.posture"
+    Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.client_assertion.body.client_statement.attestation_timestamp"
+    Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.client_assertion.body.client_statement.posture"
 
 
   @dev
@@ -398,7 +415,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # OPA Decision manipulieren: Kurze TTL für Refresh Token setzen
     # Die OPA-Response bestimmt die tatsächliche Token-Gültigkeit im Authorization Server
-    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*/v1/data/zeta/authz/decision'"
+    Wenn TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
     Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 1 Ausführungen
     Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
 
@@ -417,7 +434,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # Warte bis das Refresh Token und damit session_expiry abgelaufen ist
     Und warte "${refreshTokenTtl}" Sekunden
-    Und prüfe dass Timestamp "${session_expiry}" in der Vergangenheit liegt
+    Und validiere, dass der Zeitstempel "${session_expiry}" in der Vergangenheit liegt
 
     # Nachrichten löschen für die finale Phase
     Und TGR lösche aufgezeichnete Nachrichten
@@ -465,7 +482,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.token_type" überein mit "DPoP"
 
     # DPoP JWT Validierung
-    Und TGR speichere Wert des Knotens "$.header.dpop" der aktuellen Anfrage in der Variable "dpopJwt"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "dpopJwt"
     Und decodiere und validiere "${dpopJwt}" gegen Schema "schemas/v_1_0/dpop-token.yaml"
     Und verifiziere ES256 Signatur von DPoP JWT "${dpopJwt}"
     Und berechne JKT aus DPoP JWT "${dpopJwt}" und speichere in Variable "dpopJwtJkt"
@@ -474,37 +491,37 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # DPoP Header Validierung
     # @TA_A_27802_10 - typ muss "dpop+jwt" sein
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.header.typ" überein mit "dpop+jwt"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.header.alg" überein mit "ES256"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.header.jwk"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.header.jwk.kty"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.header.jwk.kty" überein mit "EC"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.header.jwk.crv" überein mit "P-256"
-    Und TGR speichere Wert des Knotens "$.header.dpop.header.jwk.x" der aktuellen Anfrage in der Variable "dpopJwkX"
-    Und TGR speichere Wert des Knotens "$.header.dpop.header.jwk.y" der aktuellen Anfrage in der Variable "dpopJwkY"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.typ}" überein mit "dpop+jwt"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.alg}" überein mit "ES256"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.header.jwk.root}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.header.jwk.kty}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.jwk.kty}" überein mit "EC"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.jwk.crv}" überein mit "P-256"
+    Und TGR speichere Wert des Knotens "${headers.dpop.header.jwk.x}" der aktuellen Anfrage in der Variable "dpopJwkX"
+    Und TGR speichere Wert des Knotens "${headers.dpop.header.jwk.y}" der aktuellen Anfrage in der Variable "dpopJwkY"
     Und decodiere Base64Url "${dpopJwkX}" und prüfe das die Länge 256 bit ist
     Und decodiere Base64Url "${dpopJwkY}" und prüfe das die Länge 256 bit ist
-    Und TGR speichere Wert des Knotens "$.header.dpop.header" der aktuellen Anfrage in der Variable "dpopHeader"
+    Und TGR speichere Wert des Knotens "${headers.dpop.header.root}" der aktuellen Anfrage in der Variable "dpopHeader"
     Und prüfe dass jwk in "${dpopHeader}" keine privaten Key-Teile enthält
 
     # DPoP Payload Validierung
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.body.jti"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.body.htm"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.body.htu"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.dpop.body.iat"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htm" überein mit "POST"
-    Und TGR speichere Wert des Knotens "$.header.X-Forwarded-Proto" der aktuellen Anfrage in der Variable "requestScheme"
-    Und TGR speichere Wert des Knotens "$.header.X-Forwarded-Host" der aktuellen Anfrage in der Variable "requestHost"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.body.jti}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.body.htm}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.body.htu.root}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.body.iat}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.htm}" überein mit "POST"
+    Und TGR speichere Wert des Knotens "${headers.forwarded.xForwardedProto}" der aktuellen Anfrage in der Variable "requestScheme"
+    Und TGR speichere Wert des Knotens "${headers.forwarded.xForwardedHost}" der aktuellen Anfrage in der Variable "requestHost"
     Und TGR ersetze ":443$" mit "" im Inhalt der Variable "requestHost"
     Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "requestPath"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu" überein mit "${requestScheme}://${requestHost}${requestPath}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.htu.root}" überein mit "${requestScheme}://${requestHost}${requestPath}"
     Und TGR speichere Wert des Knotens "$.path" der aktuellen Anfrage in der Variable "tokenRequestPath"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.htu.path" überein mit "${tokenRequestPath}"
-    Und TGR speichere Wert des Knotens "$.header.dpop.body.iat" der aktuellen Anfrage in der Variable "iat"
-    Und prüfe dass Timestamp "${iat}" in der Vergangenheit liegt
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.htu.path}" überein mit "${tokenRequestPath}"
+    Und TGR speichere Wert des Knotens "${headers.dpop.body.iat}" der aktuellen Anfrage in der Variable "iat"
+    Und validiere, dass der Zeitstempel "${iat}" in der Vergangenheit liegt
     # @TA_A_27802_11 - nonce Validierung
     # Guard MUSS prüfen, dass DPoP nonce mit vom /nonce Endpoint ausgegebener nonce übereinstimmt
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.dpop.body.nonce" überein mit "${tokenNonce}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.nonce}" überein mit "${tokenNonce}"
 
 
   @dev
@@ -532,7 +549,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     # Manipulation mit JWK-Ersetzung - Signatur ist gültig, aber JWK ist von anderem Key
     # Der ZETA Guard prüft typ/nonce bevor er das JWK-Binding validiert
-    Dann Setze im TigerProxy für JWT in "<JwtLocation>" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.root}" das Feld "<JwtField>" auf Wert "<NeuerWert>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
 
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -541,20 +558,20 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
 
     # Finde den manipulierten Request anhand des geänderten Wertes
-    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "<JwtLocation>.<JwtField>" der mit "<NeuerWert>" übereinstimmt
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "${headers.dpop.root}.<JwtField>" der mit "<NeuerWert>" übereinstimmt
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
 
     # iat in der Vergangenheit (2023-12-01)
     # iat in der Zukunft (2050-01-01)
     Beispiele: Manipulationen
-      | JwtLocation   | JwtField   | NeuerWert               | ResponseCode |
-      | $.header.dpop | header.typ | JWT                     | 400          |
-      | $.header.dpop | body.nonce | 1234567                 | 400          |
-      | $.header.dpop | header.alg | RS999                   | 400          |
-      | $.header.dpop | body.iat   | 1701432000              | 400          |
-      | $.header.dpop | body.iat   | 2524608000              | 400          |
-      | $.header.dpop | body.htm   | GET                     | 400          |
-      | $.header.dpop | body.htu   | https://wrong.url/token | 400          |
+      | JwtField   | NeuerWert               |
+      | header.typ | JWT                     |
+      | body.nonce | 1234567                 |
+      | header.alg | RS999                   |
+      | body.iat   | 1701432000              |
+      | body.iat   | 2524608000              |
+      | body.htm   | GET                     |
+      | body.htu   | https://wrong.url/token |
 
 
   @dev
@@ -577,8 +594,6 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR gebe aktuelle Request als Rbel-Tree aus
-    Und TGR gebe aktuelle Response als Rbel-Tree aus
     Und TGR prüfe aktueller Request enthält Knoten "$.body.client_id"
     Und TGR speichere Wert des Knotens "$.body.client_id" der aktuellen Anfrage in der Variable "CLIENT_ID"
 
@@ -841,17 +856,17 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_200
 
     Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.DpopToken.body.sub" überein mit "${SMCB-INFO.telematikId}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.sub}" überein mit "${SMCB-INFO.telematikId}"
 
 
-    Und TGR speichere Wert des Knotens "$.header.authorization.DpopToken.body.udat" der aktuellen Anfrage in der Variable "UDAT"
+    Und TGR speichere Wert des Knotens "${headers.authorization.dpopToken.body.udat.root}" der aktuellen Anfrage in der Variable "UDAT"
     Und validiere "${UDAT}" soft gegen Schema "schemas/v_1_0/user-info.yaml"
 
     #TA_A_26972-01_01 identifier
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.DpopToken.body.udat.telid" überein mit "${SMCB-INFO.telematikId}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.udat.telid}" überein mit "${SMCB-INFO.telematikId}"
     #TA_A_26972-01_02 optional commonName
-    Und prüfe aktuelle Anfrage der Knoten "$.header.authorization.DpopToken.body.udat.commonName" ist nicht vorhanden oder gleich "${SMCB-INFO.commonName}"
+    Und prüfe aktuelle Anfrage der Knoten "${headers.authorization.dpopToken.body.udat.commonName}" ist nicht vorhanden oder gleich "${SMCB-INFO.commonName}"
     #TA_A_26972-01_03 professionOID
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.authorization.DpopToken.body.udat.prof" überein mit "${SMCB-INFO.professionId}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.udat.prof}" überein mit "${SMCB-INFO.professionId}"
     #TA_A_26972-01_04 optional organizationName
-    Und prüfe aktuelle Anfrage der Knoten "$.header.authorization.DpopToken.body.udat.organizationName" ist nicht vorhanden oder gleich "${SMCB-INFO.organizationName}"
+    Und prüfe aktuelle Anfrage der Knoten "${headers.authorization.dpopToken.body.udat.organizationName}" ist nicht vorhanden oder gleich "${SMCB-INFO.organizationName}"

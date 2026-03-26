@@ -1,0 +1,50 @@
+# names for prometheus queries, i.e. used for metrics
+# corresponds to query label container
+container:
+  ingress: 'nginx-ingress'
+  egress: 'nginx-ingress' # same as ingress
+  httpProxy: 'nginx'
+  helperMetrics: 'metrics' # helper of httpProxy
+  # pepDatabase: 'database-pep' # Dummy value, component not provided
+  authorizationServer: 'keycloak'
+  pdpDatabase: 'postgresql'
+  policyEngine: 'opa'
+  notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
+  # managementService: 'management-service' # Dummy value, component not provided
+  telemetryDataService: 'telemetry-gateway'
+  helperLogCollector: 'log-collector' # helper of telemetryDataService
+  resourceServer: 'testfachdienst'
+
+# names for opensearch queries, i.e. used for logs
+# corresponds to query parameter resource.k8s.container.name
+containerName:
+  ingress: 'nginx-ingress'
+  egress: 'nginx-ingress' # same as ingress
+  httpProxy: 'nginx'
+  helperMetrics: 'metrics' # helper of httpProxy
+  # pepDatabase: 'database-pep' # Dummy value, component not provided
+  authorizationServer: 'keycloak'
+  pdpDatabase: 'postgresql'
+  policyEngine: 'opa'
+  notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
+  # managementService: 'management-service' # Dummy value, component not provided
+  telemetryDataService: 'telemetry-gateway'
+  helperLogCollector: 'log-collector' # helper of telemetryDataService
+  resourceServer: 'testfachdienst'
+
+# names for jaeger queries, i.e. used for traces
+# corresponds to query parameter service
+service:
+  ingress: 'nginx-ingress'
+  egress: 'nginx-ingress' # same as ingress
+  httpProxy: 'unknown_service:nginx' # TODO: Service-Namen prüfen, warum wird Präfix unknown_service: verwendet
+  helperMetrics: 'metrics' # helper of httpProxy
+  # pepDatabase: 'database-pep' # Dummy value, component not provided
+  authorizationServer: 'keycloak'
+  pdpDatabase: 'postgresql'
+  policyEngine: 'opa'
+  notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
+  # managementService: 'management-service' # Dummy value, component not provided
+  telemetryDataService: 'telemetry-gateway'
+  helperLogCollector: 'log-collector' # helper of telemetryDataService
+  resourceServer: 'testfachdienst'

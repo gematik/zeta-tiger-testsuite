@@ -31,7 +31,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR setze den default header "Content-Type" auf den Wert "application/json"
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @staging
   Szenariogrundriss: CRUD - Rezept anlegen lesen aktualisieren löschen
@@ -39,7 +39,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-SMOKE-<lauf>-${free.port.50}"
 
     # CREATE
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "medicationName": "${eRezeptTestData.<erezept>.medicationName}",
@@ -113,7 +113,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.0.prescriptionId"
 
     # UPDATE
-    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${dbCreatedId}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${dbCreatedId}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "id": ${dbCreatedId},
@@ -168,7 +168,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   Szenario: CREATE - Doppelte PrescriptionId gibt 409 CONFLICT zurück
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
     # Erstes Rezept erstellen
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "medicationName": "${eRezeptTestData.ERezept1.medicationName}",
@@ -186,7 +186,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body.id" der aktuellen Antwort in der Variable "duplicateTestId"
 
     # Versuch doppeltes Rezept zu erstellen - erwarte 409 CONFLICT
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "medicationName": "${eRezeptTestData.ERezept2.medicationName}",
@@ -207,7 +207,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   Szenario: CREATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
     # Fehlendes Pflichtfeld: medicationName
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "dosage": "${eRezeptTestData.ERezept2.dosage}",
@@ -224,7 +224,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   Szenario: CREATE - Fehlerhaftes JSON gibt 400 BAD REQUEST zurück
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
     # Fehlerhaftes JSON senden
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "medicationName": "${eRezeptTestData.ERezept2.medicationName}",
@@ -257,7 +257,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   Szenario: UPDATE - Nicht existierende ID gibt 404 NOT FOUND zurück
     Und TGR setze lokale Feature Variable "nonExistentId" auf "999999"
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
-    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${nonExistentId}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${nonExistentId}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "id": ${nonExistentId},
@@ -276,9 +276,27 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: UPDATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
-    Gegeben sei Variable "duplicateTestId" existiert
+    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-UPDATE-ERROR-${free.port.50}"
+    # Rezept für Update-Test erstellen
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
+      """
+      {
+        "medicationName": "${eRezeptTestData.ERezept1.medicationName}",
+        "dosage": "${eRezeptTestData.ERezept1.dosage}",
+        "issuedAt": "${eRezeptTestData.ERezept1.issuedAt}",
+        "expiresAt": "${eRezeptTestData.ERezept1.expiresAt}",
+        "status": "${eRezeptTestData.ERezept1.status}",
+        "patientId": "${eRezeptTestData.ERezept1.patientId}",
+        "practitionerId": "${eRezeptTestData.ERezept1.practitionerId}",
+        "prescriptionId": "${uniquePrescriptionId}"
+      }
+      """
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "201"
+    Und TGR speichere Wert des Knotens "$.body.id" der aktuellen Antwort in der Variable "duplicateTestId"
+
     # Aktualisierung ohne Pflichtfeld: medicationName
-    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${duplicateTestId}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${duplicateTestId}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "id": ${duplicateTestId},
@@ -299,8 +317,26 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: DELETE -  Bereits gelöschtes Rezept gibt 404 NOT FOUND zurück
-    Gegeben sei Variable "duplicateTestId" existiert
-    # Rezept aus Duplikat-Test löschen
+    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-DELETE-TWICE-${free.port.50}"
+    # Rezept für doppelten Löschtest erstellen
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
+      """
+      {
+        "medicationName": "${eRezeptTestData.ERezept1.medicationName}",
+        "dosage": "${eRezeptTestData.ERezept1.dosage}",
+        "issuedAt": "${eRezeptTestData.ERezept1.issuedAt}",
+        "expiresAt": "${eRezeptTestData.ERezept1.expiresAt}",
+        "status": "${eRezeptTestData.ERezept1.status}",
+        "patientId": "${eRezeptTestData.ERezept1.patientId}",
+        "practitionerId": "${eRezeptTestData.ERezept1.practitionerId}",
+        "prescriptionId": "${uniquePrescriptionId}"
+      }
+      """
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "201"
+    Und TGR speichere Wert des Knotens "$.body.id" der aktuellen Antwort in der Variable "duplicateTestId"
+
+    # Rezept löschen
     Wenn TGR sende eine leere DELETE Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${duplicateTestId}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.erezept.rest.proxyPath}/.*"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "204"
@@ -314,7 +350,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
   @staging
   Szenario: CREATE - Ungültiges Datumsformat gibt 400 BAD REQUEST zurück
     Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
-    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit folgenden mehrzeiligen Daten:
+    Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
         "medicationName": "${eRezeptTestData.ERezept1.medicationName}",

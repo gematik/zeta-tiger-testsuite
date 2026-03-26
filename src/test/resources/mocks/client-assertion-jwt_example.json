@@ -39,13 +39,6 @@
         "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
         "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE="
       },
-      "product_id": "test_proxy",
-      "product_version": "0.1.0",
-      "os": "Linux",
-      "os_version": "5.15.167.4-microsoft-standard-WSL2",
-      "arch": "amd64",
-      "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbN5XcNDtNxE_y_OYKuxg4VsncdZIGRsXxvKVoBTseuwqcfLEZCqueD_ahxHXdKz5fsqjHJdLnET6pcZ0nbNCng",
-      "attestation_challenge": "nBfYfqy91Zr6gjjMn9J/CM7CH46VoD1DmUv+RXKvXYE=",
       "attestation_timestamp": 1764599321
     }
   }

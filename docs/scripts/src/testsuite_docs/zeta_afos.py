@@ -59,6 +59,8 @@ ROOT_README = Path("docs/asciidoc/afos/readme.adoc")
 
 @dataclass(frozen=True)
 class SourceDocument:
+  """Source-spec metadata used in generated AFO readme sections."""
+
   denotation: str
   identifier: str
   version: str
@@ -78,6 +80,8 @@ class SourceDocument:
 
 @dataclass(frozen=True)
 class Requirement:
+  """Minimal requirement payload rendered into an ``A_*.adoc`` file."""
+
   requirement_id: str
   title: str
   description: str

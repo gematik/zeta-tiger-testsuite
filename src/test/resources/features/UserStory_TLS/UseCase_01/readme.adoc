@@ -45,6 +45,7 @@ Die TLS-Konformität des ZETA Guard Endpunkts ist verifiziert.
 
 |===
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case
 
@@ -52,6 +53,7 @@ Feature-Datei zu diesem Use Case
 ----
 include::tls_guard.feature[]
 ----
+endif::[]
 
 [.lead]
 Szenariohinweise zu elliptischen Kurven (`TA_GS-A_4384-03_03`)

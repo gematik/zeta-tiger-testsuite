@@ -19,8 +19,7 @@ include::../../../tiger.yaml[]
 NOTE: Stattdessen wird der Wert `zeta_base_url` (nur Hostname, ohne Schema) in der `defaults.yaml` gesetzt.
 Die Tests leiten daraus automatisch `https://`- und `wss://`-Zugriffe ab.
 
-Die Tiger-Proxy-Erfassung für den Cluster-Traffic kann per Profil aktiviert werden:
-Mit `PROFILE=proxy`, wird die Proxy-Konfiguration geladen und via Port-Forward wird der Admin-Port unter `http://localhost:9999` erreicht.
+Die Tiger-Proxy-Erfassung für den Cluster-Traffic wird bei Bedarf über das Profil ``PROFILE=proxy`` aktiviert. In diesem Betriebsmodus wird die Proxy-Konfiguration geladen; der Admin-Port ist anschließend per Port-Forward unter ``http://localhost:9999`` erreichbar.
 
 === Simulierter Kubernetes-Cluster (kind)
 
@@ -36,5 +35,5 @@ Der gesamte Testverkehr wird dabei über den Tiger Proxy geführt.
 [#testumgebung_kubernetes_cloud]
 [mermaid,testumgebung-kubernetes-cloud,svg]
 ----
-include::../diagrams/testumgebungen.mmd[]
+include::../diagrams/source/testumgebungen.mmd[]
 ----

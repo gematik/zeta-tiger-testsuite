@@ -70,6 +70,7 @@ sequenceDiagram
     ZC-->>-MA: Ressource nicht gefunden
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -77,3 +78,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::client_ressource_anfrage_fachdienst_sc_404.feature[]
 ----
+endif::[]

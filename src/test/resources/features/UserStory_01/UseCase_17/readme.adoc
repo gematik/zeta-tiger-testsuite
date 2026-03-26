@@ -86,10 +86,12 @@ sequenceDiagram
 
 '''
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_fachdienst_SC_403.feature[]
+include::Client_ressource_anfrage_fachdienst_PoPP-Header_SC_403.feature[]
 ----
+endif::[]

@@ -55,7 +55,7 @@ Die Ausgabestruktur wird dabei vollständig geleert und anschließend neu aufgeb
 ### Skript: [traceability](src/testsuite_docs/traceability/__main__.py)
 
 ```bash
-uv run --project docs/scripts traceability build --project-root .
+uv run --project docs/scripts traceability --project-root .
 ```
 
 Die Traceability-Auswertung stützt sich ausschließlich auf die modellierten
@@ -72,41 +72,44 @@ Die generierte Tabelle der User Stories/Use Cases zeigt in
 „implementiert (Szenario vorhanden)“ die vorhandene Verknüpfung.
 
 Für die Lückenanalyse zwischen Produktumsetzung und Testsuite-Abdeckung kann optional eine CSV
-unter `docs/asciidoc/tables/product_implementation.csv` hinterlegt werden (Spalten:
+unter `docs/asciidoc/tables/source/product_implementation.csv` hinterlegt werden (Spalten:
 `Anforderung`, optional `Titel` (nur zur Orientierung), `umgesetzt` (ja/nein/teilweise),
 optional `Hinweis`). Der Titel wird von der Generierung ignoriert.
 Die Traceability-Generierung erzeugt daraus die Tabelle
-`docs/asciidoc/tables/product_gap_table.adoc`, die pro Anforderung den gemeldeten
+`docs/asciidoc/tables/generated/product_gap_table.adoc`, die pro Anforderung den gemeldeten
 Umsetzungsstand, die Testsuite-Abdeckung (`ja`/`teilweise`/`nein`), die prozentuale
 Testabdeckung (implementierte/gesamte Testaspekte) sowie Hinweise zur Lücke zeigt.
 
-Die Abdeckungsmetriken werden konsistent aus den Testaspekt-Katalogen und
-Feature-Tags berechnet:
+Die Abdeckungsmetriken werden konsistent aus den Testaspekt-Katalogen und Feature-Tags berechnet. Ein Testaspekt gilt als `implementiert`, sobald mindestens ein Szenario den entsprechenden Tag referenziert. Szenarien ohne Testaspekt-Tag werden dabei für die Metriken ignoriert; ebenso werden `A_*`-Tags nicht in die Abdeckungsberechnung einbezogen. Die Abdeckung zählt eindeutige Testaspekte und nicht die Anzahl einzelner Szenarioausführungen. Der Status einer Anforderung (`vollständig`, `teilweise`, `nicht abgedeckt`, `keine Testaspekte`) ergibt sich aus dem Verhältnis implementierter zu insgesamt vorhandenen Testaspekten. Das Diagramm `traceability-coverage-requirements-tested.mmd` fasst zusätzlich zusammen, wie viele Anforderungen mindestens einen implementierten Testaspekt besitzen; Anforderungen ohne Testaspekte werden dort als „kein Testaspekt implementiert“ geführt. Die Produktumsetzung in der Lückenanalyse basiert ausschließlich auf den CSV-Angaben und berücksichtigt keine `@product_not_impl`-Tags.
 
-- Testaspekt `implementiert`: Mindestens ein Szenario referenziert den Testaspekt.
-- Szenarien ohne Testaspekt-Tag werden für die Abdeckungsmetriken ignoriert.
-- `A_*`-Tags in Szenarien werden für die Abdeckungsmetriken nicht ausgewertet.
-- Die Abdeckung zählt eindeutige Testaspekte, nicht die Anzahl der Szenarien.
-- Anforderungen `vollständig/teilweise/nicht abgedeckt/keine Testaspekte`:
-  abhängig davon, wie viele Testaspekte der Anforderung implementiert sind.
-- Das Diagramm `traceability-coverage-requirements-tested.mmd` fasst zusammen,
-  wie viele Anforderungen mindestens einen implementierten Testaspekt besitzen
-  (Anforderungen ohne Testaspekte zählen als "kein Testaspekt implementiert").
-- Produktumsetzung in der Lückenanalyse basiert ausschließlich auf der CSV und
-  berücksichtigt keine `@product_not_impl`-Tags.
+Für Anforderungen mit erhöhter Priorität aus der Bedrohungsanalyse kann eine
+zweite CSV unter `docs/asciidoc/tables/source/bedrohungsanalyse_requirements.csv`
+hinterlegt werden (Spalten: `Anforderung`, optional `Priorität`, optional
+`Begründung`).
+Die Generierung erzeugt daraus zwei Tabellen:
+
+- `docs/asciidoc/tables/source/bedrohungsanalyse_requirements.csv`
+- `docs/asciidoc/tables/generated/bedrohungsanalyse_summary.adoc`:
+  Anforderungsübersicht mit TA-Erfüllung als Bruch und Prozentwert
+  (`erfüllt / gesamt`, z. B. `5/8 (63%)`).
+- `docs/asciidoc/tables/generated/bedrohungsanalyse_gaps.adoc`:
+  nur offene Testaspekte mit `Ist/Soll` als Bruch und Prozentwert.
+
+Die Soll-Ist-Bewertung erfolgt pro Testaspekt, wobei die Priorität der Anforderung auf die zugehörigen Testaspekte heruntergebrochen wird. Als Zielgröße gilt je Testaspekt: `hoch` = 3 Szenarien (sofern möglich), `mittel` = 2 und `niedrig` = 1 eindeutiges Szenario. Der Ist-Wert wird als Anzahl eindeutiger Szenarien je Testaspekt ermittelt.
 
 Parameter:
 
 - `--project-root`: Basisverzeichnis des Repositories.
 - `--product-status-csv`: Pfad zu einer CSV mit Angaben zur Produktumsetzung von
-  Anforderungen (Standard: `docs/asciidoc/tables/product_implementation.csv`).
+  Anforderungen (Standard: `docs/asciidoc/tables/source/product_implementation.csv`).
 - `--dry-run`: Generiert die Daten ohne Dateien zu schreiben.
 - `--json`: Gibt die aggregierten Daten als JSON auf stdout aus.
 
-Tabellen werden über `pytablewriter` als Asciidoc erzeugt. Wiederholte Werte in
-gruppierten Spalten (z. B. Anforderungen oder User Stories) werden nur in der
-ersten Zeile gezeigt; nachfolgende Zeilen bleiben leer, um Zusammengehörigkeiten
-ohne Rowspan-Markup sichtbar zu machen.
+Tabellen werden über die gemeinsame Python-Utility `testsuite_docs.asciidoc_tables`
+als Asciidoc erzeugt. Wiederholte Werte in gruppierten Spalten (z. B.
+Anforderungen oder User Stories) werden nur in der ersten Zeile gezeigt;
+nachfolgende Zeilen bleiben leer, um Zusammengehörigkeiten ohne Rowspan-Markup
+sichtbar zu machen.
 
 ### Skript: ZETA AFOs aus gemVZ XML erzeugen
 
@@ -176,13 +179,13 @@ Javadoc-Kurzbeschreibung). Außerdem verweist die Datei auf die offizielle TGR-D
 uv run --project docs/scripts generate-cucumber-methods
 ```
 
-Ergebnis: `docs/asciidoc/tables/cucumber_methods_table.adoc`
+Ergebnis: `docs/asciidoc/tables/generated/cucumber_methods_table.adoc`
 (nur Tabelle, inkl. Javadoc-Kurzbeschreibung).
 
 Optional:
 
 - `--glue-dir`: anderer Glue-Root (Standard: `src/test/java`).
-- `--output`: eigener Zielpfad (Standard: `docs/asciidoc/tables/cucumber_methods_table.adoc`).
+- `--output`: eigener Zielpfad (Standard: `docs/asciidoc/tables/generated/cucumber_methods_table.adoc`).
 
 ### Skript: [gitlab_issue_sync.py](src/testsuite_docs/gitlab_issue_sync.py)
 

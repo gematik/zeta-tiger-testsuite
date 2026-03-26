@@ -30,6 +30,7 @@ Funktionalität: client_registrierung_stationaer_sc_400
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @dev
   @A_26661
@@ -45,4 +46,4 @@ Funktionalität: client_registrierung_stationaer_sc_400
     Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
-    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.client_id"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.client_id"

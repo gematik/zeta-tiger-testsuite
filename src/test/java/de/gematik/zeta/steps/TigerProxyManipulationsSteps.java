@@ -27,24 +27,13 @@ package de.gematik.zeta.steps;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.zeta.perf.FileUtils;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.ResourceAccessException;
@@ -62,79 +51,10 @@ import org.springframework.web.client.RestTemplate;
 public class TigerProxyManipulationsSteps {
 
   private static final String TIGER_PROXY_ID_CONFIG_KEY = "tiger.tigerProxy.proxyId";
+  private static final String AUTHORIZATION_HEADER_ROOT_CONFIG_KEY = "headers.authorization.root";
+  private static final String DPOP_HEADER_ROOT_CONFIG_KEY = "headers.dpop.root";
   private final Random random = new Random();
   private final RestTemplate restTemplate = new RestTemplate();
-
-  /**
-   * Loads EC private keys from multiple formats: PKCS#8 PEM, EC PEM, raw DER binary, and
-   * Base64-encoded DER.
-   *
-   * <p>Supported formats:</p>
-   * <ul>
-   *   <li>PKCS#8 PEM: {@code -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----}</li>
-   *   <li>EC PEM: {@code -----BEGIN EC PRIVATE KEY----- ... -----END EC PRIVATE KEY-----}</li>
-   *   <li>Raw DER binary: Pure binary PKCS#8 DER bytes</li>
-   *   <li>Base64 DER: Raw Base64 string without PEM headers</li>
-   * </ul>
-   *
-   * @param path      Path to the key file
-   * @param algorithm Key algorithm (use "EC" for ECDSA P-256/secp256r1 keys) [web:21]
-   * @return Loaded PrivateKey instance
-   * @throws Exception if key loading fails (IO, parsing, or crypto errors)
-   */
-  private static PrivateKey loadPrivateKey(Path path, String algorithm) throws Exception {
-    var fileBytes = Files.readAllBytes(path);
-    var content = new String(fileBytes, StandardCharsets.UTF_8).trim();
-
-    // Try PEM format first - extract Base64 content from headers
-    var base64Key = extractBase64FromPem(content);
-    if (base64Key != null) {
-      var keyBytes = Base64.getDecoder().decode(base64Key);
-      return createPrivateKey(keyBytes, algorithm);
-    }
-
-    // Fallback to raw DER binary (no PEM headers)
-    return createPrivateKey(fileBytes, algorithm);
-  }
-
-  /**
-   * Extracts Base64-encoded key content from PEM format. Removes PEM headers/footers and normalizes
-   * whitespace.
-   *
-   * @param content File content as string
-   * @return Base64 key content or null if not PEM format
-   */
-  private static String extractBase64FromPem(String content) {
-    // Matches BEGIN/END KEY headers (case-insensitive, supports EC/PRIVATE variants)
-    var pemPattern = Pattern.compile(
-        "(?s).*?-----BEGIN.*KEY-----\\s*(.+?)\\s*-----END.*KEY-----.*",
-        Pattern.CASE_INSENSITIVE
-    );
-    var matcher = pemPattern.matcher(content);
-
-    if (matcher.matches()) {
-      // Remove all whitespace from Base64 content
-      return matcher.group(1).replaceAll("[\\r\\n\\s]+", "");
-    }
-
-    return null;
-  }
-
-  /**
-   * Creates PrivateKey from PKCS#8 DER-encoded bytes. Uses "EC" algorithm for elliptic curve keys
-   * (curve info is in key data).
-   *
-   * @param keyBytes  DER-encoded PKCS#8 key bytes
-   * @param algorithm Expected: "EC" for P-256/secp256r1 keys [web:24]
-   * @return PrivateKey instance
-   * @throws Exception on parsing or algorithm errors
-   */
-  private static PrivateKey createPrivateKey(byte[] keyBytes, String algorithm) throws Exception {
-    var keySpec = new PKCS8EncodedKeySpec(keyBytes);
-    var keyFactory = KeyFactory.getInstance(algorithm);
-
-    return keyFactory.generatePrivate(keySpec);
-  }
 
   /**
    * Resolves the TigerProxy base URL from configuration.
@@ -170,35 +90,22 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Sends a manipulation request to the TigerProxy to apply a specific modification on intercepted
-   * messages. This method instructs the TigerProxy to modify intercepted data according to the
-   * provided message criteria. It targets a specified JWT field and updates its value with the new
-   * one supplied.
+   * Resolves a required RBEL path from the Tiger configuration.
    *
-   * @param field The internal name of the JWT field whose value should be altered
-   * @param value The new value to be assigned to the specified JWT field during manipulation
+   * @param configKey configuration key pointing to an RBEL path
+   * @return the resolved RBEL path
    */
-  @Dann("Setze im TigerProxy die JwtManipulation auf Feld {string} und Wert {tigerResolvedString}")
-  @Then("Set the JwtManipulation in the TigerProxy to field {string} and value {tigerResolvedString}")
-  public void setTigerProxyJwtManipulation(String field, String value) {
-    var baseUrl = resolveTigerProxyBaseUrl("JWT manipulation");
-    if (baseUrl == null) {
-      return;
+  private String getRequiredRbelPath(String configKey) {
+    var configuredPath = TigerGlobalConfiguration.readStringOptional(configKey)
+        .map(TigerGlobalConfiguration::resolvePlaceholders)
+        .orElseThrow(() -> new AssertionError("Missing configuration: " + configKey));
+
+    if (configuredPath.isBlank() || configuredPath.contains("${")) {
+      throw new AssertionError("RBEL path configuration could not be resolved for " + configKey
+          + ": '" + configuredPath + "'");
     }
 
-    var url = getUrl("${paths.tigerProxy.modifyJwsTokenPath}");
-    var headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    try {
-      var response = restTemplate.postForEntity(
-          url, new HttpEntity<>(Map.of("field", field, "value", value), headers), String.class);
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    } catch (ResourceAccessException e) {
-      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
-    } catch (RestClientException e) {
-      throw new AssertionError("The JWT manipulation could not be set in the TigerProxy.");
-    }
+    return configuredPath;
   }
 
   /**
@@ -277,9 +184,9 @@ public class TigerProxyManipulationsSteps {
    * @param value       The new value to replace the matched regex with
    */
   @Dann("Setze im TigerProxy für die Nachricht {tigerResolvedString} die Regex-Manipulation auf "
-      + "Feld {string} mit Regex {string} und Wert {tigerResolvedString}")
+      + "Feld {string} mit Regex {tigerResolvedString} und Wert {tigerResolvedString}")
   @Then("Set the regex manipulation in the TigerProxy for message {tigerResolvedString} to "
-      + "field {string} with regex {string} and value {tigerResolvedString}")
+      + "field {string} with regex {tigerResolvedString} and value {tigerResolvedString}")
   public void setTigerProxyRegexManipulation(String message, String field, String regexFilter,
       String value) {
     sendRbelManipulation(Map.of(
@@ -315,70 +222,6 @@ public class TigerProxyManipulationsSteps {
       throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
     } catch (RestClientException e) {
       throw new AssertionError("The manipulation could not be removed in the TigerProxy.", e);
-    }
-  }
-
-  /**
-   * Sends a key from a file with the specified algorithm to the TigerProxy instance.
-   *
-   * @param keyName   the name to assign to the key being sent
-   * @param file      the path to the file containing the key
-   * @param algorithm the algorithm used for the key
-   */
-  @Dann("Sende TigerProxy den Key {string} aus der Datei {tigerResolvedString} mit dem Algorithmus {string}")
-  @Then("Send the TigerProxy the key {string} from file {tigerResolvedString} with algorithm {string}")
-  public void sendKeyfileTigerProxy(String keyName, String file, String algorithm) {
-    if (resolveTigerProxyBaseUrl("key upload") == null) {
-      return;
-    }
-
-    Key keyFile;
-
-    try {
-      keyFile = loadPrivateKey(FileUtils.resolveExisting(file), algorithm);
-    } catch (Exception e) {
-      throw new AssertionError("The key file could not be loaded: " + e.getMessage());
-    }
-
-    var keyBase64 = Base64.getEncoder().encodeToString(keyFile.getEncoded());
-    sendKeyToTigerProxy(keyName, keyBase64, keyFile.getAlgorithm());
-  }
-
-  /**
-   * Sends a key with the specified algorithm to the TigerProxy instance.
-   *
-   * @param keyName   the name to assign to the key being sent
-   * @param keyBase64 base64 content of the keyfile
-   * @param algorithm the algorithm used for the key
-   */
-  @Dann("Sende TigerProxy den Key {string} mit dem Inhalt {tigerResolvedString} und dem Algorithmus {string}")
-  @Then("Send the TigerProxy the key {string} with content {tigerResolvedString} and algorithm {string}")
-  public void sendKeyToTigerProxy(String keyName, String keyBase64, String algorithm) {
-    var baseUrl = resolveTigerProxyBaseUrl("key upload");
-    if (baseUrl == null) {
-      return;
-    }
-
-    var url = getUrl("${paths.tigerProxy.keyPath}/" + keyName);
-
-    try {
-      var restTemplate = new RestTemplate();
-      var keyRequest = new KeyRequest(
-          algorithm,
-          keyBase64);
-
-      // Set JSON headers
-      var headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-
-      var request = new HttpEntity<>(keyRequest, headers);
-      var response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
-
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    } catch (ResourceAccessException e) {
-      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
-    } catch (Exception e) {
-      throw new AssertionError("The key couldn't be added to TigerProxy.");
     }
   }
 
@@ -505,13 +348,13 @@ public class TigerProxyManipulationsSteps {
   public void setTigerProxyAccessTokenManipulationWithAthUpdate(String jwtField, String value,
       String accessTokenKeyPem, String dpopKeyPem, String condition, Integer executions) {
     sendJwtManipulation(Map.ofEntries(
-        Map.entry("jwtLocation", "$.header.authorization"),
+        Map.entry("jwtLocation", getRequiredRbelPath(AUTHORIZATION_HEADER_ROOT_CONFIG_KEY)),
         Map.entry("jwtField", jwtField),
         Map.entry("replaceWith", value),
         Map.entry("privateKeyPem", accessTokenKeyPem),
         Map.entry("condition", condition),
         Map.entry("deleteAfterNExecutions", executions),
-        Map.entry("dpopLocation", "$.header.dpop"),
+        Map.entry("dpopLocation", getRequiredRbelPath(DPOP_HEADER_ROOT_CONFIG_KEY)),
         Map.entry("dpopPrivateKeyPem", dpopKeyPem),
         Map.entry("updateAth", true)));
   }
@@ -607,10 +450,4 @@ public class TigerProxyManipulationsSteps {
             + resolvedUri;
   }
 
-  /**
-   * JSON Request DTO with algorithm and base64 key.
-   */
-  private record KeyRequest(String algorithm, String keyBase64) {
-
-  }
 }

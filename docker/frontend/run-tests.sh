@@ -18,25 +18,25 @@ tiger_setup_report_dirs "symlink" \
   "/app/target/cucumber-parallel" \
   "/app/target/allure-results"
 
-profile_arg=""
-if [ -n "${PROFILE}" ]; then
-  profile_arg="-DPROFILE=${PROFILE}"
+if [ -z "${PROFILE}" ]; then
+  unset PROFILE
 fi
+
+common_property_args="$(tiger_common_property_args)"
 
 set +e
 mvn -o -B \
   -Dmaven.repo.local=/tmp/.m2/repository \
   -Djava.awt.headless=true \
+  -Dlicense.skip=true \
+  -Dcheckstyle.skip=true \
   -Dtiger.lib.activateWorkflowUi=false \
   -Dtiger.lib.startBrowser=false \
   -Dtiger.lib.trafficVisualization=false \
   -Dtiger.lib.rbelAnsiColors=false \
   -Dtiger.lib.runTestsOnStart=true \
   -Dfailsafe.testFailureIgnore=false \
-  ${profile_arg:+${profile_arg}} \
-  "-Dzeta_base_url=${ZETA_BASE_URL}" \
-  "-Dzeta_proxy_url=${ZETA_PROXY_URL}" \
-  "-Dopensearch_url=${OPENSEARCH_URL}" \
+  ${common_property_args} \
   "-Dcucumber.filter.tags=${CUCUMBER_TAGS}" \
   verify
 MVN_RESULT=$?

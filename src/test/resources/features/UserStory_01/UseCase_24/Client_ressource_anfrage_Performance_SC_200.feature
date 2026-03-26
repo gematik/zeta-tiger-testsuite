@@ -31,6 +31,7 @@ Funktionalität: Client_ressource_anfrage_Performance_SC_200
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @perf
   @dev
@@ -109,6 +110,6 @@ Funktionalität: Client_ressource_anfrage_Performance_SC_200
       | Authorization | ${tokens.managementServiceHeaderToken} |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.managementServicePath}"
     # TA_A_27853_07 - ZETA Guard, Responses mit Header ZETA-API-Version - Management Service
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.ZETA-API-Version"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.ZETA-API-Version" überein mit "${regex.zetaApiVersion}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.ZETA-API-Version" überein mit "${testdata.semVer}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.zeta.apiVersion}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.apiVersion}" überein mit "${regex.zetaApiVersion}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.apiVersion}" überein mit "${testdata.semVer}"

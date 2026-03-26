@@ -2,6 +2,38 @@
 
 # Release Notes ZETA Tiger Testsuite
 
+## Version: 0.4.0
+
+Tiger Testsuite 0.4.0
+TestProxy 0.4.0
+TestFachdienst 0.4.0
+
+This version tests the "happy flow" for the ZETA protocol between the ZETA client SDK and the ZETA Guard.
+
+Therefore, the stable API of the ZETA client SDK, the ZETA-Guard and the network protocol is tested (with comments see below).
+Not all validations are tested yet and will follow in later releases.
+
+#### Test Focus:
+
+- Discovery of server parameters via .well-known files
+- Nonce Endpoint
+- Software-based Client Attestation
+- DPoP token generation
+- Client Registration
+- SM(C)-B Token use
+- Client Assertion
+- Access Token handling
+- Web Sockets (broken)
+- PoPP Token Validation
+- Policy Decision
+- Telemetrie
+
+### Known issues:
+
+- Tiger Testsuite and Standalone Tiger Proxy (TestProxy) communication is unreliable, therefore many tests fail most of the time.
+
+#### Limitations
+
 ## Version: 0.3.0
 
 Tiger Testsuite 0.3.0

@@ -5,24 +5,24 @@
 |Angabe | Wert
 
 |Dokument-Version
-|0.3.0 ({revdate})
+|0.4.0 ({revdate})
 
 |Referenziertes Testkonzept
 |Testkonzept 0.2.5
 
 |Zielrelease
-|0.3.0
+|0.4.0
 
 |Testobjekt(e)
 |ZETA Guard / ZETA Client
 
 |Releasestand
 a|
-* Testsuite: 0.3.0
-* Testproxy: 0.3.0
-* zeta-guard-helm: 0.3.0
-* testdriver: 0.3.1
-* authserver: 0.3.2
-* pepproxy: 0.3.0
+* Testsuite: 0.4.0
+* Testproxy: 0.4.0
+* zeta-guard-helm: 0.4.0
+* testdriver: 0.4.0
+* authserver: 0.4.0
+* pepproxy: 0.4.0
 
 |===

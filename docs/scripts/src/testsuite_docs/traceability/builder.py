@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import csv
 import json
-import io
 import logging
 import re
 from collections import defaultdict
@@ -47,8 +46,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
-from pytablewriter import AsciiDocTableWriter
-
+from ..asciidoc_tables import (
+  render_asciidoc_table_body,
+  table_block_attributes,
+)
 from .models import (
   Requirement,
   ScenarioCoverage,
@@ -112,49 +113,17 @@ PRODUCT_NOT_IMPLEMENTED_TAGS = {
   "canary",
 }
 
+RISK_PRIORITY_DEFAULT_MINIMUM = {
+  "hoch": 3,
+  "mittel": 2,
+  "niedrig": 1,
+}
 
-def collect_testaspect_tag_locations(
-    features_root: Path,
-    *,
-    include_feature_tags: bool = True,
-) -> Dict[str, List[Tuple[Path, int]]]:
-  """Collect TA tags and their line numbers from feature files."""
-  tag_locations: Dict[str, List[Tuple[Path, int]]] = {}
-  for feature_path in sorted(features_root.rglob("*.feature")):
-    feature_tags: Set[str] = set()
-    pending_tags: List[str] = []
-    for idx, raw_line in enumerate(feature_path.read_text(encoding="utf-8").splitlines(), start=1):
-      stripped = raw_line.strip()
-      if not stripped:
-        continue
-      if stripped.startswith("@"):
-        pending_tags.extend(TAG_PATTERN.findall(stripped))
-        continue
-      examples_match = EXAMPLES_PATTERN.match(stripped)
-      if examples_match:
-        if pending_tags:
-          for tag in pending_tags:
-            if tag.startswith("TA_"):
-              tag_locations.setdefault(tag, []).append((feature_path, idx))
-          pending_tags = []
-        continue
-      feature_match = FEATURE_NAME_PATTERN.match(stripped)
-      if feature_match:
-        feature_tags = set(pending_tags)
-        pending_tags = []
-        continue
-      scenario_match = SCENARIO_PATTERN.match(stripped)
-      if scenario_match:
-        scenario_tags = set(pending_tags)
-        pending_tags = []
-        tags = feature_tags | scenario_tags if include_feature_tags else scenario_tags
-        for tag in tags:
-          if tag.startswith("TA_"):
-            tag_locations.setdefault(tag, []).append((feature_path, idx))
-        continue
-    if pending_tags:
-      LOGGER.debug("Unconsumed tags at end of %s: %s", feature_path, pending_tags)
-  return tag_locations
+RISK_PRIORITY_ALIASES = {
+  "high": "hoch",
+  "medium": "mittel",
+  "low": "niedrig",
+}
 
 
 def build_traceability(
@@ -175,7 +144,8 @@ def build_traceability(
       write_outputs: When ``True`` the generated tables, diagrams and JSON
         payload are written to the standard documentation targets.
       product_status_csv: Optional CSV with product implementation flags
-        (defaults to ``docs/asciidoc/tables/product_implementation.csv``).
+        (defaults to
+        ``docs/asciidoc/tables/source/product_implementation.csv``).
   """
 
   root = project_root or Path(__file__).resolve().parents[5]
@@ -206,11 +176,14 @@ def build_traceability(
         f"No test aspect catalogues found under {asciidoc_root / 'testaspekte'}"
     )
   diagrams_dir = asciidoc_root / "diagrams"
+  diagrams_generated_dir = diagrams_dir / "generated"
   tables_dir = asciidoc_root / "tables"
+  tables_generated_dir = tables_dir / "generated"
+  tables_source_dir = tables_dir / "source"
   features_root = root / "src" / "test" / "resources" / "features"
   if write_outputs:
-    diagrams_dir.mkdir(parents=True, exist_ok=True)
-    tables_dir.mkdir(parents=True, exist_ok=True)
+    diagrams_generated_dir.mkdir(parents=True, exist_ok=True)
+    tables_generated_dir.mkdir(parents=True, exist_ok=True)
 
   requirements = {}
   for req_dir in requirements_dirs:
@@ -236,7 +209,7 @@ def build_traceability(
   )
 
   status_path = product_status_csv if product_status_csv is not None else (
-      tables_dir / "product_implementation.csv")
+      tables_source_dir / "product_implementation.csv")
   if not status_path.is_absolute():
     status_path = (root / status_path).resolve()
   product_status = _load_product_status(status_path)
@@ -269,6 +242,16 @@ def build_traceability(
   coverage_charts, coverage_summary = _render_coverage_charts(
       records, requirements, test_aspects
   )
+
+  risk_requirements_path = tables_source_dir / "bedrohungsanalyse_requirements.csv"
+  risk_requirements = _load_risk_requirements(risk_requirements_path)
+  risk_summary_table, risk_gaps_table, risk_coverage_summary = _render_risk_tables(
+      requirements=requirements,
+      test_aspects=test_aspects,
+      scenarios=scenarios,
+      risk_requirements=risk_requirements,
+  )
+  coverage_summary["bedrohungsanalyse"] = risk_coverage_summary
 
   traceability_links = [
     TraceabilityLink(
@@ -309,16 +292,20 @@ def build_traceability(
   )
 
   if write_outputs:
-    _write_text_file(tables_dir / "features_table.adoc", features_table)
-    _write_text_file(tables_dir / "product_gap_table.adoc", product_gap_table)
-    _write_text_file(tables_dir / "product_gap_summary.adoc",
+    _write_text_file(tables_generated_dir / "features_table.adoc", features_table)
+    _write_text_file(tables_generated_dir / "product_gap_table.adoc", product_gap_table)
+    _write_text_file(tables_generated_dir / "product_gap_summary.adoc",
                      gap_summary_table)
-    _write_text_file(tables_dir / "traceability_matrix.adoc",
+    _write_text_file(tables_generated_dir / "traceability_matrix.adoc",
                      traceability_table)
-    _write_text_file(diagrams_dir / "product-gap-summary.mmd",
+    _write_text_file(tables_generated_dir / "bedrohungsanalyse_summary.adoc",
+                     risk_summary_table)
+    _write_text_file(tables_generated_dir / "bedrohungsanalyse_gaps.adoc",
+                     risk_gaps_table)
+    _write_text_file(diagrams_generated_dir / "product-gap-summary.mmd",
                      gap_summary_chart)
     for filename, content in coverage_charts.items():
-      _write_text_file(diagrams_dir / filename, content)
+      _write_text_file(diagrams_generated_dir / filename, content)
 
     generated_dir = root / "target" / "generated-docs"
     generated_dir.mkdir(parents=True, exist_ok=True)
@@ -447,6 +434,48 @@ def _load_product_status(path: Path) -> Dict[str, Optional[str]]:
 
   LOGGER.info("Produktstatus aus %s geladen (%d Einträge)", path, len(records))
   return records
+
+
+def _load_risk_requirements(path: Path) -> List[Dict[str, object]]:
+  """Read Bedrohungsanalyse-prioritised requirements from CSV."""
+  if not path.exists():
+    LOGGER.info("Bedrohungsanalyse-Datei %s nicht gefunden", path)
+    return []
+
+  entries: List[Dict[str, object]] = []
+  try:
+    with path.open(encoding="utf-8", newline="") as handle:
+      reader = csv.DictReader(handle)
+      for row in reader:
+        requirement_id = (
+            row.get("Anforderung") or row.get("anforderung")
+            or row.get("requirement_id") or row.get("id") or "").strip()
+        if not requirement_id:
+          continue
+
+        rationale = (
+            row.get("Begründung") or row.get("begruendung")
+            or row.get("Rationale") or row.get("rationale") or "").strip()
+
+        raw_priority = (
+            row.get("Priorität") or row.get("Prioritaet") or row.get("priority")
+            or "").strip().lower()
+        raw_priority = RISK_PRIORITY_ALIASES.get(raw_priority, raw_priority)
+        priority = raw_priority if raw_priority in RISK_PRIORITY_DEFAULT_MINIMUM else "hoch"
+
+        entries.append({
+          "requirement_id": requirement_id,
+          "rationale": rationale,
+          "priority": priority,
+        })
+  except (OSError, csv.Error) as exc:
+    LOGGER.warning("Konnte Bedrohungsanalyse-Datei %s nicht laden: %s", path,
+                   exc)
+    return []
+
+  LOGGER.info("Bedrohungsanalyse aus %s geladen (%d Einträge)", path,
+              len(entries))
+  return entries
 
 
 def _parse_feature_files(
@@ -609,6 +638,72 @@ def _parse_feature_files(
                    pending_tags)
 
   return use_cases, scenarios
+
+
+def collect_testaspect_tag_locations(
+    features_root: Path,
+    *,
+    include_feature_tags: bool = True,
+) -> Dict[str, List[Tuple[Path, int]]]:
+  """Collect TA tag locations from feature files.
+
+  Args:
+      features_root: Root directory containing ``*.feature`` files.
+      include_feature_tags: When ``True``, include tags declared on the
+        feature level. When ``False``, only tags attached to scenarios/examples
+        are considered.
+
+  Returns:
+      Mapping ``TA_*`` -> sorted list of ``(feature_path, line_number)``.
+  """
+  tag_locations: Dict[str, Set[Tuple[Path, int]]] = defaultdict(set)
+
+  for feature_path in sorted(features_root.rglob("*.feature")):
+    lines = feature_path.read_text(encoding="utf-8").splitlines()
+    feature_tag_buffer: List[Tuple[str, int]] = []
+    pending_tags: List[Tuple[str, int]] = []
+
+    for line_number, raw_line in enumerate(lines, start=1):
+      stripped = raw_line.strip()
+      if not stripped:
+        continue
+
+      if stripped.startswith("@"):
+        pending_tags.extend((tag.upper(), line_number)
+                            for tag in TAG_PATTERN.findall(stripped))
+        continue
+
+      feature_match = FEATURE_NAME_PATTERN.match(stripped)
+      if feature_match:
+        feature_tag_buffer = list(pending_tags)
+        if include_feature_tags:
+          for tag, tag_line in feature_tag_buffer:
+            if tag.startswith("TA_"):
+              tag_locations[tag].add((feature_path, tag_line))
+        pending_tags = []
+        continue
+
+      scenario_match = SCENARIO_PATTERN.match(stripped)
+      examples_match = EXAMPLES_PATTERN.match(stripped)
+      if scenario_match or examples_match:
+        for tag, tag_line in pending_tags:
+          if tag.startswith("TA_"):
+            tag_locations[tag].add((feature_path, tag_line))
+        if scenario_match and include_feature_tags:
+          for tag, tag_line in feature_tag_buffer:
+            if tag.startswith("TA_"):
+              tag_locations[tag].add((feature_path, tag_line))
+        pending_tags = []
+
+    # Discard unconsumed trailing tags (same behavior as parser debug path).
+
+  return {
+    tag: sorted(locations,
+                key=lambda item: (item[0].as_posix(), item[1]))
+    for tag, locations in sorted(tag_locations.items())
+  }
+
+
 def _build_traceability_records(
     *,
     requirements: Dict[str, Requirement],
@@ -777,7 +872,7 @@ def _render_product_gap_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,1,1,2,2",
+      cols_directive="1,2,2,2,4,4",
   )
   prefix: List[str] = []
   if status_path:
@@ -882,6 +977,7 @@ def _render_product_gap_summary(summary_counts: Dict[str, int]) -> Tuple[str,
       summary_rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
       cols_directive="2,1",
+      autowidth=True,
   )
   return chart, summary_table
 
@@ -892,26 +988,12 @@ def _write_asciidoc_table(
     *,
     disclaimer: Optional[str] = None,
     cols_directive: str,
+    autowidth: bool = False,
     block_attributes: Optional[Sequence[str]] = None,
     row_roles: Optional[Sequence[Optional[str]]] = None,
 ) -> str:
-  """Return an Asciidoc table rendered from ``headers`` and ``rows``.
-
-  The helper delegates cell formatting and escaping to ``pytablewriter`` so that
-  nested commas or whitespace are handled consistently with other table
-  producers in the toolchain.  Custom metadata such as the autogenerated
-  disclaimer and the column width directive is injected on top, leaving the
-  generated body untouched.
-  """
-
-  writer = AsciiDocTableWriter()
-  writer.headers = list(headers)
-  writer.value_matrix = [list(row) for row in rows] if rows else [["-"] *
-                                                                  len(headers)]
-  buffer = io.StringIO()
-  writer.stream = buffer
-  writer.write_table()
-  table_body = buffer.getvalue().strip()
+  """Return an Asciidoc table rendered from ``headers`` and ``rows``."""
+  table_body = render_asciidoc_table_body(headers, rows)
 
   if row_roles:
     table_body = _inject_row_roles(table_body, row_roles, len(headers))
@@ -921,7 +1003,8 @@ def _write_asciidoc_table(
     prefix_lines.append(disclaimer)
   if block_attributes:
     prefix_lines.extend(block_attributes)
-  prefix_lines.append(f'[%header,cols="{cols_directive}",options="autowidth"]')
+  prefix_lines.append(
+      table_block_attributes(cols_directive=cols_directive, autowidth=autowidth))
 
   content = "\n".join(prefix_lines + [table_body])
   if not content.endswith("\n"):
@@ -1093,6 +1176,19 @@ def _format_coverage_progress(covered: int, total: int) -> str:
   if percent > 100:
     percent = 100
   return f"{percent}% ({covered}/{total})"
+
+
+def _format_ratio_percent(numerator: int, denominator: int) -> str:
+  """Render a ratio with percentage, e.g. ``2/3 (67%)``."""
+  if denominator <= 0:
+    return "0/0 (0%)"
+  value = max(numerator, 0)
+  percent = int(round((value / denominator) * 100))
+  if percent < 0:
+    percent = 0
+  if percent > 100:
+    percent = 100
+  return f"{value}/{denominator} ({percent}%)"
 
 
 def _normalise_product_flag(raw_value: str) -> Optional[str]:
@@ -1375,6 +1471,241 @@ def _render_coverage_charts(
     "requirements_any_coverage": any_coverage_summary,
     "test_aspects": test_aspect_summary,
   }
+
+
+def _render_risk_tables(
+    *,
+    requirements: Dict[str, Requirement],
+    test_aspects: Dict[str, TestAspect],
+    scenarios: Sequence[ScenarioCoverage],
+    risk_requirements: Sequence[Dict[str, object]],
+) -> Tuple[str, str, Dict[str, int]]:
+  """Render Bedrohungsanalyse summary and open-gap tables."""
+  requirement_ta_scenarios = _collect_requirement_scenario_coverage(
+      scenarios, test_aspects)
+  summary_headers = [
+    "Nr.",
+    "Anforderung",
+    "Priorität",
+    "Erfüllung",
+    "Status",
+    "Begründung",
+  ]
+  gap_headers = [
+    "Nr.",
+    "Anforderung",
+    "Priorität",
+    "Offener Testaspekt",
+    "Ist/Soll",
+    "Fehlende Szenarien",
+  ]
+
+  if not risk_requirements:
+    empty_summary = _write_asciidoc_table_simple(
+        summary_headers,
+        [[
+          "-",
+          "-",
+          "-",
+          "0/0 (0%)",
+          "-",
+          "Keine Bedrohungsanalyse-Anforderungen hinterlegt",
+        ]],
+        disclaimer=ASCIIDOC_DISCLAIMER,
+        cols_directive="1,5,2,2,2,8",
+    )
+    empty_gaps = _write_asciidoc_table_simple(
+        gap_headers,
+        [[
+          "-",
+          "-",
+          "-",
+          "keine offenen Lücken",
+          "-",
+          "0",
+        ]],
+        disclaimer=ASCIIDOC_DISCLAIMER,
+        cols_directive="1,2,2,4,2,2",
+    )
+    return empty_summary, empty_gaps, {
+      "gesamt": 0,
+      "erfuellt": 0,
+      "nicht_erfuellt": 0,
+      "teilweise_erfuellt": 0,
+      "unbekannte_anforderung": 0,
+      "ohne_testaspekt": 0,
+      "ta_gesamt": 0,
+      "ta_erfuellt": 0,
+      "ta_offen": 0,
+    }
+
+  summary_rows: List[List[str]] = []
+  gap_rows: List[List[str]] = []
+  test_aspect_ids_by_requirement: Dict[str, List[str]] = defaultdict(list)
+  for test_aspect in test_aspects.values():
+    test_aspect_ids_by_requirement[test_aspect.requirement_id].append(
+        test_aspect.test_aspect_id)
+  for requirement_id in test_aspect_ids_by_requirement:
+    test_aspect_ids_by_requirement[requirement_id].sort()
+
+  summary = {
+    "gesamt": 0,
+    "erfuellt": 0,
+    "nicht_erfuellt": 0,
+    "teilweise_erfuellt": 0,
+    "unbekannte_anforderung": 0,
+    "ohne_testaspekt": 0,
+    "ta_gesamt": 0,
+    "ta_erfuellt": 0,
+    "ta_offen": 0,
+  }
+
+  for idx, entry in enumerate(risk_requirements, start=1):
+    requirement_id = str(entry.get("requirement_id", "")).strip()
+    priority = str(entry.get("priority", "hoch")).strip() or "hoch"
+    minimum_tests = RISK_PRIORITY_DEFAULT_MINIMUM.get(priority, 3)
+    rationale = str(entry.get("rationale", "")).strip()
+
+    if requirement_id not in requirements:
+      summary["gesamt"] += 1
+      summary["unbekannte_anforderung"] += 1
+      summary_rows.append([
+        str(idx),
+        _format_reference(requirement_id),
+        priority,
+        "0/0 (0%)",
+        "Anforderung unbekannt",
+        rationale or "-",
+      ])
+      gap_rows.append([
+        str(idx),
+        _format_reference(requirement_id),
+        priority,
+        "Anforderung unbekannt",
+        "0/0 (0%)",
+        "0",
+      ])
+      continue
+
+    ta_ids = test_aspect_ids_by_requirement.get(requirement_id, [])
+    if not ta_ids:
+      summary["gesamt"] += 1
+      summary["ohne_testaspekt"] += 1
+      summary["nicht_erfuellt"] += 1
+      summary_rows.append([
+        str(idx),
+        _format_reference(requirement_id),
+        priority,
+        "0/0 (0%)",
+        "nicht erfüllt",
+        rationale or "-",
+      ])
+      gap_rows.append([
+        str(idx),
+        _format_reference(requirement_id),
+        priority,
+        "kein Testaspekt",
+        "0/0 (0%)",
+        str(minimum_tests),
+      ])
+      continue
+
+    fulfilled_tas = 0
+    for ta_id in ta_ids:
+      covered_scenarios = len(
+          requirement_ta_scenarios.get(requirement_id, {}).get(ta_id, set()))
+      summary["ta_gesamt"] += 1
+      if covered_scenarios >= minimum_tests:
+        fulfilled_tas += 1
+        summary["ta_erfuellt"] += 1
+      else:
+        summary["ta_offen"] += 1
+        gap_rows.append([
+          str(idx),
+          _format_reference(requirement_id),
+          priority,
+          _format_reference(ta_id),
+          _format_ratio_percent(covered_scenarios, minimum_tests),
+          str(max(minimum_tests - covered_scenarios, 0)),
+        ])
+
+    summary["gesamt"] += 1
+    total_tas = len(ta_ids)
+    if fulfilled_tas == total_tas:
+      req_status = "erfüllt"
+      summary["erfuellt"] += 1
+    elif fulfilled_tas == 0:
+      req_status = "nicht erfüllt"
+      summary["nicht_erfuellt"] += 1
+    else:
+      req_status = "teilweise erfüllt"
+      summary["teilweise_erfuellt"] += 1
+
+    summary_rows.append([
+      str(idx),
+      _format_reference(requirement_id),
+      priority,
+      _format_ratio_percent(fulfilled_tas, total_tas),
+      req_status,
+      rationale or "-",
+    ])
+
+  summary_table = _write_asciidoc_table_simple(
+      summary_headers,
+      summary_rows,
+      disclaimer=ASCIIDOC_DISCLAIMER,
+      cols_directive="1,5,2,2,2,8",
+  )
+  _suppress_repeated_cells(gap_rows, (0, 1))
+  gaps_table = _write_asciidoc_table_simple(
+      gap_headers,
+      gap_rows,
+      disclaimer=ASCIIDOC_DISCLAIMER,
+      cols_directive="1,2,2,4,2,2",
+  )
+  return summary_table, gaps_table, summary
+
+
+def _collect_requirement_scenario_coverage(
+    scenarios: Sequence[ScenarioCoverage],
+    test_aspects: Dict[str, TestAspect],
+) -> Dict[str, Dict[str, Set[Tuple[Path, str]]]]:
+  """Aggregate unique scenario coverage per requirement and per test aspect."""
+  ta_to_requirement = {
+    ta_id: test_aspect.requirement_id
+    for ta_id, test_aspect in test_aspects.items()
+  }
+  requirement_ta_scenarios: Dict[str, Dict[str, Set[Tuple[Path, str]]]] = defaultdict(
+      lambda: defaultdict(set))
+
+  for scenario in scenarios:
+    scenario_key = (scenario.feature, scenario.scenario_name)
+    for ta_id in scenario.test_aspects:
+      requirement_id = ta_to_requirement.get(ta_id)
+      if not requirement_id:
+        continue
+      requirement_ta_scenarios[requirement_id][ta_id].add(scenario_key)
+
+  return requirement_ta_scenarios
+
+
+def _write_asciidoc_table_simple(
+    headers: Sequence[str],
+    rows: Sequence[Sequence[str]],
+    *,
+    disclaimer: Optional[str] = None,
+    cols_directive: str,
+    autowidth: bool = False,
+) -> str:
+  """Compatibility wrapper around the canonical Asciidoc table writer."""
+  return _write_asciidoc_table(
+      headers,
+      rows,
+      disclaimer=disclaimer,
+      cols_directive=cols_directive,
+      autowidth=autowidth,
+  )
+
 
 def _format_timestamp_iso(value: Optional[datetime]) -> Optional[str]:
   """Return an ISO-8601 timestamp in UTC (``...Z``) or ``None``."""

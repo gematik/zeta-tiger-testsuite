@@ -15,4 +15,13 @@ zeta_k8s_pod_ready_timeout: 120
 
 # OpenSearch host (without scheme) for telemetry lookups.
 # Override via environment variable OPENSEARCH_URL or Maven property -Dopensearch_url=....
-opensearch_url: localhost:9200
+opensearch_url: ${zeta_base_url}:9200
+
+# Prometheus host (without scheme) for telemetry lookups.
+# Override via environment variable PROMETHEUS_URL or Maven property -Dprometheus_url=....
+prometheus_url: ${zeta_base_url}:9090
+
+# Directory of the sibling zeta-test-certificates checkout.
+# Override via environment variable ZETA_TEST_CERTIFICATES_DIR or Maven property
+# -DtestCertificates.dir=....
+testCertificates.dir: ../zeta-test-certificates

@@ -1,4 +1,4 @@
-[#UC_Telemetrie_01]
+[#UseCase_TELEMETRIE_01]
 == UseCase_Telemetrie_01: OpenTelemetry-Basisprüfungen ohne fachlichen Trigger
 
 .UseCase_Telemetrie_01
@@ -20,6 +20,7 @@ Es wird geprüft, dass zentrale ZETA Guard Komponenten OpenTelemetry-konforme Lo
 
 | Vorbedingung: |
 . OpenSearch ist erreichbar.
+. Prometheus ist erreichbar.
 . Die ZETA Guard Umgebung erzeugt und exportiert Telemetriedaten.
 
 | Nebenbedingung: |
@@ -27,16 +28,59 @@ Nur Testaspekte ohne dedizierten Trigger und ohne passende Zuordnung zu einem fa
 
 | Ablauf: |
 . Die Testsuite fragt OpenSearch mit komponentenspezifischen Suchkriterien ab.
+. Die Testsuite fragt Prometheus mit komponentenspezifischen Suchkriterien ab.
 . Die Antwort wird auf HTTP-Status und vorhandene Treffer validiert.
 
 | Nachbedingung: |
 Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifiziert.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_25795_01>>
+* <<TA_A_25795_03>>
+* <<TA_A_25795_04>>
+* <<TA_A_25795_05>>
+* <<TA_A_25795_08>>
+* <<TA_A_25795_09>>
+* <<TA_A_25795_10>>
 * <<TA_A_25796_01>>
+* <<TA_A_25796_07>>
+* <<TA_A_25796_10>>
+* <<TA_A_25796_21>>
+* <<TA_A_25796_24>>
+* <<TA_A_25796_27>>
 * <<TA_A_25796_30>>
+* <<TA_A_25798_18>>
+* <<TA_A_25799_01>>
+* <<TA_A_25799_03>>
+* <<TA_A_25799_04>>
+* <<TA_A_25799_05>>
+* <<TA_A_25799_08>>
+* <<TA_A_25799_09>>
+* <<TA_A_25799_10>>
 * <<TA_A_26988_01>>
+* <<TA_A_26988_02>>
+* <<TA_A_26988_03>>
+* <<TA_A_26988_05>>
+* <<TA_A_26988_06>>
+* <<TA_A_26988_07>>
+* <<TA_A_26988_10>>
+* <<TA_A_26988_11>>
+* <<TA_A_27264_01>>
+* <<TA_A_27264_02>>
+* <<TA_A_27264_03>>
+* <<TA_A_27264_04>>
+* <<TA_A_27264_05>>
+* <<TA_A_27264_08>>
+* <<TA_A_27264_09>>
+* <<TA_A_27264_10>>
+* <<TA_A_27264_11>>
+* <<TA_A_27264_12>>
+* <<TA_A_27264_13>>
+* <<TA_A_27264_14>>
+* <<TA_A_27264_17>>
+* <<TA_A_27264_18>>
 * <<TA_A_27264_19>>
+* <<TA_A_27264_20>>
 * <<TA_A_27264_21>>
 * <<TA_A_27264_22>>
 * <<TA_A_27264_23>>
@@ -46,6 +90,7 @@ Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifizier
 
 |===
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case
 
@@ -53,3 +98,4 @@ Feature-Datei zu diesem Use Case
 ----
 include::telemetrie_ohne_trigger.feature[]
 ----
+endif::[]

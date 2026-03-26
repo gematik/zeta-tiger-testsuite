@@ -1,0 +1,10 @@
+[#TA_A_26477_13]
+===== TA_A_26477_13 - PEP HTTP Proxy - PoPP Token Validierung - Download des JWKS bei fehlendem gültigen JWKS
+
+"[...]
+Der HTTP Proxy MUSS ein vorhandenes und noch gültiges JWKS des PoPP Servers verwenden oder das JWKS des PoPP Servers **herunterladen**, um anhand der im JWKS enthaltenen Schlüssel die Signatur des PoPP Tokens zu prüfen.
+
++++[...]+++
+**[<=]"**
+
+Hinweis: Fokus dieses Testaspekts ist der erstmalige JWKS-Download. Der regelmäßige Download vor Ablauf der Gültigkeit wird durch <<TA_A_26477_07>> adressiert.

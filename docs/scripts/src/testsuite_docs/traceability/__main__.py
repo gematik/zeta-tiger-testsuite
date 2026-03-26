@@ -22,6 +22,8 @@
 # #L%
 #
 
+"""CLI entry point for building traceability artefacts."""
+
 from __future__ import annotations
 
 import argparse
@@ -40,13 +42,6 @@ def main(argv: list[str] | None = None) -> int:
     description="Generate traceability artefacts for the ZETA testsuite documentation.",
   )
   parser.add_argument(
-    "command",
-    nargs="?",
-    default="build",
-    choices=["build"],
-    help="Command to execute (default: build).",
-  )
-  parser.add_argument(
     "--project-root",
     type=Path,
     help="Path to the project root (defaults to autodetected repository root).",
@@ -54,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
   parser.add_argument(
     "--product-status-csv",
     type=Path,
-    help="Optional CSV with product implementation status (defaults to docs/asciidoc/tables/product_implementation.csv).",
+    help="Optional CSV with product implementation status (defaults to docs/asciidoc/tables/source/product_implementation.csv).",
   )
   parser.add_argument(
     "--dry-run",
@@ -79,9 +74,6 @@ def main(argv: list[str] | None = None) -> int:
     level=getattr(logging, args.log_level.upper(), logging.INFO),
     format="[%(levelname)s] %(message)s",
   )
-
-  if args.command != "build":
-    parser.error(f"Unsupported command {args.command!r}")
 
   report = build_traceability(
     project_root=args.project_root,

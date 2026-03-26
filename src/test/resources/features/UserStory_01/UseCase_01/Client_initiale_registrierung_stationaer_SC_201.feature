@@ -30,6 +30,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @A_26640
   @A_26641
@@ -49,17 +50,17 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Gegeben sei <reset_step>
     Wenn <request_step>
     Dann TGR finde die letzte Anfrage mit dem Pfad "<expected_path>"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.[~'Host']"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'Host']" überein mit "<expected_host>"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.host}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.host}" überein mit "<expected_host>(:[0-9]+)?"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.httpVersion" überein mit "HTTP/1.1"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "OPR_WELL_KNOWN"
     Und validiere "${OPR_WELL_KNOWN}" gegen Schema "schemas/v_1_0/opr-well-known.yaml"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'Cache-Control']"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*public.*"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.cacheControl}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*public.*"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.authorization_servers.0"
-    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.authorization_servers.1"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.authorization_servers.1"
 
     @TA_A_26641_01
     Beispiele: Integrationstest
@@ -70,8 +71,8 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     @component
     @TA_A_26640_01
     Beispiele: Komponententest
-      | reset_step                            | request_step                                                                                                   | expected_path                                         | expected_host        |
-      | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthProtectedResourcePath}" | .*${paths.guard.wellKnownOAuthProtectedResourcePath}$ | ${zeta_base_url}:443 |
+      | reset_step                            | request_step                                                                                                   | expected_path                                         | expected_host    |
+      | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthProtectedResourcePath}" | .*${paths.guard.wellKnownOAuthProtectedResourcePath}$ | ${zeta_base_url} |
 
   @dev
   @A_27798
@@ -85,11 +86,11 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Gegeben sei <reset_step>
     Wenn <request_step>
     Dann TGR finde die letzte Anfrage mit dem Pfad "<expected_path>"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.[~'Host']"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'Host']" überein mit "<expected_host>"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.host}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.host}" überein mit "<expected_host>(:[0-9]+)?"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*public.*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*public.*"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "AS_WELL_KNOWN"
     Und validiere "${AS_WELL_KNOWN}" gegen Schema "schemas/v_1_0/as-well-known.yaml"
     Und TGR speichere Wert des Knotens "$.body.jwks_uri" der aktuellen Antwort in der Variable "jwksUri"
@@ -98,9 +99,9 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Und TGR ersetze "^https?://[^/]+" mit "" im Inhalt der Variable "jwksPath"
     Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${jwksPath}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${jwksPath}"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'Cache-Control']"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'Cache-Control']" überein mit "(?i).*public.*"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.cacheControl}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*max-age *=[ ]*[0-9]+.*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.cacheControl}" überein mit "(?i).*public.*"
 
     Beispiele: Integrationstest
       | reset_step                                                  | request_step                                                    | expected_path                           | expected_host    |
@@ -109,8 +110,8 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     @no_proxy
     @component
     Beispiele: Komponententest
-      | reset_step                            | request_step                                                                                        | expected_path                              | expected_host        |
-      | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthServerPath}" | .*${paths.guard.wellKnownOAuthServerPath}$ | ${zeta_base_url}:443 |
+      | reset_step                            | request_step                                                                                        | expected_path                              | expected_host    |
+      | TGR lösche aufgezeichnete Nachrichten | TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.wellKnownOAuthServerPath}" | .*${paths.guard.wellKnownOAuthServerPath}$ | ${zeta_base_url} |
 
 
   @A_27266
@@ -137,8 +138,8 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "WELL_KNOWN"
     Und validiere "${WELL_KNOWN}" gegen Schema "<schema_path>"
     # TA_A_28420_01, TA_A_28420_02
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'ETag']"
-    Und TGR speichere Wert des Knotens "$.header.[~'ETag']" der aktuellen Antwort in der Variable "ETAG"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.eTag}"
+    Und TGR speichere Wert des Knotens "${headers.eTag}" der aktuellen Antwort in der Variable "ETAG"
 
     # Manipuliere die nächste Response: responseCode = 404 => Folgende Resourceanfrage muss Service Discovery enthalten (A_28426)
     Und TGR setze lokale Variable "notFoundCondition" auf "isResponse && request.path =^ '${paths.fachdienst.helloZetaPath}'"
@@ -156,10 +157,10 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     # TA_A_28421_01
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "304"
     # TA_A_28425_01 und TA_A_28425_02
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.[~'If-None-Match']"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'If-None-Match']" überein mit "${ETAG}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.ifNoneMatch}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.ifNoneMatch}" überein mit "${ETAG}"
     # TA_A_28420_02
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'ETag']" überein mit "${ETAG}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.eTag}" überein mit "${ETAG}"
     # TA_A_28421_02
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "RESPONSEBODY"
     Und TGR prüfe Variable "RESPONSEBODY" stimmt überein mit ""
@@ -167,7 +168,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     # Manipuliere "If-Non-Match" Header: ungültiges ETag
     Gegeben sei TGR setze lokale Variable "ifNoneMatchCondition" auf "isRequest && request.path =~ '.*<expected_path>.*'"
     Dann TGR setze lokale Variable "INVALID_ETAG" auf "invalid-ETag"
-    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "$.header.['If-None-Match']" und Wert "${INVALID_ETAG}"
+    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "${headers.ifNoneMatch}" und Wert "${INVALID_ETAG}"
 
     # Reset client => Service Discovery muss bei der nächsten Resourceabfrage ausgeführt werden
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -177,11 +178,11 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Dann TGR finde die nächste Anfrage mit dem Pfad ".*<expected_path>"
     # Überprüfe die Manipulation
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'If-None-Match']" überein mit "${INVALID_ETAG}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.ifNoneMatch}" überein mit "${INVALID_ETAG}"
     # TA_A_28421_03
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     # TA_A_28421_05
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'ETag']" überein mit "${ETAG}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.eTag}" überein mit "${ETAG}"
     # TA_A_28421_04
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" überein mit "${WELL_KNOWN}"
 
@@ -221,39 +222,39 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "WELL_KNOWN"
     Und validiere "${WELL_KNOWN}" gegen Schema "<schema_path>"
     # TA_A_28420_01, TA_A_28420_02
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'ETag']"
-    Und TGR speichere Wert des Knotens "$.header.[~'ETag']" der aktuellen Antwort in der Variable "ETAG"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.eTag}"
+    Und TGR speichere Wert des Knotens "${headers.eTag}" der aktuellen Antwort in der Variable "ETAG"
 
     # Zweite Anfrage: Erzwinge "If-None-Match" Header für die well-known Abfrage. Server antwortet "304 Not Modified"
     Gegeben sei TGR setze lokale Variable "ifNoneMatchCondition" auf "isRequest && request.path =~ '.*<expected_path>.*'"
-    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "$.header.['If-None-Match']" und Wert "${ETAG}"
+    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "${headers.ifNoneMatch}" und Wert "${ETAG}"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}<expected_path>"
     Dann TGR finde die letzte Anfrage mit dem Pfad ".*<expected_path>"
-    Und TGR prüfe aktueller Request enthält Knoten "$.header.[~'If-None-Match']"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'If-None-Match']" überein mit "${ETAG}"
+    Und TGR prüfe aktueller Request enthält Knoten "${headers.ifNoneMatch}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.ifNoneMatch}" überein mit "${ETAG}"
     # TA_A_28421_01
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "304"
     # TA_A_28421_02
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "RESPONSEBODY"
     Und TGR prüfe Variable "RESPONSEBODY" stimmt überein mit ""
     # TA_A_28420_02
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'ETag']" überein mit "${ETAG}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.eTag}" überein mit "${ETAG}"
 
     # Dritte Anfrage: Sende "If-None-Match" Header mit falschem ETag. Server antwortet 200 und sendet das aktuelle well-known JSON Dokument.
     Gegeben sei TGR setze lokale Variable "ifNoneMatchCondition" auf "isRequest && request.path =~ '.*<expected_path>.*'"
     Und TGR setze lokale Variable "INVALID_ETAG" auf "invalid-ETag"
-    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "$.header.['If-None-Match']" und Wert "${INVALID_ETAG}"
+    Dann Setze im TigerProxy für die Nachricht "${ifNoneMatchCondition}" die Manipulation auf Feld "${headers.ifNoneMatch}" und Wert "${INVALID_ETAG}"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}<expected_path>"
     Dann TGR finde die letzte Anfrage mit dem Pfad ".*<expected_path>"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'If-None-Match']" überein mit "${INVALID_ETAG}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.ifNoneMatch}" überein mit "${INVALID_ETAG}"
     # TA_A_28421_03
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     # TA_A_28421_04
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" überein mit "${WELL_KNOWN}"
     # TA_A_28421_05 und TA_A_28420_02
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'ETag']" überein mit "${ETAG}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.eTag}" überein mit "${ETAG}"
 
     @TA_A_27266_02
     @TA_A_27798_03
@@ -292,34 +293,34 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad ".*${paths.guard.wellKnownOAuthProtectedResourcePath}$"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad ".*${paths.guard.wellKnownOAuthServerPath}$"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.registerEndpointPath}"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.nonceEndpointPath}"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Limit']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Remaining']"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.header.[~'X-Rate-Limit-Reset']"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.limit}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.remaining}"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.rateLimit.reset}"
 
   @dev
   @A_26661
@@ -346,7 +347,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
 
     # --- Request validation ---
     Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "POST"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'Content-Type']" überein mit "application/json"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.contentType}" überein mit "application/json"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_name" überein mit "sdk-client"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.token_endpoint_auth_method"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.grant_types"
@@ -365,15 +366,14 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
     # Authentication Server loggt das Ergebnis noch nicht, daher schlägt der Test fehl.
     # TODO: Query anpassen, wenn Log-Eintrag vom Authentication Server generiert wird.
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                            | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:keycloak AND body:clientregistrationresult | 1    |
+      | q                                                                                                                                                                  | size |
+      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.containerName.authorizationServer} AND body:clientregistrationresult | 1    |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für obiges Query gibt.
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
 
   @no_proxy
-  @staging
   @component
   @dev
   @A_26661
@@ -399,7 +399,7 @@ Funktionalität: Client_initiale_registrierung_stationaer_SC_201
 
     # --- Request validation ---
     Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "POST"
-    Und TGR prüfe aktueller Request stimmt im Knoten "$.header.[~'Content-Type']" überein mit "application/json"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.contentType}" überein mit "application/json"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_name" überein mit "sdk-client"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.token_endpoint_auth_method"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.grant_types"

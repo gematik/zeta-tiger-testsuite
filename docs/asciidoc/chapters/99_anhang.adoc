@@ -5,22 +5,20 @@
 Die Abdeckungsdiagramme befinden sich in Kapitel 5 (Zu testende Merkmale).
 
 [appendix]
-include::../../cucumber_methods.adoc[]
+include::98_cucumber_methods.adoc[]
 
 [appendix]
 == Übersicht Tiger Proxy Routing
 
 [mermaid,tiger-proxy-routing,svg]
 ....
-include::../diagrams/Tiger-routing-diagram.mmd[]
+include::../diagrams/source/Tiger-routing-diagram.mmd[]
 ....
 
 Dieses Sequenzdiagramm veranschaulicht das Routing der ZETA Dienste über den Tiger Proxy.
-Durch diese Routingkonfiguration werden die Anfragen zwischen allen relevanten Kommunikationsendpunkten im Tiger Proxy aufgezeichnet und können der Testsuite über einen gesonderten Management Port zugänglich gemacht werden.
-Zur Auswertung werden diese aufgezeichneten Anfragen von der Testsuite heruntergeladen und in die Testauswertung integriert.
-
-Anmerkung: Zur Verbesserung der Übersichtlichkeit wurde der Tiger Proxy in einzelne Knoten im Sequenzdiagramm aufgeteilt.
-Im aktuellen Deployment existiert hingegen nur eine zentrale Tiger Proxy Instanz, über welche alle Anfragen geleitet werden.
+Die Routingkonfiguration sorgt dafür, dass Anfragen zwischen den relevanten Kommunikationsendpunkten im Tiger Proxy protokolliert und der Testsuite über einen separaten Management-Port zugänglich gemacht werden.
+Für die Auswertung lädt die Testsuite diese Daten herunter und integriert sie in die Testanalyse.
+Zur besseren Lesbarkeit wurde der Tiger Proxy im Diagramm in mehrere Knoten aufgeteilt; im tatsächlichen Deployment existiert jedoch eine zentrale Tiger-Proxy-Instanz, über die der gesamte Verkehr geführt wird.
 
 [appendix]
 == Vorlagen

@@ -218,6 +218,13 @@ cover/
 # Django stuff:
 local_settings.py
 db.sqlite3
+
+# Docs build artefacts (kept generated locally, not versioned)
+docs/asciidoc/tables/generated/*.adoc
+docs/asciidoc/diagrams/generated/*.mmd
+
+# Local IDE target mappings
+.idea/remote-targets.xml
 db.sqlite3-journal
 
 # Flask stuff:
@@ -351,6 +358,9 @@ docs/asciidoc/tables/traceability_matrix.adoc
 
 # Generated reports for docker
 reports/
+
+# TLS session key logs (sensitive, local only)
+/tlsSecretFile.txt
 
 .jenkins
 .githubignore

@@ -218,7 +218,9 @@ Feature-Datei zu diesem Use Case:
 
 - Komponententests und Integrationstests in einer gemeinsamen Datei:
 
+ifdef::render_features[]
 [source]
 ----
 include::Client_initiale_registrierung_stationaer_SC_201.feature[]
 ----
+endif::[]
