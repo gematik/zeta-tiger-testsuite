@@ -55,12 +55,16 @@ sequenceDiagram
 [.lead]
 Feature-Dateien zu diesem Use Case
 
+ifdef::render_features[]
 [source]
 ----
 include::ws_crud_erezept.feature[]
 ----
+endif::[]
 
+ifdef::render_features[]
 [source]
 ----
 include::ws_crud_erezept_error_scenarios.feature[]
 ----
+endif::[]

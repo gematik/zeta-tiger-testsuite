@@ -16,6 +16,7 @@
 - [Projektstruktur](#projektstruktur)
 - [Voraussetzungen](#voraussetzungen)
 - [Schnellstart](#schnellstart)
+- [Lizenz-Compliance (Third-Party)](#lizenz-compliance-third-party)
 - [Tiger-Konfigurationen](#tiger-konfigurationen)
 - [GitLab-Issue-Sync](#gitlab-issue-sync)
 - [Troubleshooting & Tipps](#troubleshooting--tipps)
@@ -37,9 +38,9 @@ Glue/Hook-Klassen für die Testausführung.
 - Java 21
 - Maven
 - IntelliJ mit Cucumber-Plugin
-- Apache JMeter 5.6.3 (abgelegt unter `tools/apache-jmeter-5.6.3`)
-- TLS Test Tool 1.0.1 (abgelegt unter `tools/tls-test-tool-1.0.1`)
-- Docker images include only the Alpine binary (`tools/tls-test-tool-1.0.1/TlsTestTool-alpine`).
+- Optional: Apache JMeter 5.6.3 (abgelegt unter `tools/apache-jmeter-5.6.3`)
+- Optional: TLS Test Tool 1.0.1 (abgelegt unter `tools/tls-test-tool-1.0.1`)
+  Hint: Docker images include only the Alpine binary (`tools/tls-test-tool-1.0.1/TlsTestTool-alpine`).
 
 Zum Ausführen des Features ```Client_ressource_anfrage_fachdienst_SC_200``` ist die Beschaffung des
 Keykloak-Signaturschlüssels für die jeweilige Umgebung und die Ablage unter z.B.
@@ -81,6 +82,111 @@ Proxy-/WebSocket-Verbindungen in WSL nicht an einer IPv6-only `localhost`-Auflö
 Das Verhalten ist in `pom.xml` fest verdrahtet und gilt für alle Maven-Runs. Unter Windows hat
 die Einstellung in typischen IPv4/IPv6-Setups keinen negativen Einfluss.
 
+### Testzertifikate
+
+Für Performance- und Setup-Szenarien kann die Testsuite Zertifikate aus dem separaten Repository `zeta-test-certificates` laden.
+Primär wird dafür `testCertificates.dir` in [tiger/defaults.yaml](tiger/defaults.yaml) verwendet.
+Der Default zeigt auf das Schwesterverzeichnis `../zeta-test-certificates`.
+Wenn sich der Ort des Zertifikats-Repositories ändert, können Sie `testCertificates.dir` anpassen.
+Für CI oder abweichende Workspaces können Sie stattdessen explizit setzen:
+
+```bash
+export ZETA_TEST_CERTIFICATES_DIR=/path/to/zeta-test-certificates
+```
+
+Erwartetes Repository-Layout:
+
+```text
+zeta-test-certificates/
+├── certs/
+│   ├── block-000000-009999/
+│   ├── block-010000-019999/
+│   └── ...
+├── incoming/
+├── manifest/
+│   ├── cert-manifest.tsv
+│   ├── keystore-manifest.tsv
+│   └── truststore-manifest.tsv
+├── keystores/
+│   ├── block-000000-009999/
+│   └── README.md
+├── pyproject.toml
+├── src/
+│   └── zeta_certificates/
+│       └── cli.py
+├── truststores/
+│   ├── README.md
+│   └── truststores.yaml
+├── Makefile
+└── README.md
+```
+
+Wichtig für die Testsuite:
+
+- `testCertificates.dir` beziehungsweise `ZETA_TEST_CERTIFICATES_DIR` muss auf das Repository-Wurzelverzeichnis zeigen.
+- Das Zertifikat-Manifest wird fest unter `manifest/cert-manifest.tsv` erwartet.
+- Die im Manifest referenzierten Zertifikats- und Keystore-Dateien müssen relativ zu diesem Repository-Wurzelverzeichnis auflösbar sein.
+
+Verfügbare Glue-Methoden:
+
+- Einzelnen Zertifikatseintrag in Tiger-Variablen laden:
+  `Dann lade Zertifikat-Eintrag Nummer 1 aus dem Testzertifikat-Manifest in Variablen mit Präfix "perf.client"`
+- Mehrere Zertifikatseinträge mit freier Anzahl in Tiger-Variablen laden:
+  `Dann lade 100 Zertifikat-Einträge ab Nummer 1 aus dem Testzertifikat-Manifest in Variablen mit Präfix "perf.clients"`
+- Einzelnen Eintrag per Stem laden:
+  `Dann lade Zertifikat mit Stem "80276883110001000001-C_SMCB57_AUT_E256_X509" aus dem Testzertifikat-Manifest in Variablen mit Präfix "perf.client"`
+- Slice für JMeter/Perf als TSV exportieren:
+  `Dann exportiere 100 Zertifikat-Einträge ab Nummer 1 aus dem Testzertifikat-Manifest nach "target/test-certificates/perf-slice.tsv"`
+
+Nach dem Laden eines Eintrags stehen u. a. folgende Variablen zur Verfügung:
+
+- `${perf.client.stem}`
+- `${perf.client.crt_path}`
+- `${perf.client.prv_path}`
+- `${perf.client.pub_path}`
+- `${perf.client.crt_b64}`
+- `${perf.client.prv_b64}`
+- `${perf.client.pub_b64}`
+- `${perf.client.keystore_b64_path}`
+- `${perf.client.keystore_b64}`
+- `${perf.client.keystore_password}`
+- `${perf.client.keystore_alias}`
+- `${perf.client.store_type}`
+
+Beim Laden mehrerer Einträge werden zusätzlich `${perf.clients.count}`, `${perf.clients.start_index}` sowie `${perf.clients.1.*}` bis `${perf.clients.N.*}` gesetzt.
+
+Der TSV-Export ist für Tools wie JMeter gedacht.
+Er enthält absolute Dateipfade für Zertifikat, Private Key und Public Key sowie den inline aufgelösten Base64-Keystore.
+Die Inline-Werte der geladenen Zertifikate werden ebenfalls Base64-kodiert bereitgestellt, damit binäre DER-Dateien nicht als UTF-8 fehlinterpretiert werden.
+
+---
+
+## Lizenz-Compliance (Third-Party)
+
+Die Testsuite prüft Third-Party-Lizenzen in `verify` automatisch über
+`org.codehaus.mojo:license-maven-plugin`.
+
+```bash
+mvn -DskipTests=true verify
+```
+
+Ergebnisdatei:
+
+- `target/generated-sources/license/THIRD-PARTY.txt`
+
+Konfiguration:
+
+- Denylist: `pom.xml` Property `license.denied.list`
+- Build-Abbruch bei fehlender/verbotener Lizenz: `failOnMissing=true`, `failOnBlacklist=true`
+
+Ausnahmen (nur nach Legal-Freigabe):
+
+- Datei: `src/license/override-THIRD-PARTY.properties`
+- Format: `<groupId>--<artifactId>--<version>=<Lizenzbezeichner>`
+- Für interne Freigaben SPDX-kompatibel als `LicenseRef-...` (z. B.
+  `LicenseRef-Approved-Dependency-Exception`) dokumentieren.
+- Pro neuer Ausnahme müssen Begründung, Reviewer und Datum in der MR-Beschreibung enthalten sein.
+
 ### Ausführen über Docker
 
 Alle Docker-Details (Build, Run, CI, Variablen) stehen in [docker/README.md](docker/README.md).
@@ -112,19 +218,27 @@ Konfigurieren Sie den Cloud-Host zentral über `zeta_base_url` in der `defaults.
 Alternativ können Sie beim Start `ZETA_BASE_URL` oder einen Maven-Parameter wie
 `-Dzeta_base_url=zeta-kind.local` setzen.
 
-Für jene Testfälle, die eine Modifikation des ZETA Guard Deployments vornehmen, muss der Name des
-Kubernetes Namespace in `zeta_k8s_namespace` in der `defaults.yaml` gesetzt sein. 
-Alternativ kann dieser Wert über den Maven-Parameter `-Dzeta_k8s_namespace=zeta-local` gesetzt werden. 
+Der Kubernetes Namespace (`zeta_k8s_namespace`) wird in Telemetrie-Log-Abfragen
+(`resource.k8s.namespace.name`) sowie in kubectl-/Deployment-bezogenen Prüfungen verwendet.
+Setzen Sie ihn in der `defaults.yaml` oder alternativ über die Umgebungsvariable
+`ZETA_K8S_NAMESPACE` bzw. den Maven-Parameter `-Dzeta_k8s_namespace=...`.
 Die Ausführung dieser Gruppe von Testfälle kann über den Schalter `allow_deployment_modification` in der `defaults.yaml`
 oder über den Maven-Parameter `-Dallow_deployment_modification=true` gesteuert werden.
 
 Für OpenTelemetry-Log-Abfragen wird `opensearch_url` verwendet (OpenSearch-Host ohne Scheme).
-Sie können `OPENSEARCH_URL` setzen oder `-Dopensearch_url=localhost:9200` verwenden.
+Sie können `OPENSEARCH_URL` setzen oder `-Dopensearch_url=zeta-kind.local:9200` verwenden.
+Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9200`.
+
+Für OpenTelemetry-Metrik-Abfragen wird `prometheus_url` verwendet (Prometheus-Host ohne Scheme).
+Sie können `PROMETHEUS_URL` setzen oder `-Dprometheus_url=zeta-kind.local:9090` verwenden.
+Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9090`.
 
 Für die Proxy-Erfassung stehen Profile zur Verfügung:
-`PROFILE=proxy` aktiviert die Tiger-Proxy-Erfassung und erwartet den via Port-Forward erreichbaren
-Admin-Port (`http://localhost:9999`). Stellen Sie sicher, dass vor dem Teststart ein entsprechender
-Port-Forward aktiv ist (z. B. `kubectl port-forward svc/tiger-proxy 9999:9999`).
+`PROFILE=proxy` aktiviert die Tiger-Proxy-Erfassung und verwendet standardmäßig
+`zeta_proxy_url=${zeta_base_url}:9999`.
+Wenn stattdessen ein lokaler Port-Forward genutzt wird, setzen Sie explizit
+`ZETA_PROXY_URL=localhost:9999` (oder `-Dzeta_proxy_url=localhost:9999`) und starten zuvor z. B.
+`kubectl port-forward svc/tiger-proxy 9999:9999`.
 Ohne Angabe wird kein Proxy-Profil geladen.
 
 ### Proxy-Tags
@@ -133,17 +247,29 @@ Ohne Angabe wird kein Proxy-Profil geladen.
 - Alle anderen Szenarien setzen einen konfigurierten Proxy voraus. Ist `PROFILE` nicht `proxy`,
   werden nicht getaggte Szenarien automatisch übersprungen.
 
+### KUBECTL Abfragen
+
+- Szenarien, die `kubectl` und Zugriff auf den konfigurierten Kubernetes-Namespace benötigen,
+  aber keine Modifikationen am Deployment vornehmen, mit `@require_kubectl` taggen.
+  Diese Szenarien werden automatisch übersprungen, wenn `kubectl` nicht verfügbar ist oder
+  kein Zugriff auf den Namespace (`zeta_k8s_namespace`) besteht.
+
 ### ZETA Guard Deployment Modifikation
-- grundsätzlich steuert der Schalter `allow_deployment_modification` ob die Testsuite überhaupt 
+
+- grundsätzlich steuert der Schalter `allow_deployment_modification` ob die Testsuite überhaupt
   Modifikationen am ZETA Guard Deployment vornehmen darf
-- Szenarien, welche direkt Werte im Deployment des ZETA Guard verändern, müssen mit 
+- Szenarien, welche direkt Werte im Deployment des ZETA Guard verändern, müssen mit
   `@deployment_modification` getaggt werden
 - Voraussetzungen:
-  - das Tool [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) muss in der `PATH` Umgebungsvariable 
-  des Systems vorhanden sein und ausführbar sein
-  - `kubectl` muss Zugriff auf eine gültige `kubeconfig` für den gewünschten 
-  Namespace (`zeta_k8s_namespace`) haben
-  
+    - das Tool [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) muss in der `PATH` Umgebungsvariable
+      des Systems vorhanden sein und ausführbar sein
+    - `kubectl` muss Zugriff auf eine gültige `kubeconfig` für den gewünschten
+      Namespace (`zeta_k8s_namespace`) haben
+
+> **Wichtiger Windows-Hinweis (WSL/Kubectl):**  
+> Für Deployment-Manipulationsschritte und bestimmte `kubectl`-basierte Checks wird `kubectl` innerhalb von WSL genutzt.  
+> Unter Windows funktionieren diese Teile der Testsuite daher nur, wenn WSL eingerichtet ist und dort ein funktionsfähiges `kubectl` inklusive `kubeconfig` verfügbar ist.  
+> Ein ausschließlich unter Windows installiertes `kubectl.exe` (ohne WSL-Setup) ist für diese Checks nicht ausreichend.
 
 ### Tiger Optionen
 
@@ -174,7 +300,8 @@ um das Verhalten der Tiger-Laufzeit und der Workflow-UI zu steuern.
 
 Für die Pflege von AFO- und Testaspekt-Issues gibt es ein Skript:
 
-- `docs/scripts/src/testsuite_docs/gitlab_issue_sync.py`: Erstellt fehlende AFO/TA-Issues, verlinkt sie, schließt TA-Issues mit @TA_-Szenario-Tags, kommentiert Feature-Links und synchronisiert AFO-Issues (open/closed).
+- `docs/scripts/src/testsuite_docs/gitlab_issue_sync.py`: Erstellt fehlende AFO/TA-Issues, verlinkt sie, schließt TA-Issues mit
+  @TA_-Szenario-Tags, kommentiert Feature-Links und synchronisiert AFO-Issues (open/closed).
 
 Hinweise:
 
@@ -198,11 +325,11 @@ uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token -
 
 ## Cucumber Methoden
 
-Die zentrale Referenz liegt in [cucumber_methods.adoc](docs/cucumber_methods.adoc) (AsciiDoc im
-Ordner `docs/`).
+Die zentrale Referenz liegt in
+[98_cucumber_methods.adoc](docs/asciidoc/chapters/98_cucumber_methods.adoc).
 Dort werden deutsche ↔ englische Cucumber Methoden und Best-Practices dokumentiert.
 Die Tabelle der projektspezifischen Glue-Steps wird automatisch
-aus [cucumber_methods_table.adoc](docs/asciidoc/tables/cucumber_methods_table.adoc) eingebunden,
+aus [cucumber_methods_table.adoc](docs/asciidoc/tables/generated/cucumber_methods_table.adoc) eingebunden,
 wobei diese per
 `uv run --project docs/scripts generate-cucumber-methods` erzeugt wird.
 
@@ -227,7 +354,7 @@ wobei diese per
 ## Wo TGR-Methoden dauerhaft ablegen
 
 * `docs/tgr_methods.adoc` — kanonische Referenz (Pflicht).
-* Die Tabelle unter `docs/asciidoc/tables/cucumber_methods_table.adoc` wird per
+* Die Tabelle unter `docs/asciidoc/tables/generated/cucumber_methods_table.adoc` wird per
   `uv run --project docs/scripts generate-cucumber-methods` generiert.
 * PR-Policy: Änderungen an TGR-Docs müssen im PR-Text begründet werden.
 

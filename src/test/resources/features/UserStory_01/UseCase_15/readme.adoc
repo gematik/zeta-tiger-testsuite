@@ -67,6 +67,7 @@ sequenceDiagram
     ZC-->>-MA: Hinweis auf fehlenden DPoP Nachweis
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -74,3 +75,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::client_ressource_anfrage_fachdienst_sc_400.feature[]
 ----
+endif::[]

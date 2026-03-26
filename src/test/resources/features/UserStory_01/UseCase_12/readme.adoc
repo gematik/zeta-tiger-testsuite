@@ -66,40 +66,36 @@ Der ZETA Client verfügt über eine bestehende Session mit zugehörigem Access- 
 Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25660_02>>
-* <<TA_A_25669_01>>
+* <<TA_A_25660_01>>
+* <<TA_A_25660_04>>
 * <<TA_A_25669_04>>
-* <<TA_A_25669_07>>
+* <<TA_A_25669_05>>
+* <<TA_A_25669_06>>
 * <<TA_A_25669_08>>
-* <<TA_A_25669_09>>
 * <<TA_A_25762_04>>
+* <<TA_A_25766_02>>
 * <<TA_A_25767_02>>
 * <<TA_A_26195_01>>
-* <<TA_A_26492-01_01>>
 * <<TA_A_26492-01_02>>
-* <<TA_A_26493_01>>
-* <<TA_A_26493_02>>
-* <<TA_A_26560_01>>
 * <<TA_A_26561_01>>
-* <<TA_A_26561_02>>
-* <<TA_A_26587_13>>
-* <<TA_A_26589_01>>
 * <<TA_A_26639_01>>
-* <<TA_A_26640_03>>
-* <<TA_A_26661_01>>
-* <<TA_A_26661_15>>
 * <<TA_A_26661_19>>
-* <<TA_A_26661_26>>
-* <<TA_A_26666_01>>
-* <<TA_A_26974_01>>
-* <<TA_A_27007_15>>
-* <<TA_A_27265_01>>
-* <<TA_A_27265_02>>
-* <<TA_A_27399_01>>
+* <<TA_A_27007_19>>
+* <<TA_A_27260_01>>
+* <<TA_A_27260_02>>
+* <<TA_A_27260_03>>
+* <<TA_A_27260_07>>
 * <<TA_A_27399_05>>
+* <<TA_A_27725_02>>
+* <<TA_A_27802_01>>
+* <<TA_A_27802_02>>
+* <<TA_A_27802_03>>
+* <<TA_A_27802_04>>
+* <<TA_A_27802_05>>
+* <<TA_A_27802_10>>
+* <<TA_A_27802_11>>
 * <<TA_A_27853_01>>
-* <<TA_A_27853_02>>
-* <<TA_A_25766_02>>
+* <<TA_A_28439_01>>
 
 
 |===
@@ -132,6 +128,7 @@ sequenceDiagram
     ZC-->>-MA: Ressource
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -139,3 +136,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::Client_ressource_anfrage_fachdienst_SC_200.feature[]
 ----
+endif::[]

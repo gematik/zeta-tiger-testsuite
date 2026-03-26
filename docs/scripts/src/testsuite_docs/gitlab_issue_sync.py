@@ -52,6 +52,8 @@ ID_RE = re.compile(r"(?i)\b(TA_[A-Z0-9_-]+|A_\d+(?:-\d+)?|GS-A_\d+(?:-\d+)?|TIP1
 
 
 class GitLabClient:
+    """Small GitLab REST/GraphQL helper with retry and pagination support."""
+
     def __init__(
         self,
         base_url: str,

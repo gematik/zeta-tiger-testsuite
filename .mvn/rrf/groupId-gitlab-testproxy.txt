@@ -1,0 +1,2 @@
+# Resolve Tiger artifacts only from the fork repository.
+de.gematik.test

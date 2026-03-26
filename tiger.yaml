@@ -4,13 +4,13 @@ lib:
 #  clearEnvironmentStartupTraffic: true      # default is true – clears startup traffic after environment init
 #  createRbelHtmlReports: true               # default is true – generates RBel HTML reports after test run
 #  enableTestManagementRestApi: false        # default is false – exposes REST API for managing test runs
-#  enableTestSelection: true                 # default is false – allows selection of tests in Workflow UI
+#  defaultProfile: "proxy"                   # default is empty – loads tiger-<profile>.yaml when PROFILE is not set
 #  javaHome: ""                              # default is system Java – overrides JVM for Tiger library
-#  pauseExecutionTimeoutSeconds: 60          # default is 60 – timeout for pause steps before auto-continue
+#  pauseExecutionTimeoutSeconds: 18000       # default is 18000 (5h) – max pause timeout in Workflow UI
   rbelAnsiColors: false                      # default is true – enables ANSI color output in logs
 #  rbelLogoFilePath: ""                      # default is empty – optional path to custom logo in reports
 #  rbelPathDebugging: false                  # default is false – enables detailed RBelPath debug output
-#  runTestsOnStart: false                    # default is true – automatically runs tests when Tiger starts
+#  runTestsOnStart: false                    # default is true – if false, discover tests only; start manually in UI
 #  startBrowser: true                        # default is true – opens Workflow UI in browser when started
 #  trafficVisualization: true                # default is false – enables sequence diagram in Workflow UI
 #  workflowUiPort: 8080                      # default is 8080 – port for the Workflow UI
@@ -43,10 +43,14 @@ additionalConfigurationFiles:
   - filename: tiger/defaults.yaml
   - filename: tiger/paths.yaml
     baseKey: paths
+  - filename: tiger/headers.yaml
+    baseKey: headers
   - filename: tiger/eRezeptTestData.yaml
     baseKey: eRezeptTestData
   - filename: tiger/regex.yaml
     baseKey: regex
+  - filename: tiger/telemetryElementNames.yaml
+    baseKey: telemetry
   - filename: tiger/testdata.yaml
     baseKey: testdata
   - filename: tiger/tokens.yaml

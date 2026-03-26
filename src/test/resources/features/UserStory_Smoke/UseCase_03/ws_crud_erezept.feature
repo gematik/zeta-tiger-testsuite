@@ -33,14 +33,15 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
     Und setze Anfrage Timeout für WebSocket Verbindungen auf 5 Sekunden
     Und setze Timeout für WebSocket Nachrichten auf 5 Sekunden
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-WS-SMOKE-${free.port.50}"
 
-  Szenario: CREATE - Rezept erstellen und ID speichern
+  Szenariogrundriss: CRUD - Rezept anlegen lesen auflisten aktualisieren löschen
+    Gegeben sei TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-WS-SMOKE-<lauf>-${free.port.50}"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-create" abonniert wird
+    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-crud" abonniert wird
     Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.create}" mit folgenden JSON Daten gesendet wird:
       """
       {
@@ -69,14 +70,8 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
       }
       """
     Und wird der Wert des Knotens "$.id" der empfangenen Nachricht in der Variable "wsCreatedId" gespeichert
-    Und wird die WebSocket Verbindung geschlossen
 
-  Szenario: READ - Rezept mit Datenbank-ID lesen
-    Gegeben sei Variable "wsCreatedId" existiert
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-read" abonniert wird
-    Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
+    Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und stimmt empfangene Nachricht als JSON überein mit:
       """
@@ -92,22 +87,12 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
         "practitionerId": "${eRezeptTestData.ERezept1.practitionerId}"
       }
       """
-    Und wird die WebSocket Verbindung geschlossen
 
-  Szenario: Alle Rezepte AUFLISTEN
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-list" abonniert wird
-    Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.list}" gesendet wird
+    Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.list}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
-    Und wird die WebSocket Verbindung geschlossen
+    Und enthält die empfangene Nachricht ein Element mit Feld "prescriptionId" und Wert "${uniquePrescriptionId}"
 
-  Szenario: UPDATE - Rezeptstatus auf SIGNED aktualisieren
-    Gegeben sei Variable "wsCreatedId" existiert
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-update" abonniert wird
-    Und Anfrage an Kanal "${paths.erezept.websocket.appChannels.updatePrefix}${wsCreatedId}" mit folgenden JSON Daten gesendet wird:
+    Wenn Anfrage an Kanal "${paths.erezept.websocket.appChannels.updatePrefix}${wsCreatedId}" mit folgenden JSON Daten gesendet wird:
       """
       {
         "id": ${wsCreatedId},
@@ -122,14 +107,9 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
       }
       """
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
-    Und wird die WebSocket Verbindung geschlossen
+    Und hat die empfangene Nachricht im Feld "status" den Wert "SIGNED"
 
-  Szenario: Aktualisierten Status als gespeichert verifizieren
-    Gegeben sei Variable "wsCreatedId" existiert
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-verify" abonniert wird
-    Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
+    Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und stimmt empfangene Nachricht als JSON überein mit:
       """
@@ -145,14 +125,8 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
         "practitionerId": "${eRezeptTestData.ERezept1.practitionerId}"
       }
       """
-    Und wird die WebSocket Verbindung geschlossen
 
-  Szenario: DELETE - Rezept löschen
-    Gegeben sei Variable "wsCreatedId" existiert
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-delete" abonniert wird
-    Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${wsCreatedId}" gesendet wird
+    Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.deletePrefix}${wsCreatedId}" gesendet wird
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
     Und stimmt empfangene Nachricht als JSON überein mit:
       """
@@ -161,13 +135,14 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
         "status": "deleted"
       }
       """
+
+    Wenn eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
+    Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
+    Und hat die empfangene Nachricht im Feld "status" den Wert "404"
     Und wird die WebSocket Verbindung geschlossen
 
-  Szenario: Gelöschtes Rezept verifizieren (Fehlermeldung)
-    Gegeben sei Variable "wsCreatedId" existiert
-    Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
-    Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
-    Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-verify-delete" abonniert wird
-    Und eine leere Anfrage an Kanal "${paths.erezept.websocket.appChannels.readPrefix}${wsCreatedId}" gesendet wird
-    Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
-    Und wird die WebSocket Verbindung geschlossen
+    Beispiele:
+      | lauf |
+      | 1    |
+      | 2    |
+      | 3    |

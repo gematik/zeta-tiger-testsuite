@@ -1,10 +1,10 @@
 [#UC_01_21]
-== UseCase_01_21: Client ressource anfrage fachdienst SC 504
+== UseCase_01_21: Client ressource anfrage fachdienst waehrend aktualisierung SC 200
 
 .UseCase_01_21
 [cols="1,1a",options="autowidth"]
 |===
-| *Titel:* | Client ressource anfrage fachdienst SC 504
+| *Titel:* | Client ressource anfrage fachdienst waehrend aktualisierung SC 200
 
 | Akteur: |
 *MA einer LEI*
@@ -15,44 +15,50 @@
 - *Resource Server*
 
 | Auslöser: |
-Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an, während im Hintergrund ein Versionswechsel oder Rollback am Deployment durchgeführt wird.
 
 | Kurzbeschreibung: |
-Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
-Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter, erhält jedoch innerhalb des
-konfigurierten Timeouts keine Antwort. +
-Der PEP HTTP Proxy antwortet deshalb mit ``504 Gateway Timeout``.
-Der ZETA Client informiert den MA und empfiehlt,
-die Anfrage nach einer angemessenen Wartezeit erneut zu versuchen.
+Der ZETA Client sendet Anfragen an den Fachdienst über den PEP HTTP Proxy. +
+Während eine langlaufende Anfrage verarbeitet wird, wird ein Versionswechsel des Deployments ausgelöst. +
+Dabei wird nachgewiesen, dass die neue Version im Hintergrund heruntergeladen wird, während die Anfrage weiterhin offen ist. +
+Die laufende Anfrage wird dennoch ordnungsgemäß mit ``200 OK`` abgeschlossen. +
+Anschließend wird geprüft, dass weitere Anfragen bis zur finalisierten Aktualisierung ohne Verfügbarkeitsunterbrechung erfolgreich verarbeitet werden. +
+Zusätzlich wird ein fehlerhaftes Update mit einem nicht verfügbaren Image ausgelöst, der fehlgeschlagene Rollout nachgewiesen und danach die automatische Rückkehr auf die stabile Vorversion innerhalb eines festen Zeitbudgets verifiziert.
 
 | Vorbedingung: |
-Der ZETA Client ist registriert, authentisiert und autorisiert.
+Die beteiligten Komponenten sind erreichbar und das Deployment des PEP HTTP Proxy kann aktualisiert bzw. zurückgerollt werden.
 
 | Nebenbedingung: |
-Der Resource Server antwortet nicht innerhalb des vom PEP HTTP Proxy konfigurierten Timeouts.
+Ein Versionswechsel (inkl. möglichem Rollback) findet während laufender Anfragen statt.
 
 | Ablauf: |
-. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
-. Der ZETA Client erstellt einen *DPoP Nachweis*.
-. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
-- ``GET /resource``
-- ``Authorization: DPoP ... (Access Token)``
-- ``DPoP: ... (DPoP Token)``
-. Der PEP HTTP Proxy prüft das *Access Token*.
-. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
-. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
-. Der Resource Server antwortet nicht innerhalb des konfigurierten Timeouts.
-. Der PEP HTTP Proxy antwortet mit ``504 Gateway Timeout``.
-. Der ZETA Client informiert den MA über die Zeitüberschreitung und empfiehlt einen erneuten Versuch nach angemessener Wartezeit.
+. MA startet über den ZETA Client eine langlaufende Anfrage an den Fachdienst.
+. Der ZETA Client ruft den PEP HTTP Proxy auf.
+. Während die Anfrage verarbeitet wird, wird am Deployment des PEP HTTP Proxy ein Versionswechsel ausgelöst.
+. Dabei wird nachgewiesen, dass die neue Version im Hintergrund heruntergeladen wird, ohne die laufende Anfrage zu unterbrechen.
+. Die bereits laufende Anfrage wird erfolgreich abgeschlossen und mit ``200 OK`` beantwortet.
+. Direkt nach dem Versionswechsel werden weitere Anfragen gesendet.
+. Diese Folgeanfragen werden ohne Verfügbarkeitsunterbrechung bis zum Abschluss des Rollouts ebenfalls mit ``200 OK`` beantwortet.
+. Im Anschluss wird ein fehlerhaftes Update mit einem nicht verfügbaren Image ausgelöst.
+. Der fehlgeschlagene Rollout wird nachgewiesen.
+. Danach wird die automatische Rückkehr des Deployments auf die stabile Vorversion innerhalb eines festen Zeitbudgets geprüft.
+. Nach der Rückkehr auf die stabile Vorversion wird erneut eine Anfrage gesendet.
+. Die Anfrage nach der Rückkehr auf die stabile Vorversion wird erfolgreich mit ``200 OK`` beantwortet.
 
 | Nachbedingung: |
-Die Ressource wurde nicht geliefert.
-Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit erneut stellen.
+Aktualisierungen werden im Hintergrund heruntergeladen, ohne laufende Anfragen zu beeinträchtigen. +
+Laufende Anfragen werden trotz Versionswechsel erfolgreich abgeschlossen. +
+Weitere Anfragen bleiben während des Übergangs bis zur finalisierten Aktualisierung verfügbar. +
+Ein fehlerhaftes Update wird erkannt und nicht erfolgreich aktiviert. +
+Nach einem Rollback steht wieder eine stabile Vorversion zur Verfügung.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_26661_24>>
-* <<TA_A_26661_24>>
-* <<TA_A_27007_24>>
+* <<TA_A_25784_01>>
+* <<TA_A_25785_01>>
+* <<TA_A_25786_03>>
+* <<TA_A_25786_04>>
+* <<TA_A_25788_01>>
+* <<TA_A_25789_01>>
 |===
 
 [#usecase_01_21_sequence]
@@ -66,15 +72,26 @@ sequenceDiagram
     participant PEP-HP as PEP HTTP Proxy
     participant RS as Resource Server
 
-    MA->>+ZC: Abruf geschützter Ressource
-    ZC->>ZC: Erstellen von DPoP Nachweis
-    ZC->>+PEP-HP: GET /resource
-    PEP-HP->>PEP-HP: Verifiziere Access Token
-    PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
-    PEP-HP->>+RS: Weiterleiten GET /resource
-    Note over RS: Timeout - keine Antwort
-    PEP-HP-->>-ZC: 504 Gateway Timeout
-    ZC-->>-MA: Hinweis auf Zeitüberschreitung
+    MA->>+ZC: Starte langlaufende Anfrage
+    ZC->>+PEP-HP: GET /helloZeta/delay/25
+    PEP-HP->>+RS: Weiterleiten der Anfrage
+    Note over PEP-HP: Versionswechsel wird ausgelöst
+    RS-->>-PEP-HP: 200 OK
+    PEP-HP-->>-ZC: 200 OK
+    ZC-->>-MA: Antwort auf laufende Anfrage
+    MA->>+ZC: Sende Folgeanfragen
+    ZC->>+PEP-HP: GET /helloZeta
+    PEP-HP->>+RS: Weiterleiten der Anfrage
+    RS-->>-PEP-HP: 200 OK
+    PEP-HP-->>-ZC: 200 OK
+    Note over PEP-HP: Fehlerhaftes Update wird erkannt
+    Note over PEP-HP: Rollback auf stabile Vorversion
+    MA->>+ZC: Anfrage nach Rollback
+    ZC->>+PEP-HP: GET /helloZeta
+    PEP-HP->>+RS: Weiterleiten der Anfrage
+    RS-->>-PEP-HP: 200 OK
+    PEP-HP-->>-ZC: 200 OK
+    ZC-->>-MA: System bleibt verfügbar
 ....
 
 [.lead]
@@ -82,5 +99,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-// TODO: Feature-Datei wird ergänzt, sobald vorhanden
+include::client_ressource_anfrage_fachdienst_sc_200.feature[]
 ----

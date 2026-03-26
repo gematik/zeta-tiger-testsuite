@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -43,6 +44,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  */
 @Slf4j
 public class SystemCommandService implements AutoCloseable {
+
+  public static final String WIN_PATH_USERS = "C:\\Users\\";
+  public static final String WSL_PATH_USERS = "/mnt/c/Users/";
+  public static final String WSL = "wsl";
 
   private final ThreadPoolTaskExecutor executor = setupExecutor();
   private final int processTimeoutSeconds;
@@ -63,8 +68,34 @@ public class SystemCommandService implements AutoCloseable {
    * @return Execution result of given command
    */
   public CommandResult executeCommand(List<String> command) throws AssertionError {
+    return executeCommand(command, true);
+  }
+
+  /**
+   * Executes the given command in a new process and returns the result.
+   *
+   * @param command Full command to be passed to process
+   * @param verbose logging of response/error messages
+   * @return Execution result of given command
+   */
+  public CommandResult executeCommand(List<String> command, boolean verbose) {
     String commandLine = String.join(" ", command);
 
+    boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+
+    if (isWindows) {
+      command.add(0, WSL);
+
+      // adapt path in command
+      command = command.stream()
+          .map(s -> s.contains(WIN_PATH_USERS)
+              ? s.replace(WIN_PATH_USERS, WSL_PATH_USERS).replace("\\", "/")
+              : s)
+          .toList();
+
+      // adapt path in logging string
+      commandLine = String.join(" ", command);
+    }
     log.debug("Trying to execute: {}", commandLine);
 
     Process process;
@@ -107,11 +138,15 @@ public class SystemCommandService implements AutoCloseable {
     String stderr = getFutureValue(stderrFuture, "stderr", commandLine);
 
     log.debug("Command exit code: {}", exitCode);
-    if (!stdout.isBlank()) {
+    if (!stdout.isBlank() && verbose) {
       log.trace("Command stdout:\n{}", stdout);
     }
-    if (!stderr.isBlank()) {
-      log.error("Command stderr:\n{}", stderr);
+    if (!stderr.isBlank() && verbose) {
+      if (exitCode == 0) {
+        log.warn("Command stderr:\n{}", stderr);
+      } else {
+        log.error("Command stderr:\n{}", stderr);
+      }
     }
 
     return new CommandResult(List.copyOf(command), exitCode, stdout, stderr);

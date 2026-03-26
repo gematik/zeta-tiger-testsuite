@@ -166,6 +166,7 @@ Bei negativer Berechtigungsprüfung erhält der ZETA Client über den ZETA Guard
 - <<UC_01_22>>
 - <<UC_01_23>>
 - <<UC_01_24>>
+- <<UC_01_26>>
 
 '''
 
@@ -221,4 +222,6 @@ include::UseCase_23/readme.adoc[]
 include::UseCase_24/readme.adoc[]
 
 include::UseCase_25/readme.adoc[]
+
+include::UseCase_26/readme.adoc[]
 :leveloffset: -2

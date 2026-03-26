@@ -30,6 +30,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @dev
   @A_25783

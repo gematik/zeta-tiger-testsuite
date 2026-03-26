@@ -3,15 +3,127 @@
 Folgende Aspekte sind in der aktuellen Iteration nicht Bestandteil der Testdurchführung.
 Jedes Element enthält die Begründung und – sofern vorhanden – die geplante Verschiebung.
 
-[cols="2,3,2",options="header"]
+[cols="2,2,3,2",options="header"]
 |===
-|Merkmal | Begründung | Geplante Aufnahme
+|Merkmal | Testaspekt | Begründung | Geplante Aufnahme
 
 |WebSocket-Unterstützung
+|-
 |Die WebSocket-Kommunikation ist noch instabil bzw. fehlschlagend
 |Nach Update der Tiger Testsuite Version
 
-|Telemetrie-Funktionen
-|Telemetrie ist in der aktuellen Auslieferung eingeschränkt
-|Sobald produktiv freigegebene Telemetrie-Schnittstellen vorliegen
+|Telemetrie
+|<<TA_A_26988_08>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_27264_06>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_27264_15>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_27264_24>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_25795_06>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_25796_15>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_25799_06>>
+|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
+|Nach Bereitstellung des Notification Service im Ziel-Deployment
+
+|Telemetrie
+|<<TA_A_26988_04>>
+|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_26988_09>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_27264_07>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_27264_16>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_27264_25>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25795_02>>
+|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25795_07>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25796_04>>
+|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25796_18>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25799_02>>
+|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|Telemetrie
+|<<TA_A_25799_07>>
+|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
+|Bei Scope-Erweiterung oder geänderter Zielarchitektur
+
+|HTTP-Protokollversionen
+|<<TA_A_26640_03>>
+|Der Testaspekt adressiert eine SOLL-Anforderung (HTTP/3) und wird in der aktuellen Iteration nicht umgesetzt.
+|Bei Priorisierung der SOLL-Validierungen
+
+|OCSP Stapling
+|<<TA_A_26964_01>>
+|Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
+|Bei Priorisierung der SOLL-Validierungen
+
+|Session Management PDP Datenbank
+|<<TA_A_27867_02>>
+|Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
+|Bei Priorisierung der SOLL-Validierungen
+
+|Session Management PDP Datenbank
+|<<TA_A_27867_03>>
+|Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
+|Bei Priorisierung der SOLL-Validierungen
+
+|Session Management PDP Datenbank
+|<<TA_A_27867_04>>
+|Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
+|Bei Priorisierung der SOLL-Validierungen
 |===

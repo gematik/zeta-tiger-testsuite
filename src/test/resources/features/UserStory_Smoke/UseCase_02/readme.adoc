@@ -54,7 +54,9 @@ sequenceDiagram
 [.lead]
 Feature-Dateien zu diesem Use Case
 
+ifdef::render_features[]
 [source]
 ----
 include::rest_api_crud_erezept.feature[]
 ----
+endif::[]

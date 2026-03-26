@@ -1,0 +1,10 @@
+[#US_COVERAGE]
+== UserStory_Coverage: Begründet nicht ausgeführte Testaspekte
+
+Als Testsuite-Team möchten wir begründet nicht ausgeführte Testaspekte zentral dokumentieren, damit die Testabdeckung in der Traceability konsistent bleibt und Ausnahmen nachvollziehbar sind.
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+include::UseCase_01/readme.adoc[]
+:leveloffset: -2

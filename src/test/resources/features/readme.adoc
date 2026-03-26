@@ -1,6 +1,8 @@
 == Definierte User Stories
 
 Es wurden auf Basis der zu testenden Anforderung einige User-Stories definiert, welche Use-Cases beinhalten, denen wiederum Testaspekte zugeordnet werden können.
+Die textuellen Beschreibungen der User Stories und Use Cases werden im Testplan standardmäßig vollständig dargestellt.
+Die eingebetteten ``.feature``-Dateien werden nur gerendert, wenn das Asciidoctor-Attribut ``render_features`` gesetzt wird (z. B. ``-Arender_features``).
 
 In Use-Case-Diagrammen werden ``critical``-Boxen verwendet.
 Diese Boxen haben keine semantische Bedeutung.
@@ -12,6 +14,8 @@ include::UserStory_Smoke/readme.adoc[]
 include::UserStory_TLS/readme.adoc[]
 
 include::UserStory_Telemetrie/readme.adoc[]
+
+include::UserStory_Coverage/readme.adoc[]
 
 include::UserStory_01/readme.adoc[]
 :leveloffset: -1

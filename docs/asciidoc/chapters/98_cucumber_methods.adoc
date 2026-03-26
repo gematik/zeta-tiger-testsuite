@@ -1,4 +1,5 @@
-== Cucumber Methoden — Referenz (Deutsch ↔ Englisch)
+[appendix]
+== Cucumber Methoden - Referenz (Deutsch <> Englisch)
 
 ____
 
@@ -9,15 +10,13 @@ ____
 
 === Kurzüberblick und Hinweise zur Benutzung
 
-* *Cucumber*-Steps sind Testschritte, die vom Runner / Glue zur Verfügung gestellt werden. Es sollten alle Schritte sowohl in einer englischen und in einer deutschen Variante existieren.
-* Platzhalter wie `${free.port.1}` oder `${tiger.ports.name}` kommen typischerweise aus `tiger.yaml` und werden zur Laufzeit aufgelöst.
-* Wo möglich: nutze TGR-Schritte statt eigener Java-Glue-Logik — das reduziert Boilerplate und erhöht Lesbarkeit.
+Die dokumentierten *Cucumber*-Steps werden durch Runner und Glue bereitgestellt und sollten grundsätzlich sowohl in deutscher als auch in englischer Formulierung vorliegen. Platzhalter wie ``${free.port.1}`` oder ``${tiger.ports.name}`` stammen typischerweise aus ``tiger.yaml`` und werden zur Laufzeit aufgelöst. Aus Wartbarkeitsgründen sollten bevorzugt vorhandene TGR-Schritte verwendet werden; zusätzliche projektspezifische Java-Glue-Logik ist nur dort sinnvoll, wo keine geeignete Standardabdeckung verfügbar ist.
 
 === Automatisch generierte Projektschritte (Cucumber Glue)
 
 Die projektspezifischen Glue-Schritte (Deutsch/Englisch) werden aus den Cucumber-Annotationen unter `src/test/java` ausgelesen.
 
-include::asciidoc/tables/cucumber_methods_table.adoc[]
+include::../tables/generated/cucumber_methods_table.adoc[]
 
 *Schlussbemerkung*
 

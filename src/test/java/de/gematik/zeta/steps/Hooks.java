@@ -34,9 +34,11 @@ import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.restassured.http.Method;
 import java.net.URI;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import net.serenitybdd.core.Serenity;
-import org.junit.jupiter.api.Assumptions;
+import org.opentest4j.TestAbortedException;
 
 /**
  * Injects traceability information into every Serenity scenario report.
@@ -46,18 +48,38 @@ public class Hooks {
 
   private static final TraceabilityLookup TRACEABILITY = TraceabilityLookup.load();
   private static final String NO_PROXY_TAG = "@no_proxy";
+  private static final String REQUIRE_KUBECTL_TAG = "@require_kubectl";
   private static final String DEPLOYMENT_MODIFICATION_TAG = "@deployment_modification";
   private static final String TIGER_ALLOW_DEPLOYMENT_MODIFICATION = "allow_deployment_modification";
   private static final String TIGER_PROXY_ID_CONFIG_KEY = "tiger.tigerProxy.proxyId";
+  private static final ThreadLocal<String> CAPTURED_PEP_ORIGINAL_IMAGE = new ThreadLocal<>();
   private static final int ORDER_RESTORE_DEPLOYMENT_STATE = Integer.MIN_VALUE;
   private static final int ORDER_PREPARE_SOFT_ASSERTIONS = ORDER_RESTORE_DEPLOYMENT_STATE + 1;
   // leave room after the global reset hook for future cross-cutting checks
   private static final int ORDER_PROXY_REQUIREMENT_GUARD = ORDER_PREPARE_SOFT_ASSERTIONS + 100;
-  private static final int ORDER_VERIFY_DEPLOYMENT_MODIFICATION = ORDER_PROXY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_KUBECTL_REQUIREMENT_GUARD = ORDER_PROXY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_VERIFY_DEPLOYMENT_MODIFICATION = ORDER_KUBECTL_REQUIREMENT_GUARD + 1;
   private static final int ORDER_APPEND_TRACEABILITY = Integer.MAX_VALUE;
   private static final int ORDER_VERIFY_SOFT_ASSERTIONS = ORDER_APPEND_TRACEABILITY - 1;
 
-  private final ZetaDeploymentConfigurationService deploymentConfigurationService = ZetaDeploymentConfigurationServiceFactory.getInstance();
+  private final ZetaDeploymentConfigurationService deploymentConfigurationService;
+
+  /**
+   * Creates hooks backed by the default deployment configuration service instance.
+   */
+  @SuppressWarnings("unused")
+  public Hooks() {
+    this(ZetaDeploymentConfigurationServiceFactory.getInstance());
+  }
+
+  /**
+   * Creates hooks backed by the provided deployment configuration service.
+   *
+   * @param deploymentConfigurationService service used for deployment-related checks and restoration
+   */
+  Hooks(final ZetaDeploymentConfigurationService deploymentConfigurationService) {
+    this.deploymentConfigurationService = deploymentConfigurationService;
+  }
 
   /**
    * Clears any soft assertions before each scenario to avoid leaking state across scenarios.
@@ -65,6 +87,7 @@ public class Hooks {
   @Before(order = ORDER_PREPARE_SOFT_ASSERTIONS)
   public void prepareSoftAssertions() {
     SoftAssertionsContext.reset();
+    clearCapturedPepOriginalImage();
   }
 
   /**
@@ -94,10 +117,38 @@ public class Hooks {
           proxyId == null ? "<missing>" : proxyId,
           System.getenv("PROFILE"),
           System.getProperty("PROFILE"));
-      // noinspection DataFlowIssue
-      Assumptions.assumeTrue(false, reason);
+      abortScenario(reason);
     } else {
       log.info("Scenario not skipped, proxy explicitly configured.");
+    }
+  }
+
+  /**
+   * Skip kubectl-dependent scenarios unless kubectl and cluster access are available.
+   */
+  @Before(order = ORDER_KUBECTL_REQUIREMENT_GUARD)
+  public void skipIfKubectlMissing(final Scenario scenario) {
+    if (scenario == null || !scenario.getSourceTagNames().contains(REQUIRE_KUBECTL_TAG)) {
+      return;
+    }
+
+    String namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
+        .orElse("");
+    if (namespace.isBlank()) {
+      String reason = "Skipping: kubectl requirement check is not possible because namespace is not defined "
+          + "and scenario is tagged " + REQUIRE_KUBECTL_TAG;
+      scenario.log(reason);
+      abortScenario(reason);
+    }
+
+    try {
+      deploymentConfigurationService.verifyRequirements(namespace);
+      log.info("Scenario not skipped, kubectl requirement check passed.");
+    } catch (Exception e) {
+      String reason = "Skipping: kubectl requirement check failed and scenario is tagged " + REQUIRE_KUBECTL_TAG;
+      scenario.log(reason);
+      log.warn("{} (scenario: '{}', namespace='{}')", reason, scenario.getName(), namespace, e);
+      abortScenario(reason);
     }
   }
 
@@ -123,19 +174,17 @@ public class Hooks {
       String reason = String.format("Skipping: deployment modification is not allowed; scenario is tagged with %s",
           DEPLOYMENT_MODIFICATION_TAG);
       scenario.log(reason);
-      // noinspection DataFlowIssue
-      Assumptions.assumeTrue(false, reason);
+      abortScenario(reason);
     }
 
     // check if requirements for deployment modifications are given
     String namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
         .orElse("");
 
-    if (namespace == null || namespace.isBlank()) {
+    if (namespace.isBlank()) {
       String reason = "Skipping: namespace for deployment modification is not defined";
       scenario.log(reason);
-      // noinspection DataFlowIssue
-      Assumptions.assumeTrue(false, reason);
+      abortScenario(reason);
     }
 
     try {
@@ -144,8 +193,7 @@ public class Hooks {
       String reason = "Skipping: verification check for deployment modification failed";
       scenario.log(reason);
       log.error("Unexpected error while verifying deployment modification requirements", e);
-      // noinspection DataFlowIssue
-      Assumptions.assumeTrue(false, reason);
+      abortScenario(reason);
     }
   }
 
@@ -186,6 +234,10 @@ public class Hooks {
    */
   @After(order = ORDER_RESTORE_DEPLOYMENT_STATE)
   public void restoreDeploymentModifications(final Scenario scenario) {
+    if (scenario == null) {
+      return;
+    }
+
     if (!scenario.getSourceTagNames().contains(DEPLOYMENT_MODIFICATION_TAG)) {
       log.debug("Restore deployment modification: skipping because {} tag was not found", DEPLOYMENT_MODIFICATION_TAG);
       return;
@@ -200,7 +252,7 @@ public class Hooks {
     String namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
         .orElse("");
 
-    if (namespace == null || namespace.isBlank()) {
+    if (namespace.isBlank()) {
       log.warn("Restore deployment modification: could not restore original Zeta deployment because"
           + " namespace is not configured");
       return;
@@ -208,12 +260,17 @@ public class Hooks {
 
     String pepNginxConfigMapName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.configMapName")
         .orElse("");
-    if (pepNginxConfigMapName == null || pepNginxConfigMapName.isBlank()) {
+    boolean restoredAnyConfigMap = false;
+    if (pepNginxConfigMapName.isBlank()) {
       log.warn("Restore deployment modification: could not restore original Zeta deployment because"
-          + " pep.nginx.configMapName is not configured");
+          + " zetaDeploymentConfig.pep.nginx.configMapName is not configured");
+    } else if (!deploymentConfigurationService.hasConfigMapBackup(namespace, pepNginxConfigMapName)) {
+      log.debug("Restore deployment modification: skipping nginx restore because no backup exists for {}",
+          pepNginxConfigMapName);
     } else {
       try {
         deploymentConfigurationService.restoreConfigMapBackup(namespace, pepNginxConfigMapName);
+        restoredAnyConfigMap = true;
       } catch (Exception e) {
         log.error("Restore deployment modification: could not restore original nginx config in Zeta deployment because "
             + "an unexpected error occurred", e);
@@ -222,18 +279,46 @@ public class Hooks {
 
     String pepWellKnownConfigMapName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.configMapName")
         .orElse("");
-    if (pepWellKnownConfigMapName == null || pepWellKnownConfigMapName.isBlank()) {
+    if (pepWellKnownConfigMapName.isBlank()) {
       log.warn("Restore deployment modification: could not restore Zeta deployment because"
-          + " pep.wellKnown.configMapName is not configured");
+          + " zetaDeploymentConfig.pep.wellKnown.configMapName is not configured");
+    } else if (!deploymentConfigurationService.hasConfigMapBackup(namespace, pepWellKnownConfigMapName)) {
+      log.debug("Restore deployment modification: skipping well-known restore because no backup exists for {}",
+          pepWellKnownConfigMapName);
     } else {
       try {
         deploymentConfigurationService.restoreConfigMapBackup(namespace, pepWellKnownConfigMapName);
+        restoredAnyConfigMap = true;
       } catch (Exception e) {
         log.error("Restore deployment modification: could not restore original well-known config because "
             + "an unexpected error occurred", e);
       }
     }
 
+    boolean restoredPepDeploymentImageWithRollout = restorePepDeploymentImage(namespace);
+
+    // since current modifications are only related to PEP HTTP proxy, it's ok to restart only once for both restores
+    // TODO: requires refactoring once different / more modifications are implemented
+    var podName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.podName").orElse("");
+
+    if (restoredPepDeploymentImageWithRollout) {
+      log.debug("Restore deployment modification: skipping explicit PEP pod restart because image restore already triggered a rollout");
+    } else if (!restoredAnyConfigMap) {
+      log.debug("Restore deployment modification: skipping PEP pod restart because no ConfigMap backup was restored");
+    } else if (podName.isBlank()) {
+      log.warn("Restore deployment modification: could not restart PEP pod because pod name is not set "
+          + "(expected at: zetaDeploymentConfig.pep.podName)");
+    } else {
+      try {
+        deploymentConfigurationService.restartPod(namespace, podName, true,
+            deploymentConfigurationService.getPodReadyTimeoutSeconds());
+      } catch (InterruptedException e) {
+        log.warn("Restore deployment modification: could not restart PEP pod after restoring due to an Interrupted Exception.", e);
+      } catch (TimeoutException e) {
+        log.warn("Restore deployment modification: could not restart PEP pod after restoring due to a Timeout Exception.", e);
+      }
+    }
+    
     String url = TigerGlobalConfiguration.readStringOptional("paths.client.reset").orElse(null);
     if (url == null) {
       log.warn("Restore deployment modification: could not issue client reset because "
@@ -247,5 +332,87 @@ public class Hooks {
       log.error("Restore deployment modification: could not issue client reset because "
           + "an unexpected error occurred while sending request", e);
     }
+  }
+
+  boolean restorePepDeploymentImage(final String namespace) {
+    String deploymentName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.podName")
+        .orElse("");
+    String containerName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.containerName")
+        .orElse("");
+    String expectedTag = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.image.versionUpdate")
+        .orElse("");
+
+    if (deploymentName.isBlank() || containerName.isBlank() || expectedTag.isBlank()) {
+      log.warn("Restore deployment modification: could not restore PEP image because deployment, container, or target tag is not configured");
+      return false;
+    }
+
+    String expectedImage = getCapturedPepOriginalImage().orElse(null);
+    if (expectedImage == null) {
+      var imagePathResult =
+          deploymentConfigurationService.getContainerImagePathForDeployment(namespace, deploymentName, containerName);
+      if (imagePathResult.exitCode() != 0 || imagePathResult.stdout() == null || imagePathResult.stdout().isBlank()) {
+        log.warn("Restore deployment modification: could not resolve PEP image path for deployment '{}' and container '{}': {}",
+            deploymentName, containerName, imagePathResult.stderr());
+        return false;
+      }
+      expectedImage = imagePathResult.stdout().trim() + ":" + expectedTag;
+      log.debug("Restore deployment modification: falling back to configured image '{}' for deployment '{}'",
+          expectedImage, deploymentName);
+    } else {
+      log.debug("Restore deployment modification: using captured original image '{}' for deployment '{}'",
+          expectedImage, deploymentName);
+    }
+
+    boolean imageRestoreTriggeredRollout = false;
+    var currentImageResult =
+        deploymentConfigurationService.getContainerImageReferenceForDeployment(namespace, deploymentName, containerName);
+    if (currentImageResult.exitCode() == 0 && currentImageResult.stdout() != null && !currentImageResult.stdout().isBlank()) {
+      imageRestoreTriggeredRollout = !expectedImage.equals(currentImageResult.stdout().trim());
+    } else {
+      log.debug("Restore deployment modification: could not determine current PEP image before restore for deployment '{}': {}",
+          deploymentName, currentImageResult.stderr());
+    }
+
+    var cleanupResult =
+        deploymentConfigurationService.cleanupFailedRolloutPods(namespace, deploymentName, containerName, expectedImage);
+    if (cleanupResult.exitCode() != 0) {
+      log.warn("Restore deployment modification: cleanup for deployment '{}' failed: {}",
+          deploymentName, cleanupResult.stderr());
+      return false;
+    }
+
+    var verifyResult =
+        deploymentConfigurationService.verifyDeploymentUpdate(namespace, deploymentName, containerName, expectedImage);
+    if (verifyResult.exitCode() != 0) {
+      log.warn("Restore deployment modification: deployment '{}' did not settle on expected image '{}': {}",
+          deploymentName, expectedImage, verifyResult.stderr());
+      return false;
+    }
+
+    log.info("Restore deployment modification: ensured deployment '{}' runs with image '{}'",
+        deploymentName, expectedImage);
+    return imageRestoreTriggeredRollout;
+  }
+
+  static void rememberPepOriginalImageIfAbsent(final String imageReference) {
+    if (imageReference == null || imageReference.isBlank() || CAPTURED_PEP_ORIGINAL_IMAGE.get() != null) {
+      return;
+    }
+    CAPTURED_PEP_ORIGINAL_IMAGE.set(imageReference.trim());
+  }
+
+  static Optional<String> getCapturedPepOriginalImage() {
+    return Optional.ofNullable(CAPTURED_PEP_ORIGINAL_IMAGE.get())
+        .map(String::trim)
+        .filter(image -> !image.isBlank());
+  }
+
+  private static void abortScenario(final String reason) {
+    throw new TestAbortedException(reason);
+  }
+
+  private static void clearCapturedPepOriginalImage() {
+    CAPTURED_PEP_ORIGINAL_IMAGE.remove();
   }
 }

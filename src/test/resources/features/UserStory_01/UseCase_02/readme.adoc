@@ -63,6 +63,7 @@ sequenceDiagram
     ZC-->>-MA: Registrierung fehlgeschlagen<br>Registrierungsdaten korrigieren
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -70,3 +71,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::client_registrierung_stationaer_sc_400.feature[]
 ----
+endif::[]

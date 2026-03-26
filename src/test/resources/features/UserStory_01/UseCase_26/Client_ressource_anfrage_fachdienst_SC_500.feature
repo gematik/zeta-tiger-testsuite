@@ -24,33 +24,41 @@
 
 #language:de
 
-@UseCase_01_12
-Funktionalität: Client_ressource_anfrage_fachdienst_SC_500_integrationstest
+@UseCase_01_26
+Funktionalität: Client_ressource_anfrage_fachdienst_SC_500
 
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
-  @A_26974
-  @A_26662
-  @A_27007
+  @A_26560
   @A_26661
-  @TA_A_26974_01
-  @TA_A_26662_01
-  @TA_A_27007_26
+  @A_26662
+  @A_26974
+  @A_27007
+  @TA_A_26560_01
   @TA_A_26661_26
+  @TA_A_26662_01
+  @TA_A_26974_01
+  @TA_A_27007_26
   Szenario: PEP HTTP Proxy antwortet mit 500 bei ZETA-Cause Proxy vom Resource Server
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZetaProxyError}"
-    Dann TGR finde die letzte Anfrage mit dem Pfad "^${paths.fachdienst.helloZetaProxyErrorPath}"
+
+    # TA_A_26560_01: Request NACH PEP - Pfad wurde gemäß Weiterleitungskonfiguration transformiert
+    Und TGR finde die letzte Anfrage mit dem Pfad "^${paths.fachdienst.helloZetaProxyErrorPath}$"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.path" überein mit "${paths.fachdienst.helloZetaProxyErrorPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "500"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.ZETA-Cause" überein mit "Proxy"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.cause}" überein mit "Proxy"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "errorBody"
 
+    # TA_A_26560_01: Request-Weiterleitung gemäß URL-Konfiguration vor PEP
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaProxyErrorPath}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
-    Und prüfe aktuelle Antwort enthält keinen Knoten "$.header.ZETA-Cause"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "500"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "${headers.zeta.cause}"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
     Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" nicht überein mit ".*${errorBody}.*"
+

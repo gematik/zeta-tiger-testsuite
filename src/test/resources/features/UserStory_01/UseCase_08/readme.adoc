@@ -79,6 +79,7 @@ sequenceDiagram
     ZC-->>-MA: "Zugriff gestattet"
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -86,3 +87,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::Client_authentisierung_und_autorisierung_software_attest_SC_401.feature[]
 ----
+endif::[]

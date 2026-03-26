@@ -65,7 +65,7 @@ public class TimestampValidationSteps {
    * Cucumber step definition for validating a timestamp.
    *
    * @param timestamp the epoch seconds
-   * @throws AssertionError if the value is invalid or the timestamp is not in the past
+   * @throws AssertionError if the value is invalid or the timestamp is neither in the past nor now
    */
   @Und("validiere, dass der Zeitstempel {tigerResolvedString} in der Vergangenheit liegt")
   @And("validate that the timestamp {tigerResolvedString} is in the past")
@@ -79,8 +79,8 @@ public class TimestampValidationSteps {
     }
 
     assertThat(Instant.now())
-        .as("Zeitstempel muss in der Vergangenheit liegen")
-        .isAfter(earlierTimestamp);
+        .as("Zeitstempel muss in der Vergangenheit liegen oder jetzt sein")
+        .isAfterOrEqualTo(earlierTimestamp);
 
     log.info("Validierung erfolgreich: Zeitstempel {} ist bereits abgelaufen.", earlierTimestamp);
   }

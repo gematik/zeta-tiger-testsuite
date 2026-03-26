@@ -18,6 +18,10 @@ export TIGER_TESTENV_CFGFILE
 tiger_set_defaults
 tiger_setup_report_dirs "direct" "/app/target/site/serenity" "/app/target/cucumber-parallel"
 
+if [ -z "${PROFILE}" ]; then
+  unset PROFILE
+fi
+
 agent="/app/agent/tiger-java-agent.jar"
 [ -f "${agent}" ] || agent="$(find /app/libs -name 'tiger-*-agent*.jar' | head -n1 || true)"
 [ -n "${agent}" ] && [ -f "${agent}" ] || { echo "Tiger agent missing" >&2; exit 1; }
@@ -26,18 +30,13 @@ tests_jar="$(find /app -maxdepth 1 -name '*-tests.jar' | head -n1 || true)"
 [ -n "${tests_jar}" ] || tests_jar="/app/tests.jar"
 classpath="${tests_jar}:/app/libs/*"
 
-profile_arg=""
-if [ -n "${PROFILE}" ]; then
-  profile_arg="-DPROFILE=${PROFILE}"
-fi
+common_property_args="$(tiger_common_property_args)"
 
 set +e
 java -Dserenity.outputDirectory="${serenity_dir}" \
   "-Dzeta.cucumber.outputDirectory=${cucumber_dir}" \
-  ${profile_arg:+${profile_arg}} \
-  "-Dzeta_base_url=${ZETA_BASE_URL}" \
-  "-Dzeta_proxy_url=${ZETA_PROXY_URL}" \
-  "-Dopensearch_url=${OPENSEARCH_URL}" \
+  -Djava.net.preferIPv4Stack=true \
+  ${common_property_args} \
   "-Dcucumber.filter.tags=${CUCUMBER_TAGS}" \
   -javaagent:"${agent}" \
   -cp "${classpath}" \

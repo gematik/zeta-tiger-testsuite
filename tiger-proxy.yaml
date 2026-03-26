@@ -2,5 +2,7 @@ tigerProxy:
   proxyId: Cluster
   downloadInitialTrafficFromEndpoints: false
   skipTrafficEndpointSubscription: false
+  activateRbelParsingFor:
+    - asl
   trafficEndpoints:
     - "http://${zeta_proxy_url}"

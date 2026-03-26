@@ -113,17 +113,20 @@ public class CheckMessageSteps {
 
       try {
         referenceParent.fieldNames().forEachRemaining(childName -> {
-          if (!node.has(childName)) {
-            if (!childName.equals("Connection")) {
+          String actualHeaderName = findHeaderNameIgnoreCase(node, childName);
+          if (actualHeaderName == null) {
+            if (!childName.equalsIgnoreCase("Connection")) {
               throw new AssertionError("Expected child node '" + childName + "' is missing.");
             }
             return; // Skip value comparison for missing Connection header
           }
-          if (!node.get(childName).equals(referenceParent.get(childName))) {
-            if (!childName.equals("Host") && !childName.equals("accept-encoding")) {
+
+          if (!node.get(actualHeaderName).equals(referenceParent.get(childName))) {
+            if (!childName.equalsIgnoreCase("Host")
+                && !childName.equalsIgnoreCase("accept-encoding")) {
               throw new AssertionError(
                   "Child node '" + childName + "' differs. Expected " + referenceParent.get(
-                      childName) + " but was " + node.get(childName));
+                      childName) + " but was " + node.get(actualHeaderName));
             }
           }
         });
@@ -287,6 +290,24 @@ public class CheckMessageSteps {
       found = true;
     }
     return found ? objectNode : null;
+  }
+
+  /**
+   * Finds a header key in the given JSON object using case-insensitive name matching.
+   *
+   * @param headers JSON object that contains header fields
+   * @param expectedHeaderName requested header name
+   * @return actual header key as present in {@code headers}, or {@code null} if none matches
+   */
+  private static String findHeaderNameIgnoreCase(JsonNode headers, String expectedHeaderName) {
+    var names = headers.fieldNames();
+    while (names.hasNext()) {
+      var candidate = names.next();
+      if (candidate.equalsIgnoreCase(expectedHeaderName)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   /**

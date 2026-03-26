@@ -25,21 +25,16 @@
 package de.gematik.zeta.steps;
 
 import de.gematik.rbellogger.data.RbelElement;
-import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
 import io.cucumber.java.de.Dann;
-import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.de.Wenn;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
@@ -52,43 +47,11 @@ import org.assertj.core.api.Assertions;
 @Slf4j
 public class HelperSteps {
 
-  /**
-   * Decodes a Base64-URL encoded string and stores the UTF-8 result in the Tiger test context under
-   * the given variable name. Uses Base64-URL decoding as specified in RFC 4648 Section 5.
-   *
-   * @param input   Base64-URL encoded content (supports tigerResolvedString placeholders)
-   * @param varName target variable name for the decoded text
-   * @throws AssertionError if the input cannot be decoded from Base64-URL
-   */
-  @Dann("decodiere {tigerResolvedString} von Base64-URL und speichere in der Variable {tigerResolvedString}")
-  @Then("decode {tigerResolvedString} from Base64-URL and save in variable {tigerResolvedString}")
-  public void decodeFromBase64Url(String input, String varName) {
-    String decodedText = decodeBase64UrlToString(input);
-    TigerGlobalConfiguration.putValue(varName, decodedText, ConfigurationValuePrecedence.TEST_CONTEXT);
-  }
+  private final TimingGlue timingGlue = new TimingGlue();
 
   /**
-   * Decodes a Base64-URL encoded string into a UTF-8 string.
-   *
-   * <p>Accepts the URL-safe alphabet defined in RFC 4648 (section 5), including inputs without
-   * padding characters.</p>
-   *
-   * @param base64UrlString Base64-URL encoded content
-   * @return decoded UTF-8 string
-   * @throws AssertionError if decoding fails due to invalid Base64-URL input
-   */
-  private String decodeBase64UrlToString(String base64UrlString) {
-    try {
-      byte[] decodedBytes = Base64.getUrlDecoder().decode(base64UrlString);
-      return new String(decodedBytes, StandardCharsets.UTF_8);
-    } catch (IllegalArgumentException e) {
-      throw new AssertionError("Invalid Base64-URL string: " + e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Validates that a string is strictly Base64-URL encoded (RFC 4648 Section 5).
-   * Base64-URL uses '-' and '_' instead of '+' and '/' used in standard Base64.
+   * Validates that a string is strictly Base64-URL encoded (RFC 4648 Section 5). Base64-URL uses '-' and '_' instead of '+' and '/' used in
+   * standard Base64.
    *
    * @param input the string to validate
    * @throws AssertionError if the string is not valid Base64-URL format
@@ -96,36 +59,24 @@ public class HelperSteps {
   @Dann("prüfe {tigerResolvedString} ist striktes Base64-URL Format")
   @Then("check {tigerResolvedString} is strict Base64-URL format")
   public void checkStrictBase64UrlFormat(String input) {
-    // Prüfe ob gültiges Base64-URL Format (erlaubt: A-Z, a-z, 0-9, -, _, =)
-    if (!input.matches("^[A-Za-z0-9_=-]*$")) {
+    if (input == null || input.isBlank()) {
+      throw new AssertionError("String ist leer und damit kein gültiges Base64-URL Format");
+    }
+
+    var strictBase64UrlRegex = TigerGlobalConfiguration
+        .readStringOptional("regex.base64url_strict")
+        .orElseThrow(() -> new AssertionError(
+            "Fehlende Konfiguration: regex.base64url_strict in tiger/regex.yaml"));
+
+    if (!input.matches(strictBase64UrlRegex)) {
       throw new AssertionError(
           "String ist kein gültiges Base64-URL Format: " + input);
     }
-
-    // Prüfe ob es NICHT Standard-Base64 ist (keine + oder /)
-    if (input.contains("+") || input.contains("/")) {
-      throw new AssertionError(
-          "String enthält Standard-Base64 Zeichen (+ oder /) statt Base64-URL: " + input);
-    }
   }
 
   /**
-   * Cucumber step for checking if a tiger variable is set.
-   *
-   * @param key the variable name to check (can also be a regex according to tiger)
-   */
-  @Gegebensei("Variable {tigerResolvedString} existiert")
-  public void variableExists(String key) {
-    Optional<String> optionalValue = TigerGlobalConfiguration.readStringOptional(key);
-    Assertions
-        .assertThat(optionalValue)
-        .withFailMessage("Variable " + key + " is not set.")
-        .isPresent();
-  }
-
-  /**
-   * Cucumber step for waiting/sleeping for a specified number of seconds.
-   * Temporary implementation - will be replaced by step from other branch.
+   * Cucumber step for waiting/sleeping for a specified number of seconds. Temporary implementation - will be replaced by step from other
+   * branch.
    *
    * @param seconds the number of seconds to wait
    */
@@ -140,8 +91,8 @@ public class HelperSteps {
   }
 
   /**
-   * Cucumber step for waiting/sleeping for a specified number of seconds.
-   * This variant accepts a Tiger variable (string) that will be resolved and parsed as integer.
+   * Cucumber step for waiting/sleeping for a specified number of seconds. This variant accepts a Tiger variable (string) that will be
+   * resolved and parsed as integer.
    *
    * @param seconds the number of seconds to wait (as string, supports Tiger variables like ${varName})
    */
@@ -159,18 +110,20 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or equal
-   * to the specified value.
+   * Checks if the current request's attribute at the given RBEL path does either not exist or equal to the specified value.
    *
    * @param rbelPath the RBEL path to the attribute in the request
-   * @param value    the value to compare against; the attribute is considered valid if it does not exist or
-   *                 equal to this value
+   * @param value    the value to compare against; the attribute is considered valid if it does not exist or equal to this value
    */
   @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder gleich {tigerResolvedString}")
   @Then("current request the attribute {tigerResolvedString} does not exist or is equal {tigerResolvedString}")
   public void variableDoesNotExistOrIsEqual(String rbelPath, String value) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
+    var currentRequest = rbelMessageRetriever.getCurrentRequest();
+    if (currentRequest == null) {
+      throw new AssertionError("No current request message found!");
+    }
+    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
       return;
     }
 
@@ -189,12 +142,35 @@ public class HelperSteps {
   }
 
   /**
+   * Checks that the currently selected request has no correlated response yet.
+   */
+  @Dann("prüfe, dass die aktuelle Anfrage noch keine Antwort hat")
+  @Then("verify the current request has no response yet")
+  public void verifyCurrentRequestHasNoResponseYet() {
+    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
+    var currentRequest = rbelMessageRetriever.getCurrentRequest();
+    if (currentRequest == null) {
+      throw new AssertionError("No current request message found!");
+    }
+
+    var messages = rbelMessageRetriever.getMessageHistory().getMessages();
+    if (messages == null || messages.isEmpty()) {
+      return;
+    }
+
+    var response = timingGlue.findResponseForRequest(messages, currentRequest);
+    Assertions.assertThat(response)
+        .as("Current request %s unexpectedly already has a recorded response", currentRequest.getUuid())
+        .isNull();
+  }
+
+  /**
    * Checks an optional expected value against a request node.
    *
    * <p>If the expected value is blank (null/empty/"null"), the node must be absent.
    * Otherwise the node must exist and match the expected value.</p>
    *
-   * @param rbelPath the RBEL path to the attribute in the request
+   * @param rbelPath      the RBEL path to the attribute in the request
    * @param expectedValue the optional value to compare (may be empty)
    */
   @Dann("prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich")
@@ -206,7 +182,7 @@ public class HelperSteps {
   /**
    * Soft-asserting variant of {@link #checkOptionalValueAgainstNode(String, String)}.
    *
-   * @param rbelPath the RBEL path to the attribute in the request
+   * @param rbelPath      the RBEL path to the attribute in the request
    * @param expectedValue the optional value to compare (may be empty)
    */
   @Dann("prüfe optional: Knoten {tigerResolvedString} fehlt wenn {tigerResolvedString} leer ist, sonst gleich und nutze soft assert")
@@ -277,18 +253,20 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or not equal
-   * to the specified value.
+   * Checks if the current request's attribute at the given RBEL path does either not exist or not equal to the specified value.
    *
    * @param rbelPath the RBEL path to the attribute in the request
-   * @param value    the value to compare against; the attribute is considered valid if it does not exist or
-   *                 is not equal to this value
+   * @param value    the value to compare against; the attribute is considered valid if it does not exist or is not equal to this value
    */
   @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder ungleich {tigerResolvedString}")
   @Then("current request the attribute {tigerResolvedString} does not exist or is not equal {tigerResolvedString}")
   public void variableDoesNotExistOrIsNotEqual(String rbelPath, String value) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
+    var currentRequest = rbelMessageRetriever.getCurrentRequest();
+    if (currentRequest == null) {
+      throw new AssertionError("No current request message found!");
+    }
+    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
       return;
     }
 
@@ -307,8 +285,8 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or has
-   * a timestamp earlier than the current time.
+   * Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp earlier than the current
+   * time.
    *
    * @param rbelPath the RBEL path to the attribute (typically a timestamp) in the request
    */
@@ -316,7 +294,11 @@ public class HelperSteps {
   @Then("current request: the attribute {tigerResolvedString} does not exist or is earlier then now")
   public void variableDoesNotExistOrIsEarlier(String rbelPath) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
+    var currentRequest = rbelMessageRetriever.getCurrentRequest();
+    if (currentRequest == null) {
+      throw new AssertionError("No current request message found!");
+    }
+    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
       return;
     }
 
@@ -336,8 +318,7 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or has
-   * a timestamp later than the current time.
+   * Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp later than the current time.
    *
    * @param rbelPath the RBEL path to the attribute (typically a timestamp) in the request
    */
@@ -345,7 +326,11 @@ public class HelperSteps {
   @Then("current request the attribute {tigerResolvedString} does not exist or is later then now")
   public void variableDoesNotExistOrIsLater(String rbelPath) {
     var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentRequest().findRbelPathMembers(rbelPath).isEmpty()) {
+    var currentRequest = rbelMessageRetriever.getCurrentRequest();
+    if (currentRequest == null) {
+      throw new AssertionError("No current request message found!");
+    }
+    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
       return;
     }
 
@@ -362,154 +347,6 @@ public class HelperSteps {
         .assertThat(Long.parseLong(optionalValue.trim()))
         .as("Node value %s should not exist or be later then '%s'", optionalValue, value)
         .isGreaterThan(value);
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current request.
-   * Throws an {@link AssertionError} if node exists.
-   */
-  @Dann("prüfe aktueller Request enthält keinen Knoten {tigerResolvedString}")
-  @Then("current request does not contain node {tigerResolvedString}")
-  public void checkCurrentRequestMessageNotContainsNode(String rbelPath) {
-    currentRequestMessageNotContainsNode(rbelPath, false);
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current request.
-   * Uses soft assertions instead of throwing an {@link AssertionError} if node exists.
-   */
-  @Dann("prüfe aktueller Request enthält keinen Knoten {tigerResolvedString} und nutze soft assert")
-  @Then("current request does not contain node {tigerResolvedString} with soft assert")
-  public void checkCurrentRequestMessageNotContainsNodeSoft(String rbelPath) {
-    currentRequestMessageNotContainsNode(rbelPath, true);
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current request.
-   *
-   * <p>With the soft option enabled, errors due to an existing node will be logged only
-   * and no exception is thrown.</p>
-   *
-   * <p>If the JSON is empty, cannot be parsed, or an existing node
-   * an {@link AssertionError} is thrown with a detailed error message.
-   *
-   * @param rbelPath    path and name of the node not to be contained
-   * @param soft        if true, errors will only be logged.
-   * @throws AssertionError if check fails
-   */
-  private void currentRequestMessageNotContainsNode(String rbelPath, boolean soft) {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentRequest() == null) {
-      throw new AssertionError("No current request message found!");
-    }
-    List<RbelElement> elems = rbelMessageRetriever.getCurrentRequest()
-        .findRbelPathMembers(rbelPath);
-    try {
-      Assertions
-          .assertThat(elems)
-          .as("Expected current request to not contain node '%s'", rbelPath)
-          .isEmpty();
-    } catch (AssertionError ex) {
-      if (soft) {
-        log.warn("Expected current request to not contain node {}", rbelPath);
-        SoftAssertionsContext.recordSoftFailure("Expected current request to not contain node " + rbelPath, ex);
-      } else {
-        throw ex;
-      }
-    }
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current response.
-   * Throws an {@link AssertionError} if node exists.
-   */
-  @Dann("prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString}")
-  @Then("current response does not contain node {tigerResolvedString}")
-  public void checkCurrentResponseMessageNotContainsNode(String rbelPath) {
-    currentResponseMessageNotContainsNode(rbelPath, false);
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current response.
-   * Uses soft assertions instead of throwing an {@link AssertionError} if node exists.
-   */
-  @Dann("prüfe aktuelle Antwort enthält keinen Knoten {tigerResolvedString} und nutze soft assert")
-  @Then("current response does not contain node {tigerResolvedString} with soft assert")
-  public void checkCurrentResponseMessageNotContainsNodeSoft(String rbelPath) {
-    currentResponseMessageNotContainsNode(rbelPath, true);
-  }
-
-  /**
-   * Verifies that no element matching the given RBEL path exists in the current response.
-   *
-   * <p>With the soft option enabled, errors due to an existing node will be logged only
-   * and no exception is thrown.</p>
-   *
-   * <p>If the JSON is empty, cannot be parsed, or an existing node
-   * an {@link AssertionError} is thrown with a detailed error message.
-   *
-   * @param rbelPath    path and name of the node not to be contained
-   * @param soft        if true, errors will only be logged.
-   * @throws AssertionError if check fails
-   */
-  private void currentResponseMessageNotContainsNode(String rbelPath, boolean soft) {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    if (rbelMessageRetriever.getCurrentResponse() == null) {
-      throw new AssertionError("No current response message found!");
-    }
-    List<RbelElement> elems = rbelMessageRetriever.getCurrentResponse()
-        .findRbelPathMembers(rbelPath);
-    try {
-      Assertions
-          .assertThat(elems)
-          .as("Expected current response to not contain node '%s'", rbelPath)
-          .isEmpty();
-    } catch (AssertionError ex) {
-      if (soft) {
-        log.warn("Expected current response to not contain node {}", rbelPath);
-        SoftAssertionsContext.recordSoftFailure("Expected current response to not contain node " + rbelPath, ex);
-      } else {
-        throw ex;
-      }
-    }
-  }
-
-  /**
-   * Validates that a timestamp is in the past.
-   *
-   * @param timestamp the Unix timestamp in seconds
-   */
-  @Und("prüfe dass Timestamp {tigerResolvedString} in der Vergangenheit liegt")
-  @And("check that timestamp {tigerResolvedString} is in the past")
-  public void validateTimestampInPast(String timestamp) {
-    long timestampValue = parseTimestamp(timestamp);
-    long now = Instant.now().getEpochSecond();
-
-    Assertions
-        .assertThat(timestampValue)
-        .as("Timestamp %d should be in the past (earlier than or equal to now: %d)", timestampValue, now)
-        .isLessThanOrEqualTo(now);
-
-    log.info("Timestamp validation successful: {} is in the past (now: {})", timestampValue, now);
-  }
-
-  /**
-   * Validates that a timestamp is in the future.
-   *
-   * @param timestamp the Unix timestamp in seconds
-   */
-  @Und("prüfe dass Timestamp {tigerResolvedString} in der Zukunft liegt")
-  @And("check that timestamp {tigerResolvedString} is in the future")
-  public void validateTimestampInFuture(String timestamp) {
-    long timestampValue = parseTimestamp(timestamp);
-    long now = Instant.now().getEpochSecond();
-
-    Assertions
-        .assertThat(timestampValue)
-        .as("Timestamp %d should be in the future (later than now: %d)", timestampValue, now)
-        .isGreaterThan(now);
-
-    log.info("Timestamp validation successful: {} is in the future (now: {})", timestampValue, now);
   }
 
   /**
@@ -549,20 +386,5 @@ public class HelperSteps {
 
     log.info("Token TTL validation successful: actual TTL = {} seconds, expected = {} seconds",
         actualTtl, expectedTtl);
-  }
-
-  /**
-   * Parses a timestamp string to a long value.
-   *
-   * @param timestamp the timestamp string
-   * @return the parsed timestamp as long
-   * @throws AssertionError if the timestamp format is invalid
-   */
-  private long parseTimestamp(String timestamp) {
-    try {
-      return Long.parseLong(timestamp.trim());
-    } catch (NumberFormatException e) {
-      throw new AssertionError("Invalid timestamp format: " + timestamp);
-    }
   }
 }

@@ -64,6 +64,7 @@ sequenceDiagram
     ZC-->>-MA: HTTP Methode für Endpunkt nicht erlaubt
 ....
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
 
@@ -71,3 +72,4 @@ Feature-Datei zu diesem Use Case:
 ----
 include::client_ressource_anfrage_fachdienst_sc_405.feature[]
 ----
+endif::[]

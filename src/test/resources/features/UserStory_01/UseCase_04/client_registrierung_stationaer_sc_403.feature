@@ -30,6 +30,7 @@ Funktionalität: client_registrierung_stationaer_sc_403
   Grundlage:
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @dev
   @A_25653
@@ -64,8 +65,8 @@ Funktionalität: client_registrierung_stationaer_sc_403
     Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
     # TA_A_25752_01 - PDP Client-Registrierung - Nutzer über Hintergrund zur Ablehnung der Clientregistrierung informieren - Client-Eigenschaften
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error_description" überein mit ".*<ErwarteterHinweis>.*"
-    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.access_token"
-    Und prüfe aktuelle Antwort enthält keinen Knoten "$.body.refresh_token"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.access_token"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.refresh_token"
 
     # Policy-Ablehnungsgründe:
     # - professionOID nicht unter den erlaubten Berufsgruppen

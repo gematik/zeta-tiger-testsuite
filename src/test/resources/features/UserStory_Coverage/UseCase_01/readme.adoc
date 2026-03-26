@@ -1,0 +1,45 @@
+[#UseCase_COVERAGE_01]
+== UseCase_Coverage_01: Globale Markierung begründet nicht ausgeführter Testaspekte
+
+.UseCase_Coverage_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Globale Markierung begründet nicht ausgeführter Testaspekte
+
+| Akteur: |
+*Testsuite*
+
+| weitere Akteure: |
+*Dokumentation / Traceability-Auswertung*
+
+| Auslöser: |
+Testaspekte sind im aktuellen Scope oder Produktstand begründet nicht ausführbar.
+
+| Kurzbeschreibung: |
+Die Testaspekte werden in einer dedizierten, ignorierten Feature-Datei mit `@TA_*`-Tags geführt, damit sie in der Traceability als bewusst ausgenommen und nicht als fehlend behandelt werden.
+
+| Vorbedingung: |
+Die Begründung ist im Testplan dokumentiert.
+
+| Nebenbedingung: |
+Die Szenarien sind mit `@Ignore` markiert und werden nicht ausgeführt.
+Für Produktlücken wird zusätzlich `@not_impl` verwendet; SOLL-basierte Ausnahmen sind separat getaggt.
+
+| Ablauf: |
+. Die Feature-Datei listet die betroffenen `@TA_*`-Tags gruppiert nach Anforderung.
+. Die Traceability-Auswertung liest die Tags und ordnet die Testaspekte zu.
+
+| Nachbedingung: |
+Die Abdeckungsdarstellung berücksichtigt die begründeten Ausnahmen konsistent.
+
+|===
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::nicht_getestete_testaspekte_global.feature[]
+----
+endif::[]

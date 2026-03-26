@@ -39,6 +39,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
@@ -265,6 +266,43 @@ public class WebSocketStompSteps {
   }
 
   /**
+   * Verifies that the received payload (single object or list) contains an element with the expected field value.
+   *
+   * @param fieldName     The field name to check
+   * @param expectedValue The expected field value (supports Tiger placeholders)
+   */
+  @Dann("enthält die empfangene Nachricht ein Element mit Feld {string} und Wert {tigerResolvedString}")
+  @Then("the received message contains an element with field {string} and value {tigerResolvedString}")
+  public void verifyMessageContainsElementWithFieldValue(String fieldName, String expectedValue) {
+    var lastMessage = sessionManager.getLastReceivedMessage();
+
+    assertThat(lastMessage)
+        .as("Last message available for list/object membership validation")
+        .isNotNull();
+
+    var resolvedExpectedValue = TigerGlobalConfiguration.resolvePlaceholders(expectedValue);
+    var payload = lastMessage.payload();
+
+    var elements = extractPayloadElements(payload);
+
+    assertThat(elements)
+        .as("Received payload provides at least one object to inspect")
+        .isNotEmpty();
+
+    var containsMatch = elements.stream()
+        .map(element -> element.get(fieldName))
+        .anyMatch(value -> String.valueOf(value).equals(resolvedExpectedValue));
+
+    assertThat(containsMatch)
+        .as("Received payload contains an element with '%s' = '%s'", fieldName,
+            resolvedExpectedValue)
+        .isTrue();
+
+    log.info("Membership validation successful: payload contains {} = {}", fieldName,
+        resolvedExpectedValue);
+  }
+
+  /**
    * Verifies the last received WebSocket message matches expected JSON (similar to TGR step). Only checks fields that are present in
    * expected JSON (partial match).
    *
@@ -317,6 +355,35 @@ public class WebSocketStompSteps {
   @Then("WebSocket connection is closed")
   public void closeWebSocket() {
     sessionManager.close();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> castToMap(Object payloadElement) {
+    assertThat(payloadElement)
+        .as("List element is a JSON object")
+        .isInstanceOf(Map.class);
+    return (Map<String, Object>) payloadElement;
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> extractPayloadElements(Object payload) {
+    return switch (payload) {
+      case List<?> list -> list.stream()
+          .map(this::castToMap)
+          .toList();
+      case Map<?, ?> map -> {
+        var items = map.get("items");
+        if (items instanceof List<?> list) {
+          yield list.stream()
+              .map(this::castToMap)
+              .toList();
+        }
+        yield List.of((Map<String, Object>) map);
+      }
+      case null, default -> throw new AssertionError(
+          "Received payload must be either object, list, or wrapper object, but was: "
+              + (payload == null ? "null" : payload.getClass().getName()));
+    };
   }
 
 }

@@ -264,6 +264,7 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_28144_02>>
 * <<TA_A_28144_03>>
 * <<TA_A_28144_04>>
+* <<TA_A_28432_01>>
 * <<TA_A_28440_01>>
 * <<TA_A_28440_02>>
 * <<TA_A_28440_03>>
@@ -332,7 +333,9 @@ Feature-Datei zu diesem Use Case:
 
 - Komponententests und Integrationstests in einer gemeinsamen Datei:
 
+ifdef::render_features[]
 [source]
 ----
 include::Client_authentisierung_und_autorisierung_software_attest_SC_200.feature[]
 ----
+endif::[]

@@ -24,11 +24,11 @@
 
 package de.gematik.zeta.steps.unit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.gematik.zeta.steps.HelperSteps;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,29 +39,24 @@ class HelperStepsTest {
   private final HelperSteps helperSteps = new HelperSteps();
 
   /**
-   * Ensures invalid Base64-URL strings trigger an {@link AssertionError}.
+   * Ensures strict Base64-URL format validation accepts valid input.
    */
   @Test
-  void decodeBase64UrlToStringInvalidInput() {
-    Method method;
-    try {
-      method = HelperSteps.class.getDeclaredMethod("decodeBase64UrlToString", String.class);
-      method.setAccessible(true);
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, method not found", e);
-    }
+  void checkStrictBase64UrlFormatAcceptsValidInput() {
+    assertDoesNotThrow(
+        () -> helperSteps.checkStrictBase64UrlFormat("eyJmb28iOiJiYXIifQ"));
+  }
 
-    assertThrows(AssertionError.class, () -> {
-      try {
-        method.invoke(helperSteps, "### not base64-url ###");
-      } catch (InvocationTargetException e) {
-        if (e.getCause() instanceof AssertionError assertionError) {
-          throw assertionError;
-        }
-        throw new RuntimeException(e.getCause());
-      } catch (IllegalAccessException e) {
-        throw new RuntimeException(e);
-      }
-    }, "Invalid Base64-URL input should raise an AssertionError");
+  /**
+   * Ensures strict Base64-URL format validation rejects invalid input for the expected reason.
+   */
+  @Test
+  void checkStrictBase64UrlFormatRejectsInvalidInput() {
+    AssertionError error = assertThrows(AssertionError.class,
+        () -> helperSteps.checkStrictBase64UrlFormat("### not base64-url ###"),
+        "Invalid Base64-URL input should raise an AssertionError");
+
+    assertTrue(error.getMessage().contains("kein gültiges Base64-URL Format"),
+        "Invalid Base64-URL input should fail validation instead of missing regex configuration");
   }
 }

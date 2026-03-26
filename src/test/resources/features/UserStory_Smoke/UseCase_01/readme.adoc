@@ -35,6 +35,7 @@ Baseline-Kommunikation ist bestätigt und weitere Tests können starten.
 
 |===
 
+ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case
 
@@ -42,3 +43,4 @@ Feature-Datei zu diesem Use Case
 ----
 include::smoke.feature[]
 ----
+endif::[]

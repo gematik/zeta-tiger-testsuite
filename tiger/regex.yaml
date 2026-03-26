@@ -1,3 +1,5 @@
 zetaApiVersion: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$'
 product_id: '[0-9a-zA-Z-]{1,20}'
 product_version: '[0-9a-zA-Z\-\.]{1,20}'
+# RFC 4648 §5 Base64URL alphabet/padding; accepts padded and unpadded final quantum.
+base64url_strict: '^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2}(?:==)?|[A-Za-z0-9_-]{3}=?)?$'

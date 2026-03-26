@@ -1,0 +1,4 @@
+[#TA_A_25799_15]
+===== TA_A_25799_15 - ZETA Guard-Komponenten - Protokollierung von Health Check Ergebnissen - Historie der Betriebszustände - Policy Engine
+
+"Die Komponenten des ZETA Guard MUSS die Ergebnisse der Health Checks protokollieren, um eine **Historie ihrer Betriebszustände** und eventuell aufgetretener Probleme zu erhalten. **[<=]**"

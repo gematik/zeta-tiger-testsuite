@@ -26,7 +26,6 @@ package de.gematik.zeta.steps;
 
 import java.util.stream.Collectors;
 import net.serenitybdd.core.Serenity;
-import net.serenitybdd.model.exceptions.TestCompromisedException;
 import net.thucydides.core.steps.StepEventBus;
 import net.thucydides.model.domain.TestResult;
 import org.assertj.core.api.SoftAssertions;
@@ -80,7 +79,15 @@ public final class SoftAssertionsContext {
           .map(String::trim)
           .collect(Collectors.joining("\n - ", "Soft assertions (non-blocking) failed:\n - ", ""));
 
-      throw new TestCompromisedException(summary);
+      if (hasHardFailure()) {
+        Serenity.recordReportData()
+            .withTitle("Soft assertion summary")
+            .andContents(summary);
+        return;
+      }
+
+      // Mark scenario as failed (not compromised) after all steps have run.
+      throw new AssertionError(summary);
     } finally {
       reset();
     }
@@ -95,27 +102,26 @@ public final class SoftAssertionsContext {
   public static void recordSoftFailure(String description, Throwable cause) {
     var message = summarize(cause);
     softly().fail("%s: %s", description, message);
-    markCurrentStepCompromised();
     Serenity.recordReportData()
         .withTitle("Soft assertion (non-blocking)")
         .andContents(description + "\n" + message);
   }
 
   /**
-   * Marks the currently executing Serenity step as compromised and stores a short reason for
-   * visibility in the report while letting execution continue.
+   * Detects if the current Serenity outcome has already failed due to a hard assertion or error.
    *
    */
-  private static void markCurrentStepCompromised() {
+  private static boolean hasHardFailure() {
     var listener = StepEventBus.getEventBus().getBaseStepListener();
     if (listener == null) {
-      return;
+      return false;
     }
     var outcome = listener.getCurrentTestOutcome();
     if (outcome == null) {
-      return;
+      return false;
     }
-    outcome.currentStep().ifPresent(step -> step.setResult(TestResult.COMPROMISED));
+    var result = outcome.getResult();
+    return result == TestResult.FAILURE || result == TestResult.ERROR;
   }
 
   /**

@@ -10,10 +10,10 @@
 - `src/test/resources/features/`: Gherkin features (German `#language:de`) grouped by `userstories/<UserStory>/<UseCase>/` and `smoke/`.
 - `docs/`: Asciidoc sources, aliases, architecture notes, and `package.json` for Mermaid/Puppeteer.
 - No wrapper scripts are needed; Mermaid CLI is invoked directly by Maven (local) and by the CI Asciidoctor image.
-- `tiger.yaml` plus configs under `tiger/` (`defaults.yaml`, `paths.yaml`, `eRezeptTestData.yaml`): Test environment/configuration inputs for the Tiger test framework. Profile overlays live next to `tiger.yaml` (e.g. `tiger-proxy.yaml`).
+- `tiger.yaml` plus configs under `tiger/` (`defaults.yaml`, `paths.yaml`, `eRezeptTestData.yaml`, `telemetryElementNames.yaml`): Test environment/configuration inputs for the Tiger test framework. Profile overlays live next to `tiger.yaml` (e.g. `tiger-proxy.yaml`).
 
 ## Gherkin & Implementation Rules
-- Use existing TGR steps (e.g., “Hole JWT…”, “TGR prüfe…”, “decodiere und validiere …”). Only add new step definitions if the test cannot be covered with the steps documented in `docs/Tiger-User-Manual.html` or `docs/asciidoc/tables/cucumber_methods_table.adoc`.
+- Use existing TGR steps (e.g., “Hole JWT…”, “TGR prüfe…”, “decodiere und validiere …”). Only add new step definitions if the test cannot be covered with the steps documented in `docs/Tiger-User-Manual.html` or `docs/asciidoc/tables/generated/cucumber_methods_table.adoc`.
 - Scenarios must respect UseCase preconditions (e.g., use existing tokens, do not reset if not allowed).
 - Update UseCase readmes (include::…feature[]) when adding or renaming feature files.
 
@@ -22,11 +22,13 @@
 - `mvn test`: Run tests without packaging.
 - `mvn -Pgenerate-documentation generate-resources`: Generate docs (HTML) into `target/docs/html`. Uses Node/Yarn via the frontend plugin and Mermaid for diagrams (inkl. `uv sync`).
 - `mvn -Pgenerate-documentation -DskipTests package`: Package and generate docs in one go.
-- `uv run --project docs/scripts generate-cucumber-methods`: Regenerate `docs/asciidoc/tables/cucumber_methods_table.adoc` after adding/removing/changing cucumber step definitions.
+- `uv run --project docs/scripts generate-cucumber-methods`: Regenerate `docs/asciidoc/tables/generated/cucumber_methods_table.adoc` after adding/removing/changing cucumber step definitions.
 
 ## Coding Style & Naming Conventions
 - **Gherkin**: German keywords, 2-space indentation, descriptive scenario names. Place files under `src/test/resources/features/...` using lowercase snake_case file names.
+- **Java**: In touched files, add JavaDoc to all methods, including private helpers and test methods. Prefer `var` where it improves readability without hiding the type. Prefer standard Java APIs or already-present project dependencies over bespoke helper methods when that reduces code and keeps intent clear.
 - **Asciidoc**: Use concise headings, keep diagrams alongside source; images generated to the output directory by the build.
+- **Markdown**: When editing `.md` files, use sentence-per-line formatting, i.e. insert a line break after a sentence-ending period in normal prose.
 - **YAML**: Two-space indentation; no tabs. Keep secrets out of VCS.
 
 ## Testing Guidelines
@@ -37,6 +39,7 @@
 ## Commit & Pull Request Guidelines
 - **Commits**: Imperative, present tense, concise (e.g., `add mermaid config`, `refactor pipeline`). Group related changes; avoid noisy churn.
 - **PRs**: Provide a clear description, linked issues, and rationale. Include how to reproduce and test (commands, configs), and attach screenshots or logs for doc generation or test runs. Update docs when changing behavior.
+- **MR defaults for Codex support**: If asked to suggest branch name and MR text, use `.gitlab/merge_request_templates/default.md` unless user explicitly asks for another template. Propose branch names as `<type>/<scope>-<short-topic>` (e.g., `fix/usecase01-host-cache-header-paths`) and return a prefilled MR title + description based on the current diff.
 
 ## Security & Configuration Tips
 - Do not commit credentials. Externalize secrets via environment variables or local, untracked overrides.

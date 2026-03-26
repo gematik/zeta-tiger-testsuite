@@ -202,7 +202,7 @@ video {
 <h1>Tiger User Manual</h1>
 <div class="details">
 <span id="author" class="author">TIGER@gematik.de</span><br>
-<span id="revdate">Version 4.1.16 - 2026-01-21</span>
+<span id="revdate">Version 4.2.2 - 2026-03-04</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Contents</div>
@@ -1457,8 +1457,9 @@ If none of these files exist it will fail the start-up.</p>
 The hostname is the name of your own computer in the network (on Windows-machines typically the computername).</p>
 </li>
 <li>
-<p><code>tiger-${profile}.yaml</code> is read if the system property <code>PROFILE</code> or the environment variable <code>PROFILE</code> is set.<br>
-The file needs to be located in the same folder as the <code>tiger.yaml</code> file.</p>
+<p><code>tiger-${profile}.yaml</code> is read if the system property <code>profile</code> or the environment variable <code>PROFILE</code> is set.<br>
+The file needs to be located in the same folder as the <code>tiger.yaml</code> file. Additionaly, you can configure in the tiger<br>
+configuration a default profile which will be loaded when none is set via environment variable or system property. See <a href="#_tiger_test_lib_configuration">here</a> for more details.</p>
 </li>
 <li>
 <p>The list given under <code>tiger.additionalYamls</code> is read.<br>
@@ -2398,8 +2399,12 @@ additionalConfigurationFiles:
 
 # the block where all the Tiger Proxy configuration properties are located
 tigerProxy:
-  # the port under which the server will be booted
+  # the port which will be used for administration (webUI, mesh-Setup,...)
   adminPort: 7777
+  # port which will be used to proxy requests
+  proxyPort: 6666
+  additionalProxyPorts:
+    - 5555 # additional port which will be used for proxying
   # logLevel of the proxy-server. DEBUG and TRACE will print traffic, so use with care!
   proxyLogLevel: TRACE
   # section to configure whether and where the proxy should dump a tiger traffic file on shutdown
@@ -4247,6 +4252,9 @@ As of now we do not support multithreaded / parallel test runs.
     # Flag whether to clear the initial traffic after the environment startup phase
     # activated by default
     clearEnvironmentStartupTraffic: true
+    # name of the tiger-${profile}.yaml to be loaded when none is explcited specified via system property or
+    # environment variable, default is an emtpy string, meaning no additional configuration file is loaded
+    defaultProfile: "my-default"
 
 # flag whether to start the local Tiger Proxy (default) or to omit it completely.
 # if you have the local Tiger Proxy deactivated you will NOT be able to
@@ -4546,6 +4554,39 @@ reported via the rbel log HTML page or the messages shown on web ui of tiger pro
 </div>
 <div class="paragraph indent">
 <p><strong>param</strong> hostname host name (regex supported) to filter for</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="tgr-filtere-anfragen-nach-port-tigerresolvedstring"><a class="anchor" href="#tgr-filtere-anfragen-nach-port-tigerresolvedstring"></a>TGR filtere Anfragen nach Port {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-filter-requests-based-on-port-tigerresolvedstring"><a class="anchor" href="#tgr-filter-requests-based-on-port-tigerresolvedstring"></a>TGR filter requests based on port {tigerResolvedString}</h5>
+<div class="paragraph indent">
+<p>filter all subsequent findRequest steps for port. To reset set port to empty string "".</p>
+</div>
+<div class="paragraph indent">
+<p><strong>param</strong> port to filter for</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="tgr-lösche-den-gesetzten-server-filter"><a class="anchor" href="#tgr-lösche-den-gesetzten-server-filter"></a>TGR lösche den gesetzten Server filter</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-reset-request-host-filter"><a class="anchor" href="#tgr-reset-request-host-filter"></a>TGR reset request host filter</h5>
+<div class="paragraph indent">
+<p>reset filter for host for subsequent findRequest steps.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="tgr-lösche-den-gesetzten-port-filter"><a class="anchor" href="#tgr-lösche-den-gesetzten-port-filter"></a>TGR lösche den gesetzten port filter</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-reset-request-port-filter"><a class="anchor" href="#tgr-reset-request-port-filter"></a>TGR reset request port filter</h5>
+<div class="paragraph indent">
+<p>reset filter for host for subsequent findRequest steps.</p>
 </div>
 </div>
 <div class="sect4">
@@ -4963,6 +5004,23 @@ found, each is tested and if any matches, this step succeeds.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="tgr-prüfe-aktueller-request-enthält-nicht-knoten-tigerresolvedstring"><a class="anchor" href="#tgr-prüfe-aktueller-request-enthält-nicht-knoten-tigerresolvedstring"></a>TGR prüfe aktueller Request enthält nicht Knoten {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-prüfe-aktuelle-anfrage-enthält-nicht-knoten-tigerresolvedstring"><a class="anchor" href="#tgr-prüfe-aktuelle-anfrage-enthält-nicht-knoten-tigerresolvedstring"></a>TGR prüfe aktuelle Anfrage enthält nicht Knoten {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-current-request-does-not-contain-node-tigerresolvedstring"><a class="anchor" href="#tgr-current-request-does-not-contain-node-tigerresolvedstring"></a>TGR current request does not contain node {tigerResolvedString}</h5>
+<div class="paragraph indent">
+<p>assert that request does not contain node/attribute at given rbel path.</p>
+</div>
+<div class="paragraph indent">
+<p><strong>param</strong> rbelPath path to node/attribute</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="tgr-prüfe-aktueller-request-im-knoten-tigerresolvedstring-stimmt-überein-mit"><a class="anchor" href="#tgr-prüfe-aktueller-request-im-knoten-tigerresolvedstring-stimmt-überein-mit"></a>TGR prüfe aktueller Request im Knoten {tigerResolvedString} stimmt überein mit:</h5>
 
 </div>
@@ -5084,10 +5142,31 @@ found, each is tested, and if any matches, this step fails.</p>
 
 </div>
 <div class="sect4">
+<h5 id="tgr-prüfe-aktuelle-response-enthält-knoten-tigerresolvedstring"><a class="anchor" href="#tgr-prüfe-aktuelle-response-enthält-knoten-tigerresolvedstring"></a>TGR prüfe aktuelle Response enthält Knoten {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
 <h5 id="tgr-current-response-contains-node-tigerresolvedstring"><a class="anchor" href="#tgr-current-response-contains-node-tigerresolvedstring"></a>TGR current response contains node {tigerResolvedString}</h5>
 <div class="paragraph indent">
 <p>assert that response of filtered request contains at least one node/attribute at given rbel<br>
 path.</p>
+</div>
+<div class="paragraph indent">
+<p><strong>param</strong> rbelPath path to node/attribute</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="tgr-prüfe-aktuelle-antwort-enthält-nicht-knoten-tigerresolvedstring"><a class="anchor" href="#tgr-prüfe-aktuelle-antwort-enthält-nicht-knoten-tigerresolvedstring"></a>TGR prüfe aktuelle Antwort enthält nicht Knoten {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-prüfe-aktuelle-response-enthält-nicht-knoten-tigerresolvedstring"><a class="anchor" href="#tgr-prüfe-aktuelle-response-enthält-nicht-knoten-tigerresolvedstring"></a>TGR prüfe aktuelle Response enthält nicht Knoten {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-current-response-does-not-contain-node-tigerresolvedstring"><a class="anchor" href="#tgr-current-response-does-not-contain-node-tigerresolvedstring"></a>TGR current response does not contain node {tigerResolvedString}</h5>
+<div class="paragraph indent">
+<p>assert that request does not contain node/attribute at given rbel path.</p>
 </div>
 <div class="paragraph indent">
 <p><strong>param</strong> rbelPath path to node/attribute</p>
@@ -6080,6 +6159,14 @@ names and in their values will be resolved.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="tgr-clear-default-header-tigerresolvedstring"><a class="anchor" href="#tgr-clear-default-header-tigerresolvedstring"></a>TGR clear default header {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-lösche-default-header-tigerresolvedstring"><a class="anchor" href="#tgr-lösche-default-header-tigerresolvedstring"></a>TGR lösche default header {tigerResolvedString}</h5>
+
+</div>
+<div class="sect4">
 <h5 id="tgr-disable-httpclient-followredirects-configuration"><a class="anchor" href="#tgr-disable-httpclient-followredirects-configuration"></a>TGR disable HttpClient followRedirects configuration</h5>
 
 </div>
@@ -6357,6 +6444,20 @@ is performed.</p>
 <div class="paragraph indent">
 <p><strong>param</strong> key key of the context<br>
 <strong>param</strong> value value for the context entry with given key</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="tgr-globale-variable-tigerresolvedstring-zurücksetzen"><a class="anchor" href="#tgr-globale-variable-tigerresolvedstring-zurücksetzen"></a>TGR globale Variable {tigerResolvedString} zurücksetzen</h5>
+
+</div>
+<div class="sect4">
+<h5 id="tgr-unset-global-variable-tigerresolvedstring"><a class="anchor" href="#tgr-unset-global-variable-tigerresolvedstring"></a>TGR unset global variable {tigerResolvedString}</h5>
+<div class="paragraph indent">
+<p>Remove the variable with the given key from the global configuration store. Variable<br>
+substitution is performed.</p>
+</div>
+<div class="paragraph indent">
+<p><strong>param</strong> key key of the context entry to remove</p>
 </div>
 </div>
 <div class="sect4">
@@ -8093,10 +8194,6 @@ To access POST form data you may use <code><code>$.body.paramname</code></code> 
 <p>For further help on JEXL please check out the official website (<a href="https://commons.apache.org/proper/commons-jexl" class="bare">https://commons.apache.org/proper/commons-jexl</a>).</p>
 </div>
 <div style="page-break-after: always;"></div>
-<div class="paragraph">
-<p>Unresolved directive in tiger_user_manual.adoc - include::tigerZion.adoc[]</p>
-</div>
-<div style="page-break-after: always;"></div>
 </div>
 </div>
 </div>
@@ -8113,7 +8210,7 @@ The different extensions are shortly described in the following sections.</p>
 <div class="paragraph">
 <p>The Tiger-Konnektor-Management-Extension provides an interface to the KMS system of different connector providers.<br>
 It also provides cucumber feature steps to access the different connectors.<br>
-This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-konnektor-management-extensions" class="bare">https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-konnektor-management-extensions</a>.</p>
+This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/konnektor/tiger-konnektor-management-extensions" class="bare">https://gitlab.prod.ccs.gematik.solutions/konnektor/tiger-konnektor-management-extensions</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -8129,7 +8226,7 @@ The tiger-on-fhir can be found on GitHub <a href="https://github.com/gematik/tig
 <div class="paragraph">
 <p>CATS stands for Card Terminal Simulator.<br>
 Tiger-Cats-Extensions offers the option to use the REST interface of CATS as Java functionality or as BDD steps.<br>
-This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-cats-extensions" class="bare">https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-cats-extensions</a>.</p>
+This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/cats/tiger-cats-extensions" class="bare">https://gitlab.prod.ccs.gematik.solutions/cats/tiger-cats-extensions</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -8144,14 +8241,14 @@ The GitHub repo is <a href="https://github.com/gematik/tiger-cloud-extension" cl
 <div class="paragraph">
 <p>The Tiger-PSSIM-Extension is an extension for simulating a Primärsystem (PS) in your tests.<br>
 It provides a wide range of BDD Steps and covers the majority of PS functionalities.<br>
-This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-pssim-extension" class="bare">https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-pssim-extension</a>.</p>
+This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/konnektor/tiger-pssim-extension" class="bare">https://gitlab.prod.ccs.gematik.solutions/konnektor/tiger-pssim-extension</a>.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="tiger-robot-extension"><a class="anchor" href="#tiger-robot-extension"></a>8.6. Tiger Robot Extension</h3>
 <div class="paragraph">
 <p>The Tiger-Robot-Extension is an extension designed to control the Cardterminal Robot created by the gematik.<br>
-This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-robot-extension" class="bare">https://gitlab.prod.ccs.gematik.solutions/git/Testtools/tiger/tiger-robot-extension</a>.</p>
+This is an internal gematik extension and can be found on GitLab <a href="https://gitlab.prod.ccs.gematik.solutions/roboter/tiger-robot-extension" class="bare">https://gitlab.prod.ccs.gematik.solutions/roboter/tiger-robot-extension</a>.</p>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -9404,7 +9501,7 @@ proxy.restartMockserver();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-01-21 12:35:20 +0100
+Last updated 2026-03-04 10:07:34 +0100
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

@@ -47,9 +47,8 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
  * Standalone entry point for running the Tiger/Cucumber testsuite without Maven.
  *
  * <p>Maps environment variables to the expected Tiger and Cucumber system properties and delegates
- * execution to the JUnit Platform with the Cucumber engine. Ensures Tiger is initialized first so
- * the run behaves like the TigerCucumberRunner. Exits non-zero when discovery yields no tests or
- * when scenarios fail.</p>
+ * execution to the JUnit Platform with the Cucumber engine. Ensures Tiger is initialized first so the run behaves like the
+ * TigerCucumberRunner. Exits non-zero when discovery yields no tests or when scenarios fail.</p>
  */
 public final class TigerTestsuiteMain {
 
@@ -138,7 +137,9 @@ public final class TigerTestsuiteMain {
 
     setIfAbsent("zeta_base_url", env.get("ZETA_BASE_URL"));
     setIfAbsent("zeta_proxy_url", env.get("ZETA_PROXY_URL"));
+    setIfAbsent("zeta_k8s_namespace", env.get("ZETA_K8S_NAMESPACE"));
     setIfAbsent("opensearch_url", env.get("OPENSEARCH_URL"));
+    setIfAbsent("prometheus_url", env.get("PROMETHEUS_URL"));
     setIfAbsent("PROFILE", env.get("PROFILE"));
     setIfAbsent("cucumber.filter.tags",
         firstNonEmpty(env.get("CUCUMBER_FILTER_TAGS"), env.get("CUCUMBER_TAGS")));
