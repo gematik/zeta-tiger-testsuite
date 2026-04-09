@@ -1,0 +1,4 @@
+[#TA_A_25739-02_03]
+===== TA_A_25739-02_03 - PDP Policy Engine, OPA Instanzen - nur signierte OPA Bundles mit gematik Signatur
+
+Die OPA Instanzen MÜSSEN so konfiguriert sein, dass **nur signierte OPA Bundles mit gematik Signatur akzeptiert werden**. **[<=]**

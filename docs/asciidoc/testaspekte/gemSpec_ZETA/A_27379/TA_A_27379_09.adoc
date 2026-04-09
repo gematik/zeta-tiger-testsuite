@@ -1,4 +1,0 @@
-[#TA_A_27379_09]
-===== TA_A_27379_09 - ZETA Client - OCSP-Antwort - Cache-Dauer mindestens 1 Stunde
-
-Die **Dauer der Speicherung im Cache** MUSS konfigurierbar sein und **mindestens 1 Stunde** betragen. **[<=]**

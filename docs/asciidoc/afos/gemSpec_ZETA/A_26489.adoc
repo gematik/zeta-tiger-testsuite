@@ -1,4 +1,0 @@
-[#A_26489]
-==== A_26489 - PDP Authorization Server - Performance
-
-Die Komponente PDP Authorization Server MUSS bei einem Deployment in eine Cloud Umgebung ermöglichen, dass eingehende Requests unter Last innerhalb von 0,2 Sekunden bearbeitet und beantwortet werden.

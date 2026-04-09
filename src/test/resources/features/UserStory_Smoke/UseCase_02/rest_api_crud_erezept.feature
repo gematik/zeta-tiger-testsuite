@@ -26,12 +26,8 @@
 
 @no_proxy
 @UseCase_Smoke_02
+@dev
 Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
-
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @staging
   Szenariogrundriss: CRUD - Rezept anlegen lesen aktualisieren löschen

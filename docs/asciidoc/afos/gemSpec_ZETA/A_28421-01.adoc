@@ -1,0 +1,4 @@
+[#A_28421-01]
+==== A_28421-01 - ZETA Guard, Service Discovery – Unterstützung if-none-match-Header
+
+Der ZETA Guard MUSS Client-Anfragen, die den if-none-match Header enthalten, korrekt verarbeiten. Die nachfolgende Fallunterscheidung ist zu beachten: Keine Änderung des Well-known JSON Dokuments: Wenn der vom ZETA Client im if-none-match Header gesendete ETag mit dem aktuellen ETag des Dokuments auf dem Server übereinstimmt, MUSS der ZETA Guard mit einem HTTP-Statuscode 304 (Not Modified) antworten und darf keinen Nachrichtentext senden. Änderung des Well-known JSON Dokuments: Wenn der vom ZETA Client im if-none-match Header gesendete ETag nicht mit dem aktuellen ETag des Dokuments auf dem Server übereinstimmt (oder wenn der Header fehlt), MUSS der ZETA Guard mit einem HTTP-Statuscode 200 OK antworten und das vollständige, aktuelle Well-known JSON-Dokument im Nachrichtentext sowie den aktuellen ETag-Header senden.

@@ -1,0 +1,4 @@
+[#TA_A_26587-01_01]
+===== TA_A_26587-01_01 - PDP Datenbank - Kompatibilität zum Authorization Server
+
+Die Komponente PDP Datenbank MUSS **kompatibel zum Authorization Server** sein. **[<=]**

@@ -1,0 +1,4 @@
+[#A_28836]
+==== A_28836 - PEP HTTP Proxy - TI Service Provider Metadata Well-known
+
+Die Komponente HTTP Proxy MUSS ein TI Service Provider Metadata Well-known JSON Dokument wie folgt bereitstellen, damit Fach-Clients die notwendigen Informationen zur Mandantentrennung des Resource Servers finden können. GET /.well-known/ti-service-provider-metadata Host: <FQDN des Resource Server-Mandanten> Das Well-known JSON Dokument MUSS mit dem Schema [ti-sp-well-known.yaml] validiert werden können.

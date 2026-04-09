@@ -1,0 +1,4 @@
+[#TA_A_27379-01_08]
+===== TA_A_27379-01_08 - ZETA Client - OCSP Stapling Unterstützung - OCSP-Antwort - Cache-Dauer konfigurierbar
+
+Die **Dauer der Speicherung im Cache** MUSS **konfigurierbar** sein und mindestens 1 Stunde betragen. **[<=]**

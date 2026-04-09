@@ -1,0 +1,4 @@
+[#TA_A_26450_01]
+===== TA_A_26450_01 - PoPP-Verifier - PoPP-Token Signatur mathematisch verifiziert
+
+"Der PoPP-Verifier MUSS sicherstellen, dass die **JWT-Signatur des PoPP-Token gemäß [RFC7515] verifiziert** wird. **[<=]"**

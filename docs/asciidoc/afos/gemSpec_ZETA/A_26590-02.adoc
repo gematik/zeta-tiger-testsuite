@@ -1,0 +1,10 @@
+[#A_26590-02]
+==== A_26590-02 - PEP HTTP Proxy - Client-Daten
+
+Wenn die Request-Weiterleitung mit Client-Daten konfiguriert wurde und der Request ein gültiges Access Token hat, dann MUSS die Komponente HTTP Proxy die Client-Daten aus dem Access Token als neuen HTTP Header `zeta-client-data` in den Request eintragen, bevor der Request an den Resource Server weitergeleitet wird.
+
+Folgende Claims des Access Tokens gehören zu den Client-Daten:
+
+* client_id
+* product_id
+* product_version

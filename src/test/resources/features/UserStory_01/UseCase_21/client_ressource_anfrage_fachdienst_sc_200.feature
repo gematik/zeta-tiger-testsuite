@@ -28,8 +28,6 @@
 Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
 
   Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
     Und TGR setze Anfrage Timeout auf 120 Sekunden
 
   @A_25786

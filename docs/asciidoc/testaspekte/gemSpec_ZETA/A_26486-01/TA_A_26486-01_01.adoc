@@ -1,0 +1,50 @@
+[#TA_A_26486-01_01]
+===== TA_A_26486-01_01 - PEP HTTP Proxy - Bearbeitungszeiten
+
+"Die Komponente PEP HTTP Proxy MUSS die Bearbeitungszeitvorgaben unter Last aus der
+Tabelle `Tab_gemSpec_ZETA_PEP_HTTP_Proxy: Bearbeitungszeitvorgaben` erfüllen.
+
+Die Bearbeitungszeiten lassen sich in Latenzen und Antwortzeiten unterscheiden.
+PEP Latenzen sind die Zeiten, die der PEP benötigt, um die Anfragen an den Fachdienst
+weiterzuleiten, bzw. die Response eben zurück durchzuleiten. Die Benennung als Latenz
+erfolgt aufgrund der Tatsache, dass der PEP hier Requests nur durchleitet, die eigentliche
+Beantwortung erfolgt durch den Fachdienst.
+PEP Antwortzeiten beziehen sich dabei dann auf den Austausch der Nachrichten 1-4 des
+ASL Protokolls, die der PEP selbst beantwortet.
+
+Tabelle 19: Tab_gemSpec_ZETA_PEP_HTTP_Proxy: Bearbeitungszeitvorgaben
+
+|===
+| Request-Typ | Messung-Typ | Mittelwert | 90% | 95% | 99%
+
+| Request an Fachdienst ohne ASL
+| Latenz
+| 75ms
+| 100ms
+| 150ms
+| 1s
+
+| Request an Fachdienst mit ASL
+| Latenz
+| 75ms
+| 100ms
+| 150ms
+| 1s
+
+| Austausch der ASL-Nachrichten 1-4
+| Antwortzeit
+| 75ms
+| 100ms
+| 150ms
+| 1s
+
+| Ausliefern der .well-known (1)
+| Antwortzeit
+| 7.5ms
+| 10ms
+| 15ms
+| 100ms
+|===
+
+(1) dies kann durch Caching mitigiert werden
+[<=]"

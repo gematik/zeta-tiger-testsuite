@@ -1,0 +1,8 @@
+[#TA_A_25340-01_03]
+===== TA_A_25340-01_03 - Zertifikatsprüfung - Gültigkeit Zertifikat "Nicht nach"
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Der Client MUSS die Gültigkeitsdauer des Zertifikats ([...] **Nicht nach**) überprüfen.
+
+[...]"

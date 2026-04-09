@@ -1,0 +1,13 @@
+==== Testaspekte für die Anforderung A_28808
+
+Folgende Testaspekte testen <<A_28808>>.
+
+include::TA_A_28808_01.adoc[]
+
+include::TA_A_28808_02.adoc[]
+
+include::TA_A_28808_03.adoc[]
+
+include::TA_A_28808_04.adoc[]
+
+include::TA_A_28808_05.adoc[]

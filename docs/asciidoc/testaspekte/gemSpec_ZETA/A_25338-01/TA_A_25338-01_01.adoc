@@ -1,0 +1,8 @@
+[#TA_A_25338-01_01]
+===== TA_A_25338-01_01 - JWT-Assertion beim Token Exchange gemäß RFC7523 und client-assertion-jwt.yaml
+
+"Der ZETA Client MUSS sich gegenüber dem ZETA Guard Authorization Server beim Token Exchange mit einem JWT Bearer Token gemäß [RFC7523] und gemäß[client-assertion-jwt.yaml] authentifizieren.
+
+[...]"
+
+Die Abdeckung erfolgt über die Validierung des Client-Assertion-JWT gegen `client-assertion-jwt.yaml` sowie die Prüfung der Token-Exchange-Parameter `grant_type`, `subject_token_type` und `client_assertion_type`.

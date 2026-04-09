@@ -49,7 +49,7 @@ def _write_file_lf(path: Path, content: str) -> None:
     handle.write(content)
 
 
-DEFAULT_XML = Path("docs/gemVZ_Afo_ZETA_Guard_V_1.2.0_V1.0.0.xml")
+DEFAULT_XML = Path("docs/gemVZ_Afo_ZETA_Guard_V_1.2.1-0_V1.0.0_CC.xml")
 DEFAULT_OUTPUT = Path("docs/asciidoc/afos")
 DEFAULT_TEST_PROCEDURE = (
     'Festlegungen zur funktionalen Eignung "Produkttest/Produktübergreifender Test"'

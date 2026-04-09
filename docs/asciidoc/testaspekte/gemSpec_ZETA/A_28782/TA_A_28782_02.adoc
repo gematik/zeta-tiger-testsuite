@@ -1,0 +1,8 @@
+[#TA_A_28782_02]
+===== TA_A_28782_02 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - Batch - BatchExportOptions - scheduledDelayMilliseconds
+
+"Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgenden Parameter unterstützen:
+
+**scheduledDelayMilliseconds** (Default = 5000)
+
+**[<=]"**

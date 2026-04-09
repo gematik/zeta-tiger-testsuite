@@ -48,7 +48,7 @@ Keine zusätzlichen Nebenbedingungen.
 Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. dieser ist authentisiert und autorisiert.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25783_02>>
+* <<TA_A_25783-01_02>>
 * <<TA_A_27007_03>>
 * <<TA_A_26661_03>>
 

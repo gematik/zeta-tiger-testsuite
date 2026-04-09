@@ -1,0 +1,4 @@
+[#TA_A_26452_03]
+===== TA_A_26452_03 - PoPP-Verifier - Claim actorId vorhanden und mit authentifizierter Telematik-ID der LEI abgeglichen
+
+"Der PoPP-Verifier MUSS sicherstellen, dass der **Claim *actorId*** im PoPP-Token **vorhanden** ist und **gegen die vom PoPP-Verifier authentifizierte Telematik-ID der LEI abgeglichen** wird, die den PoPP-Token vorlegt. **[<=]"**

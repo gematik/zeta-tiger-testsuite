@@ -1,0 +1,4 @@
+[#TA_A_26450_03]
+===== TA_A_26450_03 - PoPP-Verifier - Ermittlung des Verifikationsschlüssels über kid aus dem JWK-Set
+
+"Der **öffentliche Schlüssel zur Verifikation der Signatur** MUSS **aus dem JWK-Set des PoPP-Service über das kid Header-Attribut des PoPP-Token ermittelt** werden. **[<=]"**

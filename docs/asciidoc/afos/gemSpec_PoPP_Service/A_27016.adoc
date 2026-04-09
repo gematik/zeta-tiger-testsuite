@@ -1,0 +1,4 @@
+[#A_27016]
+==== A_27016 - PoPP-Verifier - Prüfung Signaturzertifikat via TI-PKI - Vorgaben
+
+Der PoPP-Verifier, der das Signaturzertifikat des PoPP-Token via TI-PKI prüft, MUSS dabei verifizieren, dass das für die Signatur des PoPP-Token verwendete Signaturzertifikat: im jwks des PoPP-Service mit der entsprechenden, im Header des PoPP-Token angegeben kid enthalten ist, aus der TI-PKI stammt, das Zertifikatsprofil oid_zd_sig (OID 1.2.276.0.76.4.287, "C.ZD.SIG") aufweist, die technische Rolle oid_popp-token (OID 1.2.276.0.76.4.320) aufweist und per OCSP von der TI-Komponenten-PKI als "good" beauskunftet wird.

@@ -1,0 +1,8 @@
+[#TA_A_28782_05]
+===== TA_A_28782_05 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - ExporterHelper - retry_on_failure - enabled
+
+"Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgenden Parameter unterstützen:
+
+**enabled** (Default = true)
+
+**[<=]"**

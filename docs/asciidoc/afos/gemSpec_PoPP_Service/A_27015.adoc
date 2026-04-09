@@ -1,0 +1,4 @@
+[#A_27015]
+==== A_27015 - PoPP-Verifier - Prüfung Signaturzertifikat via TI-PKI möglich
+
+Der PoPP-Verifier KANN die Signatur des PoPP-Token auch gegen die TI-PKI verifizieren.

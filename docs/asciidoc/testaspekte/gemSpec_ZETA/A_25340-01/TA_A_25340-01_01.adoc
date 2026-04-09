@@ -1,0 +1,8 @@
+[#TA_A_25340-01_01]
+===== TA_A_25340-01_01 - Zertifikatsprüfung - Vergleich CN oder SAN mit Hostname
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Der ZETA Client MUSS den Common Name (CN) oder Subject Alternative Name (SAN) des Zertifikats mit dem erwarteten Hostnamen vergleichen.
+
+[...]"

@@ -26,6 +26,10 @@ package de.gematik.zeta.steps;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.glue.HttpGlueCode;
+import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
+import de.gematik.zeta.services.TestDriverConfigurationService;
+import de.gematik.zeta.services.TestDriverConfigurationServiceFactory;
+import de.gematik.zeta.services.TlsTestToolServiceFactory;
 import de.gematik.zeta.services.ZetaDeploymentConfigurationService;
 import de.gematik.zeta.services.ZetaDeploymentConfigurationServiceFactory;
 import de.gematik.zeta.traceability.TraceabilityLookup;
@@ -33,7 +37,11 @@ import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.restassured.http.Method;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
@@ -49,27 +57,36 @@ public class Hooks {
   private static final TraceabilityLookup TRACEABILITY = TraceabilityLookup.load();
   private static final String NO_PROXY_TAG = "@no_proxy";
   private static final String REQUIRE_KUBECTL_TAG = "@require_kubectl";
+  private static final String JUSTIFIED_NOT_TESTED_TAG = "@nicht_getestet_begruendet";
   private static final String DEPLOYMENT_MODIFICATION_TAG = "@deployment_modification";
-  private static final String TIGER_ALLOW_DEPLOYMENT_MODIFICATION = "allow_deployment_modification";
-  private static final String TIGER_PROXY_ID_CONFIG_KEY = "tiger.tigerProxy.proxyId";
+  private static final String TLS_CLIENT_FACHDIENST_HOOK_TAG = "@tls_client_fachdienst_hook";
+  private static final String TLS_TEST_TOOL_URL_CONFIG_KEY = "tlsTestTool.url";
+  private static final String TLS_TEST_TOOL_PORT_CONFIG_KEY = "tlsTestTool.port";
+  private static final String TLS_TEST_TOOL_CA_CERTIFICATE_PATH_CONFIG_KEY = "tlsTestTool.caCertificatePath";
   private static final ThreadLocal<String> CAPTURED_PEP_ORIGINAL_IMAGE = new ThreadLocal<>();
   private static final int ORDER_RESTORE_DEPLOYMENT_STATE = Integer.MIN_VALUE;
   private static final int ORDER_PREPARE_SOFT_ASSERTIONS = ORDER_RESTORE_DEPLOYMENT_STATE + 1;
-  // leave room after the global reset hook for future cross-cutting checks
-  private static final int ORDER_PROXY_REQUIREMENT_GUARD = ORDER_PREPARE_SOFT_ASSERTIONS + 100;
-  private static final int ORDER_KUBECTL_REQUIREMENT_GUARD = ORDER_PROXY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_RESET_TIGER_PROXY_STATE = ORDER_PREPARE_SOFT_ASSERTIONS + 1;
+  private static final int ORDER_CLEAR_RECORDED_MESSAGES = ORDER_RESET_TIGER_PROXY_STATE + 1;
+  private static final int ORDER_PROXY_REQUIREMENT_GUARD = ORDER_CLEAR_RECORDED_MESSAGES + 1;
+  private static final int ORDER_JUSTIFIED_NOT_TESTED_GUARD = ORDER_PROXY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_KUBECTL_REQUIREMENT_GUARD = ORDER_JUSTIFIED_NOT_TESTED_GUARD + 1;
   private static final int ORDER_VERIFY_DEPLOYMENT_MODIFICATION = ORDER_KUBECTL_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_TLS_CLIENT_PRE_HOOK = ORDER_VERIFY_DEPLOYMENT_MODIFICATION + 1;
   private static final int ORDER_APPEND_TRACEABILITY = Integer.MAX_VALUE;
   private static final int ORDER_VERIFY_SOFT_ASSERTIONS = ORDER_APPEND_TRACEABILITY - 1;
-
+  private static final int ORDER_TLS_CLIENT_POST_HOOK = ORDER_VERIFY_SOFT_ASSERTIONS - 1;
   private final ZetaDeploymentConfigurationService deploymentConfigurationService;
+  private final TigerProxyManipulationsSteps tigerProxyManipulationsSteps;
+  private final TestDriverConfigurationService testDriverConfigurationService;
 
   /**
    * Creates hooks backed by the default deployment configuration service instance.
    */
   @SuppressWarnings("unused")
   public Hooks() {
-    this(ZetaDeploymentConfigurationServiceFactory.getInstance());
+    this(ZetaDeploymentConfigurationServiceFactory.getInstance(), new TigerProxyManipulationsSteps(),
+        TestDriverConfigurationServiceFactory.getInstance());
   }
 
   /**
@@ -78,7 +95,74 @@ public class Hooks {
    * @param deploymentConfigurationService service used for deployment-related checks and restoration
    */
   Hooks(final ZetaDeploymentConfigurationService deploymentConfigurationService) {
+    this(deploymentConfigurationService, new TigerProxyManipulationsSteps(),
+        TestDriverConfigurationServiceFactory.getInstance());
+  }
+
+  /**
+   * Creates hooks backed by the provided services.
+   *
+   * @param deploymentConfigurationService service used for deployment-related checks and restoration
+   * @param tigerProxyManipulationsSteps   helper used for TigerProxy cleanup before scenarios
+   */
+  Hooks(final ZetaDeploymentConfigurationService deploymentConfigurationService,
+      final TigerProxyManipulationsSteps tigerProxyManipulationsSteps) {
+    this(deploymentConfigurationService, tigerProxyManipulationsSteps, TestDriverConfigurationServiceFactory.getInstance());
+  }
+
+  /**
+   * Creates hooks backed by the provided services.
+   *
+   * @param deploymentConfigurationService service used for deployment-related checks and restoration
+   * @param tigerProxyManipulationsSteps helper used for TigerProxy cleanup before scenarios
+   * @param testDriverConfigurationService service used for testdriver reset/configure operations
+   */
+  Hooks(final ZetaDeploymentConfigurationService deploymentConfigurationService,
+      final TigerProxyManipulationsSteps tigerProxyManipulationsSteps,
+      final TestDriverConfigurationService testDriverConfigurationService) {
     this.deploymentConfigurationService = deploymentConfigurationService;
+    this.tigerProxyManipulationsSteps = tigerProxyManipulationsSteps;
+    this.testDriverConfigurationService = testDriverConfigurationService;
+  }
+
+  /**
+   * Stores the initially observed PEP image reference once per scenario so rollout cleanup can
+   * restore the deployment to its original image.
+   *
+   * @param imageReference current PEP image reference
+   */
+  static void rememberPepOriginalImageIfAbsent(final String imageReference) {
+    if (imageReference == null || imageReference.isBlank() || CAPTURED_PEP_ORIGINAL_IMAGE.get() != null) {
+      return;
+    }
+    CAPTURED_PEP_ORIGINAL_IMAGE.set(imageReference.trim());
+  }
+
+  /**
+   * Returns the remembered original PEP image reference for the current scenario, if present.
+   *
+   * @return captured original PEP image
+   */
+  static Optional<String> getCapturedPepOriginalImage() {
+    return Optional.ofNullable(CAPTURED_PEP_ORIGINAL_IMAGE.get())
+        .map(String::trim)
+        .filter(image -> !image.isBlank());
+  }
+
+  /**
+   * Aborts the current scenario as skipped.
+   *
+   * @param reason skip reason visible in the report
+   */
+  private static void abortScenario(final String reason) {
+    throw new TestAbortedException(reason);
+  }
+
+  /**
+   * Clears the remembered original PEP image for the current scenario thread.
+   */
+  private static void clearCapturedPepOriginalImage() {
+    CAPTURED_PEP_ORIGINAL_IMAGE.remove();
   }
 
   /**
@@ -91,8 +175,27 @@ public class Hooks {
   }
 
   /**
-   * Skip proxy-dependent scenarios unless the TigerProxy configuration is present. Scenarios
-   * tagged with {@link #NO_PROXY_TAG} are always executed.
+   * Resets TigerProxy state before each scenario to keep scenarios independent from one another.
+   *
+   * <p>If the standalone TigerProxy is not configured or not reachable, the cleanup is skipped so
+   * scenarios tagged {@code @no_proxy} still run unchanged.</p>
+   */
+  @Before(order = ORDER_RESET_TIGER_PROXY_STATE)
+  public void resetTigerProxyState() {
+    tigerProxyManipulationsSteps.resetTigerProxyStateIfAvailable();
+  }
+
+  /**
+   * Clears RBEL messages before each scenario so scenario assertions only see data created within the scenario itself.
+   */
+  @Before(order = ORDER_CLEAR_RECORDED_MESSAGES)
+  public void clearRecordedMessages() {
+    RbelMessageRetriever.getInstance().clearRbelMessages();
+  }
+
+  /**
+   * Skip proxy-dependent scenarios unless the TigerProxy configuration is present. Scenarios tagged with {@link #NO_PROXY_TAG} are always
+   * executed.
    */
   @Before(order = ORDER_PROXY_REQUIREMENT_GUARD)
   public void skipIfProxyMissing(final Scenario scenario) {
@@ -104,7 +207,7 @@ public class Hooks {
       return;
     }
 
-    var proxyId = TigerGlobalConfiguration.readStringOptional(TIGER_PROXY_ID_CONFIG_KEY)
+    var proxyId = TigerGlobalConfiguration.readStringOptional("tiger.tigerProxy.proxyId")
         .orElse(null);
     boolean proxyConfigured = proxyId != null && !proxyId.isBlank();
 
@@ -121,6 +224,21 @@ public class Hooks {
     } else {
       log.info("Scenario not skipped, proxy explicitly configured.");
     }
+  }
+
+  /**
+   * Skip coverage-only scenarios that document justified test gaps so Allure and Serenity classify them consistently as skipped.
+   */
+  @Before(order = ORDER_JUSTIFIED_NOT_TESTED_GUARD)
+  public void skipJustifiedNotTestedScenarios(final Scenario scenario) {
+    if (scenario == null || !scenario.getSourceTagNames().contains(JUSTIFIED_NOT_TESTED_TAG)) {
+      return;
+    }
+
+    String reason = "Skipping: scenario documents a justified, intentionally not executed test aspect "
+        + "and is tagged " + JUSTIFIED_NOT_TESTED_TAG;
+    scenario.log(reason);
+    abortScenario(reason);
   }
 
   /**
@@ -169,7 +287,7 @@ public class Hooks {
     }
 
     // verify that deployment modifications are generally allowed in this run
-    if (!TigerGlobalConfiguration.readBooleanOptional(TIGER_ALLOW_DEPLOYMENT_MODIFICATION)
+    if (!TigerGlobalConfiguration.readBooleanOptional("allow_deployment_modification")
         .orElse(false)) {
       String reason = String.format("Skipping: deployment modification is not allowed; scenario is tagged with %s",
           DEPLOYMENT_MODIFICATION_TAG);
@@ -197,6 +315,47 @@ public class Hooks {
     }
   }
 
+  /**
+   * Configures the testdriver for TLS validation scenarios after verifying that the TLS test tool
+   * service is reachable.
+   *
+   * @param scenario active Cucumber scenario
+   */
+  @Before(order = ORDER_TLS_CLIENT_PRE_HOOK)
+  public void patchTestdriverForTlsClientScenario(final Scenario scenario) {
+    if (scenario == null || !scenario.getSourceTagNames().contains(TLS_CLIENT_FACHDIENST_HOOK_TAG)) {
+      return;
+    }
+
+    try {
+      TlsTestToolServiceFactory.getInstance().getState();
+      log.info("TLS client pre hook: TLS test tool service availability check passed.");
+    } catch (AssertionError e) {
+      String reason = "Skipping: TLS test tool service is not reachable and scenario is tagged " + TLS_CLIENT_FACHDIENST_HOOK_TAG;
+      scenario.log(reason);
+      log.warn("{}", reason, e);
+      abortScenario(reason);
+    }
+
+    String tlsTestToolUrl = TigerGlobalConfiguration.readStringOptional(TLS_TEST_TOOL_URL_CONFIG_KEY)
+        .orElseThrow(() -> new AssertionError(
+            "Failed pre hook: config key '" + TLS_TEST_TOOL_URL_CONFIG_KEY + "' could not be resolved."));
+
+    String tlsTestToolPort = TigerGlobalConfiguration.readStringOptional(TLS_TEST_TOOL_PORT_CONFIG_KEY)
+        .orElseThrow(() -> new AssertionError(
+            "Failed pre hook: config key '" + TLS_TEST_TOOL_PORT_CONFIG_KEY + "' could not be resolved."));
+
+    String tlsTestToolServerUrl = tlsTestToolUrl + ":" + tlsTestToolPort;
+
+    try {
+      testDriverConfigurationService.configure(tlsTestToolServerUrl, readTlsTestToolCaCertificatePem());
+    } catch (AssertionError e) {
+      throw new AssertionError("Failed pre hook: could not configure the testdriver for TLS client scenario.", e);
+    }
+    log.info("TLS client pre hook: configured testdriver resource '{}' for scenario '{}'.",
+        tlsTestToolServerUrl, scenario.getName());
+  }
+
 
   /**
    * Append the traceability table after each scenario has finished.
@@ -218,8 +377,8 @@ public class Hooks {
   }
 
   /**
-   * Verifies all collected soft assertions at the very end of the scenario lifecycle. Runs after
-   * the traceability appendix so the report is always populated even when soft assertions fail.
+   * Verifies all collected soft assertions at the very end of the scenario lifecycle. Runs after the traceability appendix so the report is
+   * always populated even when soft assertions fail.
    */
   @After(order = ORDER_VERIFY_SOFT_ASSERTIONS)
   public void verifySoftAssertions() {
@@ -227,8 +386,7 @@ public class Hooks {
   }
 
   /**
-   * Ensures modifications to the Zeta Guard deployment are restored to their original state
-   * after scenarios finish.
+   * Ensures modifications to the Zeta Guard deployment are restored to their original state after scenarios finish.
    *
    * @param scenario active Cucumber scenario
    */
@@ -243,7 +401,7 @@ public class Hooks {
       return;
     }
 
-    if (!TigerGlobalConfiguration.readBooleanOptional(TIGER_ALLOW_DEPLOYMENT_MODIFICATION)
+    if (!TigerGlobalConfiguration.readBooleanOptional("allow_deployment_modification")
         .orElse(false)) {
       log.warn("Restore deployment modification: skipping because deployment modification is not allowed");
       return;
@@ -318,7 +476,7 @@ public class Hooks {
         log.warn("Restore deployment modification: could not restart PEP pod after restoring due to a Timeout Exception.", e);
       }
     }
-    
+
     String url = TigerGlobalConfiguration.readStringOptional("paths.client.reset").orElse(null);
     if (url == null) {
       log.warn("Restore deployment modification: could not issue client reset because "
@@ -343,7 +501,8 @@ public class Hooks {
         .orElse("");
 
     if (deploymentName.isBlank() || containerName.isBlank() || expectedTag.isBlank()) {
-      log.warn("Restore deployment modification: could not restore PEP image because deployment, container, or target tag is not configured");
+      log.warn(
+          "Restore deployment modification: could not restore PEP image because deployment, container, or target tag is not configured");
       return false;
     }
 
@@ -395,24 +554,44 @@ public class Hooks {
     return imageRestoreTriggeredRollout;
   }
 
-  static void rememberPepOriginalImageIfAbsent(final String imageReference) {
-    if (imageReference == null || imageReference.isBlank() || CAPTURED_PEP_ORIGINAL_IMAGE.get() != null) {
+  /**
+   * Restores the testdriver state for TLS client validation scenarios.
+   *
+   * @param scenario active Cucumber scenario
+   */
+  @After(order = ORDER_TLS_CLIENT_POST_HOOK)
+  public void rollbackTestdriverAfterTlsClientScenario(final Scenario scenario) {
+    if (scenario == null || !scenario.getSourceTagNames().contains(TLS_CLIENT_FACHDIENST_HOOK_TAG)) {
       return;
     }
-    CAPTURED_PEP_ORIGINAL_IMAGE.set(imageReference.trim());
+
+    try {
+      testDriverConfigurationService.reset();
+    } catch (AssertionError e) {
+      throw new AssertionError("Failed post hook: could not reset the testdriver after TLS client scenario.", e);
+    }
+    log.info("TLS client post hook: reset testdriver after scenario '{}'.", scenario.getName());
   }
 
-  static Optional<String> getCapturedPepOriginalImage() {
-    return Optional.ofNullable(CAPTURED_PEP_ORIGINAL_IMAGE.get())
-        .map(String::trim)
-        .filter(image -> !image.isBlank());
-  }
+  /**
+   * Reads the PEM-encoded TLS test tool CA certificate from the checked-out fixture.
+   *
+   * @return PEM certificate content
+   */
+  private String readTlsTestToolCaCertificatePem() {
+    var configuredPath = TigerGlobalConfiguration.readStringOptional(TLS_TEST_TOOL_CA_CERTIFICATE_PATH_CONFIG_KEY)
+        .orElseThrow(() -> new AssertionError(
+            "Failed pre hook: config key '" + TLS_TEST_TOOL_CA_CERTIFICATE_PATH_CONFIG_KEY + "' could not be resolved."));
 
-  private static void abortScenario(final String reason) {
-    throw new TestAbortedException(reason);
-  }
-
-  private static void clearCapturedPepOriginalImage() {
-    CAPTURED_PEP_ORIGINAL_IMAGE.remove();
+    var caCertificatePath = Path.of(System.getProperty("user.dir"), configuredPath);
+    try {
+      var pem = Files.readString(caCertificatePath, StandardCharsets.UTF_8);
+      if (pem.isBlank()) {
+        throw new AssertionError("The TLS test tool CA certificate is empty.");
+      }
+      return pem;
+    } catch (IOException e) {
+      throw new AssertionError("Failed to read the TLS test tool CA certificate from '" + caCertificatePath + "'.", e);
+    }
   }
 }

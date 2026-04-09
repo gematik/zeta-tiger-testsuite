@@ -1,0 +1,6 @@
+[#TA_A_28808_01]
+===== TA_A_28808_01 - PDP Authorization Server - Löschfristen - User-Daten konfigurierbar
+
+Der Authorization Server (PDP) MUSS **konfigurierbare Inaktivitäts-Löschfristen für User-Daten durchsetzen** und diese Daten **nach Ablauf der Fristen löschen**.
++++[...]+++
+**[<=]**

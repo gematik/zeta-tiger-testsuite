@@ -1,0 +1,57 @@
+[#UC_TLS_02]
+== UseCase_TLS_02: TLS-Konformität ZETA Client
+
+.UseCase_TLS_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | TLS-Konformität ZETA Client
+
+| Akteur: |
+*Testsuite*
+
+| weitere Akteure: |
+*ZETA Client*
+
+| Auslöser: |
+Der ZETA-Client versucht, eine TLS-Verbindung zum TLS-Server (Testsuite) herzustellen.
+
+| Kurzbeschreibung: |
+Die Testsuite prüft, dass der ZETA Client nur zulässige TLS-Versionen, Signatur-Hash-Algorithmen, Ciphersuites und Kurven akzeptiert und unzulässige Kombinationen ablehnt.
+
+| Vorbedingung: |
+Der ZETA Client kann das TLS-Testtool erreichen.
+
+| Nebenbedingung: |
+Die Domäne "tlsTestToolServer" muss zu der IP-Adresse aufgelöst werden, unter der die Tests ausgeführt werden.
+
+| Ablauf: |
+. Der TLS Test Server bietet gezielt Protokollversionen, Hashfunktionen, Ciphersuites und Kurven an.
+. Der ZETA Client akzeptiert zulässige Konfigurationen und lehnt unzulässige Konfigurationen mit TLS Alerts ab.
+
+| Nachbedingung: |
+Die TLS-Konformität des ZETA Client ist verifiziert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_18464_02>>
+* <<TA_A_21275-01_05>>
+* <<TA_A_21275-01_07>>
+* <<TA_A_21275-01_08>>
+* <<TA_A_25340-01_01>>
+* <<TA_A_25340-01_02>>
+* <<TA_A_25340-01_03>>
+* <<TA_A_25340-01_04>>
+* <<TA_GS-A_4384-03_09>>
+* <<TA_GS-A_4384-03_10>>
+* <<TA_GS-A_4384-03_11>>
+* <<TA_GS-A_5526_02>>
+* <<TA_GS-A_5542_04>>
+
+|===
+
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::tls_client.feature[]
+----

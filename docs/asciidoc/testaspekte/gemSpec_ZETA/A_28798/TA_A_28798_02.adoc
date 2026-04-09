@@ -1,0 +1,4 @@
+[#TA_A_28798_02]
+===== TA_A_28798_02 - ZETA Guard - Ausführung in einem Kubernetes Cluster - Nachweis im Ausnahmefall ohne Kubernetes
+
+"Wenn z. B. in einer VAU die Nutzung von Kubernetes nicht sinnvoll möglich ist, dann MUSS der Anbieter des TI 2.0 Dienstes **nachweisen**, dass seine Lösung **ohne Kubernetes** eine hinreichende **Verfügbarkeit, Skalierbarkeit und Betriebsstabilität** ermöglicht. **[<=]"**

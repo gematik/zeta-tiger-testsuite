@@ -1,0 +1,11 @@
+[#TA_A_28421-01_01]
+===== TA_A_28421-01_01 - ZETA Guard, Service Discovery - Unterstützung if-none-match-Header - HTTP-Statuscode 304 (Not Modified)
+
+Der ZETA Guard MUSS Client-Anfragen, die den ``if-none-match``-Header enthalten, korrekt verarbeiten. Die nachfolgende Fallunterscheidung ist zu beachten:
+
+* **Keine Änderung** des Well-known JSON Dokuments:
+    Wenn der vom ZETA Client im ``if-none-match``-Header gesendete ETag mit dem aktuellen ETag des Dokuments auf dem Server übereinstimmt, MUSS der ZETA Guard mit einem **HTTP-Statuscode 304 (Not Modified)** antworten und darf keinen Nachrichtentext senden.
+
+* +++[...]+++
+
+**[<=]**

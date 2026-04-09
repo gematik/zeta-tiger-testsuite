@@ -1,0 +1,6 @@
+[#TA_A_28808_04]
+===== TA_A_28808_04 - PDP Authorization Server - Löschfristen - Client-Daten Default-Wert
+
+Der Authorization Server (PDP) MUSS konfigurierbare Inaktivitäts-Löschfristen für **Client-Daten** durchsetzen und diese Daten nach Ablauf der Fristen löschen. Der **Default-Wert beträgt 1 Jahr**.
+
++++[...]+++

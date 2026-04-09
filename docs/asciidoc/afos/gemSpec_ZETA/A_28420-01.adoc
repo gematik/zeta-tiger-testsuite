@@ -1,0 +1,4 @@
+[#A_28420-01]
+==== A_28420-01 - ZETA Guard, Service Discovery – Bereitstellung etag Header
+
+Der ZETA Guard MUSS für jedes Well-known JSON-Dokument einen eindeutigen etag-Header generieren und diesen gemäß [RFC 9110] in der HTTP-Antwort bei jeder Anfrage bereitstellen. Bei jeder inhaltlichen Änderung oder der Repräsentation der Well-known JSON-Dokumente MUSS der etag sich ändern.

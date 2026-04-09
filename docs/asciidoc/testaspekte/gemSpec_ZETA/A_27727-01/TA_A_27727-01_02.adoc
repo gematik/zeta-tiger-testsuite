@@ -1,0 +1,5 @@
+[#TA_A_27727-01_02]
+===== TA_A_27727-01_02 - ZETA Guard, Telemetriedaten-Service, Lieferung - ExportProcessorType Batch
+
+Der Telemetriedaten-Service des ZETA Guard MUSS für die Telemetriedatenlieferung von Traces an den gematik Telemetriedaten-Service als **ExportProcessorType den Typ Batch** verwenden.
+**[<=]**

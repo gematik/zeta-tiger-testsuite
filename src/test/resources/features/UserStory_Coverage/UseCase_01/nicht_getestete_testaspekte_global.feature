@@ -33,9 +33,6 @@ Funktionalität: Globale Markierung begründet nicht ausgeführter Testaspekte
   @no_proxy
   @A_26988
   @A_27264
-  @A_25795
-  @A_25796
-  @A_25799
   Szenariogrundriss: Begründet nicht ausgeführte Testaspekte
     Wenn TGR setze lokale Variable "ausschlussGrund" auf "<grund>"
     Dann TGR setze lokale Variable "ausgeschlossenerTA" auf "<ta>"
@@ -66,23 +63,8 @@ Funktionalität: Globale Markierung begründet nicht ausgeführter Testaspekte
       | ta            | grund                                                                  |
       | TA_A_27264_24 | Notification Service ist in der aktuellen Testumgebung nicht verfügbar. |
 
-    @nicht_getestet_container_fehlt
-    @TA_A_25795_06
-    Beispiele: TA_A_25795_06
-      | ta            | grund                                                                  |
-      | TA_A_25795_06 | Notification Service ist in der aktuellen Testumgebung nicht verfügbar. |
 
-    @nicht_getestet_container_fehlt
-    @TA_A_25796_15
-    Beispiele: TA_A_25796_15
-      | ta            | grund                                                                  |
-      | TA_A_25796_15 | Notification Service ist in der aktuellen Testumgebung nicht verfügbar. |
 
-    @nicht_getestet_container_fehlt
-    @TA_A_25799_06
-    Beispiele: TA_A_25799_06
-      | ta            | grund                                                                  |
-      | TA_A_25799_06 | Notification Service ist in der aktuellen Testumgebung nicht verfügbar. |
 
     @nicht_getestet_scope_ausgenommen
     @TA_A_26988_04
@@ -114,41 +96,11 @@ Funktionalität: Globale Markierung begründet nicht ausgeführter Testaspekte
       | ta            | grund                                                                             |
       | TA_A_27264_25 | Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25795_02
-    Beispiele: TA_A_25795_02
-      | ta            | grund                                                                             |
-      | TA_A_25795_02 | PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25795_07
-    Beispiele: TA_A_25795_07
-      | ta            | grund                                                                             |
-      | TA_A_25795_07 | Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25796_04
-    Beispiele: TA_A_25796_04
-      | ta            | grund                                                                             |
-      | TA_A_25796_04 | PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25796_18
-    Beispiele: TA_A_25796_18
-      | ta            | grund                                                                             |
-      | TA_A_25796_18 | Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25799_02
-    Beispiele: TA_A_25799_02
-      | ta            | grund                                                                             |
-      | TA_A_25799_02 | PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
-    @nicht_getestet_scope_ausgenommen
-    @TA_A_25799_07
-    Beispiele: TA_A_25799_07
-      | ta            | grund                                                                             |
-      | TA_A_25799_07 | Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt. |
 
     @nicht_getestet_soll_anforderung
     @TA_A_26640_03
@@ -157,25 +109,25 @@ Funktionalität: Globale Markierung begründet nicht ausgeführter Testaspekte
       | TA_A_26640_03 | Der Testaspekt adressiert eine SOLL-Anforderung (HTTP/3) und wird in der aktuellen Iteration nicht umgesetzt. |
 
     @nicht_getestet_soll_anforderung
-    @TA_A_26964_01
-    Beispiele: TA_A_26964_01
+    @TA_A_26964-01_01
+    Beispiele: TA_A_26964-01_01
       | ta            | grund                                                                                           |
-      | TA_A_26964_01 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
+      | TA_A_26964-01_01 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
 
     @nicht_getestet_soll_anforderung
-    @TA_A_27867_02
-    Beispiele: TA_A_27867_02
+    @TA_A_27867-01_02
+    Beispiele: TA_A_27867-01_02
       | ta            | grund                                                                                           |
-      | TA_A_27867_02 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
+      | TA_A_27867-01_02 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
 
     @nicht_getestet_soll_anforderung
-    @TA_A_27867_03
-    Beispiele: TA_A_27867_03
+    @TA_A_27867-01_03
+    Beispiele: TA_A_27867-01_03
       | ta            | grund                                                                                           |
-      | TA_A_27867_03 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
+      | TA_A_27867-01_03 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
 
     @nicht_getestet_soll_anforderung
-    @TA_A_27867_04
-    Beispiele: TA_A_27867_04
+    @TA_A_27867-01_04
+    Beispiele: TA_A_27867-01_04
       | ta            | grund                                                                                           |
-      | TA_A_27867_04 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |
+      | TA_A_27867-01_04 | Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt. |

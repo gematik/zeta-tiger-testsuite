@@ -1,4 +1,0 @@
-[#A_26281]
-==== A_26281 - PDP - kurzlebige Zertifikate
-
-Der PDP Authorization Server MUSS für die Signatur von Token Self-signed Zertifikate verwenden. Die Gültigkeitsdauer der Signatur-Zertifikate MUSS in den ZETA Guard-Manifest-Dateien konfigurierbar sein.

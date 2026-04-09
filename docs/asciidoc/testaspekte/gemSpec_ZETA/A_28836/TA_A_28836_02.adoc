@@ -1,0 +1,6 @@
+[#TA_A_28836_02]
+===== TA_A_28836_02 - PEP HTTP Proxy - TI Service Provider Metadata Well-known - schemakonforme Antwort
+
+"Die Komponente HTTP Proxy MUSS ein TI Service Provider Metadata Well-known JSON Dokument wie folgt bereitstellen, [...]
+Das Well-known JSON Dokument **MUSS mit dem Schema [ti-sp-well-known.yaml] validiert werden können**.
+**[<=]"**

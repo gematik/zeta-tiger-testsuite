@@ -1,0 +1,25 @@
+==== Testaspekte für die Anforderung A_28782
+
+Folgende Testaspekte testen <<A_28782>>.
+
+include::TA_A_28782_01.adoc[]
+
+include::TA_A_28782_02.adoc[]
+
+include::TA_A_28782_03.adoc[]
+
+include::TA_A_28782_04.adoc[]
+
+include::TA_A_28782_05.adoc[]
+
+include::TA_A_28782_06.adoc[]
+
+include::TA_A_28782_07.adoc[]
+
+include::TA_A_28782_08.adoc[]
+
+include::TA_A_28782_09.adoc[]
+
+include::TA_A_28782_10.adoc[]
+
+include::TA_A_28782_11.adoc[]

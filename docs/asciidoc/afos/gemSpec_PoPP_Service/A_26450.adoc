@@ -1,0 +1,4 @@
+[#A_26450]
+==== A_26450 - PoPP-Verifier - PoPP-Token Signaturprüfung
+
+Der PoPP-Verifier MUSS sicherstellen, dass die JWT-Signatur des PoPP-Token gemäß [RFC7515] verifiziert wird. Folgende Header-Attribute müssen im signierten JWT enthalten sein: typ - fester Wert "vnd.telematik.popp+jwt", alg - fester Wert "ES256", kid - Key-ID des verwendeten Schlüssels. Der öffentliche Schlüssel zur Verifikation der Signatur muss aus dem JWK-Set des PoPP-Service über das kid Header-Attribut des PoPP-Token ermittelt werden.

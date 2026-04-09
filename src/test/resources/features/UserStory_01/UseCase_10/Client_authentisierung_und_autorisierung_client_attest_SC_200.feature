@@ -27,16 +27,11 @@
 @UseCase_01_10
 Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
 
   @dev
-  @A_25762
-  @TA_A_25762_03
-  Szenario: Nutzerauthentifizierung mittels SMC-B (JWT)
+  @A_25762-01
+  @TA_A_25762-01_02
+  Szenario: Nutzerauthentifizierung mittels SM(C)-B signiertem ID Token
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
@@ -102,9 +97,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.subject_token.body.jti" der mit "changed-jti" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
 
-  @A_25762
   @A_25766
-  @TA_A_25762_04
   @TA_A_25766_02
   Szenario: Nutzerauthentifizierung - Client sendet DPoP Header und Access Token
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -116,7 +109,6 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
 
     # Token Response Validierung
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    # TA_A_25762_04 - Response muss DPoP-gebundenen Token zurückgeben
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.token_type" überein mit "DPoP"
 
     # DPoP JWT Validierung
@@ -128,7 +120,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.access_token.body.cnf.jkt" überein mit "${dpopJwtJkt}"
 
     # DPoP Header Validierung
-    # @TA_A_27802_10 - typ muss "dpop+jwt" sein
+    # @TA_A_27802-02_03 - typ muss "dpop+jwt" sein
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.typ}" überein mit "dpop+jwt"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.alg}" überein mit "ES256"
     Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.header.jwk.root}"
@@ -149,14 +141,12 @@ Funktionalität: Client_authentisierung_und_autorisierung_client_attest_SC_200
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.htu.root}" überein mit "${requestScheme}://${requestHost}${requestPath}"
     Und TGR speichere Wert des Knotens "${headers.dpop.body.iat}" der aktuellen Anfrage in der Variable "iat"
     Und validiere, dass der Zeitstempel "${iat}" in der Vergangenheit liegt
-    # @TA_A_27802_11 - nonce Validierung
+    # @TA_A_27802-02_03 - nonce Validierung
     # Guard MUSS prüfen, dass DPoP nonce mit vom /nonce Endpoint ausgegebener nonce übereinstimmt
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.nonce}" überein mit "${tokenNonce}"
 
 
   @dev
-  @A_25762
-  @TA_A_25762_04
   Szenariogrundriss: Nutzerauthentifizierung mittels SMC-B (DPoP)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"

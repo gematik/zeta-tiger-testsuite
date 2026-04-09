@@ -1,4 +1,0 @@
-[#TA_A_27379_10]
-===== TA_A_27379_10 - ZETA Client - OCSP Stapling Unterstützung - OCSP-Antwort - Caching bis ThisUpdate + 24 Stunden
-
-Wenn ``NextUpdate`` nicht in der OCSP Response enthalten ist, dann MUSS die OCSP Response bis **``ThisUpdate + 24 Stunden``** im Cache gespeichert werden. **[<=]**

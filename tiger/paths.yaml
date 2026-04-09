@@ -4,6 +4,7 @@ client:
   helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
   helloZetaProxyError: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta/proxy-error"
   reset: "http://zetaClient/testdriver-api/reset"
+  configure: "http://zetaClient/testdriver-api/configure"
   websocketBaseUrl: "wss://${zeta_base_url}/proxy/achelos_testfachdienst/ws"
   storage: "http://zetaClient/testdriver-api/storage"
   storagePath: "/testdriver-api/storage"
@@ -36,6 +37,7 @@ guard:
   nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
   wellKnownOAuthServerPath: "/.well-known/oauth-authorization-server"
   wellKnownOAuthProtectedResourcePath: "/.well-known/oauth-protected-resource"
+  wellKnownTiServiceProviderMetadataPath: "/.well-known/ti-service-provider-metadata"
   actuatorHealthPath: "/actuator/health"
   managementServicePath: "/managementService"
   ecKeyFile: "src/test/resources/keys/${zeta_base_url}-ecKey.pem"
@@ -48,6 +50,7 @@ tigerProxy:
   modificationPath: "/modification"
   resetJwtManipulationPath: "/manipulation/resetJwtManipulation"
   modifyJwtPath: "/manipulation/modifyJwt"
+  resetMessagesPath: "/resetMessages"
 
 opa:
   decisionPath: "/v1/data/policies/zeta/authz/decision"
@@ -61,7 +64,7 @@ openSearch:
   openTelemetryLogsSearchPathPattern: "/otel-logs-.*/_search.*"
 
 prometheus:
-  baseUrl: "http://${prometheus_url}"
+  baseUrl: "https://${zeta_base_url}/prometheus"
   prometheusMetricsSearchPath: "/api/v1/query"
   prometheusMetricsSearchPathPattern: "/api/v1/query.*"
 

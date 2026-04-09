@@ -1,4 +1,4 @@
 [#TA_A_27261_01]
-===== TA_A_27261_01 - ZETA Guard, Telemetrie-Daten Service, Protokoll - gRPC
+===== TA_A_27261_01 - ZETA Guard, Telemetriedaten-Service, Protokoll - gRPC
 
-Der **Telemetrie-Daten Service** im ZETA Guard MUSS zur Weitergabe der Daten das OpenTelemetry Protokoll (**OTLP**) **über gRPC** oder über HTTP/JSON verwenden. **[<=]**
+Der **Telemetriedaten-Service** im ZETA Guard MUSS zur Weitergabe der Daten das OpenTelemetry Protokoll (**OTLP**) **über gRPC** oder über HTTP/JSON verwenden. **[<=]**

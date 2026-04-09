@@ -32,6 +32,8 @@ import de.gematik.zeta.steps.TlsTestToolSteps;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -98,6 +100,48 @@ class TlsTestToolStepsTest {
       return method;
     } catch (NoSuchMethodException e) {
       throw new RuntimeException("Test setup failed, extractAlertSummary method not found", e);
+    }
+  }
+
+  private static Method getExtractSupportedGroupsHexMethod() {
+    try {
+      var method = TlsTestToolSteps.class.getDeclaredMethod("extractSupportedGroupsHex", String.class);
+      method.setAccessible(true);
+      return method;
+    } catch (NoSuchMethodException e) {
+      throw new RuntimeException("Test setup failed, extractSupportedGroupsHex method not found", e);
+    }
+  }
+
+  private static Method getExtractClientHelloCipherSuitesAsPairsMethod() {
+    try {
+      var method = TlsTestToolSteps.class.getDeclaredMethod("extractClientHelloCipherSuitesAsPairs", String.class);
+      method.setAccessible(true);
+      return method;
+    } catch (NoSuchMethodException e) {
+      throw new RuntimeException("Test setup failed, extractClientHelloCipherSuitesAsPairs method not found", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<TlsTestToolSteps.TlsSupportedGroup> invokeExtractSupportedGroupsHex(String fullLog) {
+    try {
+      return (List<TlsTestToolSteps.TlsSupportedGroup>) getExtractSupportedGroupsHexMethod().invoke(null, fullLog);
+    } catch (InvocationTargetException e) {
+      throw new RuntimeException("extractSupportedGroupsHex invocation failed", e.getCause());
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Unable to invoke extractSupportedGroupsHex", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> invokeExtractClientHelloCipherSuitesAsPairs(String fullLog) {
+    try {
+      return (List<String>) getExtractClientHelloCipherSuitesAsPairsMethod().invoke(null, fullLog);
+    } catch (InvocationTargetException e) {
+      throw new RuntimeException("extractClientHelloCipherSuitesAsPairs invocation failed", e.getCause());
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Unable to invoke extractClientHelloCipherSuitesAsPairs", e);
     }
   }
 
@@ -172,5 +216,94 @@ class TlsTestToolStepsTest {
     assertEquals("0x03", ecdsa.getHexValue());
     assertEquals(TlsTestToolSteps.TlsSignatureAlgorithm.UNKNOWN, unknown);
     assertEquals("n/a", unknown.getHexValue());
+  }
+
+  @Test
+  void extractSupportedGroupsHexHandlesTimestampedNextLogLine() {
+    var supportedGroups = invokeExtractSupportedGroupsHex("""
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.extensions=00 0a 00 16 00 14 00 1d 00 17 00 18 00 19 00 1e 01 00 01 01 01 02 01 03 01 04 
+        2026-03-17T08:26:38.499Z\tHIGH\tmbedTLS(ssl_srv.c:1836)\tselected ciphersuite: TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
+        """);
+
+    assertEquals(
+        List.of(
+            TlsTestToolSteps.TlsSupportedGroup.X25519,
+            TlsTestToolSteps.TlsSupportedGroup.SECP256R1,
+            TlsTestToolSteps.TlsSupportedGroup.SECP384R1,
+            TlsTestToolSteps.TlsSupportedGroup.SECP521R1,
+            TlsTestToolSteps.TlsSupportedGroup.X448,
+            TlsTestToolSteps.TlsSupportedGroup.FFDHE2048,
+            TlsTestToolSteps.TlsSupportedGroup.FFDHE3072,
+            TlsTestToolSteps.TlsSupportedGroup.FFDHE4096,
+            TlsTestToolSteps.TlsSupportedGroup.FFDHE6144,
+            TlsTestToolSteps.TlsSupportedGroup.FFDHE8192),
+        supportedGroups);
+  }
+
+  @Test
+  void extractClientHelloCipherSuitesAsPairsStopsAtEndOfLogLine() {
+    var cipherSuites = invokeExtractClientHelloCipherSuitesAsPairs("""
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.cipher_suites=13 01 13 02 13 03 c0 2b c0 2f c0 2c c0 30 cc a9 cc a8 c0 13 c0 14 
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.compression_methods=00 
+        """);
+
+    assertEquals(
+        List.of(
+            "(0x13,0x01)",
+            "(0x13,0x02)",
+            "(0x13,0x03)",
+            "(0xC0,0x2B)",
+            "(0xC0,0x2F)",
+            "(0xC0,0x2C)",
+            "(0xC0,0x30)",
+            "(0xCC,0xA9)",
+            "(0xCC,0xA8)",
+            "(0xC0,0x13)",
+            "(0xC0,0x14)"),
+        cipherSuites);
+  }
+
+  @Test
+  void tlsCipherSuiteProvidesTlsVersionForTls13CipherSuites() {
+    var tls13CipherSuite = TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256;
+    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_3, tls13CipherSuite.getTlsVersion());
+    assertFalse(tls13CipherSuite.getIsMandatory());
+    var tls13Ccm8CipherSuite = TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256;
+    assertEquals("(0x13,0x05)", tls13Ccm8CipherSuite.getTlsTestToolCipherSuiteValue());
+    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_3, tls13Ccm8CipherSuite.getTlsVersion());
+    assertFalse(tls13Ccm8CipherSuite.getIsMandatory());
+    var tls12CipherSuite = TlsTestToolSteps.TlsCipherSuite.ECDHE_RSA_AES_128_GCM_SHA256;
+    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_2, tls12CipherSuite.getTlsVersion());
+    assertTrue(tls12CipherSuite.getIsMandatory());
+  }
+
+  @Test
+  void optionalTls13CipherSuitesContainsOnlyTls13NonMandatorySuites() {
+    var cipherSuites = TlsTestToolSteps.TlsCipherSuite.optionalTls13CipherSuites();
+
+    assertTrue(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256));
+    assertTrue(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256));
+    assertFalse(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.ECDHE_RSA_AES_128_GCM_SHA256));
+    assertTrue(cipherSuites.stream().map(TlsTestToolSteps.TlsCipherSuite::getTlsVersion)
+        .allMatch(version -> version == TlsTestToolSteps.TlsVersion.TLS_1_3));
+    assertEquals(
+        Set.of(
+            TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256,
+            TlsTestToolSteps.TlsCipherSuite.AES_256_GCM_SHA384,
+            TlsTestToolSteps.TlsCipherSuite.CHACHA20_POLY1305_SHA256,
+            TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_SHA256,
+            TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256),
+        cipherSuites);
+  }
+
+  @Test
+  void onlySupportedCipherSuitesArePresentAcceptsTls13CipherSuites() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.cipher_suites=13 01 13 02 13 03 13 04 13 05
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.compression_methods=00
+        """);
+
+    tlsSteps.onlySupportedCipherSuitesArePresent();
   }
 }

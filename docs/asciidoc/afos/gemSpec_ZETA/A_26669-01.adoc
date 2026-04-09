@@ -1,0 +1,4 @@
+[#A_26669-01]
+==== A_26669-01 - PDP Authorization Server - TLS Terminierung
+
+Die Komponente PDP Authorization Server MUSS eingehende TLS Verbindungen von außerhalb des ZETA Guards terminieren können.

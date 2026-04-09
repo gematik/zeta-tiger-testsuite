@@ -25,12 +25,8 @@
 #language:de
 
 @UseCase_Smoke_01
+@dev
 Funktionalität: Smoke Test
-
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
 
   @no_proxy
   @staging

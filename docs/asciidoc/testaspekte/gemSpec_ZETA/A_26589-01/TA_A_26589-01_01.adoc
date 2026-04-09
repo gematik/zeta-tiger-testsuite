@@ -1,0 +1,24 @@
+[#TA_A_26589-01_01]
+===== TA_A_26589-01_01 - PEP HTTP Proxy - Nutzer-Daten in Header weitergeben
+
+"Die Komponente HTTP Proxy MUSS für jeden Request mit gültigem Access Token die **Nutzer-Daten aus dem Access Token** **als neuen HTTP Header** **`zeta-user-info` in den Request eintragen**, bevor der Request an den Resource Server weitergeleitet wird.
+
+Folgende Claims des Access Tokens gehören zu den Nutzer-Daten und werden gemäß Tabelle in den **`zeta-user-info` Header** übernommen.
+
+|===
+| **Access Token claim** | **zeta-user-info Header claim**
+
+| identifier
+| identifier
+
+| profession_oid
+| professionOID
+
+| common_name
+| commonName
+
+| organization_name
+| organizationName
+|===
+
+**[<=]**"

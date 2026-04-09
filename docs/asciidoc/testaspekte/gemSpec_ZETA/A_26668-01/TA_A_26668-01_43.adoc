@@ -1,0 +1,8 @@
+[#TA_A_26668-01_43]
+===== TA_A_26668-01_43 - ZETA Guard - Rate Limit - Header x-rate-limit-remaining - Authorization Server - POST /token
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (+++[...]+++, **x-rate-limit-remaining** (verbleibende Anfragen) und +++[...]+++). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: POST /token

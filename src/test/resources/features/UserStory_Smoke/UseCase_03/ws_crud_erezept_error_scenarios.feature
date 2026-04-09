@@ -28,12 +28,10 @@
 @stomp
 @no_proxy
 @UseCase_Smoke_03
+@dev
 Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
 
   Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
     Und setze Anfrage Timeout für WebSocket Verbindungen auf 5 Sekunden
     Und setze Timeout für WebSocket Nachrichten auf 5 Sekunden
 

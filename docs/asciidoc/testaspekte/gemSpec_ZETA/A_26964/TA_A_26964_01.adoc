@@ -1,4 +1,0 @@
-[#TA_A_26964_01]
-===== TA_A_26964_01 - ZETA Guard - OCSP Stapling - OCSP Stapling verwenden
-
-Komponenten innerhalb des ZETA Guards (inkl. Ingress), die von außen kommende TLS Verbindungen oder ZETA/ASL terminieren, SOLLEN **OCSP-Stapling** [RFC6066] verwenden. **[<=]**

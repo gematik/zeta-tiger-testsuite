@@ -1,0 +1,4 @@
+[#TA_A_27379-01_13]
+===== TA_A_27379-01_13 - ZETA Client - OCSP Stapling Unterstützung - Kein OCSP/CRL - Verbindungsaufbau abbrechen
+
+Wenn weder eine OCSP Response noch eine CRL verfügbar sind, MUSS der ZETA Client den **Verbindungsaufbau abbrechen**. **[<=]**

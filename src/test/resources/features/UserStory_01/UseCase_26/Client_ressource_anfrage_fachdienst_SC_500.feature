@@ -27,20 +27,15 @@
 @UseCase_01_26
 Funktionalität: Client_ressource_anfrage_fachdienst_SC_500
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @A_26560
   @A_26661
   @A_26662
-  @A_26974
+  @A_26974-01
   @A_27007
   @TA_A_26560_01
   @TA_A_26661_26
   @TA_A_26662_01
-  @TA_A_26974_01
+  @TA_A_26974-01_01
   @TA_A_27007_26
   Szenario: PEP HTTP Proxy antwortet mit 500 bei ZETA-Cause Proxy vom Resource Server
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"

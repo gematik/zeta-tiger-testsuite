@@ -1,0 +1,7 @@
+==== Testaspekte für die Anforderung A_28836
+
+Folgende Testaspekte testen <<A_28836>>.
+
+include::TA_A_28836_01.adoc[]
+
+include::TA_A_28836_02.adoc[]

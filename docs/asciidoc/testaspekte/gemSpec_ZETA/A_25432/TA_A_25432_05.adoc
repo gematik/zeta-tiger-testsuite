@@ -1,7 +1,7 @@
 [#TA_A_25432_05]
 ===== TA_A_25432_05 - ZETA Client - Ablauf Clientregistrierung - Attestierung der Clientintegrität
 
-Der mobile ZETA Client MUSS, sofern es an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, in dem es 
+Der mobile ZETA Client MUSS, sofern er an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, in dem er 
 
 * die +++[...]+++ **Clientintegrität** **attestiert**
 

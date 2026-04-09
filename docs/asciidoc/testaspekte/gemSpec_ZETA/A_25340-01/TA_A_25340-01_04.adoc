@@ -1,0 +1,8 @@
+[#TA_A_25340-01_04]
+===== TA_A_25340-01_04 - Zertifikatsprüfung - Vertrauenswürdigkeit der Zertifikatskette
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Vertrauenswürdigkeit der Zertifikatskette: Sicherstellen, dass die Kette zu einer vertrauenswürdigen Root-CA führt.
+
+[...]"

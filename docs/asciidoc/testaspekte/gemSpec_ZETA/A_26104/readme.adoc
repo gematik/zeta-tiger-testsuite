@@ -1,8 +1,0 @@
-==== Testaspekte für die Anforderung A_26104
-
-Folgende Testaspekte testen <<A_26104>>.
-
-include::TA_A_26104_01.adoc[]
-
-include::TA_A_26104_02.adoc[]
-

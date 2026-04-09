@@ -1,0 +1,17 @@
+[#TA_A_27802-02_03]
+===== TA_A_27802-02_03 - ZETA Guard - DPoP-Prüfung gemäß RFC9449, Abschnitt "Checking DPoP Proofs"
+
++++[...]+++
+
+"Die Prüfung von DPoP Token erfolgt gemäß **[RFC9449], Abschnitt 'Checking DPoP Proofs'**.
+
+**[<=]**"
+
+Hinweise zur konkreten Abdeckung:
+
+* Es gibt höchstens einen `DPoP`-Header, dessen Wert ein wohlgeformtes JWT mit allen Pflicht-Claims ist.
+* `typ` muss `dpop+jwt` sein; `alg` muss asymmetrisch, unterstützt und ungleich `none` sein.
+* Die Signatur wird mit dem öffentlichen Schlüssel aus `jwk` geprüft; `jwk` darf keinen privaten Schlüssel enthalten.
+* `htm` und `htu` müssen zur aktuellen HTTP-Anfrage passen; RFC-3986-Normalisierung ist dabei sinnvoll.
+* Falls ein Nonce verwendet wird, muss `nonce` passen; außerdem muss das Zeitfenster von `iat` bzw. Nonce akzeptabel sein.
+* Bei Ressourcenzugriffen mit Access Token sind zusätzlich `ath` und die Bindung an denselben öffentlichen Schlüssel zu prüfen.

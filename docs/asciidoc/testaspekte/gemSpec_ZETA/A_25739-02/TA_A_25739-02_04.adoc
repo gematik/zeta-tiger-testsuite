@@ -1,0 +1,4 @@
+[#TA_A_25739-02_04]
+===== TA_A_25739-02_04 - PDP Policy Engine, OPA Instanzen - Polling Intervall 60 Sekunden
+
+Das **Polling Intervall zur Aktualisierung des OPA Bundles über die lokale Artifact Registry MUSS 60 Sekunden sein**. **[<=]**

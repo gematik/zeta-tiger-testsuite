@@ -5,6 +5,8 @@ Es wurden Testaspekte aus den identifizierten Anforderungen generiert, die im Fo
 
 include::gemSpec_Krypt/readme.adoc[]
 
+include::gemSpec_PoPP_Service/readme.adoc[]
+
 include::gemSpec_ZETA/readme.adoc[]
 
 include::gemKPT_Test/readme.adoc[]

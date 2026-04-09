@@ -1,0 +1,10 @@
+[#TA_A_26450_02]
+===== TA_A_26450_02 - PoPP-Verifier - PoPP-Token Header-Attribute typ, alg und kid
+
+"Folgende **Header-Attribute müssen im signierten JWT enthalten sein**:
+
+* **typ** - fester Wert `vnd.telematik.popp+jwt`
+* **alg** - fester Wert `ES256`
+* **kid** - Key-ID des verwendeten Schlüssels
+
+**[<=]"**

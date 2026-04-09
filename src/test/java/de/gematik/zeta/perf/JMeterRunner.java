@@ -68,6 +68,7 @@ public class JMeterRunner {
 
     createOutputDirectories(config);
     executeJMeter(command);
+    verifyExpectedOutputs(config);
     logResults(config);
 
     log.info("JMeter test completed successfully");
@@ -144,17 +145,11 @@ public class JMeterRunner {
 
       String value = properties.getOrDefault(key, defaultValue);
 
-      // XML-escape REQUEST_BODY to prevent parsing errors
-      if ("REQUEST_BODY".equals(key) && value != null && !value.equals(defaultValue)) {
-        value = escapeXml(value);
-      }
-
       matcher.appendReplacement(result, Matcher.quoteReplacement(value));
 
       substitutionCount++;
       log.debug("Substituted ${__P({},{})} -> {}", key, defaultValue,
-          "REQUEST_BODY".equals(key) ? "[REDACTED " + value.length() + " chars]" :
-              (value.length() > 50 ? value.substring(0, 50) + "..." : value));
+          value.length() > 50 ? value.substring(0, 50) + "..." : value);
     }
 
     matcher.appendTail(result);
@@ -169,8 +164,7 @@ public class JMeterRunner {
   private String substituteBaseUrlPatterns(String template, String baseUrl) {
     String[] baseUrlPatterns = {
         "${BASE_URL}",
-        "${__P(BASE_URL,http://localhost:9999)}",
-        "${__P(BASE_URL,http://localhost:9999/achelos_testfachdienst/hellozeta)}"
+        "${__P(BASE_URL,http://localhost:9999)}"
     };
 
     String result = template;
@@ -290,23 +284,7 @@ public class JMeterRunner {
   }
 
   /**
-   * Escapes XML special characters to prevent parsing errors.
-   */
-  private String escapeXml(String text) {
-    if (text == null) {
-      return "";
-    }
-
-    return text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;");
-  }
-
-  /**
-   * Builds the JMeter command line arguments. Excludes REQUEST_BODY and empty header parameters
-   * from command line.
+   * Builds the JMeter command line arguments. Excludes empty header parameters from command line.
    */
   private List<String> buildCommand(Path renderedPlan, JMeterTestConfig config) {
     List<String> command = new ArrayList<>();
@@ -318,25 +296,26 @@ public class JMeterRunner {
     // Output options
     if (config.getJtlOutput() != null) {
       command.add("-l");
-      command.add(config.getJtlOutput().toString());
+      command.add(config.getJtlOutput().toAbsolutePath().normalize().toString());
     }
 
     if (config.getHtmlOutput() != null) {
       command.add("-e");
       command.add("-o");
-      command.add(config.getHtmlOutput().toString());
+      command.add(config.getHtmlOutput().toAbsolutePath().normalize().toString());
     }
 
     if (config.getPropertiesFile() != null) {
       FileUtils.requireFileExists(config.getPropertiesFile());
       command.add("-q");
-      command.add(config.getPropertiesFile().toString());
+      command.add(config.getPropertiesFile().toAbsolutePath().normalize().toString());
     }
 
     // Add JMeter properties as command line arguments (with filtering)
     config.getJmeterProperties().entrySet().stream()
         .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
-        .filter(entry -> !"REQUEST_BODY".equals(entry.getKey()))  // Template handles this
+        .filter(entry -> !entry.getKey().startsWith("LOAD_")) // Control props for pre-setup only
+        .filter(entry -> !"INSTANCE_PATHS".equals(entry.getKey())) // Template handles this
         .filter(entry -> !isEmptyHeaderParameter(entry.getKey(),
             entry.getValue())) // Skip empty headers
         .forEach(entry -> {
@@ -391,18 +370,27 @@ public class JMeterRunner {
     Process process = new ProcessBuilder(command)
         .redirectErrorStream(true)
         .start();
+    List<String> outputTail = new ArrayList<>();
+    int maxTailLines = 120;
 
     try (BufferedReader reader = new BufferedReader(
         new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
       String line;
       while ((line = reader.readLine()) != null) {
         log.info("[jmeter] {}", line);
+        outputTail.add(line);
+        if (outputTail.size() > maxTailLines) {
+          outputTail.remove(0);
+        }
       }
     }
 
     int exitCode = process.waitFor();
     if (exitCode != 0) {
-      throw new RuntimeException("JMeter failed with exit code: " + exitCode);
+      String tail = outputTail.isEmpty() ? "" : String.join(System.lineSeparator(), outputTail);
+      throw new RuntimeException("JMeter failed with exit code: " + exitCode
+          + (tail.isEmpty() ? "" : System.lineSeparator() + "Last JMeter output:"
+          + System.lineSeparator() + tail));
     }
   }
 
@@ -419,6 +407,20 @@ public class JMeterRunner {
       if (Files.exists(index)) {
         log.info("HTML report: {}", index.toAbsolutePath());
       }
+    }
+  }
+
+  private void verifyExpectedOutputs(JMeterTestConfig config) {
+    if (config.getJtlOutput() == null) {
+      return;
+    }
+
+    Path jtl = config.getJtlOutput().toAbsolutePath().normalize();
+    if (!Files.exists(jtl)) {
+      throw new RuntimeException(
+          "JMeter finished without JTL output file: " + jtl
+              + ". Check jmeter.log for parser/startup errors "
+              + "(common cause: malformed __groovy / unresolved placeholders).");
     }
   }
 

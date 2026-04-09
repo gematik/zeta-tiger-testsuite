@@ -1,0 +1,4 @@
+[#TA_A_27379-01_03]
+===== TA_A_27379-01_03 - ZETA Client - OCSP Stapling Unterstützung - OCSP-Antwort - Signatur pruefen
+
+Der ZETA Client MUSS die Gültigkeit der OCSP-Antwort (**Signatur**, Signierer) prüfen. **[<=]**

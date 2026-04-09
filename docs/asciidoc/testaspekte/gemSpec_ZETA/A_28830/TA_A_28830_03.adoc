@@ -1,0 +1,4 @@
+[#TA_A_28830_03]
+===== TA_A_28830_03 - HSM Proxy, Attribute Based Access Control - mTLS Authentifizierung
+
+"Die **berechtigten Komponenten müssen mit mTLS authentifiziert werden können**. **[<=]"**

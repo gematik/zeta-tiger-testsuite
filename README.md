@@ -9,6 +9,11 @@
 > wenigen Custom-Glue-Klassen — stattdessen sollen die TGR-Hilfssteps (Tiger Glue / TGR) verwendet
 > werden.
 
+> **BITTE BEACHTEN**
+> Der Testplan referenziert die Vorabveröffentlichung der Spezifikation vom 16.03.2026. 
+> Er referenziert nicht den aktuellen Status der Implementierung der Testaspekte bzgl. der neuen oder
+> geänderten Anforderungen.
+
 ---
 
 ## Inhaltsverzeichnis
@@ -229,9 +234,11 @@ Für OpenTelemetry-Log-Abfragen wird `opensearch_url` verwendet (OpenSearch-Host
 Sie können `OPENSEARCH_URL` setzen oder `-Dopensearch_url=zeta-kind.local:9200` verwenden.
 Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9200`.
 
-Für OpenTelemetry-Metrik-Abfragen wird `prometheus_url` verwendet (Prometheus-Host ohne Scheme).
-Sie können `PROMETHEUS_URL` setzen oder `-Dprometheus_url=zeta-kind.local:9090` verwenden.
-Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9090`.
+Für OpenTelemetry-Metrik-Abfragen wird `https://${zeta_base_url}/prometheus` verwendet.
+
+Für das TLS-Test-Tool wird `zeta_tls_test_tool_service_url` verwendet (Host ohne Scheme).
+Sie können `ZETA_TLS_TEST_TOOL_SERVICE_URL` setzen oder `-Dzeta_tls_test_tool_service_url=zeta-tls-test-tool-service.zeta-staging.svc:9012` verwenden.
+Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9012`.
 
 Für die Proxy-Erfassung stehen Profile zur Verfügung:
 `PROFILE=proxy` aktiviert die Tiger-Proxy-Erfassung und verwendet standardmäßig

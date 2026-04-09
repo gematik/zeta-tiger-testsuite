@@ -1,0 +1,29 @@
+==== Testaspekte fuer die Anforderung A_27379-01
+
+Folgende Testaspekte testen <<A_27379-01>>.
+
+include::TA_A_27379-01_01.adoc[]
+
+include::TA_A_27379-01_02.adoc[]
+
+include::TA_A_27379-01_03.adoc[]
+
+include::TA_A_27379-01_04.adoc[]
+
+include::TA_A_27379-01_05.adoc[]
+
+include::TA_A_27379-01_06.adoc[]
+
+include::TA_A_27379-01_07.adoc[]
+
+include::TA_A_27379-01_08.adoc[]
+
+include::TA_A_27379-01_09.adoc[]
+
+include::TA_A_27379-01_10.adoc[]
+
+include::TA_A_27379-01_11.adoc[]
+
+include::TA_A_27379-01_12.adoc[]
+
+include::TA_A_27379-01_13.adoc[]

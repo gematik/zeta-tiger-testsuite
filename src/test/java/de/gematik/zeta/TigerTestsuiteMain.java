@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -85,6 +84,9 @@ public final class TigerTestsuiteMain {
     }
   }
 
+  /**
+   * Discover and execute all Cucumber features on the classpath.
+   */
   private static void runCucumberSuite() {
     ensureDir(System.getProperty("serenity.outputDirectory"));
     var cucumberOutputDir =
@@ -139,7 +141,7 @@ public final class TigerTestsuiteMain {
     setIfAbsent("zeta_proxy_url", env.get("ZETA_PROXY_URL"));
     setIfAbsent("zeta_k8s_namespace", env.get("ZETA_K8S_NAMESPACE"));
     setIfAbsent("opensearch_url", env.get("OPENSEARCH_URL"));
-    setIfAbsent("prometheus_url", env.get("PROMETHEUS_URL"));
+    setIfAbsent("zeta_tls_test_tool_service_url", env.get("ZETA_TLS_TEST_TOOL_SERVICE_URL"));
     setIfAbsent("PROFILE", env.get("PROFILE"));
     setIfAbsent("cucumber.filter.tags",
         firstNonEmpty(env.get("CUCUMBER_FILTER_TAGS"), env.get("CUCUMBER_TAGS")));
@@ -164,6 +166,12 @@ public final class TigerTestsuiteMain {
     setIfAbsent("cucumber.glue", DEFAULT_GLUE);
   }
 
+  /**
+   * Build the default Cucumber plugin configuration for the generated reports.
+   *
+   * @param cucumberOutputDir report output directory for Cucumber JSON and JUnit XML files
+   * @return plugin configuration string for the Cucumber engine
+   */
   private static String defaultPlugin(String cucumberOutputDir) {
     return "io.cucumber.core.plugin.TigerSerenityReporterPlugin"
         + ",json:" + cucumberOutputDir + "/main.json"
@@ -208,10 +216,19 @@ public final class TigerTestsuiteMain {
    */
   private static String firstNonEmpty(String... values) {
     return Stream.of(values)
-        .filter(Objects::nonNull)
-        .filter(Predicate.not(String::isBlank))
+        .filter(TigerTestsuiteMain::isNonBlank)
         .findFirst()
         .orElse(null);
+  }
+
+  /**
+   * Check whether a string contains a non-blank value.
+   *
+   * @param value candidate value
+   * @return {@code true} if the value is not {@code null} and not blank
+   */
+  private static boolean isNonBlank(String value) {
+    return value != null && !value.isBlank();
   }
 
   /**

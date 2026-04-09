@@ -27,14 +27,9 @@
 @UseCase_01_22
 Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
-  @A_25669
+  @A_25669-01
   @A_26477
-  @TA_A_25669_05
+  @TA_A_25669-01_05
   @TA_A_26477_05 # Signatur muss mathematisch gültig sein
   @TA_A_26477_08 # popp-token.actorId == access_token.identifier
   @TA_A_26477_13

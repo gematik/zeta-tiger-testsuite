@@ -27,11 +27,6 @@
 @UseCase_TELEMETRIE_01
 Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @internal
   @require_kubectl
   @deployment_modification
@@ -318,7 +313,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
       |  ${telemetry.container.resourceServer} |
 
   @dev
-  @A_27492-01
+  @A_27492-02
   Szenariogrundriss: OpenTelemetry Unterstützung von HTTP Proxy, Authorization Server, Policy Engine und Notification Service
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
       | q                                                                                                                                              | size |
@@ -332,7 +327,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
       | containerName                        |
       | ${telemetry.containerName.httpProxy} |
 
-    @TA_A_27492-01_03
+    @TA_A_27492-02_03
     Beispiele: Authorization Server
       | containerName                                  |
       | ${telemetry.containerName.authorizationServer} |
@@ -345,170 +340,4 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
     #   | containerName                                  |
     #   | ${telemetry.containerName.notificationService} |
 
-  @require_kubectl
-  @A_25794
-  Szenariogrundriss: Implementierung von Health Checks der ZETA Guard Komponenten
-    Und prüfe im Namespace "${zetaDeploymentConfig.namespace}" dass der Container "<containerName>" eine startupProbe konfiguriert hat
-    Dann prüfe im Namespace "${zetaDeploymentConfig.namespace}" dass der Container "<containerName>" eine livenessProbe konfiguriert hat
-    Und prüfe im Namespace "${zetaDeploymentConfig.namespace}" dass der Container "<containerName>" eine readinessProbe konfiguriert hat
 
-    @TA_A_25794_01
-    Beispiele: Http Proxy
-      | containerName                        |
-      | ${telemetry.containerName.httpProxy} |
-
-    # TODO: TA_A_25794_02, PEP Datenbank <- Container wird wahrscheinlich nicht benötigt
-    # @TA_A_25794_02
-    # Beispiele: PEP Datenbank
-    #   | containerName                        |
-    #   | ${telemetry.containerName.httpProxy} |
-
-    @TA_A_25794_03
-    Beispiele: Authorization Server
-      | containerName                                  |
-      | ${telemetry.containerName.authorizationServer} |
-
-    @TA_A_25794_04
-    Beispiele: PDP Datenbank
-      | containerName                          |
-      | ${telemetry.containerName.pdpDatabase} |
-
-    @TA_A_25794_05
-    Beispiele: Policy Engine
-      | containerName                           |
-      | ${telemetry.containerName.policyEngine} |
-
-    @TA_A_25794_06
-    Beispiele: Notification Service
-      | containerName                                  |
-      | ${telemetry.containerName.notificationService} |
-
-    @TA_A_25794_07
-    Beispiele: Management Service
-      | containerName      |
-      | management-service |
-
-    @TA_A_25794_08
-    Beispiele: Telemetrie Daten Service
-      | containerName                                   |
-      | ${telemetry.containerName.telemetryDataService} |
-
-    @TA_A_25794_09
-    Beispiele: Ingress
-      | containerName                      |
-      | ${telemetry.containerName.ingress} |
-
-    @TA_A_25794_10
-    Beispiele: Egress
-      | containerName                     |
-      | ${telemetry.containerName.egress} |
-
-  @A_25794
-  @A_25795
-  @A_25796
-  @A_25799
-  Szenariogrundriss: Health Check Antworten der ZETA Guard Komponenten
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                                                                                                                         | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:<containerName> AND body:"\\\'msg\\\':\\\'Sent response.\\\'" AND body:"\\\'req_method\\\':\\\'GET\\\'"  AND body:"\\\'resp_status\\\':\\\'200\\\'" AND body:"\\\'req_path\\\':\\\'\\\/health\\\'" | 1    |
-
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für genau diesen Container gibt.
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0._source.resource['k8s.pod.start_time']"
-
-    @TA_A_25795_01
-    @TA_A_25796_01
-    @TA_A_25799_01
-    Beispiele: Http Proxy
-      | containerName                        |
-      | ${telemetry.containerName.httpProxy} |
-
-    # TODO: TA_A_25796_04, PEP Datenbank         <- Container wird wahrscheinlich nicht benötigt
-    # @TA_A_25795_02
-    # @TA_A_25796_04
-    # @TA_A_25799_02
-    # Beispiele: PEP Datenbank
-    #   | containerName                          |
-    #   | ${telemetry.containerName.pepDatabase} |
-
-
-    @TA_A_25795_03
-    @TA_A_25796_07
-    @TA_A_25799_03
-    Beispiele: Authorization Server
-      | containerName                                  |
-      | ${telemetry.containerName.authorizationServer} |
-
-    @TA_A_25795_04
-    @TA_A_25796_10
-    @TA_A_25799_04
-    Beispiele: PDP Datenbank
-      | containerName                          |
-      | ${telemetry.containerName.pdpDatabase} |
-
-    @TA_A_25795_05
-    @TA_A_25796_30
-    @TA_A_25799_05
-    Beispiele: Open Policy Agent
-      | containerName                           |
-      | ${telemetry.containerName.policyEngine} |
-
-        # TODO: TA_A_25796_15, Notification Service  <- Container fehlt noch
-    # @TA_A_25795_06
-    # @TA_A_25796_15
-    # @TA_A_25799_06
-    # Beispiele: Notification Service
-    #   | containerName                                  |
-    #   | ${telemetry.containerName.notificationService} |
-
-    # TODO: TA_A_25796_18 Management Service   <- Container wird wahrscheinlich nicht benötigt
-    # @TA_A_25795_07
-    # @TA_A_25796_18
-    # @TA_A_25799_07
-    # Beispiele: Management Service
-    #   | containerName                                |
-    #   | ${telemetry.containerName.managementService} |
-
-    @TA_A_25795_08
-    @TA_A_25796_21
-    @TA_A_25799_08
-    Beispiele: Telemetrie Daten Service
-      | containerName                                   |
-      | ${telemetry.containerName.telemetryDataService} |
-
-    @TA_A_25795_09
-    @TA_A_25796_24
-    @TA_A_25799_09
-    Beispiele: Ingress
-      | containerName                      |
-      | ${telemetry.containerName.ingress} |
-
-    @TA_A_25795_10
-    @TA_A_25796_27
-    @TA_A_25799_10
-    Beispiele: Egress
-      | containerName                     |
-      | ${telemetry.containerName.egress} |
-
-  @A_25798
-  @TA_A_25798_18
-  Szenario: ZETA Guard-Komponenten - Regelmäßige Selbstüberprüfung - Abhängigkeiten - Ingress
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                        | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.containerName.ingress} AND attributes.log.file.path:/var/log/pods/* AND body:"components" AND body:"Ingress" AND body:"status" AND @timestamp:[now-15m TO now] | 2    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-
-    # Regelmäßigkeit: es müssen innerhalb des Zeitfensters mehrere Self-Check-Logs existieren
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.1"
-
-    # Zusätzlich: Statusmeldungen sollen auch via gRPC protokolliert werden.
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.containerName.ingress} AND body:"grpc" AND @timestamp:[now-15m TO now] | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"

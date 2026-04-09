@@ -27,16 +27,11 @@
 @UseCase_01_08
 Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @dev
-  @A_25783
+  @A_25783-01
   @A_27007
   @A_26661
-  @TA_A_25783_02
+  @TA_A_25783-01_02
   @TA_A_27007_03
   @TA_A_26661_03
   Szenario: Erneute Authentifizierung nach 401 Unauthorized
@@ -50,7 +45,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}"
     # TA_A_27007_03 - ZETA Client - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 401 Unauthorized
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
-    # TA_A_25783_02 - Anweisung befolgen erneute Authentifizierung (Nutzer-Token erneuern)
+    # TA_A_25783-01_02 - Anweisung befolgen erneute Authentifizierung (Nutzer-Token erneuern)
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token"
     Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "firstSubjectToken"
 
@@ -59,6 +54,6 @@ Funktionalität: Client_authentisierung_und_autorisierung_software_attest_SC_401
 
     # Zweiter Token-Request (Retry)
     Und TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    # TA_A_25783_02 - Anweisung befolgen erneute Authentifizierung
+    # TA_A_25783-01_02 - Anweisung befolgen erneute Authentifizierung
     Und TGR prüfe aktueller Request enthält Knoten "$.body.subject_token"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token" nicht überein mit "${firstSubjectToken}"

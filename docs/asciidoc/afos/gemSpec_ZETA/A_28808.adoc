@@ -1,0 +1,4 @@
+[#A_28808]
+==== A_28808 - PDP Authorization Server - Löschfristen
+
+Der Authorization Server (PDP) MUSS konfigurierbare Inaktivitäts-Löschfristen für User- und Client-Daten durchsetzen und diese Daten nach Ablauf der Fristen löschen (Default-Wert: 1 Jahr). Der Authorization Server MUSS Session-Daten automatisch löschen, wenn die Session expired ist.

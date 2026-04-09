@@ -1,0 +1,4 @@
+[#A_27727-01]
+==== A_27727-01 - ZETA Guard, Telemetriedaten-Service, Lieferung
+
+Der Telemetriedaten-Service im ZETA Guard SOLL Telemetriedaten asynchron an den gematik Telemetriedaten-Service liefern. Dafür MUSS der Telemetriedaten-Service des ZETA Guard für die Telemetriedatenlieferung von Traces an den gematik Telemetriedaten-Service als ExportProcessorType den Typ Batch verwenden.

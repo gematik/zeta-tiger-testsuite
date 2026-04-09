@@ -1,0 +1,4 @@
+[#A_26585-01]
+==== A_26585-01 - PDP Client-Registrierung - Client-Daten
+
+Die Komponente Authorization Server MUSS die Client-Daten gemäß [client-statement.yaml] in der PDP Datenbank verwalten. Die Client-Daten MÜSSEN bei Anfragen des Authorization-Servers an die Policy Engine im Request mit übergeben werden.

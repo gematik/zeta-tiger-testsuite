@@ -1,7 +1,0 @@
-==== Testaspekte für die Anforderung A_28525
-
-Folgende Testaspekte testen <<A_28525>>.
-
-include::TA_A_28525_01.adoc[]
-
-include::TA_A_28525_02.adoc[]

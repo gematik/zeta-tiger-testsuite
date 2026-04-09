@@ -1,0 +1,4 @@
+[#TA_A_28425-01_02]
+===== TA_A_28425-01_02 - ZETA Client, Service Discovery – if-none-match und etag - /.well-known/oauth-authorization-server
+
+"Der ZETA Client MUSS bei der Abfrage der Well-known JSON-Dokumente die HTTP-Header if-none-match und etag verwenden. **[<=]**"

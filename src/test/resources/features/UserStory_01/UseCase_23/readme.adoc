@@ -12,7 +12,6 @@
 | weitere Akteure: |
 - *ZETA Client*
 - *PEP HTTP Proxy*
-- *PDP Datenbank*
 - *Resource Server*
 
 | Auslöser: |
@@ -20,14 +19,14 @@ Ein MA einer LEI möchte über den ZETA Client eine geschützte Ressource abrufe
 
 | Kurzbeschreibung: |
 Der ZETA Client sendet eine Anfrage mit Access Token und DPoP Nachweis an den PEP HTTP Proxy.
-Der Proxy verifiziert die Tokens, fragt die Client-Daten anhand des ``client_id``-Claims aus der PDP Datenbank ab und fügt zusätzliche Header (``ZETA-User-Info``, ``ZETA-PoPP-Token-Content``, ``ZETA-Client-Data``) ein.
+Der Proxy verifiziert die Tokens und fügt zusätzliche Header (``zeta-user-info``, ``zeta-popp-token-content``, ``zeta-client-data``) ein.
 Der Request wird an den Resource Server weitergeleitet und mit ``200 OK`` beantwortet.
 
 | Vorbedingung: |
 Der stationäre ZETA Client ist registriert und verfügt über ein gültiges Access Token.
 
 | Nebenbedingung: |
-Die Weiterleitung der Client-Daten ist für den angefragten Endpunkt im PEP HTTP Proxy aktiviert. <<A_26492-01>>
+Die Weiterleitung der Client-Daten ist für den angefragten Endpunkt im PEP HTTP Proxy aktiviert. <<A_26492-02>>
 
 | Ablauf: |
 . MA startet den Abruf einer geschützten Ressource über den ZETA Client.
@@ -38,39 +37,38 @@ Die Weiterleitung der Client-Daten ist für den angefragten Endpunkt im PEP HTTP
 - ``DPoP: ... (DPoP Token)``
 . Der PEP HTTP Proxy prüft das *Access Token*.
 . Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
-. Der PEP HTTP Proxy fragt die Client-Daten anhand des ``client_id``-Claims des Access Tokens in der PDP Datenbank ab.
-. Die PDP Datenbank liefert ``200 OK`` mit den Client-Daten.
 . Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
-* *ZETA-User-Info*:
+* *zeta-user-info*:
 ** Format: ``Base64-URL kodierte JSON Struktur des User-Info Inhalts``
-** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/user-info.yaml[user-info.yaml]
-* *ZETA-PoPP-Token-Content*:
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/zeta-user-info.yaml[zeta-user-info.yaml]
+* *zeta-popp-token-content*:
 ** Format: ``Base64-URL kodierte JSON Struktur des PoPP Token Inhalts``
-* *ZETA-Client-Data*:
+* *zeta-client-data*:
 ** Format: ``Base64-URL kodierte JSON Struktur der Client-Daten``
+** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/client-data.yaml[client-data.yaml]
 . Gleichnamige HTTP-Header aus dem ursprünglichen Request werden entfernt bzw. überschrieben.
 . Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter:
 * ``GET /resource``-Anfrage
 ** mit vorhandenen HTTP headers
 ** zusätzlich erstellten Headern
-*** ``ZETA-User-Info``
-*** ``ZETA-PoPP-Token-Content`` und
-*** explizit ``ZETA-Client-Data``
+*** ``zeta-user-info``
+*** ``zeta-popp-token-content`` und
+*** explizit ``zeta-client-data``
 . Der Resource Server antwortet mit ``200 OK`` und der angeforderten Ressource.
 . Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
 . Der ZETA Client liefert die Ressource an den MA.
 
 | Nachbedingung: |
-Der MA hat die geschützte Ressource erfolgreich abgerufen und die Anfrage wurde mit ``ZETA-Client-Data`` weitergeleitet.
+Der MA hat die geschützte Ressource erfolgreich abgerufen und die Anfrage wurde mit ``zeta-client-data`` weitergeleitet.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25669_01>>
-* <<TA_A_25669_02>>
-* <<TA_A_25669_03>>
-* <<TA_A_25669_07>>
-* <<TA_A_26492-01_03>>
-* <<TA_A_26589_01>>
-* <<TA_A_26590_01>>
+* <<TA_A_25669-01_01>>
+* <<TA_A_25669-01_02>>
+* <<TA_A_25669-01_03>>
+* <<TA_A_25669-01_07>>
+* <<TA_A_26492-02_01>>
+* <<TA_A_26589-01_01>>
+* <<TA_A_26590-02_01>>
 * <<TA_A_26661_15>>
 * <<TA_A_27007_15>>
 |===
@@ -83,7 +81,6 @@ sequenceDiagram
     actor MA as MA einer LEI
     participant ZC as ZETA Client
     participant PEP-HP as PEP HTTP Proxy
-    participant PDP-DB as PDP Datenbank
     participant RS as Resource Server
 
     MA->>+ZC: Abruf geschützter Ressource
@@ -92,9 +89,9 @@ sequenceDiagram
 
     PEP-HP->>PEP-HP: Verifiziere Access Token
     PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
-    PEP-HP->>+PDP-DB: Anfrage von Client-Daten (client_id Claim)
-    PDP-DB-->>-PEP-HP: 200 OK, Client-Daten
-    PEP-HP->>PEP-HP: Erzeuge ZETA-Client-Data Header
+    PEP-HP->>PEP-HP: Erzeuge zeta-user-info Header
+    PEP-HP->>PEP-HP: Erzeuge zeta-popp-token-content Header
+    PEP-HP->>PEP-HP: Erzeuge zeta-client-data Header
     PEP-HP->>+RS: Weiterleiten GET /resource
     RS-->>-PEP-HP: 200 OK, Ressource
     PEP-HP-->>-ZC: 200 OK, Ressource

@@ -1,0 +1,4 @@
+[#A_26452]
+==== A_26452 - PoPP-Verifier - JWT Claims Validierung
+
+Der PoPP-Verifier MUSS sicherstellen, dass die folgenden Claims im PoPP-Token vorhanden sind und deren Inhalt prüfen: iss - muss die URL des PoPP-Service aus dem Entity Statement sub-Attribut enthalten iat - Ausstellungszeitpunkt des PoPP-Token muss anwendungsspezifisch geprüft werden (bspw. nicht älter als 5 Minuten), actorId - Telematik-ID der LEI, für die der PoPP-Token ausgestellt wurde, muss abgeglichen werden, gegen die vom PoPP-Verifier authentifizierte LEI, die den PoPP-Token vorlegt Alle weiteren Claims müssen entsprechend dem fachlichen Bedarfs ausgewertet werden.

@@ -1,0 +1,4 @@
+[#TA_A_26452_02]
+===== TA_A_26452_02 - PoPP-Verifier - Claim iat vorhanden und anwendungsspezifisch geprüft
+
+"Der PoPP-Verifier MUSS sicherstellen, dass der **Claim *iat*** im PoPP-Token **vorhanden** ist und der **Ausstellungszeitpunkt anwendungsspezifisch geprüft** wird, bspw. **nicht älter als 5 Minuten**. **[<=]"**

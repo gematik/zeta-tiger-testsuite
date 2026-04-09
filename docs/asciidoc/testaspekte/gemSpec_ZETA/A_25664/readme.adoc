@@ -1,8 +1,0 @@
-==== Testaspekte für die Anforderung A_25664
-
-Folgende Testaspekte testen <<A_25664>>.
-
-include::TA_A_25664_01.adoc[]
-
-include::TA_A_25664_02.adoc[]
-

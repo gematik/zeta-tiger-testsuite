@@ -32,12 +32,12 @@
   <parent>
     <groupId>de.gematik.test</groupId>
     <artifactId>tiger-starter-parent</artifactId>
-    <version>4.2.2</version>
+    <version>4.2.5</version>
     <relativePath/>
   </parent>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>0.4.0</version>
+  <version>0.5.0</version>
 
   <!-- Projektlizenzinformationen -->
   <licenses>
@@ -435,6 +435,29 @@
                 <argument>sync</argument>
                 <argument>--project</argument>
                 <argument>${project.basedir}/docs/scripts</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>run-docs-script-tests</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>python</argument>
+                <argument>-m</argument>
+                <argument>unittest</argument>
+                <argument>discover</argument>
+                <argument>-s</argument>
+                <argument>${project.basedir}/docs/scripts/tests</argument>
               </arguments>
             </configuration>
           </execution>

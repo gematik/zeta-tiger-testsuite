@@ -1,0 +1,40 @@
+[#TA_A_26489-01_01]
+===== TA_A_26489-01_01 - PDP Authorization Server - Bearbeitungszeiten
+
+"Die Komponente PDP Authorization Server MUSS die Bearbeitungszeitvorgaben unter Last aus der
+Tabelle `Tab_gemSpec_ZETA_PDP_Auth_Server: Bearbeitungszeitvorgaben` erfüllen.
+
+Für den PDP gibt es verschiedene Typen von Requests, die hier analog zum PEP in
+Perzentilen dargestellt werden. Alle Typen von Requests sind Antwortzeiten, daher ist
+hier kein besonderer Messung-Typ aufgeführt.
+
+Tabelle 20: Tab_gemSpec_ZETA_PDP_Auth_Server: Bearbeitungszeitvorgaben
+
+|===
+| Request-Typ | Mittelwert | 90% | 95% | 99%
+
+| /nonce
+| 33ms
+| 50ms
+| 75ms
+| 500ms
+
+| /register
+| 75ms
+| 100ms
+| 150ms
+| 1s
+
+| /token
+| 75ms
+| 100ms
+| 150ms
+| 1s
+
+| /refresh
+| 75ms
+| 100ms
+| 150ms
+| 1s
+|===
+[<=]"

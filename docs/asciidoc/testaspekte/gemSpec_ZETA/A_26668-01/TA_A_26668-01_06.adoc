@@ -1,0 +1,8 @@
+[#TA_A_26668-01_06]
+===== TA_A_26668-01_06 - ZETA Guard - Rate Limit - Header x-rate-limit-limit - PEP HTTP Proxy - GET /.well-known/oauth-protected-resource
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (**x-rate-limit-limit** (das erlaubte Limit), +++[...]+++ und +++[...]+++). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- PEP HTTP Proxy: GET /.well-known/oauth-protected-resource

@@ -27,11 +27,6 @@
 @UseCase_01_25
 Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_attest_SC_403
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
 
   @dev
   @A_25660

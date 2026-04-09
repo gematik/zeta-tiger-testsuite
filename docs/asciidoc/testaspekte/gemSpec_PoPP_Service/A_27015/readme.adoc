@@ -1,0 +1,5 @@
+==== Testaspekte für die Anforderung A_27015
+
+Folgende Testaspekte testen <<A_27015>>.
+
+include::TA_A_27015_01.adoc[]

@@ -1,0 +1,4 @@
+[#TA_A_26452_04]
+===== TA_A_26452_04 - PoPP-Verifier - Weitere Claims entsprechend fachlichem Bedarf ausgewertet
+
+"**Alle weiteren Claims** des PoPP-Token MÜSSEN **entsprechend dem fachlichen Bedarf ausgewertet** werden. **[<=]"**

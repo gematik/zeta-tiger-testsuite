@@ -27,30 +27,22 @@
 @UseCase_01_12
 Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @A_26639
   @A_26195
   @TA_A_26639_01
   @TA_A_26195_01
   @websocket
+  @dev
   Szenario: Ingress und PEP HTTP Proxy unterstützt WebSocket Verbindung
     # Ein WebSocket-Roundtrip sollte hier reichen, allerdings könnte man auch noch die Verbindung
       # Ingress <-> PEP HTTP Proxy über den Standalone Tiger Proxy testen.
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Dann wird die WebSocket Verbindung geschlossen
 
-  @A_27802
-  @TA_A_27802_01
-  @TA_A_27802_02
-  @TA_A_27802_03
-  @TA_A_27802_04
-  @TA_A_27802_05
-  @TA_A_27802_10
-  @TA_A_27802_11
+  @A_27802-02
+  @TA_A_27802-02_01
+  @TA_A_27802-02_02
+  @TA_A_27802-02_03
   Szenariogrundriss:  ZETA Guard Integrationstest, JWT Prüfung
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -89,20 +81,15 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
 
   @dev
   @A_25660
-  @A_25762
   @A_25767
-  @A_26492-01
-  @A_27802
-  @A_27853
+  @A_26492-02
+  @A_27802-02
   @A_25766
   @TA_A_25660_01
   @TA_A_25660_04
-  @TA_A_25762_04
   @TA_A_25767_02
-  @TA_A_26492-01_02
-  @TA_A_27802_10
-  @TA_A_27802_11
-  @TA_A_27853_01
+  @TA_A_26492-02_02
+  @TA_A_27802-02_03
   @TA_A_25766_02
   Szenario: DPoP Resource Request - Client sendet DPoP Proof mit Access Token für geschützte Ressource
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -132,7 +119,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     Und verifiziere ES256 Signatur von DPoP JWT "${resourceDpopJwt}"
 
     # DPoP Header Validierung
-    # @TA_A_27802_10 - typ muss "dpop+jwt" sein
+    # @TA_A_27802-02_03 - typ muss "dpop+jwt" sein
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.typ}" überein mit "dpop+jwt"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.header.alg}" überein mit "ES256"
     Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.header.jwk.root}"
@@ -167,14 +154,8 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
 
     # Nonce wird bei Resource Requests nicht mitgeschickt
 
-    # TA_A_27853_01 - ZETA-API-Version Header muss vorhanden sein und SemVer entsprechen (Regex: ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$; Beispiel: 1.2.3-rc.1+build.5)
-    Und TGR prüfe aktuelle Antwort enthält Knoten "${headers.zeta.apiVersion}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.apiVersion}" überein mit "${regex.zetaApiVersion}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.apiVersion}" überein mit "${testdata.semVer}"
-
   @TA_A_26561_01
   Szenario: PEP HTTP Proxy nutzt gecachte Response-Inhalte
-    Gegeben sei Alle Manipulationen im TigerProxy werden gestoppt
     Und TGR setze lokale Variable "cachedMessage" auf "Hello ZETA (cached)"
     Und TGR setze lokale Variable "cacheCondition" auf "isResponse && request.path =~ '^${paths.fachdienst.helloZetaPath}'"
     Dann Setze im TigerProxy für die Nachricht "${cacheCondition}" die Manipulation auf Feld "$.body.message" und Wert "${cachedMessage}" und 1 Ausführungen
@@ -190,11 +171,9 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.message" überein mit "${cachedMessage}"
 
   @dev
-  @A_25762
   @A_25767
   @A_27007
   @A_26661
-  @TA_A_25762_04
   @TA_A_25767_02
   @TA_A_27007_19
   @TA_A_26661_19
@@ -217,9 +196,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
 
   @dev
-  @A_25762
   @A_25767
-  @TA_A_25762_04
   @TA_A_25767_02
   Szenario: DPoP Resource Request - Wiederverwendung desselben jti wird abgewiesen
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -243,9 +220,9 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
 
   @dev
   @A_25767
-  @A_27802
+  @A_27802-02
   @TA_A_25767_02
-  @TA_A_27802_10
+  @TA_A_27802-02_03
   Szenariogrundriss: DPoP JWT Manipulation Test - Resource Anfrage
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -275,18 +252,18 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
       | body.htm   | POST                       |
       | body.htu   | https://wrong.url/resource |
 
-  @A_25669
-  @TA_A_25669_08
+  @A_25669-01
+  @TA_A_25669-01_08
   @deployment_modification
   @popp_deployment_toggle
-  Szenario: PEP fügt keinen ZETA-PoPP-Token-Content ein, wenn kein PoPP-Header mitgeschickt wurde, und entfernt ursprünglich gleichnamige Header
+  Szenario: PEP fügt keinen zeta-popp-token-content ein, wenn kein PoPP-Header mitgeschickt wurde, und entfernt ursprünglich gleichnamige Header
     Gegeben sei deaktiviere die PoPP Token Verifikation für die Route "/pep/" im ZETA Deployment
 
     Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "poppHeaderCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
     # popp Header löschen
     Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "${headers.popp.lineRegex}" und Wert ""
-    # ZETA-PoPP-Token-Content Header hinzufügen
+    # zeta-popp-token-content Header hinzufügen
     Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Manipulation auf Feld "${headers.zeta.poppTokenContent}" und Wert "FAKE_POPP_CONTENT"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -296,7 +273,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.popp.root}"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.poppTokenContent}" überein mit "FAKE_POPP_CONTENT"
 
-    # Prüfe Request NACH PEP - ZETA-PoPP-Token-Content darf nicht gesetzt sein
+    # Prüfe Request NACH PEP - zeta-popp-token-content darf nicht gesetzt sein
     Dann TGR finde die nächste Anfrage mit dem Pfad "^${paths.fachdienst.helloZetaPath}"
     Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.popp.root}"
     Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.zeta.poppTokenContent}"
@@ -361,13 +338,13 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
       | Resource Server | ${telemetry.containerName.resourceServer} | *HelloZeta*  |
 
   @dev
-  @A_25669
-  @TA_A_25669_04
-  @TA_A_25669_05
-  @TA_A_25669_06
+  @A_25669-01
+  @TA_A_25669-01_04
+  @TA_A_25669-01_05
+  @TA_A_25669-01_06
   @TA_A_28439_01
-  Szenario: PEP überschreibt vom Client gesetzte ZETA-Header und aktualisiert den Forwarded-Header
-    # Setze gefälschte ZETA-Header per TigerProxy-Manipulation - diese werden vom Client mitgesendet
+  Szenario: PEP überschreibt vom Client gesetzte zeta-Header und aktualisiert den Forwarded-Header
+    # Setze gefälschte zeta-Header per TigerProxy-Manipulation - diese werden vom Client mitgesendet
     Gegeben sei TGR setze lokale Variable "fakeHeaderCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
     Und Setze im TigerProxy für die Nachricht "${fakeHeaderCondition}" die Manipulation auf Feld "${headers.zeta.userInfo.root}" und Wert "FAKE_USER_INFO"
     Und Setze im TigerProxy für die Nachricht "${fakeHeaderCondition}" die Manipulation auf Feld "${headers.zeta.poppTokenContent}" und Wert "FAKE_POPP_CONTENT"
@@ -394,23 +371,23 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
     # RFC 7239: bestehender Forwarded-Header bleibt erhalten und es wird ein weiteres gültiges Forwarded-Element (for|by|proto|host) angehängt
     Und TGR prüfe Variable "forwardedAfter" stimmt überein mit "^for=client;proto=http\\s*,\\s*(for|by|proto|host)=.+$"
 
-    # Prüfe, dass alle drei ZETA-Header vorhanden sind
+    # Prüfe, dass alle drei zeta-Header vorhanden sind
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.userInfo.root}"
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.poppTokenContent}"
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.clientData}"
 
-    # TA_A_25669_04: ZETA-User-Info wurde überschrieben (nicht mehr FAKE-Wert)
+    # TA_A_25669-01_04: zeta-user-info wurde überschrieben (nicht mehr FAKE-Wert)
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.userInfo.root}" nicht überein mit "FAKE_USER_INFO"
 
-    # TA_A_25669_05: ZETA-PoPP-Token-Content wurde überschrieben (nicht mehr FAKE-Wert)
+    # TA_A_25669-01_05: zeta-popp-token-content wurde überschrieben (nicht mehr FAKE-Wert)
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.poppTokenContent}" nicht überein mit "FAKE_POPP_CONTENT"
 
-    # TA_A_25669_06: ZETA-Client-Data wurde überschrieben (nicht mehr FAKE-Wert)
+    # TA_A_25669-01_06: zeta-client-data wurde überschrieben (nicht mehr FAKE-Wert)
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.clientData}" nicht überein mit "FAKE_CLIENT_DATA"
 
   @dev
-  @A_27725
-  @TA_A_27725_02
+  @A_27725-01
+  @TA_A_27725-01_02
   Szenario: Telemetrie-Daten enthalten bei erfolgreicher Operation den HTTP-Statuscode 200
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -426,15 +403,15 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200_integrationstest
 
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
       | q                                                                                                                                                                                                                                                   | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.containerName.httpProxy} AND attributes.log.file.path:/var/log/pods/* AND body:\"${resourcePath}\" AND http.status:200 AND @timestamp:[now-3m TO now] | 1    |
+      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.containerName.httpProxy} AND attributes.log.file.path:/var/log/pods/* AND body:\"${resourcePath}\" AND http.response.status_code:200 AND @timestamp:[now-3m TO now] | 1    |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.hits.hits.0._source['http.status']" überein mit "200"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.hits.hits.0._source['http.response.status_code']" überein mit "200"
 
   @dev
-  @A_27399
-  @TA_A_27399_05
+  @A_28808
+  @TA_A_28808_05
   Szenario: Sessiondaten nach session_expiry nicht mehr verwendbar
     # TTL-Werte als Variablen definieren (in Sekunden)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "30"

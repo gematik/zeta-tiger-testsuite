@@ -1,0 +1,8 @@
+[#TA_A_26668-01_09]
+===== TA_A_26668-01_09 - ZETA Guard - Rate Limit - konfigurierbar - PEP HTTP Proxy - GET /<resource-pfad> (Zugriff auf geschützte Ressource über den Proxy, Host: RS-FQDN)
+
+"Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein **Rate Limit konfigurierbar einstellen** können. +++[...]+++ **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- PEP HTTP Proxy: GET /<resource-pfad> (Zugriff auf geschützte Ressource über den Proxy, Host: RS-FQDN)

@@ -1,0 +1,4 @@
+[#TA_A_27015_01]
+===== TA_A_27015_01 - PoPP-Verifier - Prüfung Signaturzertifikat via TI-PKI
+
+"Der PoPP-Verifier KANN die Signatur des PoPP-Token auch gegen die TI-PKI verifizieren."

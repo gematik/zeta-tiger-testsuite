@@ -1,0 +1,7 @@
+# Note: if the url is changed, the CN and SAN of the certificates used need to be updated as well
+url: "https://zeta-tls-test-tool-server"
+port: 4433
+serviceUrl: ${zeta_tls_test_tool_service_url}
+binaryBasePath: "tools/tls-test-tool-1.0.1/TlsTestTool"
+certificateDirectoryPath: "tools/tls-test-tool-1.0.1/certificates"
+caCertificatePath: "tools/tls-test-tool-1.0.1/certificates/ecdsa/zeta-tls-test-tool-server_CA.cer"

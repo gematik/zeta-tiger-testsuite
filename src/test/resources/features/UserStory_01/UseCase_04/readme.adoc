@@ -205,13 +205,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 Der stationäre ZETA Client besitzt kein gültiges Access- oder Refresh-Token.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25748_01>>
-* <<TA_A_25748_02>>
+* <<TA_A_25653_02>>
 * <<TA_A_25752_01>>
 * <<TA_A_26661_01>>
 * <<TA_A_26661_04>>
+* <<TA_A_26662_01>>
 * <<TA_A_27007_04>>
 * <<TA_A_27007_13>>
+
 
 |===
 

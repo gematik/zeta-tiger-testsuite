@@ -1,0 +1,4 @@
+[#A_27802-02]
+==== A_27802-02 - ZETA Guard, JWT Prüfung
+
+Der ZETA Guard MUSS bei der Prüfung von JWT die Prüfschritte gemäß [RFC7519], Abschnitt 7.2, und [RFC7515], Abschnitt 5.2, durchführen. Die Prüfung von DPoP Token erfolgt gemäß [RFC9449], Abschnitt "Checking DPoP Proofs".

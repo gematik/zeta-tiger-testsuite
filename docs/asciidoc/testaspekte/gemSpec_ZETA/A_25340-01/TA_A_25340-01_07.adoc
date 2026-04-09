@@ -1,0 +1,10 @@
+[#TA_A_25340-01_07]
+===== TA_A_25340-01_07 - Zertifikatsprüfung - Standardmäßige Vertrauensanker
+
+"Der ZETA Client MUSS die Root-Zertifikate, die von den Mitgliedern des [CAB-Forum] ausgestellt werden, als Vertrauensanker standardmäßig unterstützen.
+
+Dies impliziert:
+
+* Eine Standard-Liste von [CAB-Forum] Root-Zertifikaten ist im ZETA Client enthalten.
+
+[...]"

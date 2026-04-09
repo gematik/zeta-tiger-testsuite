@@ -1,0 +1,5 @@
+[#TA_A_28808_05]
+===== TA_A_28808_05 - PDP Authorization Server - Löschfristen - Session-Daten löschen
+
++++[...]+++
+Der Authorization Server (PDP) MUSS **Session-Daten automatisch löschen**, wenn die **Session expired** ist.
