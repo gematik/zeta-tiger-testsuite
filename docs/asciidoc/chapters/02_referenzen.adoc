@@ -1,5 +1,5 @@
 == Referenzen
 
-* {gemSpec_ZETA}[gemSpec_ZETA]: Version 1.2.0
+* {gemSpec_ZETA}[gemSpec_ZETA]: Version 1.3.0_CC
 * {gemSpec_Krypt}[gemSpec_Krypt]: Version 2.41.0
-* {gemVZ_Afo_ZETA_Guard}[gemVZ_Afo_ZETA_Guard_V_1.2.0]: Version 1.0.0
+* {gemVZ_Afo_ZETA_Guard}[gemVZ_Afo_ZETA_Guard_V_1.2.1-0]: Version 1.0.0_CC

@@ -1,0 +1,4 @@
+[#A_26492-02]
+==== A_26492-02 - PEP HTTP Proxy - Weiterleitung von Client-Daten
+
+Die Komponente HTTP Proxy MUSS so konfiguriert werden können, dass pro Endpunkt des Resource Servers die Weiterleitung der Client-Daten durch den HTTP Proxy ein- und ausgeschaltet werden kann. Die default-Einstellung ist keine Weiterleitung der Client-Daten.

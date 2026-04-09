@@ -1,0 +1,4 @@
+[#A_25338-01]
+==== A_25338-01 - ZETA Client - Authentifizierung beim Token Exchange
+
+Der ZETA Client MUSS sich gegenüber dem ZETA Guard Authorization Server beim Token Exchange mit einem JWT Bearer Token gemäß [RFC7523] und gemäß[client-assertion-jwt.yaml] authentifizieren. Dabei MUSS die von der gematik für das Clientsystem ausgestellte product_id nach [A_25337] und die Versionskennzeichnung des Clients nach folgendem Schema verwendet werden: <product_id> gemäß Registrierung bei der gematik mit Länge maximal 20 Zeichen, Zeichenvorrat [0-9a-zA-Z\-], <product_version> gemäß Produktidentifikation mit Länge 1-20 Zeichen, Zeichenvorrat [0-9a-zA-Z\-\.].

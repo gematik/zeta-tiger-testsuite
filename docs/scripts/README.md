@@ -114,13 +114,13 @@ sichtbar zu machen.
 ### Skript: ZETA AFOs aus gemVZ XML erzeugen
 
 ```bash
-uv run --project docs/scripts generate-zeta-afos --input-xml docs/gemVZ_Afo_ZETA_Guard_V_1.2.0_V1.0.0.xml --output-dir docs/asciidoc/afos/gemSpec_ZETA --force
+uv run --project docs/scripts generate-zeta-afos --input-xml docs/gemVZ_Afo_ZETA_Guard_V_1.2.1-0_V1.0.0_CC.xml --output-dir docs/asciidoc/afos/gemSpec_ZETA --force
 ```
 
 Parameter:
 
-- `--input-xml`: Pfad zur gemVZ ZETA Guard XML (Standard:
-  `docs/gemVZ_Afo_ZETA_Guard_V_1.2.0_V1.0.0.xml`)
+- `--input-xml`: Pfad zur eingecheckten gemVZ ZETA Guard XML-Datei (Standard:
+  `docs/gemVZ_Afo_ZETA_Guard_V_1.2.1-0_V1.0.0_CC.xml`).
 - `--output-dir`: Zielverzeichnis für die generierten Anforderungen (Standard:
   `docs/asciidoc/afos/gemSpec_ZETA`)
 - `--test-procedure`: Filter auf `<testProcedure>` (Standard:
@@ -129,8 +129,8 @@ Parameter:
 - `--[no-]readme`: Optional `readme.adoc` in `docs/asciidoc/afos` aktualisieren (Standard: aktiv)
 - `--force`: Bestehendes Zielverzeichnis vorab löschen
 
-Das Skript legt pro Anforderung eine `A_*.adoc` mit Anker und Titel an und kann optional
-ein `readme.adoc` mit den Quell-Dokumenten und allen Includes erstellen.
+Das Skript legt pro Anforderung eine `A_*.adoc` mit Anker und Titel an und kann optional ein `readme.adoc` mit den Quell-Dokumenten und allen Includes erstellen.
+Neue gemVZ-Quellstände werden zuerst in eine versionierte XML-Snapshot-Datei überführt und anschließend über dieses Skript verarbeitet.
 
 ### Skript: [fetch_youtrack_testaspects.py](src/testsuite_docs/fetch_youtrack_testaspects.py)
 
@@ -193,9 +193,29 @@ Optional:
 uv run --project docs/scripts gitlab-issue-sync --token-file /tmp/gitlab_token --issue-state all
 ```
 
+Für lange Läufe sind diese Optionen hilfreich:
+
+```bash
+uv run --project docs/scripts gitlab-issue-sync --issue-state all --verbose --progress --skip-feature-comments
+```
+
+Für eine detaillierte Dry-Run-Auswertung der geplanten Änderungen:
+
+```bash
+uv run --project docs/scripts gitlab-issue-sync --issue-state all --skip-feature-comments --report-changes
+```
+
 Hinweise:
 
 - Standardmäßig Dry-Run; Änderungen erst mit `--apply`.
+- `--verbose` schreibt Fortschritt nach `stderr`, `--log-every` steuert das Intervall, Standard ist `50`.
+- `--progress` zeigt bei TTY-Ausgabe einen Fortschrittsbalken; in CI/Nicht-TTY greift weiterhin die normale Log-Ausgabe.
+- `--workers` parallelisiert nur lesende GitLab-API-Aufrufe konservativ; Standard ist `8`, Schreibzugriffe bleiben seriell.
+- `--report-changes` ergänzt die JSON-Ausgabe um eine Liste der konkret geplanten Änderungen.
+- `--skip-feature-comments` überspringt das teure Lesen/Schreiben von `Feature:`-Notizen, wenn nur Zustände synchronisiert werden sollen.
+- Die JSON-Ausgabe ist UTF-8-freundlich und enthält `duration_seconds` für die Wall-Clock-Laufzeit.
+- Titeländerungen werden zusätzlich als `cosmetic` oder `substantive` klassifiziert.
 - Szenario-Tags werden immer verarbeitet (TA-Tag vorhanden → schließen, entfernt → wieder öffnen).
+- Issues mit Label `entfällt` werden nicht wieder geöffnet; das Skript versucht in GitLab zusätzlich den Status `Won't do` zu setzen und fällt sonst auf `closed` zurück.
 - GitLab.com unterstützt das Statusfeld „In progress/Done“ nicht per API-Update; das Skript nutzt open/close.
 - Tokenquelle: `/tmp/gitlab_token`, `GITLAB_TOKEN` oder `CI_JOB_TOKEN`.

@@ -1,0 +1,4 @@
+[#TA_A_27492-02_04]
+===== TA_A_27492-02_04 - ZETA Guard, OpenTelemetry Unterstützung - Authorization Server - nonce
+
+Die ZETA Guard Komponenten HTTP Proxy, **Authorization Server**, Policy Engine und Notification Service MÜSSEN für alle durchgeführten Operationen Telemetriedaten in Form von Traces an den Telemetriedaten-Service senden. **[<=]**

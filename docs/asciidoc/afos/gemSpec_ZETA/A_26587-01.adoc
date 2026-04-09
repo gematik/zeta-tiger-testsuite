@@ -1,0 +1,4 @@
+[#A_26587-01]
+==== A_26587-01 - PDP Datenbank - Kompatibilität
+
+Die Komponente PDP Datenbank MUSS kompatibel zum Authorization Server sein.

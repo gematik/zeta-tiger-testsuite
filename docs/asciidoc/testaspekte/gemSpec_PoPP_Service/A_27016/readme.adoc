@@ -1,0 +1,13 @@
+==== Testaspekte für die Anforderung A_27016
+
+Folgende Testaspekte testen <<A_27016>>.
+
+include::TA_A_27016_01.adoc[]
+
+include::TA_A_27016_02.adoc[]
+
+include::TA_A_27016_03.adoc[]
+
+include::TA_A_27016_04.adoc[]
+
+include::TA_A_27016_05.adoc[]

@@ -1,8 +1,0 @@
-[#TA_A_26668_13]
-===== TA_A_26668_13 - ZETA Guard - Rate Limit - konfigurierbar - Authorization Server - GET /.well-known/oauth-authorization-server
-
-"Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein **Rate Limit konfigurierbar einstellen** können. +++[...]+++ **[<=]**"
-
-Dieser funktionale Aspekt der Anforderung bezieht sich auf:
-
-- Authorization Server: GET /.well-known/oauth-authorization-server

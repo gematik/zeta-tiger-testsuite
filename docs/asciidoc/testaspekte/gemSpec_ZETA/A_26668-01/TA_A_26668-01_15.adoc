@@ -1,0 +1,8 @@
+[#TA_A_26668-01_15]
+===== TA_A_26668-01_15 - ZETA Guard - Rate Limit - Header x-rate-limit-remaining - Authorization Server - GET /.well-known/oauth-authorization-server
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (+++[...]+++, **x-rate-limit-remaining** (verbleibende Anfragen) und +++[...]+++). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: GET /.well-known/oauth-authorization-server

@@ -1,0 +1,4 @@
+[#TA_A_28837_01]
+===== TA_A_28837_01 - PDP Authorization Server - Policy Prüfung vor Ausstellung Token-Set
+
+"Die Komponente Authorization Server MUSS **vor der Ausstellung des neuen Token-Sets (Access Token und Refresh Token)** eine **Autorisierungsanfrage an die Policy Engine** stellen. **[<=]"**

@@ -1,0 +1,22 @@
+==== Testaspekte für die Anforderung A_27492-02
+
+Folgende Testaspekte testen <<A_27492-02>>.
+
+include::TA_A_27492-02_01.adoc[]
+
+include::TA_A_27492-02_02.adoc[]
+
+include::TA_A_27492-02_03.adoc[]
+
+include::TA_A_27492-02_04.adoc[]
+
+include::TA_A_27492-02_05.adoc[]
+
+include::TA_A_27492-02_06.adoc[]
+
+include::TA_A_27492-02_07.adoc[]
+
+include::TA_A_27492-02_08.adoc[]
+
+include::TA_A_27492-02_09.adoc[]
+

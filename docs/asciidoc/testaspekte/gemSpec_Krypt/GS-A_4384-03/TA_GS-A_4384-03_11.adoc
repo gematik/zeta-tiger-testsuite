@@ -1,0 +1,11 @@
+[#TA_GS-A_4384-03_11]
+===== TA_GS-A_4384-03_11 - TLS-Verbindungen - ZETA Client - weitere Cipher-Suiten die nicht in TR-02102-2, Abschnitt 3.3.1 Tabelle 1 aufgeführt sind, werden nicht unterstützt
+
+Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
+
+* [...]
+* [...]
+* [...]
+* **Es KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1 Tabelle 1] unterstützt werden.**.
+
+**[<=]**

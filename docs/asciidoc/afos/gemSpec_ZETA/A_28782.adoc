@@ -1,0 +1,23 @@
+[#A_28782]
+==== A_28782 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard
+
+Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgende Parameter unterstützen:
+
+Batch - BatchExportOptions
+maxQueueSize (Default = 2048)
+scheduledDelayMilliseconds (Default = 5000)
+exporterTimeoutMilliseconds (Default = 30000)
+maxExportBatchSize (Default = 512)
+
+ExporterHelper - retry_on_failure
+enabled (Default = true)
+initial_interval (Default = 5s)
+max_interval (Default = 1215s)
+max_elapsed_time (Default = 1820s)
+multiplier (Default = 3)
+
+Sampler
+otel_traces_sampler (Default always_off)
+otel_traces_sampler_arg (Default 0)
+
+Hinweis: Sampler Typ wird auf traceidratio gesetzt, um Sampling einzuschalten und die Ratio kann variabel einen Wert zwischen 0..1 einnehmen. Der Typ garantiert, dass der Sampling Trace vollständig ist und alle Spans für eine Auswahl enthalten sind.

@@ -24,37 +24,33 @@
 
 package de.gematik.zeta.steps;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static io.restassured.RestAssured.given;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.test.tiger.glue.HttpGlueCode;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
+import io.restassured.http.ContentType;
+import io.restassured.http.Method;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.Random;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * Cucumber step definitions for TigerProxy manipulation operations.
  *
  * <p>This class provides step definitions for manipulating the TigerProxy.
- * The TigerProxy URL is automatically resolved from the configuration variable
- * {@code paths.tigerProxy.baseUrl}.
+ * The TigerProxy URL is automatically resolved from the configuration variable {@code paths.tigerProxy.baseUrl}.
  */
 @Slf4j
 public class TigerProxyManipulationsSteps {
 
-  private static final String TIGER_PROXY_ID_CONFIG_KEY = "tiger.tigerProxy.proxyId";
-  private static final String AUTHORIZATION_HEADER_ROOT_CONFIG_KEY = "headers.authorization.root";
-  private static final String DPOP_HEADER_ROOT_CONFIG_KEY = "headers.dpop.root";
   private final Random random = new Random();
-  private final RestTemplate restTemplate = new RestTemplate();
 
   /**
    * Resolves the TigerProxy base URL from configuration.
@@ -72,7 +68,7 @@ public class TigerProxyManipulationsSteps {
    * @return the resolved base URL, or {@code null} when proxy usage is disabled or unresolved
    */
   private String resolveTigerProxyBaseUrl(String action) {
-    var proxyId = TigerGlobalConfiguration.readStringOptional(TIGER_PROXY_ID_CONFIG_KEY)
+    var proxyId = TigerGlobalConfiguration.readStringOptional("tiger.tigerProxy.proxyId")
         .orElse(null);
     if (proxyId == null || proxyId.isBlank()) {
       log.info("Skipping TigerProxy {} (tigerProxyId='{}').", action,
@@ -126,10 +122,9 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Sends a manipulation request to the TigerProxy to modify intercepted messages based on
-   * specified criteria. This method directs the TigerProxy to apply a modification targeting a
-   * particular field within the message, identified by its RBel path. It updates the field's value
-   * with the provided new value during message interception.
+   * Sends a manipulation request to the TigerProxy to modify intercepted messages based on specified criteria. This method directs the
+   * TigerProxy to apply a modification targeting a particular field within the message, identified by its RBel path. It updates the field's
+   * value with the provided new value during message interception.
    *
    * @param message Logic to identify the messages that needs to be manipulated
    * @param field   RBel path identifier of the field you want to manipulate
@@ -149,9 +144,9 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Sends a manipulation request to the TigerProxy to modify intercepted messages with execution
-   * count. This method directs the TigerProxy to apply a modification targeting a particular field
-   * within the message, identified by its RBel path, for a specified number of executions.
+   * Sends a manipulation request to the TigerProxy to modify intercepted messages with execution count. This method directs the TigerProxy
+   * to apply a modification targeting a particular field within the message, identified by its RBel path, for a specified number of
+   * executions.
    *
    * @param message    Logic to identify the messages that needs to be manipulated
    * @param field      RBel path identifier of the field you want to manipulate
@@ -173,10 +168,9 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Sends a manipulation request to the TigerProxy to modify intercepted messages using regex
-   * replacement. This is useful for modifying form-data fields which cannot be directly addressed
-   * by RBel path. The regex filter is applied to the target element and matching parts are replaced
-   * with the new value.
+   * Sends a manipulation request to the TigerProxy to modify intercepted messages using regex replacement. This is useful for modifying
+   * form-data fields which cannot be directly addressed by RBel path. The regex filter is applied to the target element and matching parts
+   * are replaced with the new value.
    *
    * @param message     Logic to identify the messages that needs to be manipulated
    * @param field       RBel path identifier of the field you want to manipulate (e.g., $.body)
@@ -199,37 +193,9 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Clears all existing manipulations configured in the TigerProxy instance. This method instructs
-   * the TigerProxy to remove all active manipulations, effectively resetting its modification rules
-   * to a clean state.
-   */
-  @Dann("Alle Manipulationen im TigerProxy werden gestoppt")
-  @Then("Reset all manipulation in the TigerProxy")
-  public void resetTigerProxyManipulation() {
-    var baseUrl = resolveTigerProxyBaseUrl("reset");
-    if (baseUrl == null) {
-      return;
-    }
-
-    var manipulationUrl = getUrl("${paths.tigerProxy.manipulationPath}");
-    try {
-      restTemplate.delete(manipulationUrl);
-      var resetResponse =
-          restTemplate.postForEntity(getUrl("${paths.tigerProxy.resetJwtManipulationPath}"), null,
-              String.class);
-      assertThat(resetResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    } catch (ResourceAccessException e) {
-      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
-    } catch (RestClientException e) {
-      throw new AssertionError("The manipulation could not be removed in the TigerProxy.", e);
-    }
-  }
-
-  /**
    * Configures a JWT manipulation on the TigerProxy.
    *
-   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop",
-   *                      "$.body.client_assertion")
+   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField      what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value         new value for the field
    * @param privateKeyPem private key used to re-sign the token
@@ -248,8 +214,7 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Configures a JWT manipulation on the TigerProxy with condition and execution limit, without
-   * re-signing.
+   * Configures a JWT manipulation on the TigerProxy with condition and execution limit, without re-signing.
    *
    * @param jwtLocation where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField    what to change in the JWT (e.g., "header.typ", "body.iss")
@@ -274,8 +239,7 @@ public class TigerProxyManipulationsSteps {
   /**
    * Configures a JWT manipulation on the TigerProxy with condition and execution limit.
    *
-   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop",
-   *                      "$.body.client_assertion")
+   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField      what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value         new value for the field
    * @param privateKeyPem private key used to re-sign the token
@@ -298,12 +262,10 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Configures a JWT manipulation on the TigerProxy with condition, execution limit, and JWK
-   * replacement. The JWK in the JWT header will be replaced with the public key derived from the
-   * provided private key.
+   * Configures a JWT manipulation on the TigerProxy with condition, execution limit, and JWK replacement. The JWK in the JWT header will be
+   * replaced with the public key derived from the provided private key.
    *
-   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop",
-   *                      "$.body.client_assertion")
+   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop", "$.body.client_assertion")
    * @param jwtField      what to change in the JWT (e.g., "header.typ", "body.iss")
    * @param value         new value for the field
    * @param privateKeyPem private key used to re-sign the token and derive public key for JWK
@@ -328,9 +290,8 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Configures a JWT manipulation on the TigerProxy for Authorization header (access token) with
-   * automatic DPoP ath update. When the access token is manipulated, the ath claim in the DPoP JWT
-   * will be recalculated and the DPoP JWT will be re-signed.
+   * Configures a JWT manipulation on the TigerProxy for Authorization header (access token) with automatic DPoP ath update. When the access
+   * token is manipulated, the ath claim in the DPoP JWT will be recalculated and the DPoP JWT will be re-signed.
    *
    * @param jwtField          what to change in the access token JWT (e.g., "body.iss", "body.sub")
    * @param value             new value for the field
@@ -348,20 +309,19 @@ public class TigerProxyManipulationsSteps {
   public void setTigerProxyAccessTokenManipulationWithAthUpdate(String jwtField, String value,
       String accessTokenKeyPem, String dpopKeyPem, String condition, Integer executions) {
     sendJwtManipulation(Map.ofEntries(
-        Map.entry("jwtLocation", getRequiredRbelPath(AUTHORIZATION_HEADER_ROOT_CONFIG_KEY)),
+        Map.entry("jwtLocation", getRequiredRbelPath("headers.authorization.root")),
         Map.entry("jwtField", jwtField),
         Map.entry("replaceWith", value),
         Map.entry("privateKeyPem", accessTokenKeyPem),
         Map.entry("condition", condition),
         Map.entry("deleteAfterNExecutions", executions),
-        Map.entry("dpopLocation", getRequiredRbelPath(DPOP_HEADER_ROOT_CONFIG_KEY)),
+        Map.entry("dpopLocation", getRequiredRbelPath("headers.dpop.root")),
         Map.entry("dpopPrivateKeyPem", dpopKeyPem),
         Map.entry("updateAth", true)));
   }
 
   /**
-   * Configures a single-execution JWT manipulation on the TigerProxy (executes once then
-   * auto-clears).
+   * Configures a single-execution JWT manipulation on the TigerProxy (executes once then auto-clears).
    *
    * @param jwtLocation   where the JWT is located
    * @param jwtField      what to change in the JWT
@@ -383,8 +343,63 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Sends a JWT manipulation request to TigerProxy. Central method handling all HTTP communication
-   * for JWT manipulations.
+   * Stops all configured TigerProxy manipulations without touching the recorded message history.
+   */
+  @Dann("Alle Manipulationen im TigerProxy werden gestoppt")
+  @Then("All manipulations in the TigerProxy are stopped")
+  public void stopAllTigerProxyManipulations() {
+    resetTigerProxyManipulationsIfAvailable();
+  }
+
+  /**
+   * Resets all TigerProxy state that may leak between scenarios.
+   *
+   * <p>If the standalone TigerProxy is not configured or not reachable, the reset is skipped so
+   * {@code @no_proxy} scenarios and local runs without a proxy still execute.</p>
+   */
+  void resetTigerProxyStateIfAvailable() {
+    var baseUrl = resolveTigerProxyBaseUrl("state reset");
+    if (baseUrl == null) {
+      return;
+    }
+
+    try {
+      resetTigerProxyManipulationsIfAvailable();
+      var httpGlueCode = new HttpGlueCode();
+      httpGlueCode.sendEmptyRequest(
+          Method.GET,
+          new URI(getUrl("${paths.tigerProxy.resetMessagesPath}")));
+    } catch (Exception e) {
+      log.info("Skipping TigerProxy state reset because proxy is not reachable at '{}'.", baseUrl);
+    }
+  }
+
+  /**
+   * Clears RBEL and JWT manipulations from TigerProxy without resetting recorded proxy messages.
+   */
+  private void resetTigerProxyManipulationsIfAvailable() {
+    var baseUrl = resolveTigerProxyBaseUrl("manipulation reset");
+    if (baseUrl == null) {
+      return;
+    }
+
+    try {
+      var httpGlueCode = new HttpGlueCode();
+      httpGlueCode.sendEmptyRequest(
+          Method.DELETE,
+          new URI(getUrl("${paths.tigerProxy.manipulationPath}")));
+      httpGlueCode.sendRequestWithMultiLineBody(
+          Method.POST,
+          new URI(getUrl("${paths.tigerProxy.resetJwtManipulationPath}")),
+          "",
+          MediaType.APPLICATION_JSON_VALUE);
+    } catch (Exception e) {
+      log.info("Skipping TigerProxy manipulation reset because proxy is not reachable at '{}'.", baseUrl);
+    }
+  }
+
+  /**
+   * Sends a JWT manipulation request to TigerProxy. Central method handling all HTTP communication for JWT manipulations.
    *
    * @param body Request body containing manipulation parameters
    */
@@ -395,23 +410,22 @@ public class TigerProxyManipulationsSteps {
     }
 
     var url = getUrl("${paths.tigerProxy.modifyJwtPath}");
-    var headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
 
     try {
-      var response = restTemplate.postForEntity(
-          url, new HttpEntity<>(body, headers), String.class);
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    } catch (ResourceAccessException e) {
-      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
-    } catch (RestClientException e) {
-      throw new AssertionError("JWT manipulation failed: " + e.getMessage());
+      given()
+          .contentType(ContentType.JSON)
+          .body(body)
+          .when()
+          .post(url)
+          .then()
+          .statusCode(200);
+    } catch (Exception e) {
+      throwTigerProxyManipulationFailure("JWT manipulation", baseUrl, e);
     }
   }
 
   /**
-   * Sends an RBel manipulation request to TigerProxy. Central method handling all HTTP
-   * communication for RBel path manipulations.
+   * Sends an RBel manipulation request to TigerProxy. Central method handling all HTTP communication for RBel path manipulations.
    *
    * @param body Request body containing manipulation parameters
    */
@@ -422,18 +436,53 @@ public class TigerProxyManipulationsSteps {
     }
 
     var url = getUrl("${paths.tigerProxy.modificationPath}");
-    var headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
 
     try {
-      restTemplate.put(url, new HttpEntity<>(body, headers));
-      var response = restTemplate.getForEntity(url, String.class);
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    } catch (ResourceAccessException e) {
-      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", e);
-    } catch (RestClientException e) {
-      throw new AssertionError("RBel manipulation failed: " + e.getMessage());
+      given()
+          .contentType(ContentType.JSON)
+          .body(body)
+          .when()
+          .put(url);
+      given()
+          .when()
+          .get(url)
+          .then()
+          .statusCode(200);
+    } catch (Exception e) {
+      throwTigerProxyManipulationFailure("RBel manipulation", baseUrl, e);
     }
+  }
+
+  /**
+   * Converts low-level HTTP client failures into stable assertion failures for step execution.
+   *
+   * @param action    short action label used in the failure message
+   * @param baseUrl   resolved TigerProxy base URL
+   * @param exception original HTTP client exception
+   */
+  private void throwTigerProxyManipulationFailure(final String action, final String baseUrl,
+      final Exception exception) {
+    if (isTigerProxyReachabilityFailure(exception)) {
+      throw new AssertionError("TigerProxy not reachable at '" + baseUrl + "'.", exception);
+    }
+    throw new AssertionError(action + " failed: " + exception.getMessage(), exception);
+  }
+
+  /**
+   * Checks whether the exception chain indicates that the proxy could not be reached at all.
+   *
+   * @param throwable exception to inspect
+   * @return {@code true} when the failure is caused by connection or DNS issues
+   */
+  private boolean isTigerProxyReachabilityFailure(final Throwable throwable) {
+    for (var current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof ConnectException
+          || current instanceof SocketTimeoutException
+          || current instanceof UnknownHostException) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

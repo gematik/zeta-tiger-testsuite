@@ -1,8 +1,0 @@
-==== Testaspekte für die Anforderung A_25748
-
-Folgende Testaspekte testen <<A_25748>>.
-
-include::TA_A_25748_01.adoc[]
-
-include::TA_A_25748_02.adoc[]
-

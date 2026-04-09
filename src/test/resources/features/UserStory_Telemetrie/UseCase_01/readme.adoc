@@ -35,28 +35,6 @@ Nur Testaspekte ohne dedizierten Trigger und ohne passende Zuordnung zu einem fa
 Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifiziert.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25795_01>>
-* <<TA_A_25795_03>>
-* <<TA_A_25795_04>>
-* <<TA_A_25795_05>>
-* <<TA_A_25795_08>>
-* <<TA_A_25795_09>>
-* <<TA_A_25795_10>>
-* <<TA_A_25796_01>>
-* <<TA_A_25796_07>>
-* <<TA_A_25796_10>>
-* <<TA_A_25796_21>>
-* <<TA_A_25796_24>>
-* <<TA_A_25796_27>>
-* <<TA_A_25796_30>>
-* <<TA_A_25798_18>>
-* <<TA_A_25799_01>>
-* <<TA_A_25799_03>>
-* <<TA_A_25799_04>>
-* <<TA_A_25799_05>>
-* <<TA_A_25799_08>>
-* <<TA_A_25799_09>>
-* <<TA_A_25799_10>>
 * <<TA_A_26988_01>>
 * <<TA_A_26988_02>>
 * <<TA_A_26988_03>>
@@ -86,7 +64,7 @@ Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifizier
 * <<TA_A_27264_23>>
 * <<TA_A_27264_26>>
 * <<TA_A_27264_27>>
-* <<TA_A_27492-01_03>>
+* <<TA_A_27492-02_03>>
 
 |===
 

@@ -1,0 +1,15 @@
+[#TA_A_27802-02_01]
+===== TA_A_27802-02_01 - ZETA Guard - JWT-Prüfung gemäß RFC7519, Abschnitt 7.2
+
+"Der ZETA Guard MUSS bei der Prüfung von JWT die Prüfschritte gemäß **[RFC7519], Abschnitt 7.2,** und [RFC7515], Abschnitt 5.2, durchführen.
+
++++[...]+++
+
+**[<=]**"
+
+Hinweise zur konkreten Abdeckung:
+
+* JWT enthält mindestens ein `.` und der JOSE-Header ist base64url-decodierbar.
+* JOSE-Header ist gültiges UTF-8-JSON und enthält nur verstandene bzw. unterstützte Parameter.
+* Es wird bestimmt, ob ein JWS oder JWE vorliegt; bei `cty=JWT` ist verschachtelte Verarbeitung zu berücksichtigen.
+* Die Claims-Menge ist base64url-decodierbar und als vollständiges JSON interpretierbar.

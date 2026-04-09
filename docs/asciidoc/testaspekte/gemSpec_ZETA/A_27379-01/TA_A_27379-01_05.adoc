@@ -1,0 +1,4 @@
+[#TA_A_27379-01_05]
+===== TA_A_27379-01_05 - ZETA Client - OCSP Stapling Unterstützung - OCSP-Antwort - Gültigkeitsdauer prüfen
+
+Der ZETA Client MUSS die **Gültigkeitsdauer** der OCSP-Antwort prüfen. **[<=]**

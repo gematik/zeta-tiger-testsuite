@@ -1,0 +1,4 @@
+[#A_25739-02]
+==== A_25739-02 - PDP Policy Engine, OPA Instanzen
+
+Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz). Die OPA Instanzen MÜSSEN so konfiguriert sein, dass nur signierte OPA Bundles mit gematik Signatur akzeptiert werden. Das Polling Intervall zur Aktualisierung des OPA Bundles über die lokale Artifact Registry MUSS 60 Sekunden sein.

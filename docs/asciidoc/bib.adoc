@@ -1,6 +1,21 @@
 [bibliography]
 == Literatur
 
+* [[[RFC9110]]] R. Fielding, M. Nottingham, J. Reschke:
+*HTTP Semantics (RFC 9110)*, Juni 2022.
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc9110
+(zuletzt abgerufen am 26. März 2026).
+
+* [[[RFC7515]]] M. Jones, J. Bradley, N. Sakimura:
+*JSON Web Signature (JWS) (RFC 7515)*, Mai 2015.
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc7515
+(zuletzt abgerufen am 25. März 2026).
+
+* [[[RFC7517]]] M. Jones:
+*JSON Web Key (JWK) (RFC 7517)*, Mai 2015.
+Online verfügbar: https://www.rfc-editor.org/rfc/rfc7517
+(zuletzt abgerufen am 25. März 2026).
+
 * [[[RFC8693]]] M. Jones, A. Nadalin, B. Campbell, C. Mortimore, T. Bradley:
 *OAuth 2.0 Token Exchange (RFC 8693)*, Januar 2020.
 Online verfügbar: https://www.rfc-editor.org/rfc/rfc8693

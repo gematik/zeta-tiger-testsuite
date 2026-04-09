@@ -1,0 +1,8 @@
+==== Testaspekte für die Anforderung A_28525-01
+
+Folgende Testaspekte testen <<A_28525-01>>.
+
+include::TA_A_28525-01_01.adoc[]
+
+include::TA_A_28525-01_02.adoc[]
+

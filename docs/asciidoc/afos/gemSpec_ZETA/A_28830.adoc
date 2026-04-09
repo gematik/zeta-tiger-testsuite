@@ -1,0 +1,4 @@
+[#A_28830]
+==== A_28830 - HSM Proxy, Attribute Based Access Control
+
+Der ZETA Guard HSM Proxy MUSS den Zugriff auf die Operationen der Schnittstelle nach berechtigter Komponente und key_id einschränken können. Die berechtigten Komponenten müssen mit mTLS authentifiziert werden können.

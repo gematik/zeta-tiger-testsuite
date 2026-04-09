@@ -1,7 +1,7 @@
 tigerProxy:
   proxyId: Cluster
   downloadInitialTrafficFromEndpoints: false
-  skipTrafficEndpointSubscription: false
+  skipTrafficEndpointsSubscription: false
   activateRbelParsingFor:
     - asl
   trafficEndpoints:

@@ -1,7 +1,7 @@
 [#TA_A_27496_02]
 ===== TA_A_27496_02 - Zeta Guard-Komponenten - Aufbereitung von Client Daten zum Monitoring - HTTP Proxy - product_version
 
-Die Komponenten des ZETA Guard MÜSSEN zu jedem Schnittstellenaufruf an den Resource-Server mindestens folgende Informationen aus der PDP Datenbank - und dem Request des Aufrufers verarbeiten und protokollieren, damit eine anschließende Zusammenführung von Monitoring-Daten aus verschiedenen Quellen (siehe [A_27494*]) im Telemetrie-Daten-Service ermöglicht werden kann.
+Die Komponenten des ZETA Guard MÜSSEN zu jedem Schnittstellenaufruf an den Resource-Server mindestens folgende Informationen aus der PDP Datenbank - und dem Request des Aufrufers verarbeiten und protokollieren, damit eine anschließende Zusammenführung von Monitoring-Daten aus verschiedenen Quellen (siehe [A_27494*]) im Telemetriedaten-Service ermöglicht werden kann.
 
 Diese Daten umfassen mindestens:
 

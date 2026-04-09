@@ -93,9 +93,9 @@ Umgebungsvariablen (beide Images, außer angegeben):
 | `ZETA_BASE_URL`                   | nein    | `zeta-kind.local`         | Ziel-Base-URL für Guard/Client (Host ohne Scheme).                                                                                                                         |
 | `ZETA_PROXY_URL`                  | nein    | `${zeta_base_url}:9999`   | Proxy-URL (Host:Port, ohne Scheme).                                                                                                                                        |
 | `ZETA_K8S_NAMESPACE`              | nein    | `zeta-local`              | Kubernetes-Namespace für Telemetrie-Log-Abfragen (`resource.k8s.namespace.name`) sowie kubectl-/Deployment-bezogene Prüfungen (als `-Dzeta_k8s_namespace` weitergereicht). |
-| `ALLOW_DEPLOYMENT_MODIFICATION`   | nein    | (leer)                    | Setzt `-Dallow_deployment_modification=true                                                                                                                                |false` für Szenarien mit `@deployment_modification`. |
+| `ALLOW_DEPLOYMENT_MODIFICATION`   | nein    | (leer)                    | Setzt `-Dallow_deployment_modification=true\|false` für Szenarien mit `@deployment_modification`.                                                                          |
 | `OPENSEARCH_URL`                  | nein    | `${zeta_base_url}:9200`   | OpenSearch-URL (Telemetry-Logs), ohne Scheme.                                                                                                                              |
-| `PROMETHEUS_URL`                  | nein    | `${zeta_base_url}:9090`   | Prometheus-URL (Telemetry-Metriken), ohne Scheme.                                                                                                                          |
+| `ZETA_TLS_TEST_TOOL_SERVICE_URL`  | nein    | `${zeta_base_url}:9012`   | Service-URL des TLS-Test-Tools, ohne Scheme; z. B. `zeta-tls-test-tool-service.zeta-staging.svc:9012`.                                                                     |
 | `ZETA_TEST_CERTIFICATES_DIR`      | nein    | aus `tiger/defaults.yaml` | Verzeichnis des `zeta-test-certificates` Checkouts; wird als `-DtestCertificates.dir=...` weitergereicht.                                                                  |
 | `PROFILE`                         | nein    | (leer)                    | Optionales Tiger-Profil (z. B. `proxy`).                                                                                                                                   |
 | `SERENITY_EXPORT_DIR`             | nein    | (leer)                    | Optionaler Ausgabeordner für Serenity-Reports.                                                                                                                             |
@@ -104,7 +104,7 @@ Umgebungsvariablen (beide Images, außer angegeben):
 
 Wichtig:
 
-- `ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`PROMETHEUS_URL` werden nur dann als `-D...`
+- `ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` werden nur dann als `-D...`
   durchgereicht, wenn sie nicht leer sind.
 - `ZETA_TEST_CERTIFICATES_DIR` wird, falls gesetzt, als `-DtestCertificates.dir=...`
   weitergereicht.
@@ -113,7 +113,10 @@ Wichtig:
   `-Dallow_deployment_modification=...` weitergereicht.
 - Leere oder nicht gesetzte Werte fallen auf die Defaults aus `tiger/defaults.yaml` zurück
   (typisch `zeta-local`), was in Staging-Umgebungen zu falschen Telemetrie-Ergebnissen führen kann.
-- `OPENSEARCH_URL` steuert Telemetrie-Log-Abfragen, `PROMETHEUS_URL` steuert Telemetrie-Metrik-Abfragen.
+- `OPENSEARCH_URL` steuert Telemetrie-Log-Abfragen.
+- Telemetrie-Metrik-Abfragen laufen über `https://${ZETA_BASE_URL}/prometheus`.
+- `ZETA_TLS_TEST_TOOL_SERVICE_URL` überschreibt `zeta_tls_test_tool_service_url`, z. B. mit
+  `zeta-tls-test-tool-service.zeta-staging.svc:9012`.
 - Für Cluster-Zugriff im Container `-v "$HOME/.kube:/home/zeta/.kube:ro"` setzen (Windows analog:
   `-v %USERPROFILE%\\.kube:/home/zeta/.kube:ro`).
 - Für schreibbare Bind-Mounts die Images mit passender Host-UID/GID bauen, z. B.
@@ -167,7 +170,7 @@ quality-gate:
     CUCUMBER_TAGS: "@smoke"
     # PROFILE: "proxy"  # nur bei Bedarf für Proxy-Erfassung setzen
     # OPENSEARCH_URL: "zeta-kind.local:9200"  # optional für Telemetrie-Log-Abfragen
-    # PROMETHEUS_URL: "zeta-kind.local:9090"  # optional für Telemetrie-Metrik-Abfragen
+    # ZETA_TLS_TEST_TOOL_SERVICE_URL: "zeta-tls-test-tool-service.zeta-staging.svc:9012"  # optional für das TLS-Test-Tool
   artifacts:
     when: always
     paths:
@@ -179,7 +182,7 @@ quality-gate:
 
 Hinweise:
 
-- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`PROMETHEUS_URL` nach Bedarf setzen.
+- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` nach Bedarf setzen.
 - Wenn Zertifikatsschritte verwendet werden, muss das Repo `zeta-test-certificates` im Container erreichbar sein.
 - Lokal geht das am einfachsten per Read-only-Mount plus `ZETA_TEST_CERTIFICATES_DIR=/cert-repo`.
 - Zusätzliche Ausgabeordner per `SERENITY_EXPORT_DIR` / `CUCUMBER_EXPORT_DIR` mounten.
@@ -212,8 +215,10 @@ quality-gate-with-certs:
 
 Wichtig:
 
-- Bei `image:`-Jobs gibt es kein `docker run -v ...`; der zusätzliche Inhalt muss im Job selbst nach `${CI_PROJECT_DIR}` geholt oder aus einem Artefakt bereitgestellt werden.
-- `/app/run-tests.sh` startet die Testsuite aus dem Image, kann aber problemlos auf einen absoluten Pfad unter `${CI_PROJECT_DIR}` zugreifen, wenn `ZETA_TEST_CERTIFICATES_DIR` darauf zeigt.
+- Bei `image:`-Jobs gibt es kein `docker run -v ...`; der zusätzliche Inhalt muss im Job selbst
+  nach `${CI_PROJECT_DIR}` geholt oder aus einem Artefakt bereitgestellt werden.
+- `/app/run-tests.sh` startet die Testsuite aus dem Image, kann aber problemlos auf einen absoluten
+  Pfad unter `${CI_PROJECT_DIR}` zugreifen, wenn `ZETA_TEST_CERTIFICATES_DIR` darauf zeigt.
 
 ## TLS-Handshake Troubleshooting
 

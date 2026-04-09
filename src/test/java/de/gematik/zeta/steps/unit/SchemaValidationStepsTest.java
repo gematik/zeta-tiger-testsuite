@@ -54,7 +54,7 @@ class SchemaValidationStepsTest {
   private static final String EXAMPLE_ACCESS_TOKEN_INVALID_HEADER = loadResource("mocks/access-token_example_invalid-header.json");
   private static final String EXAMPLE_ACCESS_TOKEN_INVALID_PAYLOAD = loadResource("mocks/access-token_example_invalid-payload.json");
   private static final String EXAMPLE_AS_WELL_KNOWN = loadResource("mocks/as-well-known_example.json");
-  // private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt-software_example-payload.json");
+  // private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt-win-software_example-payload.json");
   private static final String VALID_CLIENT_ASSERTION_JWT = loadResource("mocks/client-assertion-jwt_example.json");
 
   /**

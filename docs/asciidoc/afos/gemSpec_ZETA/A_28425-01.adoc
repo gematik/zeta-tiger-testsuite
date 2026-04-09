@@ -1,0 +1,4 @@
+[#A_28425-01]
+==== A_28425-01 - ZETA Client, Service Discovery – if-none-match und etag
+
+Der ZETA Client MUSS bei der Abfrage der Well-known JSON-Dokumente die HTTP-Header if-none-match und etag verwenden.

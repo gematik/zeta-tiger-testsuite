@@ -13,12 +13,16 @@
             <stringProp name="Argument.value">${__P(BASE_URL,http://localhost:9999)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
+          <elementProp name="instance_path" elementType="Argument">
+            <stringProp name="Argument.name">instance_path</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
         </collectionProp>
       </elementProp>
       <stringProp name="TestPlan.user_define_classpath"></stringProp>
     </TestPlan>
     <hashTree>
-
       <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
         <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
           <collectionProp name="Arguments.arguments"/>
@@ -32,7 +36,18 @@
         <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
       </ConfigTestElement>
       <hashTree/>
-
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Instance Paths CSV" enabled="true">
+        <stringProp name="delimiter">,</stringProp>
+        <stringProp name="fileEncoding">UTF-8</stringProp>
+        <stringProp name="filename">${__P(INSTANCE_PATHS_FILE,perf/jmeter/default-instance-paths.csv)}</stringProp>
+        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <stringProp name="shareMode">${__P(INSTANCE_PATHS_SHARE_MODE,shareMode.all)}</stringProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="variableNames">instance_path</stringProp>
+      </CSVDataSet>
+      <hashTree/>
       <!-- WARMUP THREAD GROUP -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Warmup" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
@@ -47,24 +62,12 @@
         <stringProp name="ThreadGroup.delay">0</stringProp>
       </ThreadGroup>
       <hashTree>
-
         <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Warmup Think Time" enabled="true">
           <stringProp name="ConstantTimer.delay">500</stringProp>
         </ConstantTimer>
         <hashTree/>
-
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Warmup Request" enabled="true">
-          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">${__P(REQUEST_BODY,)}</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
-          </elementProp>
-          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}</stringProp>
+          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}${instance_path}</stringProp>
           <stringProp name="HTTPSampler.method">${__P(HTTP_METHOD,GET)}</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -72,6 +75,35 @@
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Bind Instance Path" enabled="true">
+            <stringProp name="cacheKey">bind-instance-path-warmup</stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script">def mode = props.get('INSTANCE_PATH_BINDING_MODE')
+if (mode != 'one_instance_per_thread') {
+    return
+}
+def boundPath = vars.getObject('bound_instance_path')
+if (boundPath == null) {
+    def filePath = props.get('INSTANCE_PATHS_FILE')
+    if (filePath == null || filePath.trim().isEmpty()) {
+        throw new IllegalStateException('INSTANCE_PATHS_FILE missing for one_instance_per_thread binding')
+    }
+    def lines = java.nio.file.Files.readAllLines(
+        java.nio.file.Path.of(filePath),
+        java.nio.charset.StandardCharsets.UTF_8
+    ).findAll { !it.trim().isEmpty() }
+    int threadIndex = ctx.getThreadNum()
+    if (threadIndex >= lines.size()) {
+        throw new IllegalStateException("No instance path for thread index ${threadIndex + 1}; paths=${lines.size()}")
+    }
+    boundPath = lines.get(threadIndex)
+    vars.putObject('bound_instance_path', boundPath)
+}
+vars.put('instance_path', boundPath as String)</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
           <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="hdr-trace" elementType="Header">
@@ -91,7 +123,6 @@
           <hashTree/>
         </hashTree>
       </hashTree>
-
       <!-- MAIN LOAD TEST -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Load Test" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
@@ -106,30 +137,22 @@
         <stringProp name="ThreadGroup.delay">0</stringProp>
       </ThreadGroup>
       <hashTree>
-
         <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think Time" enabled="true">
           <stringProp name="ConstantTimer.delay">${__P(THINK_MS,100)}</stringProp>
         </ConstantTimer>
         <hashTree/>
-
+        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Jitter Timer" enabled="true">
+          <stringProp name="ConstantTimer.delay">${__P(JITTER_BASE_MS,0)}</stringProp>
+          <stringProp name="RandomTimer.range">${__P(JITTER_RANGE_MS,0)}</stringProp>
+        </UniformRandomTimer>
+        <hashTree/>
         <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Throughput Timer" enabled="true">
-          <intProp name="calcMode">0</intProp>
+          <intProp name="calcMode">4</intProp>
           <stringProp name="throughput">@@TARGET_SPM@@</stringProp>
         </ConstantThroughputTimer>
         <hashTree/>
-
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="ZetaGuard Request" enabled="true">
-          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">${__P(REQUEST_BODY,)}</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
-          </elementProp>
-          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}</stringProp>
+          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}${instance_path}</stringProp>
           <stringProp name="HTTPSampler.method">${__P(HTTP_METHOD,GET)}</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -137,7 +160,35 @@
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
-
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Bind Instance Path" enabled="true">
+            <stringProp name="cacheKey">bind-instance-path-load</stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script">def mode = props.get('INSTANCE_PATH_BINDING_MODE')
+if (mode != 'one_instance_per_thread') {
+    return
+}
+def boundPath = vars.getObject('bound_instance_path')
+if (boundPath == null) {
+    def filePath = props.get('INSTANCE_PATHS_FILE')
+    if (filePath == null || filePath.trim().isEmpty()) {
+        throw new IllegalStateException('INSTANCE_PATHS_FILE missing for one_instance_per_thread binding')
+    }
+    def lines = java.nio.file.Files.readAllLines(
+        java.nio.file.Path.of(filePath),
+        java.nio.charset.StandardCharsets.UTF_8
+    ).findAll { !it.trim().isEmpty() }
+    int threadIndex = ctx.getThreadNum()
+    if (threadIndex >= lines.size()) {
+        throw new IllegalStateException("No instance path for thread index ${threadIndex + 1}; paths=${lines.size()}")
+    }
+    boundPath = lines.get(threadIndex)
+    vars.putObject('bound_instance_path', boundPath)
+}
+vars.put('instance_path', boundPath as String)</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
           <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="hdr-trace" elementType="Header">
@@ -163,7 +214,6 @@
             </collectionProp>
           </HeaderManager>
           <hashTree/>
-
           <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Code Check" enabled="true">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="expectedCode">${__P(EXPECTED_STATUS,200)}</stringProp>
@@ -174,7 +224,6 @@
             <intProp name="Assertion.test_type">2</intProp>
           </ResponseAssertion>
           <hashTree/>
-
         </hashTree>
       </hashTree>
     </hashTree>

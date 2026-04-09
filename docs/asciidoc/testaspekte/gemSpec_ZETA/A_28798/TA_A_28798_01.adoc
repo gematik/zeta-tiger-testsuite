@@ -1,0 +1,4 @@
+[#TA_A_28798_01]
+===== TA_A_28798_01 - ZETA Guard - Ausführung in einem Kubernetes Cluster - Betrieb im Kubernetes Cluster
+
+"Der Anbieter eines TI 2.0 Dienstes MUSS ZETA Guard grundsätzlich in einem **Kubernetes Cluster betreiben**. **[<=]"**

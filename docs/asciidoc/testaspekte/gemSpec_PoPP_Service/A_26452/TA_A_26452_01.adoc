@@ -1,0 +1,4 @@
+[#TA_A_26452_01]
+===== TA_A_26452_01 - PoPP-Verifier - Claim iss vorhanden und inhaltlich geprüft
+
+"Der PoPP-Verifier MUSS sicherstellen, dass der **Claim *iss*** im PoPP-Token **vorhanden** ist und **die URL des PoPP-Service aus dem Entity Statement sub-Attribut enthält**. **[<=]"**

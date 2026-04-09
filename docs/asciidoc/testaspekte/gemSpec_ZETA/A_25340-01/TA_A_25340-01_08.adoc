@@ -1,0 +1,11 @@
+[#TA_A_25340-01_08]
+===== TA_A_25340-01_08 - Zertifikatsprüfung - Aktualisierung oder Betriebssystem-Truststore
+
+"Der ZETA Client MUSS die Root-Zertifikate, die von den Mitgliedern des [CAB-Forum] ausgestellt werden, als Vertrauensanker standardmäßig unterstützen.
+
+Dies impliziert:
+
+* Eine Standard-Liste von [CAB-Forum] Root-Zertifikaten ist im ZETA Client enthalten und wird regelmäßig aktualisiert
+* oder der ZETA Client verwendet den Truststore des Betriebssystems.
+
+[...]"

@@ -27,11 +27,6 @@
 @UseCase_01_19
 Funktionalität: Client_ressource_anfrage_fachdienst_SC_405
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @A_26661
   @A_27007
   @TA_A_26661_22

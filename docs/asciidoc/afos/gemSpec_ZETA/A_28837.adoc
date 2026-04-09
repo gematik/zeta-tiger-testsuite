@@ -1,0 +1,4 @@
+[#A_28837]
+==== A_28837 - PDP Authorization Server, Policy Prüfung bei Ausstellung Token-Set
+
+Die Komponente Authorization Server MUSS vor der Ausstellung des neuen Token-Sets (Access Token und Refresh Token) eine Autorisierungsanfrage an die Policy Engine stellen.

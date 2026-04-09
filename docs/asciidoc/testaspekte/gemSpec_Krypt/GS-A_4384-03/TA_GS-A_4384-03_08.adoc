@@ -1,0 +1,9 @@
+[#TA_GS-A_4384-03_08]
+===== TA_GS-A_4384-03_08 - TLS-Verbindungen - ZETA Client - X.509-Identität
+
+Alle Produkttypen, die **Übertragungen mittels TLS** durchführen, MÜSSEN die folgenden Vorgaben erfüllen:
+
+* Zur **Authentifizierung** MUSS eine **X.509-Identität** gemäß [gemSpec_Krypt#**GS-A_4359**-*] verwendet werden.
+* [...]
+
+**[<=]**

@@ -1,0 +1,6 @@
+[#TA_A_25739-02_02]
+===== TA_A_25739-02_02 - PDP Policy Engine, OPA Instanzen - Simulations-Instanz sendet keine Entscheidung an den Authorization Server
+
+"Der PDP MUSS als Policy Engine zwei Open Policy Agent (OPA) Instanzen bereitstellen, wobei eine Instanz die Entscheidung für den Authorization Server trifft (aktive Instanz), und **eine Instanz eine Entscheidung trifft, diese aber nicht an den Authorization Server sendet (Simulations-Instanz)**.
+
+[...]" **[<=]**

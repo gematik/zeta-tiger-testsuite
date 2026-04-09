@@ -1,0 +1,4 @@
+[#A_26281-01]
+==== A_26281-01 - PDP Authorization Server - Schlüssel für Token-Signatur
+
+Der PDP Authorization Server MUSS für die Signatur von Token asymmetrische Schlüsselpaare (PrK.AS.Sig, PuK.AS.Sig) verwenden. Die Gültigkeitsdauer (Rotationsintervall) dieser Schlüssel MUSS in den ZETA Guard-Manifest-Dateien konfigurierbar sein.

@@ -1,0 +1,4 @@
+[#A_28798]
+==== A_28798 - ZETA Guard - Ausführung in einem Kubernetes Cluster
+
+Der Anbieter eines TI 2.0 Dienstes MUSS ZETA Guard grundsätzlich in einem Kubernetes Cluster betreiben. Wenn z. B. in einer VAU die Nutzung von Kubernetes nicht sinnvoll möglich ist, dann MUSS der Anbieter des TI 2.0 Dienstes nachweisen, dass seine Lösung ohne Kubernetes eine hinreichende Verfügbarkeit, Skalierbarkeit und Betriebsstabilität ermöglicht.

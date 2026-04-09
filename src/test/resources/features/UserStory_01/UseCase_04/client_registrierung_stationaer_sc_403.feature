@@ -27,11 +27,6 @@
 @UseCase_01_04
 Funktionalität: client_registrierung_stationaer_sc_403
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @dev
   @A_25653
   @A_25752

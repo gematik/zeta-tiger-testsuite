@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="ZetaGuard PDP Auth Cycle Test" enabled="true">
+      <stringProp name="TestPlan.comments">PDP cycle: authenticate → removeAuth (repeated). Instances are pre-initialized via loaddriver AUTO_INIT before this plan runs.</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+      <elementProp name="TestPlan.arguments" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="BASE_URL" elementType="Argument">
+            <stringProp name="Argument.name">BASE_URL</stringProp>
+            <stringProp name="Argument.value">${__P(BASE_URL,http://localhost:9999)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="THREADS" elementType="Argument">
+            <stringProp name="Argument.name">THREADS</stringProp>
+            <stringProp name="Argument.value">${__P(THREADS,300)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="RAMP_S" elementType="Argument">
+            <stringProp name="Argument.name">RAMP_S</stringProp>
+            <stringProp name="Argument.value">${__P(RAMP_S,10)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="DURATION_S" elementType="Argument">
+            <stringProp name="Argument.name">DURATION_S</stringProp>
+            <stringProp name="Argument.value">${__P(DURATION_S,300)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="INSTANCE_PATHS_FILE" elementType="Argument">
+            <stringProp name="Argument.name">INSTANCE_PATHS_FILE</stringProp>
+            <stringProp name="Argument.value">${__P(INSTANCE_PATHS_FILE,)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="TARGET_SPM" elementType="Argument">
+            <stringProp name="Argument.name">TARGET_SPM</stringProp>
+            <stringProp name="Argument.value">${__P(TARGET_SPM,0)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="JITTER_RANGE_MS" elementType="Argument">
+            <stringProp name="Argument.name">JITTER_RANGE_MS</stringProp>
+            <stringProp name="Argument.value">${__P(JITTER_RANGE_MS,0)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+        <stringProp name="HTTPSampler.connect_timeout">10000</stringProp>
+        <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+      </ConfigTestElement>
+      <hashTree/>
+
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="PDP Auth Cycle" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlGui" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">${__P(THREADS,300)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(RAMP_S,10)}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${__P(DURATION_S,300)}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <!-- Bind instance path once per thread -->
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Bind Instance Path" enabled="true">
+          <stringProp name="cacheKey">bind-instance-path-pdp-cycle</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="script">def boundPath = vars.getObject('bound_instance_path')
+if (boundPath == null) {
+    def filePath = props.get('INSTANCE_PATHS_FILE')
+    if (filePath == null || filePath.trim().isEmpty()) {
+        throw new IllegalStateException('INSTANCE_PATHS_FILE missing')
+    }
+    def lines = java.nio.file.Files.readAllLines(
+        java.nio.file.Path.of(filePath),
+        java.nio.charset.StandardCharsets.UTF_8
+    ).findAll { !it.trim().isEmpty() }
+    int threadIndex = ctx.getThreadNum()
+    if (threadIndex >= lines.size()) {
+        throw new IllegalStateException("No instance path for thread index ${threadIndex + 1}; paths=${lines.size()}")
+    }
+    boundPath = lines.get(threadIndex)
+    vars.putObject('bound_instance_path', boundPath)
+}
+// boundPath = /loaddriver-api/{id}/authenticate
+def authPath = boundPath as String
+def basePath = authPath.replace('/authenticate', '')
+vars.put('path_authenticate', basePath + '/authenticate')
+vars.put('path_remove_auth', basePath + '/removeAuth')</stringProp>
+        </JSR223PreProcessor>
+        <hashTree/>
+
+        <!-- Step 1: authenticate (nonce + token via Keycloak) -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="PDP Authenticate" enabled="true">
+          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}${path_authenticate}</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- Throughput throttle: TARGET_SPM=0 means unlimited; scoped to authenticate only -->
+          <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Throughput Timer" enabled="true">
+            <intProp name="calcMode">4</intProp>
+            <stringProp name="throughput">@@TARGET_SPM@@</stringProp>
+          </ConstantThroughputTimer>
+          <hashTree/>
+          <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Jitter Timer" enabled="true">
+            <stringProp name="ConstantTimer.delay">0</stringProp>
+            <stringProp name="RandomTimer.range">${__P(JITTER_RANGE_MS,0)}</stringProp>
+          </UniformRandomTimer>
+          <hashTree/>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Authenticate Status" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="expectedCode">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">2</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Step 2: removeAuth (removes the token so next authenticate is a fresh auth) -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="PDP RemoveAuth" enabled="true">
+          <stringProp name="HTTPSampler.path">${__P(BASE_URL,http://localhost:9999)}${path_remove_auth}</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="RemoveAuth Status" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="expectedCode">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">2</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

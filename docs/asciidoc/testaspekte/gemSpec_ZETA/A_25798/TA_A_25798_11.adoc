@@ -1,4 +1,0 @@
-[#TA_A_25798_11]
-===== TA_A_25798_11 - ZETA Guard-Komponenten - Regelmäßige Selbstüberprüfung - interne Funktionen - Notification Service
-
-"Die Komponenten des ZETA Guard MUSS in der Lage sein, **regelmäßige Selbstüberprüfungen durchzuführen**, um **interne Funktionen** und Abhängigkeiten zu verifizieren und sicherzustellen, dass sie korrekt arbeiten. **[<=]**"

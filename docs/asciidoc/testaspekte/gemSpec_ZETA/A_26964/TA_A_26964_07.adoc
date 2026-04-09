@@ -1,4 +1,0 @@
-[#TA_A_26964_07]
-===== TA_A_26964_07 - ZETA Guard - OCSP Stapling - OCSP Response für Stapling verwenden
-
-Die jeweils letzte OCSP Response MUSS im Cache gespeichert und **für OCSP Stapling verwendet** werden. **[<=]**

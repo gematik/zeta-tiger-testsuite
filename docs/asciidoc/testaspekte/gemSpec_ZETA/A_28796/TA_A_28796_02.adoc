@@ -1,0 +1,4 @@
+[#TA_A_28796_02]
+===== TA_A_28796_02 - ZETA Guard - Korrelation der Telemetriedaten des Security Monitorings bzgl. A_28793
+
+"ZETA Guard MUSS sicherstellen, dass die während der Anfrageverarbeitung anfallenden **Telemetriedaten des Security Monitorings gemäß A_28793-*** mittels einer **durchgängigen Korrelations-ID logisch mit den übrigen Telemetriedaten verknüpft** werden. **[<=]"**

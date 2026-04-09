@@ -257,6 +257,52 @@ public class ZetaDeploymentConfigurationService {
   }
 
   /**
+   * Updates a single environment variable on a specific container in a deployment.
+   *
+   * @param namespace Target namespace
+   * @param deploymentName Target deployment name
+   * @param containerName Target container name within the deployment
+   * @param envName Environment variable name to update
+   * @param envValue Environment variable value to set
+   * @return Command result of the patch operation
+   */
+  public CommandResult setDeploymentContainerEnvValue(
+      String namespace,
+      String deploymentName,
+      String containerName,
+      String envName,
+      String envValue
+  ) throws IOException {
+    Objects.requireNonNull(namespace, "namespace must not be null");
+    Objects.requireNonNull(deploymentName, "deploymentName must not be null");
+    Objects.requireNonNull(containerName, "containerName must not be null");
+    Objects.requireNonNull(envName, "envName must not be null");
+    Objects.requireNonNull(envValue, "envValue must not be null");
+
+    String patch = String.format(
+        "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"%s\",\"env\":[{\"name\":\"%s\",\"value\":\"%s\"}]}]}}}}",
+        escapeJson(containerName), escapeJson(envName), escapeJson(envValue));
+
+    String patchFile = null;
+    try {
+      patchFile = createTempFile(patch);
+      return executeKubectlCommand("patch", "deployment", deploymentName,
+          "-n", namespace,
+          "--patch-file", patchFile);
+    } catch (Exception e) {
+      String patchFileArg = patchFile != null ? patchFile : "<not-created>";
+      return new CommandResult(
+          List.of(KUBECTL_COMMAND, "patch", "deployment", deploymentName, "-n", namespace, "--patch-file", patchFileArg),
+          1,
+          "",
+          "Error while updating env var for deployment : " + deploymentName + "\n " + e.getMessage()
+      );
+    } finally {
+      deleteTempFileQuietly(patchFile);
+    }
+  }
+
+  /**
    * Verifies that a deployment rollout has completed and the target container runs with the expected image.
    *
    * @param namespace Kubernetes namespace
@@ -1215,7 +1261,7 @@ public class ZetaDeploymentConfigurationService {
    * @return A successful {@link CommandResult} if rollout and replica checks pass; otherwise a failing
    *     result with details about the last observed error or timeout
    */
-  private CommandResult waitForDeploymentRollout(String namespace, String deploymentName, int timeoutSeconds) {
+  public CommandResult waitForDeploymentRollout(String namespace, String deploymentName, int timeoutSeconds) {
     int expectedReplicas = 1;
 
     CommandResult replicasResult = executeKubectlCommand("get", "deploy", deploymentName, "-n", namespace,

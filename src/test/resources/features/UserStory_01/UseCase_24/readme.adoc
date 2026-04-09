@@ -41,14 +41,13 @@ Die Access Tokens dürfen nicht abgelaufen oder ungültig sein.
 Die Nutzer haben die Ressourcen zeitnah erhalten. Als Statuscode kommt ``200 OK`` zurück.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_26486_01>>
+* <<TA_A_26486-01_01>>
 * <<TA_A_26488_01>>
-* <<TA_A_26489_01>>
+* <<TA_A_26489-01_01>>
 * <<TA_A_26491_01>>
 * <<TA_A_26561_01>>
 * <<TA_A_26561_02>>
 * <<TA_A_26661_01>>
-* <<TA_A_27853_07>>
 
 |===
 

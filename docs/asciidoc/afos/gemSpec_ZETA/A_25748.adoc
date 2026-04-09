@@ -1,4 +1,0 @@
-[#A_25748]
-==== A_25748 - PDP Client-Registrierung - Maximale Anzahl von Clients
-
-Die Komponente Authorization Server MUSS sicherstellen, dass ein Nutzer maximal 256 Clients registrieren kann. Der Wert muss konfigurierbar sein.

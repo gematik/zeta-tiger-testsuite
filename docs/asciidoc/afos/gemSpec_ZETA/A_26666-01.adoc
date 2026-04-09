@@ -1,0 +1,4 @@
+[#A_26666-01]
+==== A_26666-01 - PEP HTTP Proxy - TLS Terminierung
+
+Die Komponente PEP HTTP Proxy MUSS TLS für eingehende Verbindungen terminieren können.

@@ -2,8 +2,8 @@
 
 Dieser Testplan beschreibt die Prüfaktivitäten zur Verifikation und Validierung der *Zero Trust Access (ZETA)*-Architektur gemäß der Prüfvorschrift:
 
--  https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.2.0_V1.0.0/["Verzeichnis von Anforderungen Prüfvorschrift Zero Trust Access (ZETA) Guard"]
-*gemVZ_Afo_ZETA_Guard_1.2.0_V1.0.0*.
+-  https://gemspec.gematik.de/prereleases/Draft_ZETA_26_1/gemSpec_ZETA_V1.3.0_CC/["Verzeichnis von Anforderungen Prüfvorschrift Zero Trust Access (ZETA) Guard"]
+*gemVZ_Afo_ZETA_Guard_1.2.1-0_V1.0.0_CC*.
 
 Der Plan folgt dem IEEE-829-Schema und ist risikobasiert gemäß ISO/IEC/IEEE 29119.
 Ziel ist der Nachweis der Erfüllung funktionaler und nicht-funktionaler Anforderungen (Sicherheit, Datenschutz, Performance, Interoperabilität).

@@ -159,7 +159,7 @@ public class JtlSummarizer {
   private void writeSummaryFile(Map<String, List<JtlRecord>> recordsByLabel, Path summaryFile)
       throws IOException {
     List<String> lines = new ArrayList<>();
-    lines.add("label,count,errorRate,avg_ms,p50_ms,p95_ms,p99_ms,max_ms,rps");
+    lines.add("label,count,errorRate,avg_ms,p50_ms,p90_ms,p95_ms,p99_ms,max_ms,rps");
 
     for (Map.Entry<String, List<JtlRecord>> entry : recordsByLabel.entrySet()) {
       String label = entry.getKey();
@@ -183,12 +183,13 @@ public class JtlSummarizer {
    */
   private String formatSummaryLine(String label, SummaryStats stats) {
     return String.format(Locale.ROOT,
-        "%s,%d,%.6f,%.0f,%d,%d,%d,%d,%.1f",
+        "%s,%d,%.6f,%.0f,%d,%d,%d,%d,%d,%.1f",
         escapeCsvValue(label),
         stats.count(),
         stats.errorRate(),
         stats.avgMs(),
         stats.p50Ms(),
+        stats.p90Ms(),
         stats.p95Ms(),
         stats.p99Ms(),
         stats.maxMs(),
@@ -204,7 +205,7 @@ public class JtlSummarizer {
    */
   private SummaryStats calculateStats(List<JtlRecord> records) {
     if (records.isEmpty()) {
-      return new SummaryStats(0, 0.0, 0.0, 0, 0, 0, 0, 0.0);
+      return new SummaryStats(0, 0.0, 0.0, 0, 0, 0, 0, 0, 0.0);
     }
 
     int count = records.size();
@@ -214,6 +215,7 @@ public class JtlSummarizer {
     double avgMs = records.stream().mapToLong(JtlRecord::elapsed).average().orElse(0.0);
 
     long p50 = percentile(records, 0.50);
+    long p90 = percentile(records, 0.90);
     long p95 = percentile(records, 0.95);
     long p99 = percentile(records, 0.99);
 
@@ -221,7 +223,7 @@ public class JtlSummarizer {
 
     double rps = calculateRps(records);
 
-    return new SummaryStats(count, errorRate, avgMs, p50, p95, p99, maxMs, rps);
+    return new SummaryStats(count, errorRate, avgMs, p50, p90, p95, p99, maxMs, rps);
   }
 
   /**
@@ -295,8 +297,8 @@ public class JtlSummarizer {
 
   }
 
-  private record SummaryStats(int count, double errorRate, double avgMs, long p50Ms, long p95Ms,
-                              long p99Ms, long maxMs, double rps) {
+  private record SummaryStats(int count, double errorRate, double avgMs, long p50Ms, long p90Ms,
+                              long p95Ms, long p99Ms, long maxMs, double rps) {
 
   }
 }

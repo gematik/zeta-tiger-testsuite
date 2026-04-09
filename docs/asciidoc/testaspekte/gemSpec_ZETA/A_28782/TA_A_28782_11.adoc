@@ -1,0 +1,10 @@
+[#TA_A_28782_11]
+===== TA_A_28782_11 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - Sampler - otel_traces_sampler_arg
+
+"Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgenden Parameter unterstützen:
+
+**otel_traces_sampler_arg** (Default 0)
+
+Hinweis: Die Ratio kann variabel einen Wert zwischen **0..1** einnehmen.
+
+**[<=]"**

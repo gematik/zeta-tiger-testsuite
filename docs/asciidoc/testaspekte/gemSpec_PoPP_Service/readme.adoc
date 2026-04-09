@@ -1,0 +1,9 @@
+=== gemSpec_PoPP_Service
+
+include::A_26452/readme.adoc[]
+
+include::A_26450/readme.adoc[]
+
+include::A_27015/readme.adoc[]
+
+include::A_27016/readme.adoc[]

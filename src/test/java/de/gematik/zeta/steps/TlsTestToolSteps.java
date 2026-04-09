@@ -24,6 +24,8 @@
 
 package de.gematik.zeta.steps;
 
+import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.TlsTestToolServiceFactory;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.ParameterType;
 import io.cucumber.java.de.Dann;
@@ -53,17 +55,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.serenitybdd.core.Serenity;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.assertj.core.api.Assertions;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1ParsingException;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x9.X9ObjectIdentifiers;
 import org.jspecify.annotations.NonNull;
+
 
 /**
  * Cucumber step definitions for TLS Test Tool operations.
@@ -72,11 +82,6 @@ import org.jspecify.annotations.NonNull;
  */
 @Slf4j
 public class TlsTestToolSteps {
-
-  /**
-   * Relative path of the TLS test tool.
-   */
-  private static final String TLSTESTTOOLPATH = "/tools/tls-test-tool-1.0.1/TlsTestTool";
 
   /**
    * Supported Groups required for the TLS handshake (GS-A_4384-03). secp256r1 secp384r1 brainpoolP256r1 brainpoolP384r1
@@ -121,9 +126,23 @@ public class TlsTestToolSteps {
   private static final String OID_P256 = "1.2.840.10045.3.1.7";
 
   /**
+   * The marker to indicate that renegotiation has started.
+   */
+  private static final String RENEG_MARKER = "Performing renegotiation.";
+
+  /**
+   * The marker to indicate that the handshake is complete.
+   */
+  private static final String FINISHED_MARKER = "Valid Finished message received.";
+
+  /**
    * The minimum allowed RSA public key length.
    */
   private static final int MIN_ALLOWED_RSA_KEY_LENGTH = 3000;
+
+  /**
+   * Precompiled regex patterns.
+   */
   private static final Pattern ALERT_LEVEL_PATTERN = Pattern.compile("Alert\\.level=([0-9a-fA-F]+)");
   private static final Pattern ALERT_DESCRIPTION_PATTERN = Pattern.compile("Alert\\.description=([0-9a-fA-F]+)");
   private static final Pattern TLS_HANDSHAKE_FAILED_PATTERN = Pattern.compile("TLS handshake failed:.*");
@@ -133,10 +152,28 @@ public class TlsTestToolSteps {
   private static final Pattern TLS_RENEGOTIATION_PHASE_PATTERN = Pattern.compile("=>\\s*renegotiate");
   private static final Pattern TLS_CLIENT_HELLO_SENT_PATTERN = Pattern.compile("ClientHello message transmitted\\.");
   private static final Pattern TLS_CLIENT_HELLO_WRITE_PATTERN = Pattern.compile("=>\\s*write client hello");
+  private static final Pattern CERTIFICATE_LIST_PATTERN = Pattern.compile("Certificate\\.certificate_list\\[0\\]=([0-9a-fA-F \\t]+)");
+  private static final Pattern HEX_BYTE_PATTERN = Pattern.compile("\\b[0-9a-fA-F]{2}\\b");
+  private static final Pattern SERVER_HELLO_EXTENSIONS_PATTERN =
+      Pattern.compile("ServerHello\\.extensions\\s*=\\s*([0-9a-fA-F]{2}(?:\\s+[0-9a-fA-F]{2})*)?");
+  private static final Pattern CLIENT_HELLO_EXTENSIONS_OPTIONAL_PATTERN =
+      Pattern.compile("(?m)^.*ClientHello\\.extensions\\s*=\\s*([0-9a-fA-F]{2}(?:[ \\t]+[0-9a-fA-F]{2})*)?[ \\t]*$");
+  private static final Pattern CLIENT_HELLO_EXTENSIONS_PATTERN =
+      Pattern.compile("(?m)^.*ClientHello\\.extensions=([0-9a-fA-F]{2}(?:[ \\t]+[0-9a-fA-F]{2})*)[ \\t]*$");
+  private static final Pattern CLIENT_HELLO_CIPHER_SUITES_PATTERN =
+      Pattern.compile("(?m)^.*ClientHello\\.cipher_suites=([0-9a-fA-F]{2}(?:[ \\t]+[0-9a-fA-F]{2})*)[ \\t]*$");
+  private static final String CONFIG_LINE_PATTERN_TEMPLATE = "(?m)^%s=(.+)$";
+
   /**
    * String for storing the TLS logs.
    */
   private String tlsLogs;
+
+  /**
+   * The TLS Test Tool process.
+   */
+  private CompletableFuture<String> tlsLogsFuture;
+
   /**
    * Stores the TLS 1.2 hash algorithms that were intentionally offered in the previous setup step. This allows failure messages to explain
    * what was tested versus what the server selected.
@@ -203,6 +240,15 @@ public class TlsTestToolSteps {
     return candidate;
   }
 
+  /**
+   * Builds a client-side TLS test tool configuration.
+   *
+   * @param tlsClientHelloExtensions hex content for manipulated ClientHello extensions
+   * @param tlsSupportedGroups hex content for the supported_groups extension
+   * @param tlsCipherSuites tls-test-tool formatted cipher-suite configuration line
+   * @param host host to be tested
+   * @return tls-test-tool client configuration
+   */
   private static @NonNull String getTlsTestToolConfigBuffer(String tlsClientHelloExtensions, String tlsSupportedGroups,
       String tlsCipherSuites, String host) {
     var basicConfiguration = """
@@ -227,6 +273,59 @@ public class TlsTestToolSteps {
         + manipulateClientHelloExtensions
         + port
         + "host=" + host + "\n";
+  }
+
+  /**
+   * Builds a default TLS Test Tool server configuration with additional cipher-suite configuration.
+   *
+   * @param tlsCipherSuites tls-test-tool formatted cipher-suite configuration line
+   * @return tls-test-tool server configuration
+   */
+  private static @NonNull String getTlsTestToolServerBaseConfig(String tlsCipherSuites) {
+    return getTlsTestToolServerBaseConfig()
+        + tlsCipherSuites;
+  }
+
+  /**
+   * Builds a default TLS Test Tool server configuration.
+   *
+   * @return tls-test-tool server configuration for Mbed TLS
+   */
+  private static @NonNull String getTlsTestToolServerBaseConfig() {
+    return getTlsTestToolServerBaseConfig(TlsLibrary.MBED_TLS);
+  }
+
+  /**
+   * Builds a default TLS Test Tool server configuration.
+   *
+   * @param tlsLib            TLS library used by tls-test-tool
+   * @return tls-test-tool server configuration
+   */
+  private static @NonNull String getTlsTestToolServerBaseConfig(TlsLibrary tlsLib) {
+
+    // Get the TLS Test Tool Server Port from the deployment configuration
+    String tlsTestToolPort = TigerGlobalConfiguration.readStringOptional("tlsTestTool.port")
+        .orElse("");
+
+    if (tlsTestToolPort.isBlank()) {
+      throw new AssertionError("TLS test tool configuration tlsTestTool.port could not be resolved.");
+    }
+
+    String basicConfiguration = """
+        # TLS Test Tool configuration file
+        host=0.0.0.0
+        waitBeforeClose=5
+        logLevel=low
+        listenTimeout=60
+        tlsVersion=(3,3)
+        mode=server
+        tlsSecretFile=tlsSecretFile.txt
+        """;
+    String library = "tlsLibrary=" + tlsLib.getDisplayName() + "\n";
+    String port = "port=" + tlsTestToolPort + "\n";
+    return basicConfiguration
+        + library
+        + port;
   }
 
   /**
@@ -292,7 +391,11 @@ public class TlsTestToolSteps {
   }
 
   /**
-   * Parses the DER as an X.509 certificate, throws if not possible.
+   * Parses DER-encoded certificate bytes as an {@link X509Certificate}.
+   *
+   * @param der certificate bytes in DER format
+   * @return parsed {@link X509Certificate}
+   * @throws CertificateException if parsing fails
    */
   private static X509Certificate parseAsX509(byte[] der) throws CertificateException {
     var cf = CertificateFactory.getInstance("X.509");
@@ -311,8 +414,15 @@ public class TlsTestToolSteps {
 
   /**
    * Converts a Windows path to an equivalent WSL path.
+   *
+   * @param winPath Windows path to convert
+   * @return converted WSL path
    */
-  public static String toWslPath(String winPath) {
+  private static String toWslPath(String winPath) {
+    if (winPath == null || winPath.isBlank()) {
+      throw new AssertionError("The Windows path is empty or null.");
+    }
+
     // Normalize separators
     var p = winPath.replace("\\", "/");
 
@@ -326,57 +436,65 @@ public class TlsTestToolSteps {
 
   /**
    * Checks whether the path has the Windows path format.
+   *
+   * @param path path to check
+   * @return {@code true} if the path is a Windows path
    */
-  public static boolean isWindowsPath(String path) {
+  private static boolean isWindowsPath(String path) {
+    if (path == null || path.isBlank()) {
+      return false;
+    }
     return path.matches("^[a-zA-Z]:[/\\\\].*") || path.startsWith("\\\\");
   }
 
   /**
    * Checks whether the process runs inside WSL.
    */
-  public static boolean isWslEnvironment() {
+  private static boolean isWslEnvironment() {
     return System.getenv("WSL_DISTRO_NAME") != null || System.getenv("WSL_INTEROP") != null;
   }
 
   /**
    * Extracts the certificate bytes from the log line with Certificate.certificate_list[0]=...
+   *
+   * @param fullLog full TLS log content
+   * @return DER certificate bytes or {@code null} if not present
    */
-  private static byte[] extractCertificateFromLog(String log) {
+  private static byte[] extractCertificateFromLog(String fullLog) {
+    if (fullLog == null || fullLog.isBlank()) {
+      return null;
+    }
 
-    // Extract the hex bytes after the log marker
-    final var certList = Pattern.compile(
-        "Certificate\\.certificate_list\\[0\\]=([0-9a-fA-F \\t]+)");
-
-    // Matches individual hex bytes
-    final var hexByte = Pattern.compile("\\b[0-9a-fA-F]{2}\\b");
-    var m = certList.matcher(log);
+    var m = CERTIFICATE_LIST_PATTERN.matcher(fullLog);
     if (!m.find()) {
       return null;
     }
 
     var raw = m.group(1);
-
-    // Re-tokenize bytes to be robust to tabs / double spaces etc.
-    var bytes = new ArrayList<String>();
-    var b = hexByte.matcher(raw);
+    var b = HEX_BYTE_PATTERN.matcher(raw);
+    var byteCount = 0;
     while (b.find()) {
-      bytes.add(b.group());
+      byteCount++;
     }
-
-    if (bytes.isEmpty()) {
+    if (byteCount == 0) {
       return null;
     }
-
-    var out = new byte[bytes.size()];
-    for (var i = 0; i < bytes.size(); i++) {
-      out[i] = (byte) Integer.parseInt(bytes.get(i), 16);
+    var normalized = new StringBuilder(byteCount * 2);
+    b.reset();
+    while (b.find()) {
+      normalized.append(b.group());
     }
-    return out;
+    try {
+      return Hex.decodeHex(normalized.toString());
+    } catch (DecoderException e) {
+      return null;
+    }
   }
 
   /**
    * Extracts the named curve OID from the certificate.
    *
+   * @param cert X509 certificate
    * @return named curve OID (e.g. "1.2.840.10045.3.1.7") or null if not EC / not named curve
    */
   private static String getNamedCurveOid(X509Certificate cert) {
@@ -413,13 +531,53 @@ public class TlsTestToolSteps {
   }
 
   /**
+   * Resolve the certificate path.
+   *
+   * @param certificate certificate or key file name
+   * @return resolved file path, converted to WSL format if required
+   */
+  private static String resolveCertificateOrKeyPath(String certificate) {
+
+    if (certificate == null || certificate.isBlank()) {
+      throw new AssertionError("The certificate is empty or null.");
+    }
+
+    var configuredPath = TigerGlobalConfiguration.readStringOptional("tlsTestTool.certificateDirectoryPath")
+        .orElseThrow(() -> new AssertionError(
+            "The config key 'tlsTestTool.certificateDirectoryPath' could not be resolved."));
+    var baseDirectory = Path.of(System.getProperty("user.dir"), configuredPath).normalize();
+    var certificateLocation = baseDirectory.resolve(certificate).normalize();
+    if (!certificateLocation.startsWith(baseDirectory)) {
+      throw new AssertionError("The certificate path is invalid.");
+    }
+
+    return certificateLocation.toString();
+  }
+
+  /**
+   * Configures and runs the TLS test tool (server) for TLS 1.1.
+   *
+   */
+  @Gegebensei("die TlsTestTool-Server-Konfigurationsdaten wurden nur für TLS 1.1 erstellt")
+  @Given("the TlsTestTool server configuration data with only TLS 1.1 is created")
+  public void setTlsTestToolServerConfigForTls1_1() {
+
+    String tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig()
+        + "manipulateHelloVersion=(0x03,0x02)\n";
+
+    log.info("The Server only offers a TLS 1.1 connection.");
+
+    runTlsTestToolServer(tlsTestToolConfigBuffer);
+  }
+
+  /**
    * Configures and runs the TLS test tool for TLS 1.1.
    *
    * @param host Host to be tested
    */
-  @Gegebensei("die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit nur TLS 1.1 wurde erstellt")
+  @Gegebensei("die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} wurden nur für TLS 1.1 erstellt")
   @Given("the TlsTestTool configuration data for the host {tigerResolvedString} with only TLS 1.1 is created")
-  public void setTlsTestToolConfigforTls1_1(String host) {
+  public void setTlsTestToolConfigForTls1_1(String host) {
     checkHost(host);
 
     var basicConfiguration = """
@@ -450,19 +608,16 @@ public class TlsTestToolSteps {
    * @param signatureSchemes Signature Schemes that must not be supported
    */
   @Gegebensei("die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden TLS 1.3 Signature-Schemes wurden festgelegt:")
-  @Given("The TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.3 signature schemes:")
+  @Given("the TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.3 signature schemes:")
   public void setTlsTestToolConfigForUnsupportedSignatureSchemes(String host,
       DataTable signatureSchemes) {
     checkHost(host);
+    if (signatureSchemes == null) {
+      throw new AssertionError("The signature schemes table is null.");
+    }
 
     // Check if all the supported/mandatory SignatureSchemes are present
-    var signatureSchemeHashSet = signatureSchemes
-        .asLists()
-        .stream()
-        .filter(row -> row != null && !row.isEmpty())
-        .map(row -> row.getFirst() != null ? row.getFirst().trim() : "")
-        .filter(signatureScheme -> !signatureScheme.isEmpty())
-        .collect(Collectors.toCollection(HashSet::new));
+    var signatureSchemeHashSet = parseNonEmptyFirstColumn(signatureSchemes, HashSet::new);
 
     var supportedSignatureSchemes = Arrays.stream(SignatureSchemes.values())
         .map(Enum::toString)
@@ -516,20 +671,17 @@ public class TlsTestToolSteps {
    * @param signatureHashAlgorithms Signature and hash algorithms that must not be supported
    */
   @Gegebensei("die TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} mit den folgenden TLS 1.2 Signatur-Hash-Algorithmen wurden festgelegt:")
-  @Given("The TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.2 signature hash algorithms:")
+  @Given("the TlsTestTool configuration data for the host {tigerResolvedString} has been set for the following TLS 1.2 signature hash algorithms:")
   public void setTlsTestToolConfigForUnsupportedSignatureHashAlgorithms(String host,
       DataTable signatureHashAlgorithms) {
 
     checkHost(host);
+    if (signatureHashAlgorithms == null) {
+      throw new AssertionError("The signature hash algorithms table is null.");
+    }
 
     // Check if all the supported/mandatory SignatureAndHashAlgorithms are present
-    var signatureAlgorithmHashSet = signatureHashAlgorithms
-        .asLists()
-        .stream()
-        .filter(row -> row != null && !row.isEmpty())
-        .map(row -> row.getFirst() != null ? row.getFirst().trim() : "")
-        .filter(signatureHashAlgo -> !signatureHashAlgo.isEmpty())
-        .collect(Collectors.toCollection(HashSet::new));
+    var signatureAlgorithmHashSet = parseNonEmptyFirstColumn(signatureHashAlgorithms, HashSet::new);
 
     var supportedSignatureAndHashAlgorithms = Arrays.stream(SignatureAndHashAlgorithms.values())
         .map(Enum::toString)
@@ -547,23 +699,25 @@ public class TlsTestToolSteps {
           - RSA_SHA512""");
     }
 
-    var tlsCipherSuites = getTlsTestValidCipherSuites();
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    supportedSignatureAndHashAlgorithms.forEach(log::info);
-
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(
-        RSA_HASH_VARIANTS, VALID_SUPPORTED_GROUPS,
-        tlsCipherSuites, host);
-
-    runTlsTestTool(tlsTestToolConfigBuffer);
+    runTls12ClientScenario(
+        host,
+        getTlsTestValidCipherSuites(),
+        RSA_HASH_VARIANTS,
+        VALID_SUPPORTED_GROUPS,
+        supportedSignatureAndHashAlgorithms,
+        false);
   }
 
   /**
    * Checks whether a TLS “alert” has been received.
    */
-  @Dann("akzeptiert der Zeta Guard Endpunkt das ClientHello nicht und sendet eine Alert Nachricht mit Description Id {string}")
+  @Dann("akzeptiert der ZETA Guard Endpunkt das ClientHello nicht und sendet eine Alert Nachricht mit Description Id {string}")
+  @Dann("akzeptiert der ZETA Client das ServerHello nicht und sendet eine Alert Nachricht mit Description Id {string}")
   @Then("the Zeta Guard endpoint does not accept the ClientHello and sends an alert message with the description id {string}")
-  public void zetaGuardSendsAnAlert(String descriptionId) {
+  @Then("the Zeta Client does not accept the ServerHello and sends an alert message with the description id {string}")
+  public void endpointSendsAlertWithDescription(String descriptionId) {
+    requireTlsLogs();
+
     // Check the logs for the "Alert message received" and "Alert.level=02" alert messages
     Assertions
         .assertThat(tlsLogs.contains("Alert message received"))
@@ -596,22 +750,19 @@ public class TlsTestToolSteps {
    * @param host Host to be tested
    */
   @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString}")
-  @Given("The TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString}")
+  @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString}")
   public void setValidTlsTestToolConfig(String host) {
     var tlsCipherSuites = getTlsTestValidCipherSuites();
     runTls12TestTool(host, tlsCipherSuites);
   }
 
   /**
-   * Checks whether a Server Hello record was not received.
+   * Checks whether a ServerHello record was not received.
    */
-  @Dann("wird der Server-Hello Record nicht empfangen")
-  @Then("the server hello record is not received")
+  @Dann("wird der ServerHello-Record nicht empfangen")
+  @Then("the ServerHello record is not received")
   public void checkIfTheServerHelloIsNotReceived() {
-
-    if (tlsLogs == null || tlsLogs.trim().isEmpty()) {
-      throw new AssertionError("The TLS log is empty or null.");
-    }
+    requireTlsLogs();
 
     var p = Pattern.compile(
         "ServerHello\\.cipher_suite\\s*=\\s*([0-9a-fA-F]{2})\\s+([0-9a-fA-F]{2})");
@@ -632,15 +783,12 @@ public class TlsTestToolSteps {
   }
 
   /**
-   * Checks whether a Server Key exchange uses one of the curves.
+   * Checks whether no Server Key Exchange record is sent.
    */
   @Dann("wird der Server-Key-Exchange-Datensatz nicht gesendet")
   @Then("the server key exchange record is not sent")
-  public void checkIfTheServerKeyExchangeIsReceived() {
-
-    if (tlsLogs == null || tlsLogs.trim().isEmpty()) {
-      throw new AssertionError("The TLS log is empty or null.");
-    }
+  public void checkIfTheServerKeyExchangeIsNotSent() {
+    requireTlsLogs();
     Assertions
         .assertThat(!(tlsLogs.contains("ServerKeyExchange.params.curve_params.namedcurve")
             || tlsLogs.contains("Bad ServerKeyExchange message received")))
@@ -654,10 +802,7 @@ public class TlsTestToolSteps {
   @Dann("wird der Server-Key-Exchange-Datensatz gesendet")
   @Then("the server key exchange record is sent")
   public void checkIfTheServerKeyExchangeIsSent() {
-
-    if (tlsLogs == null || tlsLogs.trim().isEmpty()) {
-      throw new AssertionError("The TLS log is empty or null.");
-    }
+    requireTlsLogs();
     Assertions
         .assertThat(tlsLogs.contains("ServerKeyExchange.params.curve_params.namedcurve"))
         .withFailMessage("ServerKeyExchange message not received.")
@@ -671,7 +816,7 @@ public class TlsTestToolSteps {
    * @param cipherSuiteHexValue Hex value of the cipher suite(s) to be tested
    */
   private void configureTls12ForCipherSuites(String host, String cipherSuiteHexValue) {
-    if (cipherSuiteHexValue == null || cipherSuiteHexValue.trim().isEmpty()) {
+    if (cipherSuiteHexValue == null || cipherSuiteHexValue.isBlank()) {
       throw new AssertionError("The Cipher Suite value is empty or null.");
     }
 
@@ -681,26 +826,177 @@ public class TlsTestToolSteps {
   }
 
   /**
-   * Resolves a readable ciphersuite profile token from a feature file.
+   * Configures and runs TLS 1.2 with the provided cipher-suite.
    *
-   * @param profileName profile token (e.g. {@code ecdhe_rsa_aes_128_gcm_sha256})
-   * @return matching ciphersuite profile
+   * @param cipherSuiteHexValue Hex value of the cipher suite(s) to be tested
    */
-  @ParameterType("ecdhe_rsa_aes_128_gcm_sha256|ecdhe_rsa_aes_256_gcm_sha384")
-  public TlsCipherSuiteProfile tlsCipherSuiteProfile(String profileName) {
-    return TlsCipherSuiteProfile.fromProfileName(profileName);
+  private void configureAndRunTls12ServerForCipherSuites(String cipherSuiteHexValue) {
+    if (cipherSuiteHexValue == null || cipherSuiteHexValue.isBlank()) {
+      throw new AssertionError("The Cipher Suite value is empty or null.");
+    }
+
+    var tlsCipherSuites = "tlsCipherSuites=" + cipherSuiteHexValue + "\n";
+    log.info("The TLS 1.2 server offers the %s TLS 1.2 cipher suite.".formatted(cipherSuiteHexValue));
+    runTls12TestToolServer(tlsCipherSuites);
   }
 
   /**
-   * Configures and runs TLS 1.2 for a readable ciphersuite profile.
+   * Resolves a readable cipher suite profile token from a feature file.
+   *
+   * @param cipherSuiteId cipher suite unique id (e.g. {@code ecdhe_rsa_aes_128_gcm_sha256})
+   * @return matching cipher suite
+   */
+  @ParameterType("ecdhe_rsa_aes_128_gcm_sha256|ecdhe_rsa_aes_256_gcm_sha384")
+  public TlsCipherSuite tlsCipherSuiteProfile(String cipherSuiteId) {
+    return TlsCipherSuite.fromCipherSuiteId(cipherSuiteId);
+  }
+
+  /**
+   * Resolves a readable server certificate token from a feature file.
+   *
+   * @param certificateId certificate unique id (e.g. {@code zeta_tls_test_tool_server_ecdsa_good_certificate})
+   * @return matching certificate descriptor
+   */
+  @ParameterType(
+      "zeta_tls_test_tool_server_ecdsa_private_key|zeta_tls_test_tool_server_ecdsa_different_cn_certificate|"
+          + "zeta_tls_test_tool_server_ecdsa_different_san_certificate|zeta_tls_test_tool_server_ecdsa_good_certificate|"
+          + "zeta_tls_test_tool_server_ecdsa_expired_certificate|zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate|"
+          + "zeta_tls_test_tool_server_ecdsa_different_ca_certificate|zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate")
+  public TlsServerCertificates tlsServerCertificate(String certificateId) {
+    return TlsServerCertificates.fromCertificateId(certificateId);
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for a readable cipher suite profile.
    *
    * @param host    Host to be tested
-   * @param profile ciphersuite profile mapped to tls-test-tool tuple syntax
+   * @param profile cipher suite profile mapped to tls-test-tool tuple syntax
    */
-  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das Ciphersuite-Profil {tlsCipherSuiteProfile}")
-  @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the ciphersuite profile {tlsCipherSuiteProfile}")
-  public void setValidTlsTestToolConfigForCipherSuiteProfile(String host, TlsCipherSuiteProfile profile) {
+  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das Cipher-Suite-Profil {tlsCipherSuiteProfile}")
+  @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the cipher suite profile {tlsCipherSuiteProfile}")
+  public void setValidTlsTestToolConfigForCipherSuiteProfile(String host, TlsCipherSuite profile) {
     configureTls12ForCipherSuites(host, profile.getTlsTestToolCipherSuiteValue());
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for a specific group.
+   *
+   * @param supportedGroup The supported group
+   */
+  @Gegebensei("die TLS 1.2 TlsTestTool-Server-Konfigurationsdaten für die unterstützte Gruppe {string}")
+  @Given("the TLS 1.2 TlsTestTool server configuration data for the Supported group {string}")
+  public void setValidTlsTestToolServerConfigForSupportedGroup(String supportedGroup) {
+
+    if (supportedGroup == null || supportedGroup.isBlank()) {
+      throw new AssertionError("The Supported group value is empty or null.");
+    }
+
+    if (TlsSupportedGroup.fromDisplayName(supportedGroup) == TlsSupportedGroup.UNKNOWN) {
+      throw new AssertionError("The Supported Group value is unknown.");
+    }
+
+    var tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig()
+        + "manipulateEllipticCurveGroup=" + supportedGroup + "\n";
+
+    runTls12TestToolServer(tlsTestToolConfigBuffer);
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for a specific hash.
+   *
+   * @param hashAlgo The hash algorithm
+   */
+  @Gegebensei("die TlsTestTool-Server-Konfigurationsdaten für den Hash-Algorithmus {string}")
+  @Given("the TLS 1.2 TlsTestTool server configuration data for the Hash-Algo {string}")
+  public void setValidTlsTestToolServerConfigForHashAlgo(String hashAlgo) {
+
+    if (hashAlgo == null || hashAlgo.isBlank()) {
+      throw new AssertionError("The Hash algorithm value is empty or null.");
+    }
+
+    var hash = TlsHashAlgorithm.fromDisplayName(hashAlgo);
+    if (hash == TlsHashAlgorithm.UNKNOWN) {
+      throw new AssertionError("The Hash algorithm value is unknown.");
+    }
+
+    LinkedHashSet<TlsHashAlgorithm> listOfHashes;
+    if (hash == TlsHashAlgorithm.SUPPORTED_MIX) {
+      listOfHashes = TlsHashAlgorithm.supportedByPolicy();
+    } else {
+      listOfHashes = new LinkedHashSet<>();
+      listOfHashes.add(hash);
+    }
+
+    // Create the Signature Algorithm - Hash algorithm OpenSSL configuration pairs
+    var supportedSignatureAlgos = TlsSignatureAlgorithm.getSupportedSignatureAlgorithms();
+    String commaSeparatedSignatureHashPairs =
+        listOfHashes.stream()
+            .flatMap(hashAlgorithm -> supportedSignatureAlgos.stream()
+                .map(sig -> "(" + sig.getValue() + "," + hashAlgorithm.getValue() + ")"))
+            .collect(Collectors.joining(","));
+
+    var tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig(TlsLibrary.OPENSSL)
+        + "tlsSignatureAlgorithms=" + commaSeparatedSignatureHashPairs + "\n";
+
+    runTlsTestToolServer(tlsTestToolConfigBuffer);
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for a readable cipher suite profile.
+   *
+   * @param profile cipher suite profile mapped to tls-test-tool tuple syntax
+   */
+  @Gegebensei("die TLS 1.2 TlsTestTool-Server-Konfigurationsdaten für das Cipher-Suite-Profil {tlsCipherSuiteProfile}")
+  @Given("the TLS 1.2 TlsTestTool server configuration data for the cipher suite profile {tlsCipherSuiteProfile}")
+  public void setValidTlsTestToolServerConfigForCipherSuiteProfile(TlsCipherSuite profile) {
+    configureAndRunTls12ServerForCipherSuites(profile.getTlsTestToolCipherSuiteValue());
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for a supported cipher suite and a HelloRequest message.
+   *
+   */
+  @Gegebensei("die TLS 1.2 TlsTestTool-Server-Konfigurationsdaten mit HelloRequest für eine der unterstützten Cipher-Suiten")
+  @Given("the TLS 1.2 TlsTestTool server configuration data with HelloRequest support for a supported ciphersuite")
+  public void setValidTlsTestToolServerConfigHelloRequestForASupportedCipherSuite() {
+    var supportedCipherSuites = TlsCipherSuite.supportedTls12CipherSuites().stream()
+        .map(TlsCipherSuite::getTlsTestToolCipherSuiteValue)
+        .collect(Collectors.joining(","));
+    var tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig();
+    tlsTestToolConfigBuffer += "tlsCipherSuites=" + supportedCipherSuites + "\n";
+    tlsTestToolConfigBuffer += "manipulateRenegotiate=\n";
+    runTlsTestToolServer(tlsTestToolConfigBuffer);
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for all supported cipher suites.
+   *
+   */
+  @Gegebensei("die TLS 1.2 TlsTestTool-Server-Konfigurationsdaten für die unterstützten Cipher-Suiten")
+  @Given("the TLS 1.2 TlsTestTool server configuration data for the supported ciphersuites")
+  public void setValidTlsTestToolServerConfigForAllSupportedCipherSuite() {
+    var supportedCipherSuites = TlsCipherSuite.supportedTls12CipherSuites().stream()
+        .map(TlsCipherSuite::getTlsTestToolCipherSuiteValue)
+        .collect(Collectors.joining(","));
+    configureAndRunTls12ServerForCipherSuites(supportedCipherSuites);
+  }
+
+  /**
+   * Configures and runs TLS 1.2 for all supported cipher suite profiles for a specific certificate.
+   *
+   * @param tlsServerCertificate certificate descriptor used for the server configuration
+   */
+  @Gegebensei("die TLS 1.2 TlsTestTool-Server-Konfigurationsdaten für die unterstützten Cipher-Suiten mit {tlsServerCertificate}")
+  @Given("the TLS 1.2 TlsTestTool server configuration data for the supported ciphersuites for {tlsServerCertificate}")
+  public void setValidTlsTestToolServerConfigForACertificate(TlsServerCertificates tlsServerCertificate) {
+    var supportedCipherSuites = TlsCipherSuite.supportedTls12CipherSuites().stream()
+        .map(TlsCipherSuite::getTlsTestToolCipherSuiteValue)
+        .collect(Collectors.joining(","));
+
+    var tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig();
+    tlsTestToolConfigBuffer += "tlsCipherSuites=" + supportedCipherSuites + "\n";
+    tlsTestToolConfigBuffer += "manipulateForceCertificateUsage=";
+    runTlsTestToolServer(tlsTestToolConfigBuffer, tlsServerCertificate);
   }
 
   /**
@@ -708,7 +1004,7 @@ public class TlsTestToolSteps {
    *
    * @param host Host to be tested
    */
-  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die nicht unterstützten Ciphersuiten")
+  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die nicht unterstützten Cipher-Suiten")
   @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the unsupported ciphersuites")
   public void setTlsTestToolConfigForInvalidCipherSuite(String host) {
     // Cipher suites besides TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
@@ -760,36 +1056,43 @@ public class TlsTestToolSteps {
    * @param host            Host to be tested
    * @param supportedGroups Hex value of the supported groups extension to be tested
    */
-  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die Unterstützte Gruppe {string}")
+  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für die unterstützte Gruppe {string}")
   @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the supported groups {string}")
   public void setValidTlsTestToolConfigForSupportedGroups(String host, String supportedGroups) {
-    if (supportedGroups == null || supportedGroups.trim().isEmpty()) {
+    if (supportedGroups == null || supportedGroups.isBlank()) {
       throw new AssertionError("The Supported Groups value is empty or null.");
     }
     runTls12SupportedGroupsScenario(host, supportedGroups);
   }
 
   /**
-   * Resolves a readable supported-groups profile token from a feature file.
-   *
-   * @param profileName profile token (e.g. {@code p256_only})
-   * @return matching supported-group profile
-   */
-  @ParameterType("p256_only|p384_only|unsupported_mix")
-  public TlsSupportedGroupProfile tlsSupportedGroupProfile(String profileName) {
-    return TlsSupportedGroupProfile.fromProfileName(profileName);
-  }
-
-  /**
    * Configures and runs TLS 1.2 for a readable supported-groups profile.
    *
    * @param host    Host to be tested
-   * @param profile supported-groups profile mapped to extension hex value
+   * @param supportedGroup supported-group
    */
-  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das Unterstützte-Gruppen-Profil {tlsSupportedGroupProfile}")
-  @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the supported-group profile {tlsSupportedGroupProfile}")
-  public void setValidTlsTestToolConfigForSupportedGroupProfile(String host, TlsSupportedGroupProfile profile) {
-    runTls12SupportedGroupsScenario(host, profile.getSupportedGroupsExtensionHex());
+  @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für das unterstützte-Gruppen-Profil {string}")
+  @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for the supported-group profile {string}")
+  public void setValidTlsTestToolConfigForSupportedGroupProfile(String host, String supportedGroup) {
+
+    if (supportedGroup == null || supportedGroup.isBlank()) {
+      throw new AssertionError("The Supported group value is empty or null.");
+    }
+
+    var group = TlsSupportedGroup.fromDisplayName(supportedGroup);
+
+    if (group == TlsSupportedGroup.UNKNOWN) {
+      throw new AssertionError("The Supported Group value is unknown.");
+    }
+
+    List<TlsSupportedGroup> listOfSupportedGroups;
+    if (group == TlsSupportedGroup.UNSUPPORTED_MIX) {
+      listOfSupportedGroups = TlsSupportedGroup.forbiddenGroups();
+    } else {
+      listOfSupportedGroups = List.of(group);
+    }
+
+    runTls12SupportedGroupsScenario(host, TlsSupportedGroup.buildSupportedGroupsExtension(listOfSupportedGroups));
   }
 
   /**
@@ -799,16 +1102,13 @@ public class TlsTestToolSteps {
    * @param supportedGroups Hex value of the supported groups extension to be tested
    */
   private void runTls12SupportedGroupsScenario(String host, String supportedGroups) {
-    checkHost(host);
-
-    var tlsCipherSuites = getTlsTestValidEcdheCipherSuites();
-
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    TlsHashAlgorithm.supportedByPolicy().stream().map(Enum::toString).forEach(log::info);
-
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(
-        SUPPORTED_SIGNATURE_HASH_ALGOS, supportedGroups, tlsCipherSuites, host);
-    runTlsTestTool(tlsTestToolConfigBuffer);
+    runTls12ClientScenario(
+        host,
+        getTlsTestValidEcdheCipherSuites(),
+        SUPPORTED_SIGNATURE_HASH_ALGOS,
+        supportedGroups,
+        TlsHashAlgorithm.supportedByPolicy(),
+        false);
   }
 
   /**
@@ -820,22 +1120,13 @@ public class TlsTestToolSteps {
   @Gegebensei("die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host {tigerResolvedString} für TLS Renegotiation")
   @Given("the TLS 1.2 TlsTestTool configuration data for the host {tigerResolvedString} for TLS Renegotiation")
   public void setTlsTestToolConfigForRenegotiation(String host) {
-
-    checkHost(host);
-
-    var tlsCipherSuites = getTlsTestValidCipherSuites();
-
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    for (var s : TlsHashAlgorithm.supportedByPolicy()) {
-      log.info(s.toString());
-    }
-
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(
-        SUPPORTED_SIGNATURE_HASH_ALGOS, VALID_SUPPORTED_GROUPS, tlsCipherSuites, host);
-
-    // Add configuration to initiate a TLS handshake renegotiation
-    tlsTestToolConfigBuffer += "manipulateRenegotiate=\n";
-    runTlsTestTool(tlsTestToolConfigBuffer);
+    runTls12ClientScenario(
+        host,
+        getTlsTestValidCipherSuites(),
+        SUPPORTED_SIGNATURE_HASH_ALGOS,
+        VALID_SUPPORTED_GROUPS,
+        TlsHashAlgorithm.supportedByPolicy(),
+        true);
   }
 
   /**
@@ -844,6 +1135,7 @@ public class TlsTestToolSteps {
   @Dann("verwendet der Server-Schlüsselaustausch eine der unterstützten Hashfunktionen")
   @Then("the server key exchange uses one of the supported hash functions")
   public void checkIfTheServerKeyExchangeUsesOneOfTheSupportedHashFunctions() {
+    requireTlsLogs();
     var matcher = TLS_HASH_ALGORITHM_PATTERN.matcher(tlsLogs);
 
     if (!matcher.find()) {
@@ -875,15 +1167,12 @@ public class TlsTestToolSteps {
   @Given("the TlsTestTool configuration data for the host {tigerResolvedString} has been set using the following unsupported hash functions:")
   public void setTlsTestToolConfigForInvalidHash(String host, DataTable hashFunctions) {
     checkHost(host);
+    if (hashFunctions == null) {
+      throw new AssertionError("The hash functions table is null.");
+    }
 
     // Check if all the supported/mandatory SignatureAndHashAlgorithms are present
-    var hashFunctionsHashSet = hashFunctions
-        .asLists()
-        .stream()
-        .filter(row -> row != null && !row.isEmpty())
-        .map(row -> row.getFirst() != null ? row.getFirst().trim() : "")
-        .filter(hashFunction -> !hashFunction.isEmpty())
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    var hashFunctionsHashSet = parseNonEmptyFirstColumn(hashFunctions, LinkedHashSet::new);
 
     var unsupportedHashFunctions = TlsHashAlgorithm.unsupportedByPolicyNames();
 
@@ -897,14 +1186,13 @@ public class TlsTestToolSteps {
     }
     lastOfferedTls12HashAlgorithms = mapNamesToHashAlgorithms(hashFunctionsHashSet);
 
-    var tlsCipherSuites = getTlsTestValidCipherSuites();
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    TlsHashAlgorithm.unsupportedByPolicy()
-        .forEach(signatureHashAlgo -> log.info("{}", signatureHashAlgo));
-
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(UNSUPPORTED_SIGNATURE_HASH_ALGOS,
-        VALID_SUPPORTED_GROUPS, tlsCipherSuites, host);
-    runTlsTestTool(tlsTestToolConfigBuffer);
+    runTls12ClientScenario(
+        host,
+        getTlsTestValidCipherSuites(),
+        UNSUPPORTED_SIGNATURE_HASH_ALGOS,
+        VALID_SUPPORTED_GROUPS,
+        TlsHashAlgorithm.unsupportedByPolicy(),
+        false);
 
   }
 
@@ -918,15 +1206,12 @@ public class TlsTestToolSteps {
   @Given("the TlsTestTool configuration data for the host {tigerResolvedString} has been set with the following supported hash functions:")
   public void setTlsTestToolConfigForValidHash(String host, DataTable hashFunctions) {
     checkHost(host);
+    if (hashFunctions == null) {
+      throw new AssertionError("The hash functions table is null.");
+    }
 
     // Check if all the supported/mandatory SignatureAndHashAlgorithms are present
-    var hashFunctionsHashSet = hashFunctions
-        .asLists()
-        .stream()
-        .filter(row -> row != null && !row.isEmpty())
-        .map(row -> row.getFirst() != null ? row.getFirst().trim() : "")
-        .filter(hashFunction -> !hashFunction.isEmpty())
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    var hashFunctionsHashSet = parseNonEmptyFirstColumn(hashFunctions, LinkedHashSet::new);
 
     var supportedHashFunctions = TlsHashAlgorithm.supportedByPolicyNames();
 
@@ -940,15 +1225,13 @@ public class TlsTestToolSteps {
     }
     lastOfferedTls12HashAlgorithms = mapNamesToHashAlgorithms(hashFunctionsHashSet);
 
-    var tlsCipherSuites = getTlsTestValidCipherSuites();
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    for (var signatureHashAlgo : TlsHashAlgorithm.supportedByPolicy()) {
-      log.info("{}", signatureHashAlgo);
-    }
-
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(SUPPORTED_SIGNATURE_HASH_ALGOS,
-        VALID_SUPPORTED_GROUPS, tlsCipherSuites, host);
-    runTlsTestTool(tlsTestToolConfigBuffer);
+    runTls12ClientScenario(
+        host,
+        getTlsTestValidCipherSuites(),
+        SUPPORTED_SIGNATURE_HASH_ALGOS,
+        VALID_SUPPORTED_GROUPS,
+        TlsHashAlgorithm.supportedByPolicy(),
+        false);
 
   }
 
@@ -969,11 +1252,67 @@ public class TlsTestToolSteps {
   @Dann("ist der TLS-Handshake {tlsHandshakeExpectation}")
   @Then("the TLS handshake is {tlsHandshakeExpectation}")
   public void checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation expectation) {
+    if (expectation == null) {
+      throw new AssertionError("The TLS handshake expectation is empty or null.");
+    }
     switch (expectation) {
       case ERFOLGREICH -> checkForMessageInTlsLogs("Handshake successful");
-      case NICHT_ERFOLGREICH -> checkForMessageInTlsLogs("TLS handshake failed");
+      case NICHT_ERFOLGREICH -> checkForMessageInTlsLogs("TLS handshake failed", "Handshake aborted");
       default -> throw new AssertionError("Unsupported TLS handshake expectation: " + expectation);
     }
+  }
+
+  /**
+   * Checks whether the ClientHello only offers the supported curves.
+   */
+  @Dann("der ClientHello bietet nur die unterstützten Kurven an")
+  @Then("the client hello only offers the supported curves")
+  public void checkClientHelloForSupportedCurves() {
+    List<TlsSupportedGroup> supportedGroupsInClientHello = extractSupportedGroupsHex(tlsLogs);
+    Assertions
+        .assertThat(supportedGroupsInClientHello.isEmpty())
+        .withFailMessage("No supported_groups extension entries found in ClientHello logs.")
+        .isFalse();
+
+    Set<TlsSupportedGroup> allowedSet = new HashSet<>(TlsSupportedGroup.allowedGroups());
+
+    // Collect mismatches (groups offered by client but not allowed)
+    List<TlsSupportedGroup> mismatches = supportedGroupsInClientHello.stream()
+        .filter(g -> !allowedSet.contains(g))
+        .toList();
+
+    Assertions
+        .assertThat(mismatches.isEmpty())
+        .withFailMessage("The following un-supported Supported Groups were advertised by the Client. %s", mismatches)
+        .isTrue();
+  }
+
+  /**
+   * Checks whether the ClientHello does not offer any unsupported signature algorithms.
+   */
+  @Dann("der ClientHello bietet keine nicht unterstützten Signaturalgorithmen an")
+  @Then("the client hello does not offer any unsupported signature algorithms")
+  public void checkClientHelloForNoUnsupportedSignatureAlgorithms() {
+    List<TlsSignatureAlgorithm> signatureAlgorithmsInClientHello = extractSignatureAlgorithmsHex(tlsLogs);
+    Assertions
+        .assertThat(signatureAlgorithmsInClientHello.isEmpty())
+        .withFailMessage("No signature_algorithms entries found in ClientHello logs.")
+        .isFalse();
+
+    Set<TlsSignatureAlgorithm> unsupportedSet =
+        new HashSet<>(TlsSignatureAlgorithm.getUnsupportedSignatureAlgorithms());
+
+    List<TlsSignatureAlgorithm> mismatches = signatureAlgorithmsInClientHello.stream()
+        .filter(unsupportedSet::contains)
+        .distinct()
+        .toList();
+
+    Assertions
+        .assertThat(mismatches.isEmpty())
+        .withFailMessage(
+            "The following unsupported Signature Algorithms were advertised by the Client. %s",
+            mismatches)
+        .isTrue();
   }
 
   /**
@@ -998,25 +1337,47 @@ public class TlsTestToolSteps {
   }
 
   /**
-   * Checks whether the specified message is present in the TLS logs.
+   * Checks whether the server initiated renegotiation was successful.
    */
-  public void checkForMessageInTlsLogs(String message) {
+  @Dann("ist die TLS-Server initiierte renegotiation erfolgreich")
+  @Then("the TLS Server initiated renegotiation is successful")
+  public void checkIfTlsServerInitiatedRenegotiationIsSuccessful() {
+    Assertions
+        .assertThat(hasFinishedAfterRenegotiation(tlsLogs))
+        .withFailMessage("Server-initiated renegotiation was not completed successfully.")
+        .isTrue();
+  }
 
-    // Check if the logs are present
-    if (tlsLogs == null || tlsLogs.trim().isEmpty()) {
-      throw new AssertionError("The TLS log is empty or null.");
-    }
+  /**
+   * Checks whether the specified message is present in the TLS logs.
+   *
+   * @param message message to search for in TLS logs
+   * @param optionalMessages optional alternative messages; if present, at least one expected message must appear
+   */
+  private void checkForMessageInTlsLogs(String message, String... optionalMessages) {
+    requireTlsLogs();
 
-    // Check if the message is present
-    if (message == null || message.trim().isEmpty()) {
-      throw new AssertionError("The message to be found is empty or null.");
+    var expectedMessages = new ArrayList<String>();
+    if (message != null && !message.isBlank()) {
+      expectedMessages.add(message);
     }
+    if (optionalMessages != null) {
+      for (var optionalMessage : optionalMessages) {
+        if (optionalMessage != null && !optionalMessage.isBlank()) {
+          expectedMessages.add(optionalMessage);
+        }
+      }
+    }
+    if (expectedMessages.isEmpty()) {
+      throw new AssertionError("No valid message to search for in TLS logs.");
+    }
+    var containsAnyExpectedMessage = expectedMessages.stream().anyMatch(tlsLogs::contains);
 
     Assertions
-        .assertThat(tlsLogs.contains(message))
+        .assertThat(containsAnyExpectedMessage)
         .withFailMessage(
-            "The '%s' message could not be found in TLS logs. %s %s",
-            message,
+            "None of the expected messages %s were found in TLS logs. %s %s",
+            expectedMessages,
             extractAlertSummary(),
             buildHashNegotiationSummary())
         .isTrue();
@@ -1117,6 +1478,9 @@ public class TlsTestToolSteps {
    *
    * <p>If a handshake failure is present, the phase ending at the last failure line is selected.
    * Otherwise, the latest observed handshake phase is used.</p>
+   *
+   * @param lines TLS log lines
+   * @return selected handshake phase boundaries
    */
   private TlsLogPhase determineRelevantLogPhase(List<String> lines) {
     var failureIndex = -1;
@@ -1150,6 +1514,8 @@ public class TlsTestToolSteps {
   /**
    * Build a short summary that explains which TLS1.2 hash algorithms were offered and whether the server selected a concrete hash algorithm
    * in the observed logs.
+   *
+   * @return hash negotiation summary
    */
   private String buildHashNegotiationSummary() {
     if (lastOfferedTls12HashAlgorithms.isEmpty()) {
@@ -1197,9 +1563,69 @@ public class TlsTestToolSteps {
         .filter(Objects::nonNull)
         .map(String::trim)
         .filter(name -> !name.isEmpty())
-        .map(TlsHashAlgorithm::fromName)
+        .map(TlsHashAlgorithm::fromDisplayName)
         .filter(Objects::nonNull)
         .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  /**
+   * Parses non-empty first-column values from a Cucumber data table.
+   *
+   * @param table data table containing values in the first column
+   * @param setFactory target set factory
+   * @param <S> target set type
+   * @return set of normalized first-column values
+   */
+  private static <S extends Set<String>> S parseNonEmptyFirstColumn(DataTable table, Supplier<S> setFactory) {
+    return table
+        .asLists()
+        .stream()
+        .filter(row -> row != null && !row.isEmpty())
+        .map(row -> row.getFirst() != null ? row.getFirst().trim() : "")
+        .filter(value -> !value.isEmpty())
+        .collect(Collectors.toCollection(setFactory));
+  }
+
+  /**
+   * Ensures TLS logs are available for assertions.
+   */
+  private void requireTlsLogs() {
+    if (tlsLogs == null || tlsLogs.isBlank()) {
+      throw new AssertionError("The TLS log is empty or null.");
+    }
+  }
+
+  /**
+   * Creates and runs a TLS 1.2 client scenario with configurable hash and group extensions.
+   *
+   * @param host host to be tested
+   * @param tlsCipherSuites tls-test-tool formatted cipher-suite configuration line
+   * @param tlsSignatureHashAlgos tls-test-tool formatted signature hash algorithms extension
+   * @param tlsSupportedGroups tls-test-tool formatted supported-groups extension
+   * @param offeredHashAlgorithms hash algorithms to log for traceability
+   * @param enableRenegotiation whether to append renegotiation trigger to the config
+   */
+  private void runTls12ClientScenario(
+      String host,
+      String tlsCipherSuites,
+      String tlsSignatureHashAlgos,
+      String tlsSupportedGroups,
+      Iterable<?> offeredHashAlgorithms,
+      boolean enableRenegotiation) {
+    checkHost(host);
+
+    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
+    for (var hashAlgorithm : offeredHashAlgorithms) {
+      log.info("{}", hashAlgorithm);
+    }
+
+    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(
+        tlsSignatureHashAlgos, tlsSupportedGroups, tlsCipherSuites, host);
+    if (enableRenegotiation) {
+      // Add configuration to initiate a TLS handshake renegotiation.
+      tlsTestToolConfigBuffer += "manipulateRenegotiate=\n";
+    }
+    runTlsTestTool(tlsTestToolConfigBuffer);
   }
 
   /**
@@ -1284,23 +1710,121 @@ public class TlsTestToolSteps {
    * @param tlsCipherSuites Cipher suites configuration string for the test tool
    */
   private void runTls12TestTool(String host, String tlsCipherSuites) {
-    checkHost(host);
+    runTls12ClientScenario(
+        host,
+        tlsCipherSuites,
+        SUPPORTED_SIGNATURE_HASH_ALGOS,
+        VALID_SUPPORTED_GROUPS,
+        TlsHashAlgorithm.supportedByPolicy(),
+        false);
+  }
 
-    log.info("ClientHello only offers the following TLS 1.2 signature hash algorithms:");
-    for (var s : TlsHashAlgorithm.supportedByPolicy()) {
-      log.info(s.toString());
+  /**
+   * Creates a TLS 1.2 server configuration and starts the service-managed TLS test tool server.
+   *
+   * @param tlsCipherSuites Cipher suites configuration string for the test tool
+   */
+  private void runTls12TestToolServer(String tlsCipherSuites) {
+
+    var tlsTestToolConfigBuffer = getTlsTestToolServerBaseConfig(tlsCipherSuites);
+    runTlsTestToolServer(tlsTestToolConfigBuffer);
+  }
+
+  /**
+   * Checks whether current OS is Windows.
+   *
+   * @return {@code true} for Windows OS
+   */
+  private static boolean isWindowsOs() {
+    return System.getProperty("os.name").toLowerCase().contains("win");
+  }   
+
+  /**
+   * Resolves the platform-specific TLS test tool binary location.
+   *
+   * @param isWindows whether current OS is Windows
+   * @param isWsl whether runtime is WSL
+   * @return absolute tool location
+   */
+  private static String resolveTlsToolLocation(boolean isWindows, boolean isWsl) {
+    var configuredPath = TigerGlobalConfiguration.readStringOptional("tlsTestTool.binaryBasePath")
+        .orElseThrow(() -> new AssertionError("The config key 'tlsTestTool.binaryBasePath' could not be resolved."));
+    var baseLocation = Path.of(System.getProperty("user.dir"), configuredPath).normalize();
+    return baseLocation + ((isWindows || isWsl) ? "-wsl" : "-alpine");
+  }
+
+  /**
+   * Builds the process command line for launching the TLS test tool.
+   *
+   * @param tlsTestToolLocation executable path
+   * @param configFileLocation configuration file path
+   * @param isWindows whether current OS is Windows
+   * @return launch command
+   */
+  private static List<String> buildTlsToolCommand(String tlsTestToolLocation, String configFileLocation, boolean isWindows) {
+    List<String> command = new ArrayList<>();
+    if (isWindows) {
+      command.add("wsl");
     }
+    command.add(tlsTestToolLocation);
+    command.add("--configFile=" + configFileLocation);
+    return command;
+  }
 
-    var tlsTestToolConfigBuffer = getTlsTestToolConfigBuffer(
-        SUPPORTED_SIGNATURE_HASH_ALGOS, VALID_SUPPORTED_GROUPS, tlsCipherSuites, host);
-    runTlsTestTool(tlsTestToolConfigBuffer);
+  /**
+   * Starts the TLS test tool process and captures merged stdout/stderr asynchronously.
+   *
+   * @param command process command line
+   * @return future with complete process logs
+   * @throws IOException if process startup fails
+   */
+  private static CompletableFuture<String> startTlsToolAndCollectLogs(List<String> command) throws IOException {
+    var processBuilder = new ProcessBuilder(command);
+    processBuilder.redirectErrorStream(true);  // merge stderr into stdout
+
+    var process = processBuilder.start();
+    return CompletableFuture.supplyAsync(() -> {
+      try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        return reader.lines().collect(Collectors.joining("\n"));
+      } catch (IOException e) {
+        throw new CompletionException(e);
+      }
+    }).thenCombine(process.onExit(), (logs, exitedProcess) -> {
+      if (exitedProcess.exitValue() != 0) {
+        throw new CompletionException(new RuntimeException("Exit=" + exitedProcess.exitValue()));
+      }
+      return logs;
+    });
+  }
+
+  /**
+   * Waits for process completion and stores logs when running in synchronous mode.
+   *
+   * @param mode execution mode
+   * @throws InterruptedException if waiting is interrupted
+   * @throws ExecutionException if process completed exceptionally
+   */
+  private void completeSynchronouslyIfNeeded(ExecutionMode mode) throws InterruptedException, ExecutionException {
+    if (mode == ExecutionMode.SYNCHRONOUS) {
+      tlsLogsFuture.get();
+      saveTlsLogsToSerenityReport();
+    }
+  }
+
+  /**
+   * Clears the local process-backed log collector before a new run starts.
+   */
+  private void clearTlsLogCollectors() {
+    tlsLogsFuture = null;
   }
 
   /**
    * Check if the host is empty or null.
+   *
+   * @param host host value to validate
    */
   void checkHost(String host) {
-    if (host == null || host.trim().isEmpty()) {
+    if (host == null || host.isBlank()) {
       throw new AssertionError("The host is empty or null.");
     }
     log.info("Performing the TLS-Test for host: {}", host);
@@ -1308,22 +1832,23 @@ public class TlsTestToolSteps {
 
   /**
    * Executes the TLS test tool.
+   *
+   * @param tlsTestToolConfigBuffer TLS test tool configuration content
    */
   void runTlsTestTool(String tlsTestToolConfigBuffer) {
+    runTlsTestTool(tlsTestToolConfigBuffer, ExecutionMode.DEFAULT);
+  }
 
-    // Execute the TLS test tool
-    var tlsTestToolLocation = System.getProperty("user.dir") + TLSTESTTOOLPATH;
-
-    // Select the correct TLS Test Tool binary
-    var isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+  /**
+   * Executes the TLS test tool.
+   *
+   * @param tlsTestToolConfigBuffer TLS test tool configuration content
+   * @param mode execution mode
+   */
+  void runTlsTestTool(String tlsTestToolConfigBuffer, ExecutionMode mode) {
+    var isWindows = isWindowsOs();
     var isWsl = isWslEnvironment();
-    var useWslBinary = isWindows || isWsl;
-
-    if (useWslBinary) {
-      tlsTestToolLocation += "-wsl";
-    } else {
-      tlsTestToolLocation += "-alpine";
-    }
+    var tlsTestToolLocation = resolveTlsToolLocation(isWindows, isWsl);
 
     // Save the TLS Test Tool configuration
     var configFileLocation = createTempConfigFile(tlsTestToolConfigBuffer);
@@ -1339,60 +1864,134 @@ public class TlsTestToolSteps {
       configFileLocation = toWslPath(configFileLocation);
     }
 
-    // Set the permissions so that the TLS Test tool can execute
-    try {
-      if (isWindows) {
-        new ProcessBuilder("wsl", "chmod", "+x", tlsTestToolLocation)
-            .inheritIO()
-            .start()
-            .waitFor();
-      } else {
-        new ProcessBuilder("chmod", "+x", tlsTestToolLocation)
-            .inheritIO()
-            .start()
-            .waitFor();
-      }
-    } catch (java.io.IOException | InterruptedException e) {
-      throw new AssertionError("Error setting permissions for the TLS test tools", e);
-    }
-
     log.debug("TLS Test Tool path = {}", tlsTestToolLocation);
     log.debug("TLS Test Tool configuration file path: {}", configFileLocation);
 
     // Clear the logs
     tlsLogs = "";
+    clearTlsLogCollectors();
     try {
-      // Execute the TLS test tool
-      List<String> command = new ArrayList<>();
-      if (isWindows) {
-        command.add("wsl");
-      }
-      command.add(tlsTestToolLocation);
-      command.add("--configFile=" + configFileLocation);
-      var pb = new ProcessBuilder(command);
-      pb.redirectErrorStream(true);  // merge stderr into stdout
-      var process = pb.start();
-      var reader = new BufferedReader(
-          new InputStreamReader(process.getInputStream())
-      );
-      // Extract the logs
-      tlsLogs = reader.lines().collect(Collectors.joining("\n"));
+      List<String> command = buildTlsToolCommand(tlsTestToolLocation, configFileLocation, isWindows);
+      tlsLogsFuture = startTlsToolAndCollectLogs(command)
+          .thenApply(logs -> {
+            tlsLogs = logs;
+            return logs;
+          });
+      completeSynchronouslyIfNeeded(mode);
+
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Error when running the TLS test tool", e);
+    } catch (java.io.IOException | ExecutionException e) {
+      throw new AssertionError("Error when running the TLS test tool", e);
+    }
+  }
+
+  /**
+   * Starts the TLS test tool server through the TLS test tool service using the default certificate.
+   *
+   * @param tlsTestToolConfigBuffer TLS test tool server configuration content
+   */
+  void runTlsTestToolServer(String tlsTestToolConfigBuffer) {
+    runTlsTestToolServer(tlsTestToolConfigBuffer, TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_GOOD_CERTIFICATE);
+  }
+
+  /**
+   * Executes the TLS test tool in server mode via the TLS test tool service.
+   *
+   * <p>The previous service-managed process is stopped first and the retained remote logs are cleared
+   * before the generated config file, certificate, and private key are uploaded. The new server
+   * instance is then started through the service endpoint.</p>
+   *
+   * @param tlsTestToolConfigBuffer TLS test tool server configuration content
+   * @param serverCertificate certificate descriptor to upload; defaults to the standard certificate when {@code null}
+   */
+  void runTlsTestToolServer(String tlsTestToolConfigBuffer, TlsServerCertificates serverCertificate) {
+    var effectiveServerCertificate = serverCertificate == null ? TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_GOOD_CERTIFICATE : serverCertificate;
+    var configFileLocation = Path.of(createTempConfigFile(tlsTestToolConfigBuffer));
+    var certificateFile = Path.of(resolveCertificateOrKeyPath(effectiveServerCertificate.relativePath));
+    var privateKeyFile = Path.of(
+        resolveCertificateOrKeyPath(TlsServerCertificates.getPrivateKeyForCertificate(effectiveServerCertificate).relativePath));
+
+    log.debug("TLS Test Tool service configuration file path: {}", configFileLocation);
+    log.debug("TLS Test Tool service certificate file path: {}", certificateFile);
+    log.debug("TLS Test Tool service private key file path: {}", privateKeyFile);
+
+    tlsLogs = "";
+    clearTlsLogCollectors();
+    try {
+      var tlsTestToolService = TlsTestToolServiceFactory.getInstance();
+      tlsTestToolService.stop();
+      tlsTestToolService.clearLogs();
+      tlsTestToolService.updateConfig(configFileLocation);
+      tlsTestToolService.updateCertificate(certificateFile, privateKeyFile);
+      tlsTestToolService.start();
+    } catch (AssertionError e) {
+      throw new AssertionError("Error when running the TLS test tool", e);
+    }
+  }
+
+  /**
+   * Saves the logs to the Serenity Report.
+   */
+  private void saveTlsLogsToSerenityReport() {
+    requireTlsLogs();
+    log.debug("TLS Test Tool Logs:");
+    log.debug(tlsLogs);
+
+    Serenity.recordReportData()
+        .withTitle("TLS Test Tool Logs:")
+        .andContents(tlsLogs);
+  }
+
+  /**
+   * Retrieves the TLS test tool server logs from the TLS test tool service and stores them in the report.
+   */
+  @Dann("die Tls-Test-Tool-Server-Protokolle abrufen")
+  @Then("the TLS test tool server logs are retrieved")
+  public void getTheTlsTestToolServerLogs() {
+    try {
+      tlsLogs = TlsTestToolServiceFactory.getInstance().getLogs();
       log.debug("TLS Test Tool Logs:");
       log.debug(tlsLogs);
+
       Serenity.recordReportData()
           .withTitle("TLS Test Tool Logs:")
           .andContents(tlsLogs);
-    } catch (java.io.IOException e) {
+    } catch (AssertionError e) {
+      throw new AssertionError("Error when retrieving TLS test tool server logs", e);
+    }
+  }
+
+  /**
+   * Waits for a local TLS test tool execution to complete and stores the collected logs in the report.
+   */
+  @Dann("die Tls-Test-Tool-Protokolle abrufen")
+  @Then("the TLS test tool logs are retrieved")
+  public void getTheTlsTestToolLogs() {
+    if (tlsLogsFuture == null) {
+      throw new AssertionError("TLS test tool process has not been started.");
+    }
+    try {
+      tlsLogsFuture.get();
+      saveTlsLogsToSerenityReport();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Error when running the TLS test tool", e);
+    } catch (ExecutionException e) {
       throw new AssertionError("Error when running the TLS test tool", e);
     }
   }
 
   /**
    * Creates a temporary configuration file for the TLS test tool.
+   *
+   * @param contents configuration content to write
+   * @return created temp file path
    */
   private String createTempConfigFile(String contents) {
 
-    if (contents == null || contents.trim().isEmpty()) {
+    if (contents == null || contents.isBlank()) {
       throw new AssertionError("The content is empty or null.");
     }
 
@@ -1415,70 +2014,202 @@ public class TlsTestToolSteps {
   }
 
   /**
-   * Checks whether the sever sends a renegotiation_info extension in the server hello record.
+   * Extracts a filesystem path value from a generated TLS test tool configuration buffer.
+   *
+   * @param tlsTestToolConfigBuffer generated configuration content
+   * @param key config key whose path value should be extracted
+   * @return extracted path value
    */
-  @Dann("ist die Erweiterung renegotiation_info im Server-Hello vorhanden")
-  @Then("the renegotiation_info extension is present in the Server Hello")
-  public void istDieErweiterungImServerHelloVorhanden() {
+  private static Path extractConfigPath(String tlsTestToolConfigBuffer, String key) {
+    var matcher = Pattern.compile(CONFIG_LINE_PATTERN_TEMPLATE.formatted(Pattern.quote(key))).matcher(tlsTestToolConfigBuffer);
+    if (!matcher.find()) {
+      throw new AssertionError("TLS test tool configuration does not contain required key: " + key);
+    }
+    return Path.of(matcher.group(1).trim());
+  }
+
+  /**
+   * Checks whether the server sends a renegotiation_info extension in the ServerHello record.
+   */
+  @Dann("ist die Erweiterung renegotiation_info im ServerHello vorhanden")
+  @Then("the renegotiation_info extension is present in the ServerHello")
+  public void checkIfRenegotiationInfoExtensionIsPresentInServerHello() {
     Assertions
-        .assertThat(serverHelloHasEmptyRenegotiationInfo())
-        .withFailMessage("The renegotiation_info could not be found in the TLS Server Hello.")
+        .assertThat(helloHasEmptyRenegotiationInfo(TlsEndpointRole.SERVER))
+        .withFailMessage("The renegotiation_info could not be found in the TLS ServerHello.")
         .isTrue();
   }
 
   /**
-   * Checks whether the sever sends a renegotiation_info extension in the server hello record.
+   * Checks whether the client sends a renegotiation_info extension in the ClientHello record.
    *
    * @return true if renegotiation_info (0xff01) is present with length == 0
    */
-  private boolean serverHelloHasEmptyRenegotiationInfo() {
+  private boolean clientHelloHasEmptyRenegotiationInfo() {
+    return helloHasEmptyRenegotiationInfo(TlsEndpointRole.CLIENT);
+  }
 
-    // Check if the logs are present
-    if (tlsLogs == null || tlsLogs.trim().isEmpty()) {
-      throw new AssertionError("The TLS log is empty or null.");
-    }
+  /**
+   * Checks whether the renegotiation_info extension is present.
+   *
+   * @param role TLS endpoint role
+   * @return true if renegotiation_info (0xff01) is present with length == 0
+   */
+  private boolean helloHasEmptyRenegotiationInfo(TlsEndpointRole role) {
+    requireTlsLogs();
 
-    // Extract hex bytes after "ServerHello.extensions="
-    var p = Pattern.compile(
-        "ServerHello\\.extensions\\s*=\\s*([0-9a-fA-F]{2}(?:\\s+[0-9a-fA-F]{2})*)");
-    var m = p.matcher(tlsLogs);
+    // Extract hex bytes after "ServerHello.extensions=" or "ClientHello.extensions=" depending on the role
+    var extensionsPattern = role == TlsEndpointRole.SERVER
+        ? SERVER_HELLO_EXTENSIONS_PATTERN
+        : CLIENT_HELLO_EXTENSIONS_OPTIONAL_PATTERN;
+    var m = extensionsPattern.matcher(tlsLogs);
     if (!m.find()) {
       return false;
     }
 
-    var hexBytes = m.group(1).trim().split("\\s+");
+    var extensionBytes = m.group(1);
+    if (extensionBytes == null || extensionBytes.isBlank()) {
+      return false;
+    }
+    var hexBytes = extensionBytes.trim().split("\\s+");
     var bytes = new byte[hexBytes.length];
     for (var i = 0; i < hexBytes.length; i++) {
       bytes[i] = (byte) Integer.parseInt(hexBytes[i], 16);
     }
 
     // Parse TLS extensions: type(2) | length(2) | data(length)
-    var i = 0;
-    while (i + 4 <= bytes.length) {
-      var type = ((bytes[i] & 0xFF) << 8) | (bytes[i + 1] & 0xFF);
-      var len = ((bytes[i + 2] & 0xFF) << 8) | (bytes[i + 3] & 0xFF);
-      i += 4;
+    var offset = 0;
+    while (offset + 4 <= bytes.length) {
+      var type = ((bytes[offset] & 0xFF) << 8) | (bytes[offset + 1] & 0xFF);
+      var len = ((bytes[offset + 2] & 0xFF) << 8) | (bytes[offset + 3] & 0xFF);
+      offset += 4;
 
-      if (i + len > bytes.length) {
+      if (offset + len > bytes.length) {
         return false; // malformed
       }
 
       // renegotiation_info = 0xff01
       if (type == 0xFF01) {
         // For initial handshake, renegotiated_connection_length must be 0
-        return len == 1 && bytes[i] == 0x00;
+        return len == 1 && bytes[offset] == 0x00;
       }
 
-      i += len;
+      offset += len;
     }
 
     return false;
   }
 
   /**
+   * Extracts ClientHello.cipher_suite.
+   *
+   * @param tlsLog TLS log content
+   * @return cipher suites pairs ["(0xC0,0x2C)", "(0xC0,0x30)", ...]
+   * @throws AssertionError if {@code tlsLog} is {@code null} or blank
+   */
+  private static List<String> extractClientHelloCipherSuitesAsPairs(String tlsLog) {
+    if (tlsLog == null || tlsLog.isBlank()) {
+      throw new AssertionError("The TLS log is empty or null.");
+    }
+    Matcher m = CLIENT_HELLO_CIPHER_SUITES_PATTERN.matcher(tlsLog);
+    if (!m.find()) {
+      return List.of();
+    }
+
+    String[] bytes = m.group(1).trim().split("\\s+");
+    List<String> pairs = new ArrayList<>(bytes.length / 2);
+    for (int i = 0; i + 1 < bytes.length; i += 2) {
+      pairs.add("(0x" + bytes[i].toUpperCase(Locale.ROOT) + ",0x" + bytes[i + 1].toUpperCase(Locale.ROOT) + ")");
+    }
+    return pairs;
+  }
+
+  /**
+   * Checks whether the ClientHello TLS version is 1.2.
+   */
+  @Dann("die ClientHello-TLS-Version ist 1.2")
+  @Then("the ClientHello TLS version is 1.2")
+  public void checkIfClientHelloTlsVersionIs1_2() {
+    requireTlsLogs();
+
+    // Checks if the client supports TLS 1.2
+    Assertions
+        .assertThat(tlsLogs.contains("ClientHello.client_version=03 03"))
+        .withFailMessage("TLS 1.2 is not supported by the client.")
+        .isTrue();
+  }
+
+  /**
+   * Checks whether the client hello only contains cipher suites specified in TR-02102-2, Abschnitt 3.3.1 Tabelle 1.
+   * TLS 1.3 cipher suites are also accepted and do not cause this test step to fail if they are present.
+   */
+  @Dann("der ClientHello-Record enthält nur Cipher-Suiten aus TR-02102-2, Abschnitt 3.3.1 Tabelle 1")
+  @Then("the ClientHello record contains only cipher suites from TR-02102-2, section 3.3.1 table 1")
+  public void onlySupportedCipherSuitesArePresent() {
+    requireTlsLogs();
+
+    List<String> offered = extractClientHelloCipherSuitesAsPairs(tlsLogs);
+    Assertions
+        .assertThat(offered.isEmpty())
+        .withFailMessage("No ClientHello.cipher_suites found in log.")
+        .isFalse();
+
+    // HashSet for fast membership checks
+    HashSet<String> supportedCipherSuites = TlsCipherSuite.supportedTls12CipherSuites().stream()
+        .map(TlsCipherSuite::getTlsTestToolCipherSuiteValue)
+        .collect(Collectors.toCollection(HashSet::new));
+    supportedCipherSuites.addAll(TlsCipherSuite.optionalTls13CipherSuites().stream()
+        .map(TlsCipherSuite::getTlsTestToolCipherSuiteValue)
+        .collect(Collectors.toSet()));
+
+    // Find any non-supported cipher suites
+    List<String> notSupported = offered.stream()
+        .filter(cs -> !supportedCipherSuites.contains(cs))
+        .toList();
+
+    Assertions
+        .assertThat(notSupported.isEmpty())
+        .withFailMessage("The following un-supported Cipher Suites were advertised by the Client. %s", notSupported)
+        .isTrue();
+  }
+
+  /**
+   * Checks whether the client hello only contains the TLS_EMPTY_RENEGOTIATION_INFO_SCSV cipher suite or
+   * an empty renegotiation_info extension.
+   */
+  @Dann("der ClientHello-Record enthält TLS_EMPTY_RENEGOTIATION_INFO_SCSV oder eine leere renegotiation_info extension")
+  @Then("the ClientHello record contains TLS_EMPTY_RENEGOTIATION_INFO_SCSV or an empty renegotiation_info extension")
+  public void scsvCipherSuiteOrRenegotiationInfoArePresent() {
+    requireTlsLogs();
+
+    List<String> offered = extractClientHelloCipherSuitesAsPairs(tlsLogs);
+    Assertions
+        .assertThat(offered.isEmpty())
+        .withFailMessage("No ClientHello.cipher_suites found in log.")
+        .isFalse();
+
+    // Check if the EMPTY_RENEGOTIATION_INFO_SCSV cipher suite is present
+    boolean hasEmptyRenegotiationInfoScsv =
+        offered.stream()
+            .filter(Objects::nonNull)
+            .map(String::trim)
+            .anyMatch(s ->
+                s.equalsIgnoreCase(TlsCipherSuite.EMPTY_RENEGOTIATION_INFO_SCSV.getTlsTestToolCipherSuiteValue())
+            );
+
+    if (!hasEmptyRenegotiationInfoScsv) {
+      // Check if the  renegotiation_info extension is present and is empty
+      Assertions
+          .assertThat(clientHelloHasEmptyRenegotiationInfo())
+          .withFailMessage("The EMPTY_RENEGOTIATION_INFO_SCSV or the correct renegotiation_info could not be found in the TLS Client Hello.")
+          .isTrue();
+    }
+  }
+
+  /**
    * Supported/required signature hash algorithms.
    */
-  public enum SignatureAndHashAlgorithms {
+  private enum SignatureAndHashAlgorithms {
     RSA_MD5,
     RSA_SHA1,
     RSA_SHA224,
@@ -1490,7 +2221,7 @@ public class TlsTestToolSteps {
   /**
    * Supported/required signature schemes.
    */
-  public enum SignatureSchemes {
+  private enum SignatureSchemes {
     rsa_pkcs1_sha256,
     rsa_pkcs1_sha384,
     rsa_pkcs1_sha512,
@@ -1500,24 +2231,28 @@ public class TlsTestToolSteps {
    * TLS 1.2 hash algorithm IDs used in signature_algorithms and ServerKeyExchange metadata.
    */
   public enum TlsHashAlgorithm {
-    MD5(1, "0x01", false),
-    SHA1(2, "0x02", false),
-    SHA224(3, "0x03", false),
-    SHA256(4, "0x04", true),
-    SHA384(5, "0x05", true),
-    SHA512(6, "0x06", true),
-    UNKNOWN(-1, "n/a", false);
+    MD5(1, "0x01", "md5", false),
+    SHA1(2, "0x02", "sha1", false),
+    SHA224(3, "0x03", "sha224", false),
+    SHA256(4, "0x04", "sha256", true),
+    SHA384(5, "0x05", "sha384", true),
+    SHA512(6, "0x06", "sha512", true),
+    UNKNOWN(-1, "n/a", "unknown", false),
+    SUPPORTED_MIX(-1, "n/a", "supported_mix", false);
 
     @Getter
     private final int value;
     @Getter
     private final String hexValue;
     @Getter
+    private final String displayName;
+    @Getter
     private final boolean supportedByPolicy;
 
-    TlsHashAlgorithm(int value, String hexValue, boolean supportedByPolicy) {
+    TlsHashAlgorithm(int value, String hexValue, String displayName, boolean supportedByPolicy) {
       this.value = value;
       this.hexValue = hexValue;
+      this.displayName = displayName;
       this.supportedByPolicy = supportedByPolicy;
     }
 
@@ -1537,31 +2272,19 @@ public class TlsTestToolSteps {
     /**
      * Resolve enum by textual hash name used in feature tables and logs.
      *
-     * @param name textual hash name, e.g. {@code SHA256} or {@code RSA_SHA256}
-     * @return matching hash enum, or {@code null} when no supported name is recognized
+     * @param displayName the human-readable hash name to resolve
+     * @return matching hash {@link TlsHashAlgorithm}, or {@link #UNKNOWN} if no match is found
      */
-    public static TlsHashAlgorithm fromName(String name) {
-      var normalized = name.trim().toUpperCase(Locale.ROOT);
-      // Accept plain names like SHA256 and combined names like RSA_SHA256.
-      if (normalized.contains("SHA512")) {
-        return SHA512;
+    public static TlsHashAlgorithm fromDisplayName(String displayName) {
+      if (displayName == null || displayName.isBlank()) {
+        return UNKNOWN;
       }
-      if (normalized.contains("SHA384")) {
-        return SHA384;
-      }
-      if (normalized.contains("SHA256")) {
-        return SHA256;
-      }
-      if (normalized.contains("SHA224")) {
-        return SHA224;
-      }
-      if (normalized.contains("SHA1")) {
-        return SHA1;
-      }
-      if (normalized.contains("MD5")) {
-        return MD5;
-      }
-      return null;
+
+      String needle = displayName.trim();
+      return java.util.Arrays.stream(values())
+          .filter(g -> g.displayName.equalsIgnoreCase(needle))
+          .findFirst()
+          .orElse(UNKNOWN);
     }
 
     /**
@@ -1582,7 +2305,7 @@ public class TlsTestToolSteps {
      */
     public static LinkedHashSet<TlsHashAlgorithm> unsupportedByPolicy() {
       return Arrays.stream(values())
-          .filter(algorithm -> algorithm != UNKNOWN && !algorithm.isSupportedByPolicy())
+          .filter(algorithm -> algorithm != UNKNOWN && algorithm != SUPPORTED_MIX && !algorithm.isSupportedByPolicy())
           .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -1609,19 +2332,36 @@ public class TlsTestToolSteps {
    * TLS 1.2 signature algorithm IDs used in signature_algorithms and ServerKeyExchange metadata.
    */
   public enum TlsSignatureAlgorithm {
-    RSA(1, "0x01"),
-    DSA(2, "0x02"),
-    ECDSA(3, "0x03"),
-    UNKNOWN(-1, "n/a");
+    RSA(1, "0x01", Policy.FORBIDDEN),
+    DSA(2, "0x02", Policy.OPTIONAL),
+    ECDSA(3, "0x03", Policy.OPTIONAL),
+    UNKNOWN(-1, "n/a", Policy.NA);
 
-    @Getter
-    private final int value;
-    @Getter
-    private final String hexValue;
+    @lombok.Getter private final int value;
+    @lombok.Getter private final String hexValue;
+    @lombok.Getter private final Policy policy;
 
-    TlsSignatureAlgorithm(int value, String hexValue) {
+    TlsSignatureAlgorithm(int value, String hexValue, Policy policy) {
       this.value = value;
       this.hexValue = hexValue;
+      this.policy = policy;
+    }
+
+    /**
+     * Policy classification for TLS signature algorithms used when validating a ClientHello.
+     *
+     * <ul>
+     *   <li>{@link #MANDATORY} – the signature algorithm must be offered/supported to comply with the policy.</li>
+     *   <li>{@link #OPTIONAL} – the signature algorithm is permitted by policy but not required.</li>
+     *   <li>{@link #FORBIDDEN} – the signature algorithm must not be offered; its presence is a policy violation.</li>
+     *   <li>{@link #NA} – not applicable / unspecified (e.g., placeholder or unknown signature algorithm).</li>
+     * </ul>
+     */
+    public enum Policy {
+      MANDATORY,
+      OPTIONAL,
+      FORBIDDEN,
+      NA
     }
 
     /**
@@ -1636,71 +2376,389 @@ public class TlsTestToolSteps {
           .findFirst()
           .orElse(UNKNOWN);
     }
-  }
 
-  /**
-   * Readable profile tokens for TLS supported-groups extension variants used in feature files.
-   */
-  public enum TlsSupportedGroupProfile {
-    P256_ONLY("p256_only", "000a000400020017"),
-    P384_ONLY("p384_only", "000a000400020018"),
-    UNSUPPORTED_MIX("unsupported_mix", "000a001400120010001300150019001c001d001e01010102");
-
-    @Getter
-    private final String profileName;
-    @Getter
-    private final String supportedGroupsExtensionHex;
-
-    TlsSupportedGroupProfile(String profileName, String supportedGroupsExtensionHex) {
-      this.profileName = profileName;
-      this.supportedGroupsExtensionHex = supportedGroupsExtensionHex;
+    /**
+     * Returns all supported TLS 1.2 signature algorithms defined by {@link TlsSignatureAlgorithm}.
+     *
+     * @return an {@link List} of all supported {@link TlsSignatureAlgorithm} values
+     */
+    public static List<TlsSignatureAlgorithm> getSupportedSignatureAlgorithms() {
+      return Arrays.stream(TlsSignatureAlgorithm.values())
+          .filter(g -> g.getPolicy() == Policy.MANDATORY
+              || g.getPolicy() == Policy.OPTIONAL)
+          .collect(Collectors.toList());
     }
 
     /**
-     * Resolve enum by readable supported-group profile token used in feature files.
+     * Returns all unsupported / forbidden TLS 1.2 signature algorithms defined by {@link TlsSignatureAlgorithm}.
      *
-     * @param profileName profile token
-     * @return matching profile
+     * @return an {@link List} of all forbidden {@link TlsSignatureAlgorithm} values
      */
-    public static TlsSupportedGroupProfile fromProfileName(String profileName) {
-      return Arrays.stream(values())
-          .filter(profile -> profile.profileName.equals(profileName))
+    public static List<TlsSignatureAlgorithm> getUnsupportedSignatureAlgorithms() {
+      return Arrays.stream(TlsSignatureAlgorithm.values())
+          .filter(g -> g.getPolicy() == Policy.FORBIDDEN)
+          .collect(Collectors.toList());
+    }
+
+  }
+
+  /**
+   * TLS "supported_groups" (extension 0x000a) NamedGroup IDs with policy classification.
+   */
+  public enum TlsSupportedGroup {
+
+    // Mandatory
+    SECP256R1(0x0017, "secp256r1", GroupPolicy.MANDATORY),
+    SECP384R1(0x0018, "secp384r1", GroupPolicy.MANDATORY),
+
+    // Optional
+    BRAINPOOLP256R1(0x001A, "brainpoolP256r1", GroupPolicy.OPTIONAL),
+    BRAINPOOLP384R1(0x001B, "brainpoolP384r1", GroupPolicy.OPTIONAL),
+
+    // Forbidden
+    SECP192R1(0x0013, "secp192r1", GroupPolicy.FORBIDDEN),
+    SECP224R1(0x0015, "secp224r1", GroupPolicy.FORBIDDEN),
+    SECP521R1(0x0019, "secp521r1 (P-521)", GroupPolicy.FORBIDDEN),
+    SECP256K1(0x0010, "secp256k1", GroupPolicy.FORBIDDEN),
+
+    BRAINPOOLP512R1(0x001C, "brainpoolP512r1", GroupPolicy.FORBIDDEN),
+
+    X25519(0x001D, "x25519", GroupPolicy.FORBIDDEN),
+    X448(0x001E, "x448", GroupPolicy.FORBIDDEN),
+
+    FFDHE2048(0x0100, "ffdhe2048", GroupPolicy.FORBIDDEN),
+    FFDHE3072(0x0101, "ffdhe3072", GroupPolicy.FORBIDDEN),
+    FFDHE4096(0x0102, "ffdhe4096", GroupPolicy.FORBIDDEN),
+    FFDHE6144(0x0103, "ffdhe6144", GroupPolicy.FORBIDDEN),
+    FFDHE8192(0x0104, "ffdhe8192", GroupPolicy.FORBIDDEN),
+
+    UNKNOWN(-1, "unknown", GroupPolicy.NA),
+    UNSUPPORTED_MIX(-1, "unsupported_mix", GroupPolicy.NA);
+
+    /**
+     * Policy classification for TLS supported groups (NamedGroup IDs) used when validating a ClientHello.
+     *
+     * <ul>
+     *   <li>{@link #MANDATORY} – the group must be offered/supported to comply with the policy.</li>
+     *   <li>{@link #OPTIONAL} – the group is permitted by policy but not required.</li>
+     *   <li>{@link #FORBIDDEN} – the group must not be offered; its presence is a policy violation.</li>
+     *   <li>{@link #NA} – not applicable / unspecified (e.g., placeholder or unknown group).</li>
+     * </ul>
+     */
+    public enum GroupPolicy {
+      MANDATORY,
+      OPTIONAL,
+      FORBIDDEN,
+      NA
+    }
+
+    @lombok.Getter private final int value;
+    @lombok.Getter private final String displayName;
+    @lombok.Getter private final GroupPolicy policy;
+
+    TlsSupportedGroup(int value, String displayName, GroupPolicy policy) {
+      this.value = value;
+      this.displayName = displayName;
+      this.policy = policy;
+    }
+
+    /**
+     * Resolves a {@link TlsSupportedGroup} from its numeric NamedGroup identifier.
+     *
+     * @param value numeric NamedGroup ID (typically an uint16 from protocol metadata)
+     * @return matching {@link TlsSupportedGroup}, or {@link #UNKNOWN} if the value is not recognized
+     */
+    public static TlsSupportedGroup fromValue(int value) {
+      return java.util.Arrays.stream(values())
+          .filter(group -> group.value == value)
           .findFirst()
-          .orElseThrow(() -> new AssertionError("Unsupported supported-group profile: " + profileName));
+          .orElse(UNKNOWN);
+    }
+
+    /**
+     * Resolves a {@link TlsSupportedGroup} from a hex-encoded NamedGroup identifier.
+     *
+     * @param hex hex-encoded NamedGroup ID (with or without {@code 0x} prefix)
+     * @return matching {@link TlsSupportedGroup}, or {@link #UNKNOWN} for invalid/unknown inputs
+     */
+    public static TlsSupportedGroup fromHex(String hex) {
+      if (hex == null || hex.isBlank()) {
+        return UNKNOWN;
+      }
+      String s = hex.trim();
+      if (s.startsWith("0x") || s.startsWith("0X")) {
+        s = s.substring(2);
+      }
+      try {
+        return fromValue(Integer.parseInt(s, 16));
+      } catch (NumberFormatException e) {
+        return UNKNOWN;
+      }
+    }
+
+    /**
+     * Resolves a {@link TlsSupportedGroup} by its human-readable display name.
+     *
+     * @param displayName the human-readable group name to resolve
+     * @return matching {@link TlsSupportedGroup}, or {@link #UNKNOWN} if no match is found
+     */
+    public static TlsSupportedGroup fromDisplayName(String displayName) {
+      if (displayName == null || displayName.isBlank()) {
+        return UNKNOWN;
+      }
+
+      String needle = displayName.trim();
+      return java.util.Arrays.stream(values())
+          .filter(g -> g.displayName.equalsIgnoreCase(needle))
+          .findFirst()
+          .orElse(UNKNOWN);
+    }
+
+    /**
+     * Builds a TLS {@code supported_groups} extension (type {@code 0x000a}) from the provided list of
+     * {@link TlsSupportedGroup}.
+     *
+     * @param groups list of  {@link TlsSupportedGroup} groups to encode
+     * @return {@code supported_groups} extension as a lowercase hex string (no whitespace)
+     * @throws IllegalArgumentException if {@code groups} is {@code null} or empty
+     */
+    public static String buildSupportedGroupsExtension(List<TlsSupportedGroup> groups) {
+      if (groups == null || groups.isEmpty()) {
+        throw new IllegalArgumentException("groups must not be null/empty");
+      }
+
+      int listLenBytes = groups.size() * 2;      // each group is u16
+      int extLenBytes  = 2 + listLenBytes;       // u16 listLen + list
+
+      StringBuilder sb = new StringBuilder();
+      sb.append("000a");                         // extension type supported_groups
+      sb.append(u16(extLenBytes));               // extension length
+      sb.append(u16(listLenBytes));              // list length
+      for (TlsSupportedGroup g : groups) {
+        sb.append(u16(g.getValue()));            // group id
+      }
+      return sb.toString().toLowerCase();
+    }
+
+    /**
+     * Formats an unsigned 16-bit value as a four-digit lowercase hex string.
+     *
+     * @param v value in range 0..65535
+     * @return hex string representation (e.g. {@code 000a})
+     */
+    private static String u16(int v) {
+      return String.format("%04x", v & 0xFFFF);
+    }
+
+    /**
+     * Returns all groups that are forbidden by policy.
+     *
+     * @return a list of policy-forbidden groups, in enum order
+     */
+    public static List<TlsSupportedGroup> forbiddenGroups() {
+      return Arrays.stream(TlsSupportedGroup.values())
+          .filter(g -> g.getPolicy() == TlsSupportedGroup.GroupPolicy.FORBIDDEN)
+          .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns all supported groups that are permitted by policy.
+     *
+     * @return a list of policy-allowed supported groups (mandatory + optional), in enum order
+     */
+    public static List<TlsSupportedGroup> allowedGroups() {
+      return Arrays.stream(TlsSupportedGroup.values())
+          .filter(g -> g.getPolicy() == TlsSupportedGroup.GroupPolicy.MANDATORY
+              || g.getPolicy() == TlsSupportedGroup.GroupPolicy.OPTIONAL)
+          .collect(Collectors.toList());
+    }
+
+  }
+
+  /**
+   * TLS versions.
+   */
+  public enum TlsVersion {
+    TLS_1_2("TLS 1.2"),
+    TLS_1_3("TLS 1.3");
+
+    @Getter
+    private final String displayName;
+
+    TlsVersion(String displayName) {
+      this.displayName = displayName;
     }
   }
 
   /**
-   * Readable profile tokens for mandatory TLS cipher suites used in feature files.
+   * Mandatory and optional TLS cipher suites.
    */
-  public enum TlsCipherSuiteProfile {
-    ECDHE_RSA_AES_128_GCM_SHA256("ecdhe_rsa_aes_128_gcm_sha256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "(0xC0,0x2F)"),
-    ECDHE_RSA_AES_256_GCM_SHA384("ecdhe_rsa_aes_256_gcm_sha384", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "(0xC0,0x30)");
+  public enum TlsCipherSuite {
+    // Mandatory
+    ECDHE_RSA_AES_128_GCM_SHA256("ecdhe_rsa_aes_128_gcm_sha256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "(0xC0,0x2F)", TlsVersion.TLS_1_2, true),
+    ECDHE_RSA_AES_256_GCM_SHA384("ecdhe_rsa_aes_256_gcm_sha384", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "(0xC0,0x30)", TlsVersion.TLS_1_2, true),
+    // Optional (TR-02102-2, Abschnitt 3.3.1, Tabelle 1)
+    ECDHE_ECDSA_AES_128_CBC_SHA256("ecdhe_ecdsa_aes_128_cbc_sha256", "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256", "(0xC0,0x23)", TlsVersion.TLS_1_2, false),
+    ECDHE_ECDSA_AES_256_CBC_SHA384("ecdhe_ecdsa_aes_256_cbc_sha384", "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384", "(0xC0,0x24)", TlsVersion.TLS_1_2, false),
+    ECDHE_ECDSA_AES_128_GCM_SHA256("ecdhe_ecdsa_aes_128_gcm_sha256", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", "(0xC0,0x2B)", TlsVersion.TLS_1_2, false),
+    ECDHE_ECDSA_AES_256_GCM_SHA384("ecdhe_ecdsa_aes_256_gcm_sha384", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "(0xC0,0x2C)", TlsVersion.TLS_1_2, false),
+    ECDHE_ECDSA_AES_128_CCM("ecdhe_ecdsa_aes_128_ccm", "TLS_ECDHE_ECDSA_WITH_AES_128_CCM", "(0xC0,0xAC)", TlsVersion.TLS_1_2, false),
+    ECDHE_ECDSA_AES_256_CCM("ecdhe_ecdsa_aes_256_ccm", "TLS_ECDHE_ECDSA_WITH_AES_256_CCM", "(0xC0,0xAD)", TlsVersion.TLS_1_2, false),
+    ECDHE_RSA_AES_128_CBC_SHA256("ecdhe_rsa_aes_128_cbc_sha256", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256", "(0xC0,0x27)", TlsVersion.TLS_1_2, false),
+    ECDHE_RSA_AES_256_CBC_SHA384("ecdhe_rsa_aes_256_cbc_sha384", "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384", "(0xC0,0x28)", TlsVersion.TLS_1_2, false),
+    DHE_DSS_AES_128_CBC_SHA256("dhe_dss_aes_128_cbc_sha256", "TLS_DHE_DSS_WITH_AES_128_CBC_SHA256", "(0x00,0x40)", TlsVersion.TLS_1_2, false),
+    DHE_DSS_AES_256_CBC_SHA256("dhe_dss_aes_256_cbc_sha256", "TLS_DHE_DSS_WITH_AES_256_CBC_SHA256", "(0x00,0x6A)", TlsVersion.TLS_1_2, false),
+    DHE_DSS_AES_128_GCM_SHA256("dhe_dss_aes_128_gcm_sha256", "TLS_DHE_DSS_WITH_AES_128_GCM_SHA256", "(0x00,0xA2)", TlsVersion.TLS_1_2, false),
+    DHE_DSS_AES_256_GCM_SHA384("dhe_dss_aes_256_gcm_sha384", "TLS_DHE_DSS_WITH_AES_256_GCM_SHA384", "(0x00,0xA3)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_128_CBC_SHA256("dhe_rsa_aes_128_cbc_sha256", "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256", "(0x00,0x67)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_256_CBC_SHA256("dhe_rsa_aes_256_cbc_sha256", "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256", "(0x00,0x6B)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_128_GCM_SHA256("dhe_rsa_aes_128_gcm_sha256", "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", "(0x00,0x9E)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_256_GCM_SHA384("dhe_rsa_aes_256_gcm_sha384", "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "(0x00,0x9F)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_128_CCM("dhe_rsa_aes_128_ccm", "TLS_DHE_RSA_WITH_AES_128_CCM", "(0xC0,0x9E)", TlsVersion.TLS_1_2, false),
+    DHE_RSA_AES_256_CCM("dhe_rsa_aes_256_ccm", "TLS_DHE_RSA_WITH_AES_256_CCM", "(0xC0,0x9F)", TlsVersion.TLS_1_2, false),
+    // Optional (TLS 1.3)
+    AES_128_GCM_SHA256("aes_128_gcm_sha256", "TLS_AES_128_GCM_SHA256", "(0x13,0x01)", TlsVersion.TLS_1_3, false),
+    AES_256_GCM_SHA384("aes_256_gcm_sha384", "TLS_AES_256_GCM_SHA384", "(0x13,0x02)", TlsVersion.TLS_1_3, false),
+    CHACHA20_POLY1305_SHA256("chacha20_poly1305_sha256", "TLS_CHACHA20_POLY1305_SHA256", "(0x13,0x03)", TlsVersion.TLS_1_3, false),
+    AES_128_CCM_SHA256("aes_128_ccm_sha256", "TLS_AES_128_CCM_SHA256", "(0x13,0x04)", TlsVersion.TLS_1_3, false),
+    AES_128_CCM_8_SHA256("aes_128_ccm_8_sha256", "TLS_AES_128_CCM_8_SHA256", "(0x13,0x05)", TlsVersion.TLS_1_3, false),
+    // The empty renegotiation cipher suite is added automatically by clients that support secure renegotiation
+    EMPTY_RENEGOTIATION_INFO_SCSV("empty_renegotiation_info_scsv", "TLS_EMPTY_RENEGOTIATION_INFO_SCSV", "(0x00,0xFF)", TlsVersion.TLS_1_2, false);
 
     @Getter
-    private final String profileName;
+    private final String cipherSuiteId;
     @Getter
     private final String cipherSuiteName;
     @Getter
     private final String tlsTestToolCipherSuiteValue;
+    @Getter
+    private final TlsVersion tlsVersion;
+    @Getter
+    private final Boolean isMandatory;
 
-    TlsCipherSuiteProfile(String profileName, String cipherSuiteName, String tlsTestToolCipherSuiteValue) {
-      this.profileName = profileName;
+    TlsCipherSuite(String cipherSuiteId, String cipherSuiteName, String tlsTestToolCipherSuiteValue, TlsVersion tlsVersion,
+        Boolean isMandatory) {
+      this.cipherSuiteId = cipherSuiteId;
       this.cipherSuiteName = cipherSuiteName;
       this.tlsTestToolCipherSuiteValue = tlsTestToolCipherSuiteValue;
+      this.tlsVersion = tlsVersion;
+      this.isMandatory = isMandatory;
     }
 
     /**
-     * Resolve enum by readable ciphersuite profile token used in feature files.
+     * Resolve enum by readable cipher suite profile token used in feature files.
      *
-     * @param profileName profile token
+     * @param cipherSuiteId profile token
      * @return matching profile
      */
-    public static TlsCipherSuiteProfile fromProfileName(String profileName) {
+    public static TlsCipherSuite fromCipherSuiteId(String cipherSuiteId) {
       return Arrays.stream(values())
-          .filter(profile -> profile.profileName.equals(profileName))
+          .filter(profile -> profile.cipherSuiteId.equals(cipherSuiteId))
           .findFirst()
-          .orElseThrow(() -> new AssertionError("Unsupported ciphersuite profile: " + profileName));
+          .orElseThrow(() -> new AssertionError("Unsupported ciphersuite : " + cipherSuiteId));
+    }
+
+    /**
+     * Return all supported TLS 1.2 Cipher Suites.
+     *
+     * @return insertion-ordered set of policy-supported cipher suites
+     */
+    public static LinkedHashSet<TlsCipherSuite> supportedTls12CipherSuites() {
+      return Arrays.stream(values())
+          .filter(cs -> cs != EMPTY_RENEGOTIATION_INFO_SCSV)
+          .filter(cs -> cs.getTlsVersion() == TlsVersion.TLS_1_2)
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Return optional TLS 1.2 Cipher Suites.
+     *
+     * @return insertion-ordered set of policy-supported cipher suites
+     */
+    public static LinkedHashSet<TlsCipherSuite> optionalTls12CipherSuites() {
+      return Arrays.stream(values())
+          .filter(cs -> cs.getTlsVersion() == TlsVersion.TLS_1_2)
+          .filter(cs -> !Boolean.TRUE.equals(cs.getIsMandatory()))
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Return optional TLS 1.3 Cipher Suites.
+     *
+     * @return insertion-ordered set of policy-supported cipher suites
+     */
+    public static LinkedHashSet<TlsCipherSuite> optionalTls13CipherSuites() {
+      return Arrays.stream(values())
+          .filter(cs -> cs.getTlsVersion() == TlsVersion.TLS_1_3)
+          .filter(cs -> !Boolean.TRUE.equals(cs.getIsMandatory()))
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Return mandatory TLS 1.2 Cipher Suites.
+     *
+     * @return insertion-ordered set of policy-supported cipher suites
+     */
+    public static LinkedHashSet<TlsCipherSuite> mandatoryTls12CipherSuites() {
+      return Arrays.stream(values())
+          .filter(cs -> cs.getTlsVersion() == TlsVersion.TLS_1_2)
+          .filter(TlsCipherSuite::getIsMandatory)
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+  }
+
+  /**
+   * Certificate and key files shipped with the TLS test tool fixture.
+   */
+  public enum TlsServerCertificates {
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_PRIVATE_KEY("zeta_tls_test_tool_server_ecdsa_private_key", "ecdsa/zeta-tls-test-tool-server.privkey.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CN_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_different_cn_certificate", "ecdsa/zeta-tls-test-tool-server_evil_cn.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CN_SAN_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate", "ecdsa/zeta-tls-test-tool-server_evil_cn_san.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_SAN_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_different_san_certificate", "ecdsa/zeta-tls-test-tool-server_evil_san.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_GOOD_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_good_certificate", "ecdsa/zeta-tls-test-tool-server_good.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_EXPIRED_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_expired_certificate", "ecdsa/zeta-tls-test-tool-server_expired.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_NOT_YET_VALID_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate", "ecdsa/zeta-tls-test-tool-server_not_yet_valid.pem"),
+    ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CA_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_different_ca_certificate", "ecdsa/zeta-tls-test-tool-server_no_chain.pem");
+
+    @Getter
+    private final String certificateId;
+    @Getter
+    private final String relativePath;
+
+    TlsServerCertificates(String certificateId, String relativePath) {
+      this.certificateId = certificateId;
+      this.relativePath = relativePath;
+    }
+
+    /**
+     * Resolve enum by readable certificate token used in feature files.
+     *
+     * @param certificateId profile token
+     * @return matching profile
+     */
+    public static TlsServerCertificates fromCertificateId(String certificateId) {
+      return Arrays.stream(values())
+          .filter(profile -> profile.certificateId.equals(certificateId))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Unsupported server certificate: " + certificateId));
+    }
+
+    /**
+     * Returns the private key enum entry for a given certificate enum entry.
+     *
+     * @param certificate certificate enum entry
+     * @return private key enum entry matching the provided certificate
+     */
+    public static TlsServerCertificates getPrivateKeyForCertificate(TlsServerCertificates certificate) {
+      if (certificate == null) {
+        throw new AssertionError("The server certificate is empty or null.");
+      }
+      String enumName = certificate.name();
+      if (enumName.contains("_ECDSA_") && enumName.endsWith("_CERTIFICATE")) {
+        return ZETA_TLS_TEST_TOOL_SERVER_ECDSA_PRIVATE_KEY;
+      }
+      throw new AssertionError("Unsupported certificate for private key mapping: " + enumName);
     }
   }
 
@@ -1739,4 +2797,283 @@ public class TlsTestToolSteps {
   private record TlsLogPhase(int startInclusive, int endExclusive) {
 
   }
+
+  /**
+   * The sync and async execution modes for the TLS Test Tool.
+   */
+  private enum ExecutionMode {
+    SYNCHRONOUS("Synchronous", Set.of("sync", "synchronous", "block", "blocking")),
+    ASYNCHRONOUS("Asynchronous", Set.of("async", "asynchronous", "nonblock", "non-blocking", "nonblocking"));
+
+    private final String text;
+    private final Set<String> aliases;
+
+    ExecutionMode(String text, Set<String> aliases) {
+      this.text = text;
+      this.aliases = aliases;
+    }
+
+    public static final ExecutionMode DEFAULT = SYNCHRONOUS;
+
+    /**
+     * Resolve execution mode enum from textual representation.
+     *
+     * @param value expectation token
+     * @return matching execution mode
+     */
+    public static ExecutionMode fromString(String value) {
+      if (value == null || value.isBlank()) {
+        return DEFAULT;
+      }
+
+      String v = value.trim().toLowerCase(Locale.ROOT);
+      for (ExecutionMode m : values()) {
+        if (m.aliases.contains(v) || m.text.toLowerCase(Locale.ROOT).equals(v)) {
+          return m;
+        }
+      }
+      throw new IllegalArgumentException(
+          "Unknown execution mode '" + value + "'. Allowed: sync|blocking|synchronous or async|nonblocking|asynchronous");
+    }
+  }
+
+  /**
+   * Extracts the {@code supported_groups} (extension {@code 0x000A}) list from a TLS ClientHello
+   * contained in the given tool log and returns it as a list of {@link TlsSupportedGroup}.
+   *
+   * @param fullLog complete TLS test tool log output containing {@code ClientHello.extensions=...}
+   * @return list of extracted supported groups in the order they appear in the ClientHello;
+   *         empty list if not present or malformed
+   * @throws AssertionError if {@code fullLog} is {@code null/blank} or if no {@code ClientHello.extensions}
+   *                        section is present in the log
+   */
+  private static List<TlsSupportedGroup> extractSupportedGroupsHex(String fullLog) {
+
+    if (fullLog == null || fullLog.isBlank()) {
+      throw new AssertionError("The TLS log is empty or null.");
+    }
+
+    // Extract the client hello extension
+    Matcher m = CLIENT_HELLO_EXTENSIONS_PATTERN.matcher(fullLog);
+    if (!m.find()) {
+      throw new AssertionError("Client hello extension not present in the logs.");
+    }
+    var clientHelloExtensions = m.group(1).trim();
+    if (clientHelloExtensions.isBlank()) {
+      return List.of();
+    }
+
+    byte[] extensions;
+    try {
+      extensions = parseHexBytes(clientHelloExtensions);
+    } catch (NumberFormatException e) {
+      return List.of();
+    }
+    byte[] sg = findExtensionData(extensions, 0x000A); // supported_groups
+    if (sg == null || sg.length < 2) {
+      return List.of();
+    }
+
+    int listLen = u16(sg, 0);
+    if (2 + listLen > sg.length) {
+      return List.of();
+    }
+
+    List<TlsSupportedGroup> groups = new ArrayList<>();
+    for (int i = 2; i + 1 < 2 + listLen; i += 2) {
+      groups.add(TlsSupportedGroup.fromHex(String.format("%04x", u16(sg, i))));
+    }
+    return groups;
+  }
+
+  /**
+   * Extracts the {@code signature_algorithms} (extension {@code 0x000D}) list from a TLS ClientHello
+   * contained in the given tool log and returns signature algorithms as a list of {@link TlsSignatureAlgorithm}.
+   *
+   * @param fullLog complete TLS test tool log output containing {@code ClientHello.extensions=...}
+   * @return list of extracted signature algorithms in the order they appear in the ClientHello;
+   *         empty list if the extension payload is malformed
+   * @throws AssertionError if {@code fullLog} is {@code null/blank} or if no {@code ClientHello.extensions}
+   *                        section is present in the log, or if no {@code signature_algorithms}
+   *                        extension is present in the extracted extensions block
+   */
+  private static List<TlsSignatureAlgorithm> extractSignatureAlgorithmsHex(String fullLog) {
+    if (fullLog == null || fullLog.isBlank()) {
+      throw new AssertionError("The TLS log is empty or null.");
+    }
+
+    Matcher m = CLIENT_HELLO_EXTENSIONS_PATTERN.matcher(fullLog);
+    if (!m.find()) {
+      throw new AssertionError("Client hello extension not present in the logs.");
+    }
+    var clientHelloExtensions = m.group(1).trim();
+    if (clientHelloExtensions.isBlank()) {
+      return List.of();
+    }
+
+    byte[] extensions;
+    try {
+      extensions = parseHexBytes(clientHelloExtensions);
+    } catch (NumberFormatException e) {
+      return List.of();
+    }
+
+    byte[] signatureAlgorithms = findExtensionData(extensions, 0x000D); // signature_algorithms
+    if (signatureAlgorithms == null || signatureAlgorithms.length < 2) {
+      throw new AssertionError("signature_algorithms not present in the logs.");
+    }
+
+    int listLen = u16(signatureAlgorithms, 0);
+    if (2 + listLen > signatureAlgorithms.length) {
+      return List.of();
+    }
+
+    List<TlsSignatureAlgorithm> algorithms = new ArrayList<>();
+    for (int i = 2; i + 1 < 2 + listLen; i += 2) {
+      int signatureAlgorithmId = signatureAlgorithms[i + 1] & 0xFF;
+      algorithms.add(TlsSignatureAlgorithm.fromValue(signatureAlgorithmId));
+    }
+    return algorithms;
+  }
+
+  /**
+   * Parses a whitespace-separated hex string into a byte array.
+   *
+   * @param hexWithSpaces whitespace-separated hex bytes (e.g., {@code "c0 2f 00 ff"})
+   * @return parsed bytes in the same order as provided
+   * @throws NullPointerException if {@code hexWithSpaces} is {@code null}
+   * @throws NumberFormatException if any token is not valid hexadecimal
+   */
+  private static byte[] parseHexBytes(String hexWithSpaces) {
+    var text = hexWithSpaces.trim();
+    if (text.isEmpty()) {
+      return new byte[0];
+    }
+    String normalized = text.replaceAll("\\s+", "");
+    try {
+      return Hex.decodeHex(normalized);
+    } catch (DecoderException e) {
+      NumberFormatException ex = new NumberFormatException("Invalid hex token");
+      ex.initCause(e);
+      throw ex;
+    }
+  }
+
+  /**
+   * Finds and returns the payload (data) of a specific TLS ClientHello extension.
+   *
+   * @param extensions the raw ClientHello extensions block (concatenated extensions)
+   * @param wantedType the extension type to locate (e.g., {@code 0x000A} for supported_groups)
+   * @return a new byte array containing the extension payload, or {@code null} if not found or malformed
+   */
+  private static byte[] findExtensionData(byte[] extensions, int wantedType) {
+    int i = 0;
+    while (i + 4 <= extensions.length) {
+      int type = u16(extensions, i);
+      int len  = u16(extensions, i + 2);
+      int dataStart = i + 4;
+      int dataEnd = dataStart + len;
+
+      if (dataEnd > extensions.length) {
+        return null; // malformed
+      }
+      if (type == wantedType) {
+        return Arrays.copyOfRange(extensions, dataStart, dataEnd);
+      }
+
+      i = dataEnd;
+    }
+    return null;
+  }
+
+  /**
+   * Reads an unsigned 16-bit big-endian value from the provided byte array.
+   *
+   * @param b source byte array
+   * @param off start offset of the 2-byte value
+   * @return decoded value in range 0..65535
+   */
+  private static int u16(byte[] b, int off) {
+    return ((b[off] & 0xFF) << 8) | (b[off + 1] & 0xFF);
+  }
+
+  /**
+   * Supported TLS stack / crypto provider implementations.
+   */
+  private enum TlsLibrary {
+
+    /** The mbed TLS library. */
+    MBED_TLS("mbed TLS"),
+
+    /** The OpenSSL library. */
+    OPENSSL("OpenSSL");
+
+    private final String displayName;
+
+    TlsLibrary(String displayName) {
+      this.displayName = displayName;
+    }
+
+    /**
+     * Returns the human-readable display name of the TLS library.
+     *
+     * @return display name (e.g. {@code "mbed TLS"} or {@code "OpenSSL"})
+     */
+    public String getDisplayName() {
+      return displayName;
+    }
+
+  }
+
+  /**
+   * Indicates the TLS endpoint role in a handshake/test scenario.
+   *
+   * <p>Use {@link #CLIENT} for the side initiating the TLS connection (sending the ClientHello),
+   * and {@link #SERVER} for the side accepting the connection (responding with the ServerHello).
+   */
+  private enum TlsEndpointRole {
+
+    /** Initiates the TLS connection and sends the ClientHello. */
+    CLIENT("client"),
+
+    /** Accepts the TLS connection and responds with the ServerHello. */
+    SERVER("server");
+
+    private final String displayName;
+
+    TlsEndpointRole(String displayName) {
+      this.displayName = displayName;
+    }
+
+    /**
+     * Returns the human-readable role name.
+     *
+     * @return the display name (e.g. {@code "client"} or {@code "server"})
+     */
+    public String getDisplayName() {
+      return displayName;
+    }
+  }
+
+  /**
+   * Checks whether the TLS log contains a successful handshake completion message
+   * <em>after</em> a renegotiation has been initiated.
+   *
+   * @param fullLog the complete TLS log as a single string
+   * @return {@code true} if {@code FINISHED_MARKER} appears after {@code RENEG_MARKER}; otherwise {@code false}
+   */
+  private static boolean hasFinishedAfterRenegotiation(String fullLog) {
+    if (fullLog == null || fullLog.isBlank()) {
+      throw new AssertionError("The TLS log is empty or null.");
+    }
+
+    int renegIdx = fullLog.indexOf(RENEG_MARKER);
+    if (renegIdx < 0) {
+      return false;
+    }
+
+    int finishedIdx = fullLog.indexOf(FINISHED_MARKER, renegIdx + RENEG_MARKER.length());
+    return finishedIdx >= 0;
+  }
+
 }

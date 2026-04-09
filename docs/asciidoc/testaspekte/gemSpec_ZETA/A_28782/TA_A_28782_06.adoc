@@ -1,0 +1,8 @@
+[#TA_A_28782_06]
+===== TA_A_28782_06 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - ExporterHelper - retry_on_failure - initial_interval
+
+"Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgenden Parameter unterstützen:
+
+**initial_interval** (Default = 5s)
+
+**[<=]"**

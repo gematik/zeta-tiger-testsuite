@@ -1,4 +1,0 @@
-[#TA_A_27379_02]
-===== TA_A_27379_02 - ZETA Client - OCSP Stapling Unterstützung - Nutzen bei Bereitstellung
-
-Der ZETA Client MUSS **OCSP Stapling** erkennen und **nutzen**, wenn es vom Server bereitgestellt wird. **[<=]**

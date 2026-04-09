@@ -1,0 +1,11 @@
+==== Testaspekte für die Anforderung A_26972-02
+
+Folgende Testaspekte testen <<A_26972-02>>.
+
+include::TA_A_26972-02_01.adoc[]
+
+include::TA_A_26972-02_02.adoc[]
+
+include::TA_A_26972-02_03.adoc[]
+
+include::TA_A_26972-02_04.adoc[]

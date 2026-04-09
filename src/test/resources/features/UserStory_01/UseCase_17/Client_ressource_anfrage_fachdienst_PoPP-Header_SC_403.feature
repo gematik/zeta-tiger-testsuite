@@ -27,11 +27,6 @@
 @UseCase_01_17
 Funktionalität: Client_ressource_anfrage_fachdienst_PoPP-Header_SC_403
 
-  Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
-
   @A_25660
   @A_26477
   @A_26661

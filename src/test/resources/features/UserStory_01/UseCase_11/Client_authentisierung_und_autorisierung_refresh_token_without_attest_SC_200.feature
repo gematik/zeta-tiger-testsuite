@@ -28,9 +28,6 @@
 Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_attest_SC_200
 
   Grundlage:
-    Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und Alle Manipulationen im TigerProxy werden gestoppt
-    Und TGR sende eine leere GET Anfrage an "${paths.tigerProxy.baseUrl}/resetMessages"
     # TTL-Werte als Variablen definieren (in Sekunden)
     Und TGR setze lokale Variable "accessTokenTtl" auf "5"
 
@@ -131,18 +128,16 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
   @A_25660
   @A_25760
   @A_26586
-  @A_26945
-  @A_26972-01
+  @A_26972-02
   @TA_A_25660_04
   @TA_A_25660_05
   @TA_A_25760_03
   @TA_A_25782_04
   @TA_A_26586_02
-  @TA_A_26945_01
-  @TA_A_26972-01_01
-  @TA_A_26972-01_02
-  @TA_A_26972-01_03
-  @TA_A_26972-01_04
+  @TA_A_26972-02_01
+  @TA_A_26972-02_02
+  @TA_A_26972-02_03
+  @TA_A_26972-02_04
   Szenario: Session Management - Ausgabe und Verwaltung von Refresh Token
     # expires_in Manipulation aktivieren BEVOR der erste HelloZeta Request
     # 2 Ausführungen: Initial Token Exchange + 1 Refresh
@@ -166,9 +161,6 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_expires_in"
     Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "firstAccessToken"
     Und TGR speichere Wert des Knotens "$.body.refresh_token" der aktuellen Antwort in der Variable "firstRefreshToken"
-    # TA_A_26945_01: Refresh Token Attribute gemäß refresh-token.yaml
-    Und TGR speichere Wert des Knotens "$.body.refresh_token.body" der aktuellen Antwort in der Variable "refreshTokenBody"
-    Und validiere "${refreshTokenBody}" soft gegen Schema "schemas/mock/refresh-token.yaml"
     Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "SUBJECT_TOKEN"
     Und decodiere und validiere "${SUBJECT_TOKEN}" gegen Schema "schemas/v_1_0/smb-id-token-jwt.yaml"
     Und TGR speichere Wert des Knotens "$.body.subject_token.header.x5c.0" der aktuellen Anfrage in der Variable "smcbCertificate"
@@ -196,7 +188,7 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "refresh_token"
     # TA_A_25660_05: Validiere dass das zuvor ausgegebene Refresh Token verwendet wird
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.refresh_token" überein mit "${firstRefreshToken}"
-    # TA_A_26972-01: Refresh ohne erneutes Subject-Token (Persistenz-Indiz)
+    # TA_A_26972-02: Refresh ohne erneutes Subject-Token (Persistenz-Indiz)
     Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.subject_token"
 
     # TA_A_25660_05: Verwaltung bedeutet Rotation - neue Tokens müssen unterschiedlich sein
@@ -207,19 +199,21 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.opa.decisionPath}"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.input.user_info"
     Und TGR speichere Wert des Knotens "$.body.input.user_info" der aktuellen Anfrage in der Variable "OPA_USER_INFO"
-    Und validiere "${OPA_USER_INFO}" soft gegen Schema "schemas/v_1_0/user-info.yaml"
-    # TA_A_26972-01_01 identifier
+    Und validiere "${OPA_USER_INFO}" soft gegen Schema "schemas/v_1_0/zeta-user-info.yaml"
+    # TA_A_26972-02_01 identifier
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.identifier" überein mit "${SMCB-INFO.telematikId}"
-    # TA_A_26972-01_03 professionOID
+    # TA_A_26972-02_02 commonName
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.commonName" überein mit "${SMCB-INFO.commonName}"
+    # TA_A_26972-02_03 professionOID
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.professionOID" überein mit "${SMCB-INFO.professionId}"
-    # TA_A_26972-01_04 optional organizationName
+    # TA_A_26972-02_04 optional organizationName
     Und prüfe optional: Knoten "$.body.input.user_info.organizationName" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    # TA_A_26972-01_02 optional commonName
-    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.udat.commonName}" fehlt wenn "${SMCB-INFO.commonName}" leer ist, sonst gleich und nutze soft assert
-    # TA_A_26972-01_04 optional organizationName
-    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.udat.organizationName}" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
+    # TA_A_26972-02_02 commonName
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.common_name}" überein mit "${SMCB-INFO.commonName}"
+    # TA_A_26972-02_04 optional organizationName
+    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.organization_name}" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
 
   @dev
   @A_25663
@@ -436,9 +430,9 @@ Funktionalität: Client_authentisierung_und_autorisierung_refresh_token_without_
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
 
   @A_25660
-  @A_27867
+  @A_27867-01
   @TA_A_25660_02
-  @TA_A_27867_01
+  @TA_A_27867-01_01
   Szenario: Session-Daten werden verwaltet (indirekter Nachweis)
     # expires_in Manipulation aktivieren BEVOR der erste HelloZeta Request
     # 2 Ausführungen: Initial Token Exchange + 1 Refresh

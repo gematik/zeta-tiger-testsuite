@@ -1,4 +1,0 @@
-[#A_26945]
-==== A_26945 - PDP Authorization Server - Refresh Token Inhalt
-
-Die Komponente Authorization Server MUSS Refresh Token mit Attributen gemäß [refresh-token.yaml] ausstellen.

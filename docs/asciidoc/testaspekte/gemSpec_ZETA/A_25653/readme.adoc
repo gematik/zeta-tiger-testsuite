@@ -6,3 +6,7 @@ include::TA_A_25653_01.adoc[]
 
 include::TA_A_25653_02.adoc[]
 
+include::TA_A_25653_03.adoc[]
+
+include::TA_A_25653_04.adoc[]
+

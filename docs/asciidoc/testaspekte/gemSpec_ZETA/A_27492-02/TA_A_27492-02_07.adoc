@@ -1,0 +1,4 @@
+[#TA_A_27492-02_07]
+===== TA_A_27492-02_07 - ZETA Guard, OpenTelemetry Unterstützung - Policy Engine - /v1/data/authz
+
+Die ZETA Guard Komponenten HTTP Proxy, Authorization Server, **Policy Engine** und Notification Service MÜSSEN für alle durchgeführten Operationen Telemetriedaten in Form von Traces an den Telemetriedaten-Service senden. **[<=]**

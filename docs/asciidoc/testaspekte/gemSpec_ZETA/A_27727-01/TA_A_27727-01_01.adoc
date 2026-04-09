@@ -1,0 +1,5 @@
+[#TA_A_27727-01_01]
+===== TA_A_27727-01_01 - ZETA Guard, Telemetriedaten-Service, Lieferung - asynchron
+
+Der Telemetriedaten-Service im ZETA Guard SOLL Telemetriedaten **asynchron** an den gematik Telemetriedaten-Service liefern.
+**[<=]**

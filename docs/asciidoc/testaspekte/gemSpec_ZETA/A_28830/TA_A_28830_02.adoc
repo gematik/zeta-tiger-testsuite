@@ -1,0 +1,4 @@
+[#TA_A_28830_02]
+===== TA_A_28830_02 - HSM Proxy, Attribute Based Access Control - key_id
+
+"Der ZETA Guard HSM Proxy MUSS den **Zugriff auf die Operationen der Schnittstelle nach key_id einschränken** können. **[<=]"**

@@ -1,0 +1,12 @@
+[#TA_A_25338-01_03]
+===== TA_A_25338-01_03 - JWT-Assertion beim Token Exchange enthält schemakonforme <product_version>
+
+"[...]
+
+Dabei MUSS [...] die **Versionskennzeichnung des Clients** nach folgendem Schema verwendet werden:
+
+* [...]
+* <product_version> gemäß Produktidentifikation mit **Länge 1-20 Zeichen, Zeichenvorrat [0-9a-zA-Z-.]**.
+
+[...]
+"

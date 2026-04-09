@@ -55,5 +55,7 @@ additionalConfigurationFiles:
     baseKey: testdata
   - filename: tiger/tokens.yaml
     baseKey: tokens
+  - filename: tiger/tls-test-tool-config.yaml
+    baseKey: tlsTestTool
   - filename: tiger/zeta-deployment-config.yaml
     baseKey: zetaDeploymentConfig

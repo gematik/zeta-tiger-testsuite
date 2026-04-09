@@ -1,0 +1,8 @@
+[#TA_A_26668-01_12]
+===== TA_A_26668-01_12 - ZETA Guard - Rate Limit - Header x-rate-limit-reset - PEP HTTP Proxy - GET /<resource-pfad> (Zugriff auf geschützte Ressource über den Proxy, Host: RS-FQDN)
+
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über Response Header-Informationen informiert werden (+++[...]+++, +++[...]+++ und **x-rate-limit-reset** (Zeitpunkt, an dem das Limit zurückgesetzt wird)). **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- PEP HTTP Proxy: GET /<resource-pfad> (Zugriff auf geschützte Ressource über den Proxy, Host: RS-FQDN)

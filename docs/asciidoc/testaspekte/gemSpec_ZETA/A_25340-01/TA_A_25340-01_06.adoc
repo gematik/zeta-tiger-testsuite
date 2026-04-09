@@ -1,0 +1,10 @@
+[#TA_A_25340-01_06]
+===== TA_A_25340-01_06 - Zertifikatsprüfung - Revocation-Prüfung Sub-CA-Zertifikate
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Revocation-Prüfung für Sub-CA-Zertifikate: Der Client MUSS den Widerrufsstatus der Sub-CAs in der Kette prüfen.
+* Um Lastspitzen und Latenzen zu vermeiden, SOLLEN hierfür vom Betriebssystem bereitgestellte Mechanismen (z. B. CRLite, lokale Trust-Stores) oder serverseitiges Multi-Stapling (TLS 1.3) verwendet werden.
+* Falls Live-Abfragen (OCSP/CRL) für Sub-CAs notwendig sind, MÜSSEN deren Antworten zwingend entsprechend ihrer Gültigkeitsdauer (Feld **nextUpdate**) lokal gecacht werden.
+
+[...]"

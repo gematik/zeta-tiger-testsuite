@@ -1,0 +1,8 @@
+[#TA_A_26668-01_17]
+===== TA_A_26668-01_17 - ZETA Guard - Rate Limit - konfigurierbar - Authorization Server - GET /.well-known/openid-federation
+
+"Die Komponenten des ZETA Guard MÜSSEN für ihre durch ZETA Clients erreichbaren Endpunkte ein **Rate Limit konfigurierbar einstellen** können. +++[...]+++ **[<=]**"
+
+Dieser funktionale Aspekt der Anforderung bezieht sich auf:
+
+- Authorization Server: GET /.well-known/openid-federation

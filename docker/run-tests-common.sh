@@ -17,7 +17,7 @@ tiger_set_defaults() {
   : "${ZETA_K8S_NAMESPACE:=}"
   : "${ALLOW_DEPLOYMENT_MODIFICATION:=}"
   : "${OPENSEARCH_URL:=}"
-  : "${PROMETHEUS_URL:=}"
+  : "${ZETA_TLS_TEST_TOOL_SERVICE_URL:=}"
   : "${ZETA_TEST_CERTIFICATES_DIR:=}"
   : "${PROFILE:=}"
   : "${CUCUMBER_TAGS:=@smoke}"
@@ -45,7 +45,7 @@ tiger_common_property_args() {
   zeta_k8s_namespace_arg="$(tiger_property_arg_from_env ZETA_K8S_NAMESPACE zeta_k8s_namespace)"
   allow_deployment_modification_arg="$(tiger_property_arg_from_env ALLOW_DEPLOYMENT_MODIFICATION allow_deployment_modification)"
   opensearch_arg="$(tiger_property_arg_from_env OPENSEARCH_URL opensearch_url)"
-  prometheus_arg="$(tiger_property_arg_from_env PROMETHEUS_URL prometheus_url)"
+  zeta_tls_test_tool_service_url_arg="$(tiger_property_arg_from_env ZETA_TLS_TEST_TOOL_SERVICE_URL zeta_tls_test_tool_service_url)"
   test_certificates_dir_arg="$(tiger_property_arg_from_env ZETA_TEST_CERTIFICATES_DIR testCertificates.dir)"
 
   [ -n "${profile_arg}" ] && args="${args} ${profile_arg}"
@@ -54,7 +54,7 @@ tiger_common_property_args() {
   [ -n "${zeta_k8s_namespace_arg}" ] && args="${args} ${zeta_k8s_namespace_arg}"
   [ -n "${allow_deployment_modification_arg}" ] && args="${args} ${allow_deployment_modification_arg}"
   [ -n "${opensearch_arg}" ] && args="${args} ${opensearch_arg}"
-  [ -n "${prometheus_arg}" ] && args="${args} ${prometheus_arg}"
+  [ -n "${zeta_tls_test_tool_service_url_arg}" ] && args="${args} ${zeta_tls_test_tool_service_url_arg}"
   [ -n "${test_certificates_dir_arg}" ] && args="${args} ${test_certificates_dir_arg}"
 
   printf -- "%s" "${args}"

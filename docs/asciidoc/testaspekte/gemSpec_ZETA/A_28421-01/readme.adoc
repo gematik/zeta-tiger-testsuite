@@ -1,0 +1,13 @@
+==== Testaspekte für die Anforderung A_28421-01
+
+Folgende Testaspekte testen <<A_28421-01>>.
+
+include::TA_A_28421-01_01.adoc[]
+
+include::TA_A_28421-01_02.adoc[]
+
+include::TA_A_28421-01_03.adoc[]
+
+include::TA_A_28421-01_04.adoc[]
+
+include::TA_A_28421-01_05.adoc[]

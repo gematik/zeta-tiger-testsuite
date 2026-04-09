@@ -1,0 +1,9 @@
+[#TA_A_25340-01_05]
+===== TA_A_25340-01_05 - Zertifikatsprüfung - Revocation-Prüfung End-Entity-Zertifikat
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Revocation-Prüfung für das End-Entity-Zertifikat (Server-Zertifikat): Der Client MUSS den Widerrufsstatus prüfen. Hierbei SOLL primär eine vom Server bereitgestellte OCSP-Response (OCSP Stapling) ausgewertet werden.
+* Fehlt diese, MUSS die Prüfung über gecachte CRLs oder OCSP-Responses erfolgen.
+
+[...]"

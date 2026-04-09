@@ -1,0 +1,4 @@
+[#TA_A_28420-01_01]
+===== TA_A_28420-01_01 - ZETA Guard, Service Discovery - eindeutiger etag-Header für jedes Well-known JSON-Dokument
+
+"Der ZETA Guard MUSS **für jedes Well-known JSON-Dokument** einen **eindeutigen etag-Header** generieren und diesen gemäß [RFC9110] in der HTTP-Antwort bei jeder Anfrage bereitstellen. [...] **[<=]**"

@@ -1,0 +1,7 @@
+==== Testaspekte für die Anforderung A_27727-01
+
+Folgende Testaspekte testen <<A_27727-01>>.
+
+include::TA_A_27727-01_01.adoc[]
+
+include::TA_A_27727-01_02.adoc[]

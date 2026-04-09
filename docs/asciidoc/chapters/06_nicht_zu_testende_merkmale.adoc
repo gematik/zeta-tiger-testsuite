@@ -33,21 +33,6 @@ Jedes Element enthält die Begründung und – sofern vorhanden – die geplante
 |Nach Bereitstellung des Notification Service im Ziel-Deployment
 
 |Telemetrie
-|<<TA_A_25795_06>>
-|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
-|Nach Bereitstellung des Notification Service im Ziel-Deployment
-
-|Telemetrie
-|<<TA_A_25796_15>>
-|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
-|Nach Bereitstellung des Notification Service im Ziel-Deployment
-
-|Telemetrie
-|<<TA_A_25799_06>>
-|Notification Service ist in der aktuellen Testumgebung nicht verfügbar.
-|Nach Bereitstellung des Notification Service im Ziel-Deployment
-
-|Telemetrie
 |<<TA_A_26988_04>>
 |PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
 |Bei Scope-Erweiterung oder geänderter Zielarchitektur
@@ -72,35 +57,6 @@ Jedes Element enthält die Begründung und – sofern vorhanden – die geplante
 |Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
 |Bei Scope-Erweiterung oder geänderter Zielarchitektur
 
-|Telemetrie
-|<<TA_A_25795_02>>
-|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
-
-|Telemetrie
-|<<TA_A_25795_07>>
-|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
-
-|Telemetrie
-|<<TA_A_25796_04>>
-|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
-
-|Telemetrie
-|<<TA_A_25796_18>>
-|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
-
-|Telemetrie
-|<<TA_A_25799_02>>
-|PEP-Datenbank ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
-
-|Telemetrie
-|<<TA_A_25799_07>>
-|Management Service ist im aktuellen Scope der Testumgebung kein eigenständiges Prüfobjekt.
-|Bei Scope-Erweiterung oder geänderter Zielarchitektur
 
 |HTTP-Protokollversionen
 |<<TA_A_26640_03>>
@@ -108,22 +64,22 @@ Jedes Element enthält die Begründung und – sofern vorhanden – die geplante
 |Bei Priorisierung der SOLL-Validierungen
 
 |OCSP Stapling
-|<<TA_A_26964_01>>
+|<<TA_A_26964-01_01>>
 |Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
 |Bei Priorisierung der SOLL-Validierungen
 
 |Session Management PDP Datenbank
-|<<TA_A_27867_02>>
+|<<TA_A_27867-01_02>>
 |Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
 |Bei Priorisierung der SOLL-Validierungen
 
 |Session Management PDP Datenbank
-|<<TA_A_27867_03>>
+|<<TA_A_27867-01_03>>
 |Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
 |Bei Priorisierung der SOLL-Validierungen
 
 |Session Management PDP Datenbank
-|<<TA_A_27867_04>>
+|<<TA_A_27867-01_04>>
 |Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
 |Bei Priorisierung der SOLL-Validierungen
 |===

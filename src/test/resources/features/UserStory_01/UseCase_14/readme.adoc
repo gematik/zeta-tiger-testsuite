@@ -49,9 +49,7 @@ Die Ressource wurde nicht geladen. Der MA kennt jedoch die neue Ziel-URL für ei
 gewünschten Ressource.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_26104_01>>
-* <<TA_A_26104_02>>
-* <<TA_A_26281_02>>
+* <<TA_A_26281-01_02>>
 * <<TA_A_26560_01>>
 * <<TA_A_26661_01>>
 * <<TA_A_27007_17>>

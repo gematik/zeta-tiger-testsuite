@@ -1,0 +1,8 @@
+[#TA_A_28782_01]
+===== TA_A_28782_01 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - Batch - BatchExportOptions - maxQueueSize
+
+"Das Produkt MUSS die Konfigurierbarkeit der Telemetriedatenlieferung des ZETA Guards an die gematik Telemetriedatencloud in einer ausgelagerten Konfiguration für folgenden Parameter unterstützen:
+
+**maxQueueSize** (Default = 2048)
+
+**[<=]"**

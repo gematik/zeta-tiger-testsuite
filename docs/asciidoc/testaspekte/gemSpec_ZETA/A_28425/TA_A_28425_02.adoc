@@ -1,4 +1,0 @@
-[#TA_A_28425_02]
-===== TA_A_28425_02 - ZETA Client, Service Discovery - /.well-known/oauth-authorization-server
-
-"Der ZETA Client MUSS bei der Abfrage der Well-known JSON-Dokumente die HTTP-Header If-None-Match und ETag verwenden. **[<=]**"

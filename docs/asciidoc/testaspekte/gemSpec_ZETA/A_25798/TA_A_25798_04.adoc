@@ -1,4 +1,0 @@
-[#TA_A_25798_04]
-===== TA_A_25798_04 - ZETA Guard-Komponenten - Regelmäßige Selbstüberprüfung - Abhängigkeiten - PEP Datenbank
-
-"Die Komponenten des ZETA Guard MUSS in der Lage sein, **regelmäßige Selbstüberprüfungen durchzuführen**, um interne Funktionen und **Abhängigkeiten** zu verifizieren und sicherzustellen, dass sie korrekt arbeiten. **[<=]**"

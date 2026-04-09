@@ -8,6 +8,10 @@ authorization:
     root: "$.header.['authorization'].DpopToken"
     body:
       sub: "$.header.['authorization'].DpopToken.body.sub"
+      common_name: "$.header.['authorization'].DpopToken.body.common_name"
+      profession_oid: "$.header.['authorization'].DpopToken.body.profession_oid"
+      client_id: "$.header.['authorization'].DpopToken.body.client_id"
+      organization_name: "$.header.['authorization'].DpopToken.body.organization_name"
       cdat:
         root: "$.header.['authorization'].DpopToken.body.cdat"
         client_id: "$.header.['authorization'].DpopToken.body.cdat.client_id"

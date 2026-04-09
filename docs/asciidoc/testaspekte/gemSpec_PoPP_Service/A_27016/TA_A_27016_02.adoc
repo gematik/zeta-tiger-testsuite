@@ -1,0 +1,4 @@
+[#TA_A_27016_02]
+===== TA_A_27016_02 - PoPP-Verifier - Signaturzertifikat stammt aus der TI-PKI
+
+"Der PoPP-Verifier, der das Signaturzertifikat des PoPP-Token via TI-PKI prüft, MUSS dabei verifizieren, dass das für die Signatur des PoPP-Token verwendete Signaturzertifikat **aus der TI-PKI stammt**."

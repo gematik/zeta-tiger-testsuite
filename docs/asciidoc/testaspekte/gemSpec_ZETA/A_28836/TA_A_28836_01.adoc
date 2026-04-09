@@ -1,0 +1,12 @@
+[#TA_A_28836_01]
+===== TA_A_28836_01 - PEP HTTP Proxy - TI Service Provider Metadata Well-known - Bereitstellung unter spezifischer URI
+
+"Die Komponente HTTP Proxy MUSS ein TI Service Provider Metadata Well-known JSON Dokument wie folgt bereitstellen,
+
++++[...]+++
+**GET /.well-known/ti-service-provider-metadata**
+**Host: <FQDN des Resource Server-Mandanten>**
++++[...]+++
+**[<=]**
+
+Anfragen an URI 'https://<Mandanten-FQDN>/.well-known/ti-service-provider-metadata' werden durch den Proxy unterstützt."

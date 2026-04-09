@@ -1,0 +1,4 @@
+[#A_25658-01]
+==== A_25658-01 - PDP - Authentication über SmartCard SM(C)-B
+
+Der PDP Authorization Server MUSS Nutzer per Token Exchange mit einem SM(C)-B signiertem Subject-Token authentifizieren können.

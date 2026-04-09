@@ -53,7 +53,7 @@ Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit ern
 * <<TA_A_26560_01>>
 * <<TA_A_26661_26>>
 * <<TA_A_26662_01>>
-* <<TA_A_26974_01>>
+* <<TA_A_26974-01_01>>
 * <<TA_A_27007_26>>
 |===
 

@@ -1,0 +1,10 @@
+[#TA_A_25762-01_02]
+===== TA_A_25762-01_02 - Nutzerauthentifizierung mittels SM(C)-B signiertem ID Token
+
+"Der ZETA Client MUSS zur Authentifizierung des Nutzers mindestens eines der folgenden Verfahren unterstützen:
+
++++[...]+++
+
+* Authentifizierung des Nutzers **mittels +++SM(C)-B+++ signiertem ID Token**.
+
+[...]" **[<=]**
