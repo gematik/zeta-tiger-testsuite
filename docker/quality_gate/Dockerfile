@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # ---------- Build stage: package runnable testsuite artifacts ----------
-FROM maven:3.9.12-eclipse-temurin-21-alpine AS build
+ARG registry=docker.io
+FROM $registry/maven:3.9.12-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 ARG SERENITY_CLI_VERSION=4.1.13
@@ -30,7 +31,8 @@ RUN . docker/build-common.sh && \
     tiger_verify_gitlab_testproxy_artifacts
 
 # ---------- Runtime stage: run testsuite without Maven ----------
-FROM eclipse-temurin:21-jre-alpine AS runtime
+ARG registry=docker.io
+FROM $registry/eclipse-temurin:21-jre-alpine AS runtime
 ARG SERENITY_CLI_VERSION=4.1.13
 ARG ZETA_UID=1000
 ARG ZETA_GID=1000
