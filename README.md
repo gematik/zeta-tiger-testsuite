@@ -395,6 +395,21 @@ Tipps:
 - Unter Windows wird `mmdc.cmd` verwendet; unter Linux/CI `mmdc`. Der POM kümmert sich um die
   korrekten Pfade.
 
+## BSI TLS Test Tool Hinweis
+
+Die ZETA-Tiger-Testsuite verwendet eine angepasste Version vom BSI TLS Test Tool (siehe https://github.com/BSI-Bund/TaSK/pull/34) und dazugehörige Testartefakte (`BSI-Bund/TaSK`, Unterverzeichnis `tlstesttool`).
+
+Sie stehen nicht unter der Apache-2.0-Lizenz dieses Repositorys.
+Für diese Dateien gelten stattdessen die Lizenzbedingungen des Upstream-Projekts.
+Das Upstream-README beschreibt das TLS Test Tool als `EUPL-1.2-or-later` lizenziert.
+
+Bitte prüfen Sie bei Weitergabe, Spiegelung oder Austausch der Tool-Artefakte zusätzlich die
+Lizenz- und Hinweisdateien des Upstream-Projekts:
+
+- Upstream-Repository: <https://github.com/BSI-Bund/TaSK/tree/master/tlstesttool>
+- Upstream-README: <https://raw.githubusercontent.com/BSI-Bund/TaSK/master/tlstesttool/README.md>
+- EUPL-1.2 Text: <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>
+
 ## License
 
 (C) achelos GmbH, 2025, licensed for gematik GmbH
