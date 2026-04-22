@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # ---------- Build stage: warm up Maven repos & validate the project ----------
-FROM maven:3.9.12-eclipse-temurin-21-alpine AS build
+ARG registry=docker.io
+FROM $registry/maven:3.9.12-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 ARG GITLAB_BASE_URL=https://gitlab.com
@@ -50,7 +51,8 @@ RUN . docker/build-common.sh && \
     tiger_verify_gitlab_testproxy_artifacts
 
 # ---------- Runtime stage: executes Maven with the warmed-up repository ----------
-FROM maven:3.9.12-eclipse-temurin-21-alpine AS execute-tests
+ARG registry=docker.io
+FROM $registry/maven:3.9.12-eclipse-temurin-21-alpine AS execute-tests
 
 WORKDIR /app
 ARG GITLAB_BASE_URL=https://gitlab.com
