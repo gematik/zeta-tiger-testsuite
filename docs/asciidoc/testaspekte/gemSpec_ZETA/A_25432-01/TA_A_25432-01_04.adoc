@@ -1,8 +1,8 @@
 [#TA_A_25432-01_04]
-===== TA_A_25432-01_04 - ZETA Client - Ablauf Client-Registrierung - Attestierung generierter Credentials
+===== TA_A_25432-01_04 - ZETA Client - Ablauf Client-Registrierung - Attestierung der Clientintegrität
 
 Der mobile ZETA Client (oder ein stationärer Client) für Versicherte MUSS, sofern er an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, indem er 
 
-* die **generierten Credentials** +++[...]+++ **attestiert**
+* die +++[...]+++ **Clientintegrität** **attestiert**
 
 **[<=]**

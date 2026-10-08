@@ -27,8 +27,6 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
@@ -46,6 +44,8 @@ import java.text.ParseException;
 import java.util.Base64;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * DPoP-specific Cucumber step definitions for DPoP (Demonstration of Proof-of-Possession)
@@ -62,8 +62,8 @@ public class DpopValidationSteps {
    * @param dpopJwt the DPoP JWT containing the public key in the jwk header
    * @param varName the variable name to store the calculated JKT
    */
-  @Und("berechne JKT aus DPoP JWT {tigerResolvedString} und speichere in Variable {tigerResolvedString}")
-  @And("calculate JKT from DPoP JWT {tigerResolvedString} and store in variable {tigerResolvedString}")
+  @Und("berechne JKT aus JWT Header JWK {tigerResolvedString} und speichere in Variable {tigerResolvedString}")
+  @And("calculate JKT from JWT header JWK {tigerResolvedString} and store in variable {tigerResolvedString}")
   public void calculateJktFromDpopJwt(String dpopJwt, String varName) {
     SignedJWT signedJwt;
     try {

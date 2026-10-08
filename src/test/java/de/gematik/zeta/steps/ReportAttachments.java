@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import lombok.extern.slf4j.Slf4j;
+import net.serenitybdd.core.Serenity;
 
 /**
  * Shared reporting bridge for data that should be visible in Serenity and Allure.
@@ -76,7 +77,25 @@ public final class ReportAttachments {
   }
 
   /**
-   * Adds an existing file to Allure and records its path and size in Serenity.
+   * Adds a preformatted text block as an HTML attachment so Allure renders it inline.
+   *
+   * @param title attachment title
+   * @param contents plain-text contents wrapped in a {@code <pre>} block
+   */
+  public static void addHtml(final String title, final String contents) {
+    var safeContents = contents == null ? "" : contents;
+    SerenityReportUtils.addCustomData(title, safeContents);
+    var escaped = safeContents
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
+    var html = "<pre style=\"font-family:monospace;font-size:13px;white-space:pre-wrap\">"
+        + escaped + "</pre>";
+    attachToAllure(title, "text/html", html.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Adds an existing file as a downloadable Serenity report artifact and to Allure.
    *
    * @param title attachment title
    * @param file file to attach
@@ -91,9 +110,7 @@ public final class ReportAttachments {
     try {
       var normalizedFile = file.toAbsolutePath().normalize();
       long size = Files.size(normalizedFile);
-      SerenityReportUtils.addCustomData(
-          title,
-          "file=" + normalizedFile + System.lineSeparator() + "sizeBytes=" + size);
+      Serenity.recordReportData().withTitle(title).downloadable().fromFile(normalizedFile);
       if (size > MAX_ALLURE_FILE_ATTACHMENT_BYTES) {
         addText(
             title + " (not attached to Allure)",

@@ -37,9 +37,8 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
@@ -54,7 +53,7 @@ import org.springframework.http.MediaType;
 @Slf4j
 public class TigerProxyManipulationsSteps {
 
-  private final Random random = new Random();
+  private final AtomicLong manipulationCounter = new AtomicLong();
 
   /**
    * Resolves the TigerProxy base URL from configuration.
@@ -63,6 +62,16 @@ public class TigerProxyManipulationsSteps {
    */
   private String getTigerProxyBaseUrl() {
     return TigerGlobalConfiguration.resolvePlaceholders("${paths.tigerProxy.baseUrl}");
+  }
+
+  /**
+   * Creates a unique TigerProxy manipulation name for this step definition instance.
+   *
+   * @param prefix manipulation name prefix describing the manipulation type
+   * @return a unique manipulation name
+   */
+  private String createManipulationName(String prefix) {
+    return prefix + manipulationCounter.incrementAndGet();
   }
 
   /**
@@ -119,7 +128,7 @@ public class TigerProxyManipulationsSteps {
   @Then("Set in TigerProxy for JWT in {string} the field {string} to value {tigerResolvedString}")
   public void setTigerProxyJwtManipulation(String jwtLocation, String jwtField, String value) {
     sendJwtManipulation(Map.of(
-        "name", "jwt-modification-" + random.nextInt(1000),
+        "name", createManipulationName("jwt-modification-"),
         "jwtLocation", jwtLocation,
         "jwtField", jwtField,
         "replaceWith", value));
@@ -140,7 +149,7 @@ public class TigerProxyManipulationsSteps {
       + "field {tigerResolvedString} and value {tigerResolvedString}")
   public void setTigerProxyManipulation(String message, String field, String value) {
     sendRbelManipulation(Map.of(
-        "name", "modification" + random.nextInt(100),
+        "name", createManipulationName("modification"),
         "condition", message,
         "targetElement", field,
         "replaceWith", value,
@@ -164,7 +173,7 @@ public class TigerProxyManipulationsSteps {
   public void setTigerProxyManipulationWithExecutions(String message, String field, String value,
       Integer executions) {
     sendRbelManipulation(Map.of(
-        "name", "modification" + random.nextInt(100),
+        "name", createManipulationName("modification"),
         "condition", message,
         "targetElement", field,
         "replaceWith", value,
@@ -188,38 +197,12 @@ public class TigerProxyManipulationsSteps {
   public void setTigerProxyRegexManipulation(String message, String field, String regexFilter,
       String value) {
     sendRbelManipulation(Map.of(
-        "name", "regex-modification" + random.nextInt(100),
+        "name", createManipulationName("regex-modification"),
         "condition", message,
         "targetElement", field,
         "regexFilter", regexFilter,
         "replaceWith", value,
         "deleteAfterNExecutions", 1));
-  }
-
-  /**
-   * Replaces a raw HTTP header line in intercepted messages while preserving a valid line break.
-   *
-   * @param message logic to identify the messages that need to be manipulated
-   * @param headerName header name to replace, for example {@code DPoP}
-   * @param headerValue new header value without the {@code Header-Name: } prefix
-   */
-  @Dann("Ersetze im TigerProxy für die Nachricht {tigerResolvedString} den Header {string} durch Wert {tigerResolvedString}")
-  @Then("Replace in TigerProxy for message {tigerResolvedString} the header {string} with value {tigerResolvedString}")
-  public void replaceTigerProxyHeaderLine(String message, String headerName, String headerValue) {
-    applyTigerProxyHeaderLineManipulation(message, headerName, headerValue, false);
-  }
-
-  /**
-   * Duplicates a raw HTTP header line in intercepted messages to provoke duplicate-header checks.
-   *
-   * @param message logic to identify the messages that need to be manipulated
-   * @param headerName header name to duplicate, for example {@code DPoP}
-   * @param headerValue duplicated header value without the {@code Header-Name: } prefix
-   */
-  @Dann("Dupliziere im TigerProxy für die Nachricht {tigerResolvedString} den Header {string} mit Wert {tigerResolvedString}")
-  @Then("Duplicate in TigerProxy for message {tigerResolvedString} the header {string} with value {tigerResolvedString}")
-  public void duplicateTigerProxyHeaderLine(String message, String headerName, String headerValue) {
-    applyTigerProxyHeaderLineManipulation(message, headerName, headerValue, true);
   }
 
   /**
@@ -232,15 +215,12 @@ public class TigerProxyManipulationsSteps {
   @Dann("Dupliziere im TigerProxy für die Nachricht {tigerResolvedString} den Header {string}")
   @Then("Duplicate in TigerProxy for message {tigerResolvedString} the header {string}")
   public void duplicateTigerProxyExistingHeaderLine(String message, String headerName) {
-    var normalizedHeaderName = headerName == null ? "" : headerName.trim();
-    if (normalizedHeaderName.isEmpty()) {
-      throw new AssertionError("Header name for TigerProxy header manipulation must not be empty.");
-    }
+    var normalizedHeaderName = normalizeHeaderNameForManipulation(headerName);
 
     var lineRegex = "(?im)^(" + Pattern.quote(normalizedHeaderName)
         + "[\\t ]*:[^\\r\\n]*)(?:\\r?\\n)?";
     sendRbelManipulation(Map.of(
-        "name", "header-line-duplication" + random.nextInt(1000),
+        "name", createManipulationName("header-line-duplication"),
         "condition", message,
         "targetElement", "$.header",
         "regexFilter", lineRegex,
@@ -303,10 +283,8 @@ public class TigerProxyManipulationsSteps {
    * @return normalized header name
    */
   private String validateHeaderCountInput(String headerName, int expectedOccurrences) {
-    var normalizedHeaderName = headerName == null ? "" : headerName.trim();
-    if (normalizedHeaderName.isEmpty()) {
-      throw new AssertionError("Header name for current request header count must not be empty.");
-    }
+    var normalizedHeaderName = normalizeRequiredHeaderName(
+        headerName, "Header name for current request header count must not be empty.");
     if (expectedOccurrences < 0) {
       throw new AssertionError("Expected header occurrence count must not be negative.");
     }
@@ -353,41 +331,29 @@ public class TigerProxyManipulationsSteps {
   }
 
   /**
-   * Applies a regex-based raw header manipulation for a single header line.
+   * Normalizes and validates a header name used in TigerProxy header manipulation.
    *
-   * @param message logic to identify the messages that need to be manipulated
-   * @param headerName header name to target
-   * @param headerValue replacement header value without the {@code Header-Name: } prefix
-   * @param duplicate whether the matching header line should be duplicated
+   * @param headerName header name to normalize
+   * @return trimmed header name
    */
-  private void applyTigerProxyHeaderLineManipulation(
-      String message, String headerName, String headerValue, boolean duplicate) {
+  private String normalizeHeaderNameForManipulation(String headerName) {
+    return normalizeRequiredHeaderName(
+        headerName, "Header name for TigerProxy header manipulation must not be empty.");
+  }
+
+  /**
+   * Normalizes and validates a required HTTP header name.
+   *
+   * @param headerName header name to normalize
+   * @param emptyMessage assertion message used when the header name is empty
+   * @return trimmed header name
+   */
+  private String normalizeRequiredHeaderName(String headerName, String emptyMessage) {
     var normalizedHeaderName = headerName == null ? "" : headerName.trim();
     if (normalizedHeaderName.isEmpty()) {
-      throw new AssertionError("Header name for TigerProxy header manipulation must not be empty.");
+      throw new AssertionError(emptyMessage);
     }
-
-    if (!duplicate) {
-      sendRbelManipulation(Map.of(
-          "name", "header-value-modification" + random.nextInt(1000),
-          "condition", message,
-          "targetElement", "$.header." + normalizedHeaderName.toLowerCase(Locale.ROOT),
-          "replaceWith", headerValue,
-          "deleteAfterNExecutions", 1));
-      return;
-    }
-
-    var lineRegex = "(?im)^" + Pattern.quote(normalizedHeaderName) + ":[^\\r\\n]*\\r?\\n?";
-    var replacementLine = normalizedHeaderName + ": " + headerValue + "\r\n";
-    var replacement = duplicate ? replacementLine + replacementLine : replacementLine;
-
-    sendRbelManipulation(Map.of(
-        "name", "header-line-modification" + random.nextInt(1000),
-        "condition", message,
-        "targetElement", "$.header",
-        "regexFilter", lineRegex,
-        "replaceWith", replacement,
-        "deleteAfterNExecutions", 1));
+    return normalizedHeaderName;
   }
 
   /**
@@ -464,6 +430,36 @@ public class TigerProxyManipulationsSteps {
         Map.entry("condition", condition),
         Map.entry("deleteAfterNExecutions", executions),
         Map.entry("replaceJwk", true)));
+  }
+
+  /**
+   * Configures a JWT manipulation on the TigerProxy that removes the selected JWT field and
+   * re-signs the token with a replacement JWK derived from the provided private key.
+   *
+   * @param jwtLocation   where the JWT is located (e.g., "$.header.dpop")
+   * @param jwtField      what to remove in the JWT (e.g., "body.jti")
+   * @param privateKeyPem private key used to re-sign the token and derive public key for JWK
+   * @param condition     regex pattern to match request paths
+   * @param executions    number of times to execute before auto-clearing (null = unlimited)
+   */
+  @Dann("Entferne im TigerProxy für JWT in {tigerResolvedString} das Feld {string} "
+      + "mit privatem Schlüssel {tigerResolvedString} für Pfad {tigerResolvedString} "
+      + "und {int} Ausführungen und ersetze JWK")
+  @Then("Remove in TigerProxy for JWT in {tigerResolvedString} the field {string} "
+      + "using private key {tigerResolvedString} for path {tigerResolvedString} "
+      + "with {int} executions and replace JWK")
+  public void removeTigerProxyJwtFieldWithConditionAndReplaceJwk(String jwtLocation,
+      String jwtField,
+      String privateKeyPem, String condition, Integer executions) {
+    sendJwtManipulation(Map.ofEntries(
+        Map.entry("jwtLocation", jwtLocation),
+        Map.entry("jwtField", jwtField),
+        Map.entry("replaceWith", ""),
+        Map.entry("privateKeyPem", privateKeyPem),
+        Map.entry("condition", condition),
+        Map.entry("deleteAfterNExecutions", executions),
+        Map.entry("replaceJwk", true),
+        Map.entry("deleteField", true)));
   }
 
   /**
@@ -607,6 +603,15 @@ public class TigerProxyManipulationsSteps {
    * @param body Request body containing manipulation parameters
    */
   private void sendRbelManipulation(Map<String, Object> body) {
+    sendRbelManipulations(body);
+  }
+
+  /**
+   * Sends one or more RBel manipulations to TigerProxy in a single update.
+   *
+   * @param body request body containing one manipulation object or a list of manipulation objects
+   */
+  private void sendRbelManipulations(Object body) {
     var baseUrl = resolveTigerProxyBaseUrl("RBel manipulation");
     if (baseUrl == null) {
       return;
@@ -619,7 +624,9 @@ public class TigerProxyManipulationsSteps {
           .contentType(ContentType.JSON)
           .body(body)
           .when()
-          .put(url);
+          .put(url)
+          .then()
+          .statusCode(200);
       given()
           .when()
           .get(url)

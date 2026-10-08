@@ -1,0 +1,42 @@
+profiles:
+  performance:
+    charts:
+      - rate
+      - error_rate
+      - latency
+      - correlation
+
+targets:
+  pep_ohne_asl:
+    name: "PEP"
+    service: "${telemetry.service.httpProxy}"
+    spans: "${telemetry.spanGroup.httpProxy.pepAndWellKnown}"
+    latencies:
+      - name: "PEP"
+        span: "${telemetry.span.httpProxy.pep}"
+
+  pep_asl:
+    name: "PEP"
+    service: "${telemetry.service.httpProxy}"
+    spans: "${telemetry.spanGroup.httpProxy.aslPepAndWellKnown}"
+    latencies:
+      - name: "ASL"
+        span: "${telemetry.span.httpProxy.asl}"
+
+  pdp:
+    name: "PDP"
+    service: "${telemetry.service.authorizationServer}"
+    spans: "${telemetry.spanGroup.authorizationServer.nonceAndToken}"
+    latencies:
+      - name: "Token"
+        span: "${telemetry.span.authorizationServer.token}"
+      - name: "Nonce"
+        span: "${telemetry.span.authorizationServer.nonce}"
+
+  pdp_kalte_clients:
+    name: "PDP"
+    service: "${telemetry.service.authorizationServer}"
+    spans: "${telemetry.spanGroup.authorizationServer.nonceRegisterAndToken}"
+    latencies:
+      - name: "Token"
+        span: "${telemetry.span.authorizationServer.token}"

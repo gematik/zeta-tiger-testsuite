@@ -25,29 +25,17 @@
 package de.gematik.zeta;
 
 import de.gematik.test.tiger.lib.TigerDirector;
-import de.gematik.test.tiger.lib.TigerInitializer;
-import java.io.IOException;
+import io.cucumber.junit.TigerCucumberRunner;
 import java.io.PrintWriter;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
-import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 
 /**
  * Standalone entry point for running the Tiger/Cucumber testsuite without Maven.
  *
- * <p>Maps environment variables to the expected Tiger and Cucumber system properties and delegates
- * execution to the JUnit Platform with the Cucumber engine. Ensures Tiger is initialized first so the run behaves like the
- * TigerCucumberRunner. Exits non-zero when discovery yields no tests or when scenarios fail.</p>
+ * <p>Delegates execution to Tiger's JUnit Platform runner and exits non-zero when discovery yields
+ * no tests or when scenarios fail.
  */
 public final class TigerTestsuiteMain {
 
@@ -62,14 +50,12 @@ public final class TigerTestsuiteMain {
   /**
    * Launch the testsuite using the Tiger JUnit runner.
    *
-   * @param args optional arguments (currently ignored; configuration is read from env vars)
+   * @param args optional arguments (currently ignored; configuration is read from system properties)
    */
   public static void main(String[] args) {
-    configureSystemPropertiesFromEnv();
-
     int exitCode = 0;
     try {
-      new TigerInitializer().runWithSafelyInitialized(TigerTestsuiteMain::runCucumberSuite);
+      runCucumberSuite();
     } catch (RuntimeException ex) {
       exitCode = 1;
       ex.printStackTrace(System.err);
@@ -88,22 +74,17 @@ public final class TigerTestsuiteMain {
    * Discover and execute all Cucumber features on the classpath.
    */
   private static void runCucumberSuite() {
-    ensureDir(System.getProperty("serenity.outputDirectory"));
     var cucumberOutputDir =
         System.getProperty(CUCUMBER_OUTPUT_DIR_PROPERTY, DEFAULT_CUCUMBER_OUTPUT_DIR);
-    ensureDir(cucumberOutputDir);
-    ensureDir(System.getProperty("allure.results.directory"));
-
-    List<DiscoverySelector> selectors = new ArrayList<>();
-    selectors.add(DiscoverySelectors.selectClasspathResource("features"));
 
     var glue = System.getProperty("cucumber.glue", DEFAULT_GLUE);
     var plugin = System.getProperty("cucumber.plugin", defaultPlugin(cucumberOutputDir));
 
-    var builder = LauncherDiscoveryRequestBuilder.request()
-        .configurationParameter("cucumber.glue", glue)
-        .configurationParameter("cucumber.plugin", plugin)
-        .configurationParameter("cucumber.publish.quiet", "true");
+    var builder =
+        LauncherDiscoveryRequestBuilder.request()
+            .configurationParameter("cucumber.glue", glue)
+            .configurationParameter("cucumber.plugin", plugin)
+            .configurationParameter("cucumber.publish.quiet", "true");
 
     var tags = System.getProperty("cucumber.filter.tags");
 
@@ -111,14 +92,10 @@ public final class TigerTestsuiteMain {
       builder.configurationParameter("cucumber.filter.tags", tags);
     }
 
-    var request = builder
-        .selectors(selectors)
-        .build();
+    var request = builder.selectors(DiscoverySelectors.selectClasspathResource("features")).build();
 
     var summaryListener = new SummaryGeneratingListener();
-    var launcher = LauncherFactory.create();
-    launcher.registerTestExecutionListeners(summaryListener);
-    launcher.execute(request);
+    TigerCucumberRunner.discoverAndRunTests(request, summaryListener);
 
     var summary = summaryListener.getSummary();
     summary.printTo(new PrintWriter(System.out, true));
@@ -129,43 +106,6 @@ public final class TigerTestsuiteMain {
       summary.printFailuresTo(new PrintWriter(System.err, true));
       throw new IllegalStateException("Tests failed: " + summary.getTotalFailureCount());
     }
-  }
-
-  /**
-   * Map common environment variables to system properties expected by Tiger/Cucumber.
-   */
-  private static void configureSystemPropertiesFromEnv() {
-    var env = System.getenv();
-
-    setIfAbsent("zeta_base_url", env.get("ZETA_BASE_URL"));
-    setIfAbsent("zeta_proxy_url", env.get("ZETA_PROXY_URL"));
-    setIfAbsent("zeta_k8s_namespace", env.get("ZETA_K8S_NAMESPACE"));
-    setIfAbsent("opensearch_url", env.get("OPENSEARCH_URL"));
-    setIfAbsent("zeta_tls_test_tool_service_url", env.get("ZETA_TLS_TEST_TOOL_SERVICE_URL"));
-    setIfAbsent("PROFILE", env.get("PROFILE"));
-    setIfAbsent("cucumber.filter.tags",
-        firstNonEmpty(env.get("CUCUMBER_FILTER_TAGS"), env.get("CUCUMBER_TAGS")));
-    setIfAbsent("allow_performance_tests", env.get("ALLOW_PERFORMANCE_TESTS"));
-    setIfAbsent("allow_longrunning_tests", env.get("ALLOW_LONGRUNNING_TESTS"));
-    setIfAbsent("tiger.testenv.cfgfile",
-        firstNonEmpty(env.get("TIGER_TESTENV_CFGFILE"), existingTigerConfigPath()));
-    setIfAbsent("serenity.outputDirectory",
-        env.getOrDefault("SERENITY_EXPORT_DIR", "target/site/serenity"));
-    setIfAbsent("allure.results.directory",
-        env.getOrDefault("ALLURE_RESULTS_DIR", "target/allure-results"));
-
-    setIfAbsent(CUCUMBER_OUTPUT_DIR_PROPERTY,
-        firstNonEmpty(env.get("CUCUMBER_EXPORT_DIR"), DEFAULT_CUCUMBER_OUTPUT_DIR));
-
-    setIfAbsent("tiger.lib.activateWorkflowUi", "false");
-    setIfAbsent("tiger.lib.startBrowser", "false");
-    setIfAbsent("tiger.lib.trafficVisualization", "false");
-    setIfAbsent("tiger.lib.rbelAnsiColors", "false");
-    setIfAbsent("tiger.lib.runTestsOnStart", "true");
-    setIfAbsent("cucumber.publish.quiet", "true");
-    setIfAbsent("cucumber.plugin",
-        defaultPlugin(System.getProperty(CUCUMBER_OUTPUT_DIR_PROPERTY, DEFAULT_CUCUMBER_OUTPUT_DIR)));
-    setIfAbsent("cucumber.glue", DEFAULT_GLUE);
   }
 
   /**
@@ -180,71 +120,5 @@ public final class TigerTestsuiteMain {
         + ",junit:" + cucumberOutputDir + "/cucumber.xml"
         + ",io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
         + ",de.gematik.zeta.traceability.RuntimeCoveragePlugin";
-  }
-
-  /**
-   * Set a system property if it is not already present and the candidate value is non-blank.
-   *
-   * @param key   system property name
-   * @param value candidate value
-   */
-  private static void setIfAbsent(String key, String value) {
-    Optional.ofNullable(value)
-        .filter(Predicate.not(String::isBlank))
-        .ifPresent(v -> System.getProperties().putIfAbsent(key, v));
-  }
-
-  /**
-   * Ensure the given directory exists so report output does not fail in headless runs.
-   *
-   * @param path directory path to create if missing
-   */
-  private static void ensureDir(String path) {
-    if (path == null || path.isBlank()) {
-      return;
-    }
-    try {
-      Files.createDirectories(Path.of(path));
-    } catch (IOException ex) {
-      throw new UncheckedIOException("Unable to create directory: " + path, ex);
-    }
-  }
-
-  /**
-   * Return the first non-empty string from the provided candidates.
-   *
-   * @param values candidate values in priority order
-   * @return the first non-empty candidate or {@code null}
-   */
-  private static String firstNonEmpty(String... values) {
-    return Stream.of(values)
-        .filter(TigerTestsuiteMain::isNonBlank)
-        .findFirst()
-        .orElse(null);
-  }
-
-  /**
-   * Check whether a string contains a non-blank value.
-   *
-   * @param value candidate value
-   * @return {@code true} if the value is not {@code null} and not blank
-   */
-  private static boolean isNonBlank(String value) {
-    return value != null && !value.isBlank();
-  }
-
-  /**
-   * Resolve a tiger.yaml/yml path from the working directory if present.
-   *
-   * @return absolute path or {@code null} if not found
-   */
-  private static String existingTigerConfigPath() {
-    for (var candidate : List.of("tiger.yaml", "tiger.yml")) {
-      var path = Path.of(candidate);
-      if (Files.exists(path)) {
-        return path.toAbsolutePath().toString();
-      }
-    }
-    return null;
   }
 }

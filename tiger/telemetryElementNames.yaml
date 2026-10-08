@@ -12,7 +12,6 @@ container:
   notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
   # managementService: 'management-service' # Dummy value, component not provided
   telemetryDataService: 'telemetry-gateway'
-  helperLogCollector: 'log-collector' # helper of telemetryDataService
   resourceServer: 'testfachdienst'
 
 # names for opensearch queries, i.e. used for logs
@@ -29,7 +28,6 @@ containerName:
   notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
   # managementService: 'management-service' # Dummy value, component not provided
   telemetryDataService: 'telemetry-gateway'
-  helperLogCollector: 'log-collector' # helper of telemetryDataService
   resourceServer: 'testfachdienst'
 
 # names for jaeger queries, i.e. used for traces
@@ -46,8 +44,7 @@ service:
   notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
   # managementService: 'management-service' # Dummy value, component not provided
   telemetryDataService: 'telemetry-gateway'
-  helperLogCollector: 'log-collector' # helper of telemetryDataService
-  resourceServer: 'testfachdienst'
+  resourceServer: 'resource server'
 
 # span_name label values for prometheus span metrics
 span:
@@ -57,8 +54,11 @@ span:
     wellKnown: '/.well-known/'
   authorizationServer:
     nonce: 'NonceProvider.createNonce'
+    nonce2: 'GET /realms/{realm}/{extension}'
     clientRegistration: 'POST /realms/{realm}/clients-registrations/{provider}'
     token: 'POST /realms/{realm}/protocol/{protocol}/token'
+  policyEngine:
+    data: 'POST /v1/data/{path...}'
 
 # comma-separated span_name groups for combined prometheus assertions
 spanGroup:

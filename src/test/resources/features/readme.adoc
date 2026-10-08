@@ -16,6 +16,12 @@ include::UserStory_TLS/readme.adoc[]
 
 include::UserStory_Telemetrie/readme.adoc[]
 
+include::UserStory_Generic/readme.adoc[]
+
 include::UserStory_01/readme.adoc[]
+
+include::UserStory_02/readme.adoc[]
+
+include::UserStory_03/readme.adoc[]
 
 :leveloffset: -1

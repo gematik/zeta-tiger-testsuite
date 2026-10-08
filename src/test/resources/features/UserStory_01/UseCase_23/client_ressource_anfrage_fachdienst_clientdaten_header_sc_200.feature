@@ -25,7 +25,7 @@
 #language:de
 
 @UseCase_01_23
-Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_integrationstest
+Funktionalität: Client Ressource Anfrage Fachdienst Client-Daten Header SC 200
 
   @A_25669-01
   @A_26492-02
@@ -42,11 +42,12 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
   @TA_A_26590-02_01
   @TA_A_26661_15
   @TA_A_27007_15
-  @dev
+  @deployment_modification
   @MASVS-AUTH
   Szenario: PEP fügt alle ZETA-Header ein (User-Info, PoPP-Token-Content, Client-Data)
     # Access Token holen und User-Daten aus dem Access Token ermitteln
-    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Gegeben sei aktiviere die Client-Daten-Weiterleitung für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
+    Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
     Und TGR speichere Wert des Knotens "${headers.authorization.dpopToken.root}" der aktuellen Anfrage in der Variable "ACC_TOK"
@@ -59,9 +60,10 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
     Und TGR speichere Wert des Knotens "${headers.authorization.dpopToken.body.product_id}" der aktuellen Anfrage in der Variable "expectedProductId"
     Und TGR speichere Wert des Knotens "${headers.authorization.dpopToken.body.product_version}" der aktuellen Anfrage in der Variable "expectedProductVersion"
 
-    # Nachrichten löschen und Resource Request mit manipulierten PDP-DB-Daten senden
+    # Nachrichten löschen und Resource Request mit zusätzlichem Header senden
     Und TGR lösche aufgezeichnete Nachrichten
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}" mit folgenden Headern:
+      | x-ta-a-25669-01-07-forwarded | ta-a-25669-01-07-forwarded |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
@@ -83,6 +85,9 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
     Dann TGR finde die letzte Anfrage mit dem Pfad "^${paths.fachdienst.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR speichere Wert des Knotens "$.header" der aktuellen Anfrage in der Variable "ALL_HEADERS"
+
+    # TA_A_25669-01_07: Alle anderen Header wurden weitergeleitet
+    Und prüfe Knoten "${ALL_HEADERS}" enthält mindestens alle Header aus "${ALL_OLD_HEADERS}" und nutze soft assert
 
     # TA_A_25669-01_01 / TA_A_26589-01_01: zeta-user-info wurde eingefügt und Access-Token-Claims wurden übernommen
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.userInfo.root}"
@@ -120,13 +125,11 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.clientData.decoded.product_id}" überein mit "${expectedProductId}"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.clientData.decoded.product_version}" überein mit "${expectedProductVersion}"
 
-    # TA_A_25669-01_07: Alle anderen Header wurden weitergeleitet
-    Und prüfe Knoten "${ALL_HEADERS}" enthält mindestens alle Header aus "${ALL_OLD_HEADERS}" und nutze soft assert
-
   @A_27260
-  @dev
+  @deployment_modification
   @MASVS-PRIVACY
   Szenariogrundriss: Telemetrie-Daten Service liefert Logs ohne Profilbildung (<component>)
+    Gegeben sei aktiviere die Client-Daten-Weiterleitung für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
@@ -141,9 +144,9 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.clientData.root}"
     Und TGR speichere Wert des Knotens "${headers.zeta.clientData.decoded.clientId}" der aktuellen Anfrage in der Variable "CLIENT_ID"
 
-    # Warte auf Telemetrie-Ingestion (Lieferintervall standardmäßig 60s)
-    Und warte 70 Sekunden
-    Und TGR setze lokale Variable "logQueryBase" auf "resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.service.telemetryDataService} AND resource.service.name:<serviceName> AND body:<specificBody>"
+    # Warte auf Telemetrie-Ingestion
+    Und warte "${testdata.telemetry_wait_seconds}" Sekunden
+    Und TGR setze lokale Variable "logQueryBase" auf "resource.service.name:<serviceName> AND body:<specificBody>"
 
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
       | q               | size |
@@ -154,48 +157,49 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
 
     # Negativprüfung: keiner der profilbildenden Werte darf in den Logs auffindbar sein
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                       | size |
+      | q                                                                      | size |
       | ${logQueryBase} AND (body:*${USER_IDENTIFIER}* OR body:*${CLIENT_ID}*) | 1    |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.hits.hits.0"
+    Und deaktiviere die Client-Daten-Weiterleitung für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
 
     @TA_A_27260_01
     Beispiele: Ingress
-      | component | serviceName                      | specificBody |
+      | component | serviceName                  | specificBody |
       | Ingress   | ${telemetry.service.ingress} | *HelloZeta*  |
 
     @TA_A_27260_02
     Beispiele: Egress
-      | component | serviceName                     | specificBody |
+      | component | serviceName                 | specificBody |
       | Egress    | ${telemetry.service.egress} | *HelloZeta*  |
 
     @TA_A_27260_03
     Beispiele: HTTP Proxy
-      | component  | serviceName                        | specificBody |
+      | component  | serviceName                    | specificBody |
       | HTTP Proxy | ${telemetry.service.httpProxy} | *HelloZeta*  |
 
     @TA_A_27260_04
     Beispiele: Authorization Server
-      | component             | serviceName                                   | specificBody |
+      | component             | serviceName                               | specificBody |
       | Authorization Server  | ${telemetry.service.authorizationServer}  | *            |
     # TODO: Z341 findet einen passenden Knoten (mit Daten, die Profilbildung ermöglichen)
 
     @TA_A_27260_05
     Beispiele: Policy Engine
-      | component       | serviceName                           | specificBody |
+      | component       | serviceName                       | specificBody |
       | Policy Engine   | ${telemetry.service.policyEngine} | *            |
     # TODO: Z341 findet einen passenden Knoten (mit Daten, die Profilbildung ermöglichen)
 
     @TA_A_27260_06
     Beispiele: Notification Service
-      | component            | serviceName                                  | specificBody |
+      | component            | serviceName                              | specificBody |
       | Notification Service | ${telemetry.service.notificationService} | *            |
     # TODO: Z332 findet keinen passenden Knoten
 
     @TA_A_27260_07
     Beispiele: Resource Server
-      | component       | serviceName                             | specificBody |
+      | component       | serviceName                         | specificBody |
       | Resource Server | ${telemetry.service.resourceServer} | *HelloZeta*  |
 
   @A_25669-01
@@ -204,11 +208,12 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
   @TA_A_25669-01_05
   @TA_A_25669-01_06
   @TA_A_28439_01
-  @dev
+  @deployment_modification
   @MASVS-AUTH
   Szenario: PEP überschreibt vom Client gesetzte zeta-Header und aktualisiert den Forwarded-Header
+    Gegeben sei aktiviere die Client-Daten-Weiterleitung für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
     # Setze gefälschte zeta-Header per TigerProxy-Manipulation - diese werden vom Client mitgesendet
-    Gegeben sei TGR setze lokale Variable "fakeHeaderCondition" auf "isRequest && request.path =~ '.*${paths.client.helloZetaPath}'"
+    Und TGR setze lokale Variable "fakeHeaderCondition" auf "isRequest && request.path =~ '.*${paths.client.helloZetaPath}'"
     Und Setze im TigerProxy für die Nachricht "${fakeHeaderCondition}" die Manipulation auf Feld "${headers.zeta.userInfo.strict}" und Wert "FAKE_USER_INFO"
     Und Setze im TigerProxy für die Nachricht "${fakeHeaderCondition}" die Manipulation auf Feld "${headers.zeta.poppTokenContent.strict}" und Wert "FAKE_POPP_CONTENT"
     Und Setze im TigerProxy für die Nachricht "${fakeHeaderCondition}" die Manipulation auf Feld "${headers.zeta.clientData.strict}" und Wert "FAKE_CLIENT_DATA"
@@ -240,7 +245,7 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.xForwardedFor}" nicht überein mit "${xforwardedBefore}"
     Und TGR speichere Wert des Knotens "${headers.forwarded.root}" der aktuellen Anfrage in der Variable "forwardedAfter"
     # RFC 7239: bestehender Forwarded-Header bleibt erhalten und es wird ein weiteres gültiges Forwarded-Element (for|by|proto|host) angehängt
-    Und TGR prüfe Variable "forwardedAfter" stimmt überein mit "^for=client;proto=http\\s*,\\s*(for|by|proto|host)=.+$"
+    Und TGR prüfe Variable "forwardedAfter" stimmt überein mit "^for=client;proto=http\s*,\s*(for|by|proto|host)=.+$"
 
     # Prüfe, dass alle drei zeta-Header vorhanden sind
     Und TGR prüfe aktueller Request enthält Knoten "${headers.zeta.userInfo.root}"
@@ -255,3 +260,4 @@ Funktionalität: client_ressource_anfrage_fachdienst_clientdaten_header_sc_200_i
 
     # TA_A_25669-01_06: zeta-client-data wurde überschrieben (nicht mehr FAKE-Wert)
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.zeta.clientData.root}" nicht überein mit "FAKE_CLIENT_DATA"
+    Und deaktiviere die Client-Daten-Weiterleitung für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment

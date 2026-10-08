@@ -155,6 +155,8 @@ Der stationäre ZETA Client erhält kein Access-Token für den Zugriff auf die g
 * <<TA_A_25767_02>>
 * <<TA_A_26661_02>>
 * <<TA_A_27007_02>>
+* <<TA_A_27725-01_02>>
+* <<TA_A_27725-01_03>>
 * <<TA_A_27802-02_01>>
 * <<TA_A_27802-02_02>>
 * <<TA_A_28963_01>>

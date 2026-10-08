@@ -26,9 +26,6 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSVerifier;
@@ -37,27 +34,29 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.SignedJWT;
+import de.gematik.zeta.model.CertificateMaterial;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.Security;
 import java.security.Signature;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.Callable;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber step definitions and helpers for ES256 JWT signature verification.
@@ -66,6 +65,8 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 public class SignatureVerificationSteps {
 
   private static final ObjectMapper JSON = new ObjectMapper();
+  private static final java.util.regex.Pattern UNQUOTED_JSON_FIELD_NAME =
+      java.util.regex.Pattern.compile("([\\{,]\\s*)([A-Za-z_][A-Za-z0-9_-]*)\\s*:");
 
   /**
    * Verifies the ES256 signature of a JWT using embedded key material from the JOSE header.
@@ -102,7 +103,7 @@ public class SignatureVerificationSteps {
    *
    * @param signedJwt parsed JWT
    * @param publicKey EC public key used for verification
-   * @param keyLabel human-readable key identifier or source label
+   * @param keyLabel  human-readable key identifier or source label
    */
   private void verifyJwtSignature(SignedJWT signedJwt, ECPublicKey publicKey, String keyLabel) {
     assertEs256(signedJwt);
@@ -111,12 +112,12 @@ public class SignatureVerificationSteps {
       valid = verifyWithNimbusOrBc(signedJwt, publicKey);
     } catch (GeneralSecurityException | JOSEException e) {
       throw new AssertionError("Failed to verify JWT signature using " + keyLabel + ": "
-              + e.getMessage(), e);
+          + e.getMessage(), e);
     }
 
     assertThat(valid)
-            .as("JWT signature must verify with public key " + keyLabel)
-            .isTrue();
+        .as("JWT signature must verify with public key " + keyLabel)
+        .isTrue();
 
     log.info("JWT signature verified successfully using {}", keyLabel);
   }
@@ -124,7 +125,7 @@ public class SignatureVerificationSteps {
   /**
    * Verifies the ES256 signature of a JWT using the EC key referenced by {@code kid}.
    *
-   * @param jwt compact serialized JWT with a {@code kid} header
+   * @param jwt      compact serialized JWT with a {@code kid} header
    * @param keyStore JWKS JSON containing the public key for the JWT {@code kid}
    */
   @Und("verifiziere die ES256 Signatur des JWT {tigerResolvedString} mit KeyStore {tigerResolvedString}")
@@ -145,7 +146,7 @@ public class SignatureVerificationSteps {
    * Resolves the preferred label for verification logging and assertions.
    *
    * @param signedJwt parsed JWT whose {@code kid} header is preferred when present
-   * @param fallback fallback label used when the JWT has no {@code kid}
+   * @param fallback  fallback label used when the JWT has no {@code kid}
    * @return {@code kid} header value or fallback label
    */
   private String keyLabel(SignedJWT signedJwt, String fallback) {
@@ -168,17 +169,100 @@ public class SignatureVerificationSteps {
   public boolean hasCryptographicallyValidEmbeddedEs256Signature(String jwt) {
     var parts = requireCompactJwtParts(jwt);
     var rawHeader = decodeBase64UrlHeader(parts[0]);
-    var header = parseJoseHeader(rawHeader);
+    var header = parseJoseHeaderToleratingUnquotedFieldNames(rawHeader);
+
+    return hasCryptographicallyValidEs256Signature(
+        parts, () -> extractEcPublicKeyFromRawJoseHeader(header));
+  }
+
+  /**
+   * Verifies the compact JWS cryptographically using the public key referenced by {@code kid}.
+   *
+   * <p>This method deliberately ignores the semantic JOSE algorithm value, because malformed JWT
+   * variant checks need to verify whether the byte-level signature still matches the signing input. It is used for access and refresh
+   * tokens that reference their verification key through {@code kid} instead of embedding {@code jwk} or {@code x5c}.</p>
+   *
+   * @param jwt      compact JWT/JWS to verify
+   * @param keyStore JWKS JSON containing the public key for the JWT {@code kid}
+   * @return true if the signature verifies cryptographically, otherwise false
+   */
+  public boolean hasCryptographicallyValidEs256SignatureFromKid(String jwt, String keyStore) {
+    var parts = requireCompactJwtParts(jwt);
+    var rawHeader = decodeBase64UrlHeader(parts[0]);
+    var header = parseJoseHeaderToleratingUnquotedFieldNames(rawHeader);
+    var kid = header.path("kid").asString();
+    if (kid.isBlank()) {
+      return false;
+    }
+
+    return hasCryptographicallyValidEs256Signature(
+        parts, () -> findEcPublicKeyByKid(keyStore, kid));
+  }
+
+  /**
+   * Verifies the compact JWS cryptographically using an already resolved public key.
+   *
+   * <p>This method deliberately ignores the semantic JOSE algorithm value, because malformed JWT
+   * variant checks need to verify whether the byte-level signature still matches the signing input. It is useful for tokens whose JOSE
+   * header references a key by {@code kid}, while the test setup already knows the expected PoPP public key.</p>
+   *
+   * @param jwt       compact JWT/JWS to verify
+   * @param publicKey EC public key used for verification
+   * @return true if the signature verifies cryptographically, otherwise false
+   */
+  public boolean hasCryptographicallyValidEs256SignatureWithPublicKey(
+      String jwt, ECPublicKey publicKey) {
+    assertThat(publicKey)
+        .as("JWT verification public key must be present")
+        .isNotNull();
+
+    var parts = requireCompactJwtParts(jwt);
+    return hasCryptographicallyValidEs256Signature(parts, () -> publicKey);
+  }
+
+  /**
+   * Verifies the compact JWS cryptographically using the token's embedded {@code x5c} certificate.
+   *
+   * <p>This method deliberately ignores the semantic JOSE algorithm value, because malformed JWT
+   * variant checks need to verify whether the byte-level signature still matches the signing input. It also tolerates intentionally
+   * unquoted JOSE header field names when extracting {@code x5c}, so malformed-header Subject Token variants can still prove that the
+   * re-signature used the private key belonging to the certificate carried by that exact token.</p>
+   *
+   * @param jwt compact JWT/JWS to verify
+   * @return true if the signature verifies cryptographically, otherwise false
+   */
+  public boolean hasCryptographicallyValidEs256SignatureWithEmbeddedCertificate(String jwt) {
+    var parts = requireCompactJwtParts(jwt);
+    var certificate = extractFirstEmbeddedX5cCertificate(parts[0]);
+    return hasCryptographicallyValidEs256Signature(
+        parts, () -> extractEcPublicKeyFromCertificate(certificate));
+  }
+
+  /**
+   * Verifies compact JWS signature bytes with a lazily resolved EC public key.
+   *
+   * @param parts             compact JWT/JWS segments
+   * @param publicKeySupplier resolver for the verification public key
+   * @return true if the signature verifies cryptographically, otherwise false
+   */
+  private boolean hasCryptographicallyValidEs256Signature(
+      String[] parts, Callable<ECPublicKey> publicKeySupplier) {
     var signingInput = (parts[0] + "." + parts[1]).getBytes(StandardCharsets.US_ASCII);
 
     try {
-      var publicKey = extractEcPublicKeyFromRawJoseHeader(header);
+      var publicKey = publicKeySupplier.call();
       var signature = Base64.getUrlDecoder().decode(parts[2]);
       return verifyRawEcdsaSignature(publicKey, signingInput, signature);
     } catch (AssertionError | JOSEException e) {
       return false;
     } catch (GeneralSecurityException | IllegalArgumentException e) {
       throw new AssertionError("Failed to verify JWT cryptographic signature locally: "
+          + e.getMessage(), e);
+    } catch (Exception e) {
+      if (e instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw new AssertionError("Failed to resolve JWT verification key locally: "
           + e.getMessage(), e);
     }
   }
@@ -195,14 +279,13 @@ public class SignatureVerificationSteps {
   }
 
   /**
-   * Verifies a JWT signature through Nimbus and falls back to Bouncy Castle if Nimbus cannot handle
-   * the EC key.
+   * Verifies a JWT signature through Nimbus and falls back to Bouncy Castle if Nimbus cannot handle the EC key.
    *
    * @param signedJwt parsed JWT
    * @param publicKey EC public key used for verification
    * @return true if the signature verifies
    * @throws GeneralSecurityException if Bouncy Castle cannot verify the signature
-   * @throws JOSEException if Nimbus cannot verify and the Bouncy Castle fallback is unavailable
+   * @throws JOSEException            if Nimbus cannot verify and the Bouncy Castle fallback is unavailable
    */
   private boolean verifyWithNimbusOrBc(SignedJWT signedJwt, ECPublicKey publicKey)
       throws GeneralSecurityException, JOSEException {
@@ -248,9 +331,32 @@ public class SignatureVerificationSteps {
         .isNotNull()
         .isNotEmpty();
 
-    var certificate = parseCertificateFromX5c(certChain.getFirst());
+    var certificate = CertificateMaterial.parseCertificate(
+        certChain.getFirst().toString(), "x5c certificate");
+    return requireEcPublicKey(certificate, "x5c certificate");
+  }
+
+  /**
+   * Extracts an EC public key from a Base64 DER or PEM encoded certificate.
+   *
+   * @param certificate Base64 DER or PEM encoded X.509 certificate
+   * @return extracted EC public key
+   */
+  private ECPublicKey extractEcPublicKeyFromCertificate(String certificate) {
+    var x509Certificate = CertificateMaterial.parseCertificate(certificate, "certificate");
+    return requireEcPublicKey(x509Certificate, "provided certificate");
+  }
+
+  /**
+   * Asserts that one certificate contains an EC public key.
+   *
+   * @param certificate certificate whose public key is checked
+   * @param description human-readable certificate description
+   * @return EC public key from the certificate
+   */
+  private ECPublicKey requireEcPublicKey(X509Certificate certificate, String description) {
     assertThat(certificate.getPublicKey())
-        .as("x5c certificate must provide an EC public key")
+        .as(description + " must contain an EC public key")
         .isInstanceOf(ECPublicKey.class);
 
     return (ECPublicKey) certificate.getPublicKey();
@@ -260,7 +366,7 @@ public class SignatureVerificationSteps {
    * Resolves an EC public key from a JWKS response using a {@code kid}.
    *
    * @param keyStore JWKS JSON containing public keys or certificates
-   * @param kid key identifier to resolve
+   * @param kid      key identifier to resolve
    * @return extracted EC public key for the requested {@code kid}
    */
   private ECPublicKey findEcPublicKeyByKid(String keyStore, String kid) {
@@ -350,8 +456,8 @@ public class SignatureVerificationSteps {
   /**
    * Verifies raw JWS signing input and JOSE ECDSA signature bytes.
    *
-   * @param publicKey EC public key used for verification
-   * @param signingInput ASCII signing input bytes
+   * @param publicKey     EC public key used for verification
+   * @param signingInput  ASCII signing input bytes
    * @param joseSignature JOSE ECDSA signature bytes
    * @return true if the signature verifies
    * @throws GeneralSecurityException if the provider cannot verify the signature
@@ -396,20 +502,30 @@ public class SignatureVerificationSteps {
   }
 
   /**
-   * Parses one x5c certificate entry into an {@link X509Certificate}.
+   * Extracts the first {@code x5c} certificate from a compact JWT header segment.
    *
-   * @param base64Certificate base64-encoded certificate from an x5c entry
-   * @return parsed X.509 certificate
+   * @param headerSegment Base64URL encoded JOSE header segment
+   * @return Base64 DER encoded certificate from the first {@code x5c} entry
    */
-  private X509Certificate parseCertificateFromX5c(
-      com.nimbusds.jose.util.Base64 base64Certificate) {
+  private String extractFirstEmbeddedX5cCertificate(String headerSegment) {
+    var rawHeader = decodeBase64UrlHeader(headerSegment);
     try {
-      var certificateFactory = CertificateFactory.getInstance("X.509");
-      return (X509Certificate) certificateFactory.generateCertificate(
-          new ByteArrayInputStream(base64Certificate.decode()));
-    } catch (CertificateException e) {
-      throw new AssertionError("Failed to parse x5c certificate: " + e.getMessage(), e);
+      var x5cNode = parseJoseHeaderToleratingUnquotedFieldNames(rawHeader).get("x5c");
+      if (x5cNode != null && x5cNode.isArray() && !x5cNode.isEmpty()) {
+        return x5cNode.get(0).asString();
+      }
+    } catch (AssertionError e) {
+      log.debug("Falling back to raw x5c extraction for malformed JOSE header.", e);
     }
+
+    var matcher = java.util.regex.Pattern
+        .compile("(?s)(?:\"x5c\"|x5c)\\s*:\\s*\\[\\s*\"([A-Za-z0-9+/=\\r\\n\\t ]+)\"")
+        .matcher(rawHeader);
+    if (matcher.find()) {
+      return matcher.group(1).replaceAll("\\s", "");
+    }
+
+    throw new AssertionError("JWT JOSE header must contain an x5c certificate.");
   }
 
   /**
@@ -439,7 +555,7 @@ public class SignatureVerificationSteps {
         .isTrue();
 
     return extractEcPublicKeyFromX5c(
-        List.of(new com.nimbusds.jose.util.Base64(x5cNode.get(0).asText())));
+        List.of(new com.nimbusds.jose.util.Base64(x5cNode.get(0).asString())));
   }
 
   /**
@@ -451,9 +567,38 @@ public class SignatureVerificationSteps {
   private JsonNode parseJoseHeader(String rawJson) {
     try {
       return JSON.readTree(rawJson);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse JOSE header as JSON.", e);
     }
+  }
+
+  /**
+   * Parses JOSE header JSON and tolerates deliberately unquoted field names used by negative JWT variant tests.
+   *
+   * @param rawJson raw JOSE header JSON text
+   * @return parsed JOSE header node
+   */
+  private JsonNode parseJoseHeaderToleratingUnquotedFieldNames(String rawJson) {
+    try {
+      return parseJoseHeader(rawJson);
+    } catch (AssertionError strictJsonError) {
+      try {
+        return JSON.readTree(quoteUnquotedJsonFieldNames(rawJson));
+      } catch (JacksonException e) {
+        strictJsonError.addSuppressed(e);
+        throw strictJsonError;
+      }
+    }
+  }
+
+  /**
+   * Quotes JSON object field names while leaving string values unchanged.
+   *
+   * @param rawJson raw JSON-like object text with unquoted field names
+   * @return JSON text whose object field names are quoted
+   */
+  private String quoteUnquotedJsonFieldNames(String rawJson) {
+    return UNQUOTED_JSON_FIELD_NAME.matcher(rawJson).replaceAll("$1\"$2\":");
   }
 
   /**

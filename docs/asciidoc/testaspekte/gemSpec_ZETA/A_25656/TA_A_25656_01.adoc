@@ -2,3 +2,6 @@
 ===== TA_A_25656_01 - PDP - Entity Statement - Redirect-URLs zulässiger Clients
 
 Der PDP Authorization Server MUSS die **Redirect-URLs aller zulässigen Clients** als **erlaubte Redirect-URLs im Entity Statement** ausweisen. **[<=]**
+
+Die Struktur des signierten Entity Statements und die Relying-Party-Metadaten
+werden gemäß https://openid.net/specs/openid-federation-1_0.html#name-entity-statement[OpenID Federation 1.0, Abschnitte 3 und 5.1.2] ausgewertet.

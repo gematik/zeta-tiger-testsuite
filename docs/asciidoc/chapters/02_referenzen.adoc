@@ -7,3 +7,4 @@
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_Perf/gemSpec_Perf_V2.81.0[Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform]: Version 2.81.0
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.47.0[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur]: Version 2.47.0
 * https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.3.0-0_V1.0.0/[gemVZ_Afo_ZETA_Guard_V_1.3.0-0]: Version 1.0.0
+* https://openid.net/specs/openid-federation-1_0.html[OpenID Federation 1.0]: Entity Statements und OpenID Connect Relying Party Metadata

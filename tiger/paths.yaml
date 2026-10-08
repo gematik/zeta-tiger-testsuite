@@ -10,6 +10,31 @@ client:
   websocketBaseUrl: "wss://${zeta_base_url}/proxy/achelos_testfachdienst/ws"
   storage: "http://zetaClient/testdriver-api/storage"
   storagePath: "/testdriver-api/storage"
+  notifications:
+    pushers: "http://zetaClient/testdriver-api/notifications/pushers"
+    pushersPath: "/testdriver-api/notifications/pushers"
+    channelsLocal: "http://zetaClient/testdriver-api/notifications/channels/local"
+    channelsLocalPath: "/testdriver-api/notifications/channels/local"
+  notificationTestEvents: "http://zetaClient/proxy/achelos_testfachdienst/test-support/notifications"
+  notificationTestEventsPath: "/proxy/achelos_testfachdienst/test-support/notifications"
+  oidc:
+    # The local testdriver exposes the resource through the configured
+    # testfachdienst route. /proxy/hellozeta is not a deployed resource path.
+    helloZeta: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta"
+    helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
+    kvnrEmail: "http://zetaClient/oidc/kvnr-email"
+    kvnrEmailPath: "/oidc/kvnr-email"
+    # These endpoints are part of the reusable testdriver OIDC interface.
+    verifyOtp: "http://zetaClient/oidc/verify-otp"
+    verifyOtpPath: "/oidc/verify-otp"
+    resendOtp: "http://zetaClient/oidc/resend-otp"
+    resendOtpPath: "/oidc/resend-otp"
+
+mailcatcher:
+  # Mailcatcher is exposed by the Tiger proxy below the same ingress host as
+  # the testdriver. The API returns captured message summaries as JSON.
+  messages: "http://zetaClient/mailcatcher/messages"
+  messagesPath: "/mailcatcher/messages"
 
 nativeClient:
   baseUrl: "http://zetaClient"
@@ -33,25 +58,38 @@ erezept:
       deletePrefix: "/achelos_testfachdienst/app/erezept.delete."
 
 fachdienst:
+  upstreamBasePath: "/testfachdienst"
   helloZetaPath: "/achelos_testfachdienst/hellozeta"
   helloZetaProxyErrorPath: "/achelos_testfachdienst/hellozeta/proxy-error"
 
 guard:
   baseUrl: "http://zetaGuard"
+  pepRoutePrefix: "/pep/"
+  notificationPushersSetPath: "/push/v1/pushers/set"
+  notificationChannelsPathPrefix: "/push/v1/channels/"
   helloZetaPath: "/pep/achelos_testfachdienst/hellozeta"
   helloZetaProxyErrorPath: "/pep/achelos_testfachdienst/hellozeta/proxy-error"
   tokenEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/token"
   certsEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/certs"
   registerEndpointPath: "/auth/realms/zeta-guard/clients-registrations/openid-connect"
   nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
+  bindEmailPath: "/auth/realms/zeta-guard/zeta/identity/bind-email"
+  bindEmailVerifyPath: "/auth/realms/zeta-guard/zeta/identity/bind-email/verify"
   wellKnownOAuthServerPath: "/.well-known/oauth-authorization-server"
   wellKnownOAuthProtectedResourcePath: "/.well-known/oauth-protected-resource"
   wellKnownTiServiceProviderMetadataPath: "/.well-known/ti-service-provider-metadata"
+  wellKnownAuthServerPath: "/auth/realms/zeta-guard/.well-known/zeta-guard-well-known"
+  # OpenID Federation 1.0 Entity Statement endpoint required by A_25656.
+  wellKnownFederationPath: "/auth/realms/zeta-guard/.well-known/openid-federation"
   actuatorHealthPath: "/actuator/health"
   managementServicePath: "/managementService"
   ecKeyFile: "src/test/resources/keys/${zeta_base_url}-ecKey.pem"
   helloZetaFullPath: "https://${zeta_base_url}${paths.guard.helloZetaPath}"
-  audPath: "https://${zeta_base_url}/auth/"
+
+sectoralIdp:
+  # The local/staged SekIDP receives the token exchange at /token. The
+  # /sekidp ingress prefix is not part of the RBEL-recorded request path.
+  tokenEndpointPath: "/token"
 
 tigerProxy:
   baseUrl: "http://${zeta_proxy_url}"
@@ -60,6 +98,8 @@ tigerProxy:
   resetJwtManipulationPath: "/manipulation/resetJwtManipulation"
   modifyJwtPath: "/manipulation/modifyJwt"
   resetMessagesPath: "/resetMessages"
+  messagesWithMetaPath: "/getMessagesWithMeta"
+  messageContentPath: "/messageContent"
 
 opa:
   decisionPath: "/v1/data/policies/zeta/authz/decision"
@@ -67,18 +107,22 @@ opa:
 popp:
   jwks: "/jwks.json"
   signedJwks: "/.well-known/signed-jwks"
-  tokenGenerator: "https://${zeta_base_url}/popp-token-generator/popp/test/api/v1/token-generator"
+  tokenGenerator: "${popp_token_generator_url}"
 
 openSearch:
   baseUrl: "http://${opensearch_url}"
   openTelemetryLogsSearchPath: "/otel-logs-*/_search"
   openTelemetryLogsSearchPathPattern: "/otel-logs-.*/_search.*"
 
-prometheus:
-  baseUrl: "https://${zeta_base_url}/prometheus"
-  prometheusMetricsSearchPath: "/api/v1/query"
-  prometheusMetricsSearchPathPattern: "/prometheus/api/v1/query.*"
+loadDispenser:
+  endpoint: "${load_dispenser_url}"
 
+prometheus:
+  baseUrl: "http://${prometheus_url}"
+  prometheusMetricsSearchPath: "/api/v1/query"
+  prometheusMetricsSearchPathPattern: "/api/v1/query.*"
+  prometheusMetricsRangeSearchPath: "/api/v1/query_range"
+  
 jaeger:
   baseUrl: "https://${zeta_base_url}"
   jaegerTracesSearchPath: "/jaeger/ui/api/traces"

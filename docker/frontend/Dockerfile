@@ -43,9 +43,7 @@ RUN --mount=type=secret,id=ci_job_token,required=false \
     . docker/build-common.sh && \
     tiger_export_ci_job_token && \
     mvn -s .m2/settings.xml -B -DskipTests=true -DskipITs=true \
-      -Dlicense.skip=true -Dlicense.skipAddThirdParty=true -Dcheckstyle.skip=true \
       -Dmaven.repo.local=/tmp/.m2/repository \
-      -Dtraceability.skip=true -Dtraceability.sync.skip=true -Dserenity.readme.sync.skip=true \
       verify
 
 RUN . docker/build-common.sh && \
@@ -80,14 +78,19 @@ ENV ZETA_BASE_URL="" \
     ZETA_PROXY_URL="" \
     ALLOW_DEPLOYMENT_MODIFICATION="" \
     OPENSEARCH_URL="" \
+    PROMETHEUS_URL="" \
     ZETA_TEST_CERTIFICATES_DIR="" \
     PROFILE="" \
     CUCUMBER_TAGS="" \
+    TPM_ENVIRONMENT="" \
     SERENITY_EXPORT_DIR="" \
     CUCUMBER_EXPORT_DIR="" \
     ALLURE_RESULTS_DIR="" \
     HOME="/home/zeta" \
     KUBECONFIG="/home/zeta/.kube/config"
+
+ARG CI_COMMIT_SHA=unknown
+LABEL org.opencontainers.image.revision="${CI_COMMIT_SHA}"
 
 USER zeta
 

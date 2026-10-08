@@ -1,0 +1,17 @@
+# Mail domain used for the synthetic OIDC addresses submitted to the testdriver.
+emailDomain: "mailgun.com"
+
+# Redirect-URLs of the OIDC test client derived from the testdriver's oidcBaseUri
+# and published in the PDP Entity Statement.
+# Other deployment-specific values are not part of this test data and are
+# therefore deliberately not asserted here.
+pdp:
+  entityStatement:
+    redirectUris:
+      redirectUri: "http://localhost:8090/cb/demo/app"
+      oidcRedirectUri: "http://localhost:8090/cb/demo/oidc"
+
+# These claim names and mappings are specified by A_26973-01.
+idTokenClaims:
+  id: "urn:telematik:claims:id"
+  profession: "urn:telematik:claims:profession"

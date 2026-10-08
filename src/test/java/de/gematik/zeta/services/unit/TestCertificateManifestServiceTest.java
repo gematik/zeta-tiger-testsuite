@@ -71,7 +71,7 @@ class TestCertificateManifestServiceTest {
     var entry = service.findByIndex(manifestPath, 2);
 
     assertThat(entry.stem()).isEqualTo("stem-0002");
-    assertThat(entry.crtPath().toString()).endsWith("certs/block-a/stem-0002.crt");
+    assertThat(entry.crtPath()).endsWith(Path.of("certs", "block-a", "stem-0002.crt"));
     assertThat(entry.crtBase64()).isEqualTo(Base64.getEncoder()
         .encodeToString(new byte[]{0x30, (byte) 0x82, 0x02}));
     assertThat(entry.prvBase64()).isEqualTo(Base64.getEncoder()

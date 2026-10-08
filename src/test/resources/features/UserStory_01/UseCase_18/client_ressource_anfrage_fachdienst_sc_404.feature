@@ -25,43 +25,62 @@
 #language:de
 
 @UseCase_01_18
-Funktionalität: Client_ressource_anfrage_fachdienst_SC_404
+Funktionalität: Client Ressource Anfrage Fachdienst SC 404
 
-  # US2 @A_28426
-  # US2 @TA_A_28426_03
-  # US2 Szenario: Service Discovery erneut durchführen nach 404 Not Found
-  # US2   Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+  @A_28426
+  @A_27725-01
+  @TA_A_28426_03
+  @TA_A_27725-01_33
+  @MASVS-RESILIENCE
+  Szenario: Service Discovery erneut durchführen nach 404 Not Found
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
-  # US2   # Erster Verbindungsaufbau mit Service Discovery
-  # US2   Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-  # US2   Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
-  # US2   Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    # Erster Verbindungsaufbau mit Service Discovery
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
-  # US2   Dann TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthProtectedResourcePath}$"
-  # US2   Und TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthServerPath}$"
+    Dann TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthProtectedResourcePath}$"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "GET"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
 
-  # US2   # Manipuliere die nächste Response
-  # US2   Und TGR setze lokale Variable "notFoundCondition" auf "isResponse && request.path =^ '${paths.fachdienst.helloZetaPath}'"
-  # US2   Und Setze im TigerProxy für die Nachricht "${notFoundCondition}" die Manipulation auf Feld "$.responseCode" und Wert "404" und 1 Ausführungen
+    Und TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthServerPath}$"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "GET"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
 
-  # US2   Und TGR lösche aufgezeichnete Nachrichten
+    # Manipuliere die nächste Response
+    Und TGR setze lokale Variable "notFoundCondition" auf "isResponse && request.path =^ '${paths.fachdienst.helloZetaPath}'"
+    Und Setze im TigerProxy für die Nachricht "${notFoundCondition}" die Manipulation auf Feld "$.responseCode" und Wert "404" und 1 Ausführungen
 
-  # US2   # Nächste Resourceanfrage wird mit 404 beantwortet
-  # US2   Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-  # US2   Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
-  # US2   Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
+    Und TGR lösche aufgezeichnete Nachrichten
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "START"
+    Und TGR setze lokale Variable "START_MICROS" auf "!{${START} * 1000000}"
 
-  # US2   # Sende wieder unmanipulierte Responses
-  # US2   Und Alle Manipulationen im TigerProxy werden gestoppt
+    # Nächste Resourceanfrage wird mit 404 beantwortet
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "404"
 
-  # US2   # A_28426_03: Service Discovery muss erneut durchgeführt werden, wenn HTTP-Statuscode 404 empfangen wurde
-  # US2   Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-  # US2   Dann TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-  # US2   Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    # Sende wieder unmanipulierte Responses
+    Und Alle Manipulationen im TigerProxy werden gestoppt
 
-  # US2   Und TGR finde die nächste Anfrage mit dem Pfad ".*${paths.guard.wellKnownOAuthProtectedResourcePath}$"
-  # US2   Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
+    # A_28426_03: Service Discovery muss erneut durchgeführt werden, wenn HTTP-Statuscode 404 empfangen wurde
+    # Die Nachrichten nach der 404 bleiben erhalten, damit auch eine unmittelbar ausgelöste Service Discovery nachweisbar ist
 
-  # US2   Und TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
-  # US2   Und TGR finde die nächste Anfrage mit dem Pfad ".*${paths.guard.wellKnownOAuthServerPath}$"
-  # US2   Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
+    Dann TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthProtectedResourcePath}$"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "GET"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
+
+    Und TGR finde die erste Anfrage mit Pfad ".*${paths.guard.wellKnownOAuthServerPath}$"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.method" überein mit "GET"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200|304"
+
+    Und warte "${testdata.telemetry_wait_seconds}" Sekunden
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "END"
+    Und TGR setze lokale Variable "END_MICROS" auf "!{${END} * 1000000}"
+    Wenn TGR sende eine GET Anfrage an "${paths.jaeger.baseUrl}${paths.jaeger.jaegerTracesSearchPath}" mit folgenden Daten:
+      | service                        | operation                       | start           | end           | limit | tags                                                                               |
+      | ${telemetry.service.httpProxy} | ${telemetry.span.httpProxy.pep} | ${START_MICROS} | ${END_MICROS} | 1     | {"http.response.status_code":"404","http.target":"${paths.guard.helloZetaPath}"} |
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.jaeger.jaegerTracesSearchPathPattern}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"

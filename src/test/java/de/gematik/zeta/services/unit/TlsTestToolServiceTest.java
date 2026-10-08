@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.services.unit;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -98,6 +99,44 @@ class TlsTestToolServiceTest {
     assertEquals("merged logs", logs);
   }
 
+  /**
+   * Verifies that a duplicated start conflict is treated as success when the service reports a
+   * running process.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void acceptsDuplicatedStartWhenProcessIsRunning() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/startAsTlsServer", exchange -> writeJson(exchange, 409, "{}"));
+    server.createContext("/state", exchange -> writeJson(exchange, 200,
+        "{\"running\":true,\"lastExitCode\":null,\"startedAt\":\"2026-03-13T10:16:00Z\",\"stoppedAt\":null}"));
+    server.start();
+
+    var state = new TlsTestToolService(baseUrl()).startAsTlsServer();
+
+    assertTrue(state.running());
+    assertEquals(Instant.parse("2026-03-13T10:16:00Z"), state.startedAt());
+  }
+
+  /**
+   * Verifies that a start conflict remains a failure when no process is running.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void rejectsStartConflictWhenProcessIsNotRunning() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/startAsTlsClient", exchange -> writeJson(exchange, 409, "{}"));
+    server.createContext("/state", exchange -> writeJson(exchange, 200,
+        "{\"running\":false,\"lastExitCode\":0,\"startedAt\":null,\"stoppedAt\":null}"));
+    server.start();
+
+    var service = new TlsTestToolService(baseUrl());
+
+    assertThrows(AssertionError.class, service::startAsTlsClient);
+  }
+
   @Test
   void sendsMultipartConfigAndJsonCertificatePayloads() throws Exception {
     var requestMethod = new AtomicReference<String>();
@@ -105,7 +144,6 @@ class TlsTestToolServiceTest {
     var configBody = new AtomicReference<String>();
     var certificateContentType = new AtomicReference<String>();
     var certificateBody = new AtomicReference<String>();
-
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/config", exchange -> {
       requestMethod.set(exchange.getRequestMethod());
@@ -129,6 +167,14 @@ class TlsTestToolServiceTest {
       exchange.sendResponseHeaders(200, -1);
       exchange.close();
     });
+    var ocspContentType = new AtomicReference<String>();
+    var ocspBody = new AtomicReference<byte[]>();
+    server.createContext("/ocspResponse", exchange -> {
+      ocspContentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
+      ocspBody.set(exchange.getRequestBody().readAllBytes());
+      exchange.sendResponseHeaders(200, -1);
+      exchange.close();
+    });
     server.start();
 
     configFile = Files.createTempFile("tls-tool-config", ".conf");
@@ -144,6 +190,7 @@ class TlsTestToolServiceTest {
     service.updateConfig(configFile);
     service.updateCertificate(certificateFile, privateKeyFile);
     service.updateCaCertificate(caCertificateFile);
+    service.updateOcspResponse(new byte[] {0x30, 0x01, 0x02});
 
     assertEquals("PUT", requestMethod.get());
     assertTrue(configContentType.get().startsWith("multipart/form-data"));
@@ -155,6 +202,8 @@ class TlsTestToolServiceTest {
     assertTrue(certificateBody.get().contains("\"privateKeyPem\":\"-----BEGIN PRIVATE KEY-----\\nKEY_PEM\\n-----END PRIVATE KEY-----\\n\""));
     assertEquals("application/json", caCertificateContentType.get());
     assertTrue(caCertificateBody.get().contains("\"caCertificatePem\":\"CA_CERT_PEM\""));
+    assertEquals("application/ocsp-response", ocspContentType.get());
+    assertArrayEquals(new byte[] {0x30, 0x01, 0x02}, ocspBody.get());
   }
 
   /**

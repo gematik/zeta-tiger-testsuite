@@ -1,4 +1,4 @@
 [#TA_A_28868_08]
 ===== TA_A_28868_08 - TLS-Verbindung zwischen Zeta-Client und Zeta-Guard - ZETA Client zusätzliche TLS-1.2-Ciphersuiten
 
-"Es KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1.1 Tabelle 1] unterstützt werden. **[<=]**"
+"Sie KÖNNEN weitere Cipher-Suiten aus [TR-02102-2, Abschnitt 3.3.1.1 Tabelle 1] unterstützen. **[<=]**"

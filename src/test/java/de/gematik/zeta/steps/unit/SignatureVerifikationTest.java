@@ -25,10 +25,19 @@
 package de.gematik.zeta.steps.unit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.gematik.zeta.steps.JwtTestHelper;
 import de.gematik.zeta.steps.SignatureVerificationSteps;
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
+import java.util.Arrays;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -120,6 +129,55 @@ class SignatureVerifikationTest {
   }
 
   /**
+   * Tests that cryptographic verification by {@code kid} works for unquoted JOSE header keys.
+   */
+  @Test
+  void hasCryptographicallyValidEs256SignatureFromKidAcceptsUnquotedHeaderKeys()
+      throws Exception {
+    var keyPair = createP256KeyPair();
+    var jwks = createJwks("unquoted-kid", (ECPublicKey) keyPair.getPublic());
+    var jwt = JwtTestHelper.createSignedJwt(
+        "{alg:\"ES256\",kid:\"unquoted-kid\",typ:\"JWT\"}",
+        "{\"sub\":\"test-subject\"}",
+        keyPair.getPrivate());
+
+    assertTrue(verifier.hasCryptographicallyValidEs256SignatureFromKid(jwt, jwks));
+  }
+
+  /**
+   * Tests that cryptographic verification by {@code kid} works for unquoted payload keys.
+   */
+  @Test
+  void hasCryptographicallyValidEs256SignatureFromKidAcceptsUnquotedPayloadKeys()
+      throws Exception {
+    var keyPair = createP256KeyPair();
+    var jwks = createJwks("payload-kid", (ECPublicKey) keyPair.getPublic());
+    var jwt = JwtTestHelper.createSignedJwt(
+        "{\"alg\":\"ES256\",\"kid\":\"payload-kid\",\"typ\":\"JWT\"}",
+        "{sub:\"test-subject\"}",
+        keyPair.getPrivate());
+
+    assertTrue(verifier.hasCryptographicallyValidEs256SignatureFromKid(jwt, jwks));
+  }
+
+  /**
+   * Tests that unquoted-key variants still reject tokens with an invalid signature.
+   */
+  @Test
+  void hasCryptographicallyValidEs256SignatureFromKidRejectsInvalidUnquotedHeaderSignature()
+      throws Exception {
+    var keyPair = createP256KeyPair();
+    var jwks = createJwks("invalid-signature-kid", (ECPublicKey) keyPair.getPublic());
+    var validJwt = JwtTestHelper.createSignedJwt(
+        "{alg:\"ES256\",kid:\"invalid-signature-kid\",typ:\"JWT\"}",
+        "{\"sub\":\"test-subject\"}",
+        keyPair.getPrivate());
+    var invalidJwt = validJwt.substring(0, validJwt.lastIndexOf('.') + 1) + "AAAA";
+
+    assertFalse(verifier.hasCryptographicallyValidEs256SignatureFromKid(invalidJwt, jwks));
+  }
+
+  /**
    * Tests the verification of a JWT signature using the JWK from a JOSE header.
    */
   @Test
@@ -187,6 +245,69 @@ class SignatureVerifikationTest {
     assertDoesNotThrow(
         () -> verifier.verifyJwtSignature(subjectToken),
         "X5C signature verification was not successful");
+
+    assertTrue(
+        verifier.hasCryptographicallyValidEs256SignatureWithEmbeddedCertificate(subjectToken),
+        "signature verification with embedded certificate was not successful");
+  }
+
+  /**
+   * Creates a P-256 key pair for focused ES256 verification tests.
+   *
+   * @return generated P-256 key pair
+   * @throws Exception if the platform cannot generate the key pair
+   */
+  private static KeyPair createP256KeyPair() throws Exception {
+    var generator = KeyPairGenerator.getInstance("EC");
+    generator.initialize(new ECGenParameterSpec("secp256r1"));
+    return generator.generateKeyPair();
+  }
+
+  /**
+   * Creates a minimal JWKS document for one EC public key.
+   *
+   * @param kid key identifier
+   * @param publicKey EC public key
+   * @return JWKS JSON
+   */
+  private static String createJwks(String kid, ECPublicKey publicKey) {
+    return """
+        {
+          "keys": [
+            {
+              "kid": "%s",
+              "kty": "EC",
+              "alg": "ES256",
+              "use": "sig",
+              "crv": "P-256",
+              "x": "%s",
+              "y": "%s"
+            }
+          ]
+        }
+        """.formatted(
+            kid,
+            base64UrlUnsigned(publicKey.getW().getAffineX()),
+            base64UrlUnsigned(publicKey.getW().getAffineY()));
+  }
+
+  /**
+   * Encodes an unsigned EC coordinate as unpadded Base64URL.
+   *
+   * @param value positive coordinate value
+   * @return fixed-width Base64URL encoded coordinate
+   */
+  private static String base64UrlUnsigned(BigInteger value) {
+    var bytes = value.toByteArray();
+    if (bytes.length > 32) {
+      bytes = Arrays.copyOfRange(bytes, bytes.length - 32, bytes.length);
+    }
+    if (bytes.length < 32) {
+      var padded = new byte[32];
+      System.arraycopy(bytes, 0, padded, 32 - bytes.length, bytes.length);
+      bytes = padded;
+    }
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
 }

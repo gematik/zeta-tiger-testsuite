@@ -1,0 +1,67 @@
+[#UC_02_01]
+== UseCase_02_01: Push-Konfiguration und Benachrichtigungseinstellungen verwalten
+
+.UseCase_02_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Push-Konfiguration und Benachrichtigungseinstellungen verwalten
+
+| Akteur: |
+*ZETA Client Modul (SDK)*
+
+| weitere Akteure: |
+*ZETA Guard Notification Service*
+
+*achelos Testfachdienst*
+
+| Auslöser: |
+Ein ZETA Client registriert, aktualisiert oder löscht seine Push-Konfiguration oder ändert die Einstellung für Push-Benachrichtigungen.
+
+| Kurzbeschreibung: |
+Der Client legt eine Push-Konfiguration an, aktualisiert sie und löscht sie wieder.
+Der Client aktiviert, ändert und deaktiviert außerdem den Benachrichtigungskanal.
+Der Notification Service bestätigt jede Operation und macht die Auswirkung der Kanaleinstellung auf Ereignisse beobachtbar.
+
+| Vorbedingung: |
+. Der ZETA Client kann sich als Nutzer gegenüber dem ZETA Guard authentisieren.
+. Der Notification Service ist erreichbar.
+. Das Push Gateway der Testumgebung ist in der Allowlist des Notification Service enthalten.
+. Der achelos Testfachdienst kann Ereignisse über registrierte Clients und Neuregistrierungen an den Notification Service senden.
+
+| Ablauf: |
+. Der Client entfernt eine eventuell vorhandene Testkonfiguration.
+. Der Client registriert eine Push-Konfiguration.
+. Der Client liest die Konfiguration zurück und vergleicht alle fachlich vorgegebenen Werte.
+. Der Client aktualisiert die Konfiguration.
+. Der Client liest die geänderte Konfiguration zurück und vergleicht die geänderten Werte.
+. Der Client löscht die Push-Konfiguration.
+. Der Client weist nach, dass die Konfiguration nicht mehr vorhanden ist.
+. Der Client registriert einen eindeutig adressierten Test-Pusher.
+. Der Client aktiviert den Benachrichtigungskanal und liest den aktivierten Zustand zurück.
+. Der Client aktualisiert die bereits gespeicherte Channel-Konfiguration für den Pusher von `enabled` auf `disabled` und liest den neuen Zustand zurück.
+. Der Client aktiviert den Benachrichtigungskanal erneut, um die Vorbedingung für den getrennten Deaktivierungsnachweis herzustellen.
+. Der Testfachdienst sendet ein korreliertes Ereignis der geprüften Kategorie und der Notification Service nimmt es zur Zustellung an.
+. Der Client deaktiviert den Benachrichtigungskanal und liest den deaktivierten Zustand zurück.
+. Der Testfachdienst sendet erneut ein korreliertes Ereignis derselben Kategorie und der Notification Service weist das Fehlen eines aktiven Kanals aus.
+. Der Client löscht den Test-Pusher.
+
+| Nachbedingung: |
+Die Testkonfiguration ist im Notification Service nicht mehr registriert und der Benachrichtigungskanal ist deaktiviert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25652_04>>
+* <<TA_A_25652_05>>
+* <<TA_A_25735-01_01>>
+* <<TA_A_25735-01_02>>
+
+|===
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::push_benachrichtigungen_verwalten.feature[]
+----
+endif::[]

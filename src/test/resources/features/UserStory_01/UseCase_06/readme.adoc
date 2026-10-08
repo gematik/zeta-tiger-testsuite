@@ -185,6 +185,7 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_25338-01_03>>
 * <<TA_A_25644-01_05>>
 * <<TA_A_25645-01_01>>
+* <<TA_A_25649_01>>
 * <<TA_A_25650_02>>
 * <<TA_A_25660_01>>
 * <<TA_A_25660_02>>
@@ -200,6 +201,7 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_25663_02>>
 * <<TA_A_25644-01_03>>
 * <<TA_A_25739-02_01>>
+* <<TA_A_25739-02_04>>
 * <<TA_A_25760_01>>
 * <<TA_A_25760_02>>
 * <<TA_A_25760_03>>
@@ -216,11 +218,17 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_26639_01>>
 * <<TA_A_26640_02>>
 * <<TA_A_26661_01>>
+* <<TA_A_27725-01_01>>
 * <<TA_A_26944_01>>
+* <<TA_A_26972-02_01>>
+* <<TA_A_26972-02_02>>
+* <<TA_A_26972-02_03>>
+* <<TA_A_26972-02_04>>
 * <<TA_A_27007_01>>
 * <<TA_A_27401_01>>
 * <<TA_A_27802-02_01>>
 * <<TA_A_27802-02_02>>
+* <<TA_A_28808_05>>
 * <<TA_A_28963_01>>
 * <<TA_A_27867-01_01>>
 * <<TA_A_27867-01_02>>

@@ -55,6 +55,8 @@ Der Ablauf für beide PoPP Token ist gleich, nur mit jeweils unterschiedlichen P
 6. MA wird vom ZETA Client über den verweigerten Zugriff informiert.
 
 | Hinweis: |
+Gemäß Fachaustausch vom 02.07.2026 prüft der PoPP-Verifier des ZETA Guard ausschließlich die Claims ``iss``, ``iat`` und ``actorId``.
+Alle weiteren Claims werden durch den Fachdienst geprüft.
 
 | Nachbedingung:  |
 Der Abruf der geschützten Ressource vom MA über den ZETA Client war nicht erfolgreich.
@@ -65,11 +67,17 @@ Der Abruf der geschützten Ressource vom MA über den ZETA Client war nicht erfo
 * <<TA_A_26477_03>>
 * <<TA_A_26477_08>>
 * <<TA_A_26450_01>>
+* <<TA_A_26450_02>>
+* <<TA_A_26450_03>>
+* <<TA_A_26452_01>>
+* <<TA_A_26452_02>>
+* <<TA_A_26452_03>>
 * <<TA_A_26477_09>>
 * <<TA_A_26477_10>>
 * <<TA_A_26477_13>>
 * <<TA_A_26493-01_01>>
 * <<TA_A_26661_20>>
+* <<TA_A_27725-01_32>>
 
 |===
 

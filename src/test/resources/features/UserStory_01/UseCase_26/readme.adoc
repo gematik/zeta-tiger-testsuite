@@ -41,7 +41,7 @@ Der Resource Server liefert eine Fehlerantwort mit ``zeta-cause: Proxy``.
 . Der PEP HTTP Proxy prüft das *Access Token*.
 . Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
 . Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
-. Der Resource Server antwortet mit Fehlercode ``500 Internal Server Error``, einer Fehlerantwort und setzt ``zeta-cause: Proxy``.
+. Der Resource Server antwortet mit einer Fehlerantwort und setzt ``zeta-cause: Proxy``.
 . Der PEP HTTP Proxy verwirft die Antwort vom Resource Server und antwortet mit ``500 Internal Server Error``.
 . Der ZETA Client weist auf einen allgemeinen Serverfehler hin und informiert den MA, dass der Vorgang möglicherweise zu einem späteren Zeitpunkt wiederholt werden sollte oder ein Problem auf dem Server vorliegt.
 
@@ -53,8 +53,11 @@ Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit ern
 * <<TA_A_26560_01>>
 * <<TA_A_26661_26>>
 * <<TA_A_26662_01>>
+* <<TA_A_26974-01_01>>
 * <<TA_A_26988_11>>
 * <<TA_A_27007_26>>
+* <<TA_A_27725-01_36>>
+* <<TA_A_28796_01>>
 |===
 
 [#usecase_01_26_sequence]

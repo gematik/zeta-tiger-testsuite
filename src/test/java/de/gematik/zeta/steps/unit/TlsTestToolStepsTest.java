@@ -29,7 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.gematik.zeta.model.tls.TlsCipherSuite;
+import de.gematik.zeta.model.tls.TlsHandshakeExpectation;
+import de.gematik.zeta.model.tls.TlsLibrary;
+import de.gematik.zeta.model.tls.TlsSignatureAlgorithm;
+import de.gematik.zeta.model.tls.TlsSupportedGroup;
+import de.gematik.zeta.model.tls.TlsVersion;
 import de.gematik.zeta.steps.TlsTestToolSteps;
+import de.gematik.zeta.steps.tls.TlsLogParser;
+import de.gematik.zeta.steps.tls.TlsTestToolConfigBuilder;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -38,7 +46,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for alert diagnostics in {@link TlsTestToolSteps}.
+ * Unit tests for TLS diagnostics in {@link TlsTestToolSteps} and {@link TlsLogParser}.
  */
 class TlsTestToolStepsTest {
 
@@ -105,193 +113,63 @@ class TlsTestToolStepsTest {
   }
 
   /**
-   * Returns reflective access to the private {@code extractSupportedGroupsHex(String)} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getExtractSupportedGroupsHexMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("extractSupportedGroupsHex", String.class);
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, extractSupportedGroupsHex method not found", e);
-    }
-  }
-
-  /**
-   * Returns reflective access to the private {@code extractClientKeyShareGroups(String)} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getExtractClientKeyShareGroupsMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("extractClientKeyShareGroups", String.class);
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, extractClientKeyShareGroups method not found", e);
-    }
-  }
-
-  /**
-   * Returns reflective access to the private {@code extractTls13SignatureSchemes(String)} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getExtractTls13SignatureSchemesMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("extractTls13SignatureSchemes", String.class);
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, extractTls13SignatureSchemes method not found", e);
-    }
-  }
-
-  /**
-   * Returns reflective access to the private {@code buildTls13ServerConfigForSupportedCipherSuites()} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getBuildTls13ServerConfigForSupportedCipherSuitesMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("buildTls13ServerConfigForSupportedCipherSuites");
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, buildTls13ServerConfigForSupportedCipherSuites method not found", e);
-    }
-  }
-
-  /**
-   * Returns reflective access to the private {@code buildTls12ServerConfig(String, String[])} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getBuildTls12ServerConfigMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("buildTls12ServerConfig", String.class, String[].class);
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, buildTls12ServerConfig method not found", e);
-    }
-  }
-
-  /**
-   * Returns reflective access to the private {@code extractClientHelloCipherSuitesAsPairs(String)} method.
-   *
-   * @return reflective method handle
-   */
-  private static Method getExtractClientHelloCipherSuitesAsPairsMethod() {
-    try {
-      var method = TlsTestToolSteps.class.getDeclaredMethod("extractClientHelloCipherSuitesAsPairs", String.class);
-      method.setAccessible(true);
-      return method;
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Test setup failed, extractClientHelloCipherSuitesAsPairs method not found", e);
-    }
-  }
-
-  /**
-   * Invokes {@code extractSupportedGroupsHex(String)} via reflection.
+   * Extracts {@code supported_groups} via the parser API.
    *
    * @param fullLog TLS log content
    * @return extracted supported groups
    */
-  @SuppressWarnings("unchecked")
-  private static List<TlsTestToolSteps.TlsSupportedGroup> invokeExtractSupportedGroupsHex(String fullLog) {
-    try {
-      return (List<TlsTestToolSteps.TlsSupportedGroup>) getExtractSupportedGroupsHexMethod().invoke(null, fullLog);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("extractSupportedGroupsHex invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke extractSupportedGroupsHex", e);
-    }
+  private static List<TlsSupportedGroup> invokeExtractSupportedGroupsHex(String fullLog) {
+    return TlsLogParser.extractSupportedGroupsHex(fullLog);
   }
 
   /**
-   * Invokes {@code extractClientKeyShareGroups(String)} via reflection.
+   * Extracts {@code key_share} groups via the parser API.
    *
    * @param fullLog TLS log content
    * @return extracted key_share groups
    */
-  @SuppressWarnings("unchecked")
-  private static List<TlsTestToolSteps.TlsSupportedGroup> invokeExtractClientKeyShareGroups(String fullLog) {
-    try {
-      return (List<TlsTestToolSteps.TlsSupportedGroup>) getExtractClientKeyShareGroupsMethod().invoke(null, fullLog);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("extractClientKeyShareGroups invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke extractClientKeyShareGroups", e);
-    }
+  private static List<TlsSupportedGroup> invokeExtractClientKeyShareGroups(String fullLog) {
+    return TlsLogParser.extractClientKeyShareGroups(fullLog);
   }
 
   /**
-   * Invokes {@code extractTls13SignatureSchemes(String)} via reflection.
+   * Extracts TLS-1.3 signature schemes via the parser API.
    *
    * @param fullLog TLS log content
    * @return extracted TLS-1.3 signature schemes
    */
-  @SuppressWarnings("unchecked")
   private static List<Enum<?>> invokeExtractTls13SignatureSchemes(String fullLog) {
-    try {
-      return (List<Enum<?>>) getExtractTls13SignatureSchemesMethod().invoke(null, fullLog);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("extractTls13SignatureSchemes invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke extractTls13SignatureSchemes", e);
-    }
+    return List.copyOf(TlsLogParser.extractTls13SignatureSchemes(fullLog));
   }
 
   /**
-   * Invokes {@code buildTls13ServerConfigForSupportedCipherSuites()} via reflection.
+   * Builds the supported TLS-1.3 server configuration through the config builder API.
    *
    * @return generated TLS-1.3 server configuration
    */
   private static String invokeBuildTls13ServerConfigForSupportedCipherSuites() {
-    try {
-      return (String) getBuildTls13ServerConfigForSupportedCipherSuitesMethod().invoke(null);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("buildTls13ServerConfigForSupportedCipherSuites invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke buildTls13ServerConfigForSupportedCipherSuites", e);
-    }
+    return TlsTestToolConfigBuilder.buildTls13ServerConfigForSupportedCipherSuites();
   }
 
   /**
-   * Invokes {@code buildTls12ServerConfig(String, String...)} via reflection.
+   * Builds a TLS-1.2 server configuration through the config builder API.
    *
-   * @param cipherSuites cipher suites in tls-test-tool tuple syntax
+   * @param cipherSuites     cipher suites in tls-test-tool tuple syntax
    * @param extraConfigLines optional additional config lines
    * @return generated TLS-1.2 server configuration
    */
   private static String invokeBuildTls12ServerConfig(String cipherSuites, String... extraConfigLines) {
-    try {
-      return (String) getBuildTls12ServerConfigMethod().invoke(null, cipherSuites, extraConfigLines);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("buildTls12ServerConfig invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke buildTls12ServerConfig", e);
-    }
+    return TlsTestToolConfigBuilder.buildTls12ServerConfig(cipherSuites, extraConfigLines);
   }
 
   /**
-   * Invokes {@code extractClientHelloCipherSuitesAsPairs(String)} via reflection.
+   * Extracts ClientHello cipher suites via the parser API.
    *
    * @param fullLog TLS log content
    * @return extracted cipher suite pairs
    */
-  @SuppressWarnings("unchecked")
   private static List<String> invokeExtractClientHelloCipherSuitesAsPairs(String fullLog) {
-    try {
-      return (List<String>) getExtractClientHelloCipherSuitesAsPairsMethod().invoke(null, fullLog);
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("extractClientHelloCipherSuitesAsPairs invocation failed", e.getCause());
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Unable to invoke extractClientHelloCipherSuitesAsPairs", e);
-    }
+    return TlsLogParser.extractClientHelloCipherSuitesAsPairs(fullLog);
   }
 
   /**
@@ -491,12 +369,12 @@ class TlsTestToolStepsTest {
    */
   @Test
   void tlsSignatureAlgorithmProvidesHexValueAndUnknownFallback() {
-    var ecdsa = TlsTestToolSteps.TlsSignatureAlgorithm.fromValue(3);
-    var unknown = TlsTestToolSteps.TlsSignatureAlgorithm.fromValue(999);
+    var ecdsa = TlsSignatureAlgorithm.fromValue(3);
+    var unknown = TlsSignatureAlgorithm.fromValue(999);
 
-    assertEquals(TlsTestToolSteps.TlsSignatureAlgorithm.ECDSA, ecdsa);
+    assertEquals(TlsSignatureAlgorithm.ECDSA, ecdsa);
     assertEquals("0x03", ecdsa.getHexValue());
-    assertEquals(TlsTestToolSteps.TlsSignatureAlgorithm.UNKNOWN, unknown);
+    assertEquals(TlsSignatureAlgorithm.UNKNOWN, unknown);
     assertEquals("n/a", unknown.getHexValue());
   }
 
@@ -512,24 +390,24 @@ class TlsTestToolStepsTest {
 
     assertEquals(
         List.of(
-            TlsTestToolSteps.TlsSupportedGroup.X25519,
-            TlsTestToolSteps.TlsSupportedGroup.SECP256R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP384R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP521R1,
-            TlsTestToolSteps.TlsSupportedGroup.X448,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE2048,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE3072,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE4096,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE6144,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE8192),
+            TlsSupportedGroup.X25519,
+            TlsSupportedGroup.SECP256R1,
+            TlsSupportedGroup.SECP384R1,
+            TlsSupportedGroup.SECP521R1,
+            TlsSupportedGroup.X448,
+            TlsSupportedGroup.FFDHE2048,
+            TlsSupportedGroup.FFDHE3072,
+            TlsSupportedGroup.FFDHE4096,
+            TlsSupportedGroup.FFDHE6144,
+            TlsSupportedGroup.FFDHE8192),
         supportedGroups);
   }
 
   /**
-   * Verifies that ClientHello key_share extraction stops at the current log line boundary.
+   * Verifies that ClientHello key_share extraction stops at the declared extension length.
    */
   @Test
-  void extractClientKeyShareGroupsHandlesTimestampedNextLogLine() {
+  void extractClientKeyShareGroupsStopsAtDeclaredExtensionLength() {
     var keyShareGroups = invokeExtractClientKeyShareGroups("""
         2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.extensions=00 33 00 47 00 45 00 17 00 41 04 6d b8 72 79 6e 22 e7 1c 9e 88 6e 1a c0 7f 54 7b 85 a0 84 cb 5a 7d 9f e9 43 1e 4e 34 7d 8f 1a 9a c6 66 8d 59 f4 b4 0c f8 22 17 3b 8d dd e0 0a 27 1f 39 c2 1a 27 0e d1 5e 84 12 66 2b 00 18 00 01 42
         2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.signature_algorithms=08 04 08 05 08 06
@@ -537,8 +415,22 @@ class TlsTestToolStepsTest {
 
     assertEquals(
         List.of(
-            TlsTestToolSteps.TlsSupportedGroup.SECP256R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP384R1),
+            TlsSupportedGroup.SECP256R1),
+        keyShareGroups);
+  }
+
+  /**
+   * Verifies that a following TLS padding extension is not misread as a ClientHello key_share group.
+   */
+  @Test
+  void extractClientKeyShareGroupsIgnoresFollowingPaddingExtension() {
+    var keyShareGroups = invokeExtractClientKeyShareGroups("""
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.extensions=00 33 00 06 00 04 00 17 00 00 00 15 00 00
+        """);
+
+    assertEquals(
+        List.of(
+            TlsSupportedGroup.SECP256R1),
         keyShareGroups);
   }
 
@@ -548,7 +440,7 @@ class TlsTestToolStepsTest {
   @Test
   void extractTls13SignatureSchemesHandlesTimestampedNextLogLine() {
     var signatureSchemes = invokeExtractTls13SignatureSchemes("""
-        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.extensions=00 0d 00 14 00 12 08 04 08 05 08 06 08 09 08 0a 08 0b 04 03 05 03
+        2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.extensions=00 0d 00 12 00 10 08 04 08 05 08 06 08 09 08 0a 08 0b 04 03 05 03
         2026-03-17T08:26:38.499Z\tHIGH\tTLS(TlsLogFilter.cpp:337)\tClientHello.supported_versions=03 04 03 03
         """);
 
@@ -596,15 +488,15 @@ class TlsTestToolStepsTest {
    */
   @Test
   void tlsCipherSuiteProvidesTlsVersionForTls13CipherSuites() {
-    var tls13CipherSuite = TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256;
-    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_3, tls13CipherSuite.getTlsVersion());
+    var tls13CipherSuite = TlsCipherSuite.AES_128_GCM_SHA256;
+    assertEquals(TlsVersion.TLS_1_3, tls13CipherSuite.getTlsVersion());
     assertTrue(tls13CipherSuite.getIsMandatory());
-    var tls13Ccm8CipherSuite = TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256;
+    var tls13Ccm8CipherSuite = TlsCipherSuite.AES_128_CCM_8_SHA256;
     assertEquals("(0x13,0x05)", tls13Ccm8CipherSuite.getTlsTestToolCipherSuiteValue());
-    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_3, tls13Ccm8CipherSuite.getTlsVersion());
+    assertEquals(TlsVersion.TLS_1_3, tls13Ccm8CipherSuite.getTlsVersion());
     assertFalse(tls13Ccm8CipherSuite.getIsMandatory());
-    var tls12CipherSuite = TlsTestToolSteps.TlsCipherSuite.ECDHE_ECDSA_AES_128_GCM_SHA256;
-    assertEquals(TlsTestToolSteps.TlsVersion.TLS_1_2, tls12CipherSuite.getTlsVersion());
+    var tls12CipherSuite = TlsCipherSuite.ECDHE_ECDSA_AES_128_GCM_SHA256;
+    assertEquals(TlsVersion.TLS_1_2, tls12CipherSuite.getTlsVersion());
     assertTrue(tls12CipherSuite.getIsMandatory());
   }
 
@@ -613,18 +505,18 @@ class TlsTestToolStepsTest {
    */
   @Test
   void optionalTls13CipherSuitesContainsOnlyTls13NonMandatorySuites() {
-    var cipherSuites = TlsTestToolSteps.TlsCipherSuite.optionalTls13CipherSuites();
+    var cipherSuites = TlsCipherSuite.optionalTls13CipherSuites();
 
-    assertFalse(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256));
-    assertTrue(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256));
-    assertFalse(cipherSuites.contains(TlsTestToolSteps.TlsCipherSuite.ECDHE_ECDSA_AES_128_GCM_SHA256));
-    assertTrue(cipherSuites.stream().map(TlsTestToolSteps.TlsCipherSuite::getTlsVersion)
-        .allMatch(version -> version == TlsTestToolSteps.TlsVersion.TLS_1_3));
+    assertFalse(cipherSuites.contains(TlsCipherSuite.AES_128_GCM_SHA256));
+    assertTrue(cipherSuites.contains(TlsCipherSuite.AES_128_CCM_8_SHA256));
+    assertFalse(cipherSuites.contains(TlsCipherSuite.ECDHE_ECDSA_AES_128_GCM_SHA256));
+    assertTrue(cipherSuites.stream().map(TlsCipherSuite::getTlsVersion)
+        .allMatch(version -> version == TlsVersion.TLS_1_3));
     assertEquals(
         Set.of(
-            TlsTestToolSteps.TlsCipherSuite.CHACHA20_POLY1305_SHA256,
-            TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_SHA256,
-            TlsTestToolSteps.TlsCipherSuite.AES_128_CCM_8_SHA256),
+            TlsCipherSuite.CHACHA20_POLY1305_SHA256,
+            TlsCipherSuite.AES_128_CCM_SHA256,
+            TlsCipherSuite.AES_128_CCM_8_SHA256),
         cipherSuites);
   }
 
@@ -633,12 +525,12 @@ class TlsTestToolStepsTest {
    */
   @Test
   void mandatoryTls13CipherSuitesContainsOnlyMandatoryTls13Suites() {
-    var cipherSuites = TlsTestToolSteps.TlsCipherSuite.mandatoryTls13CipherSuites();
+    var cipherSuites = TlsCipherSuite.mandatoryTls13CipherSuites();
 
     assertEquals(
         Set.of(
-            TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256,
-            TlsTestToolSteps.TlsCipherSuite.AES_256_GCM_SHA384),
+            TlsCipherSuite.AES_128_GCM_SHA256,
+            TlsCipherSuite.AES_256_GCM_SHA384),
         cipherSuites);
   }
 
@@ -647,7 +539,7 @@ class TlsTestToolStepsTest {
    */
   @Test
   void tls13SupportedGroupsAdvertiseRecommendedAndOptionalGroups() {
-    var supportedGroups = TlsTestToolSteps.TlsSupportedGroup.tls13SupportedGroups();
+    var supportedGroups = TlsSupportedGroup.tls13SupportedGroups();
 
     assertEquals(
         "secp256r1,secp384r1,brainpoolP256r1,brainpoolP384r1,brainpoolP512r1",
@@ -661,29 +553,29 @@ class TlsTestToolStepsTest {
   void brainpoolTls13SupportedGroupsUsePolicySpecificEntries() {
 
     assertEquals(
-        TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1,
-        TlsTestToolSteps.TlsSupportedGroup.fromDisplayName("brainpoolP256r1"));
+        TlsSupportedGroup.BRAINPOOLP256R1,
+        TlsSupportedGroup.fromDisplayName("brainpoolP256r1"));
     assertEquals(
-        TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13,
-        TlsTestToolSteps.TlsSupportedGroup.fromDisplayName("brainpoolP256r1tls13"));
-    assertEquals(0x0016, TlsTestToolSteps.TlsSupportedGroup.SECP256K1.getValue());
-    assertEquals(0x001A, TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1.getValue());
-    assertEquals(0x001F, TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13.getValue());
-    assertEquals(0x0020, TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP384R1TLS13.getValue());
-    assertEquals(0x0021, TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP512R1TLS13.getValue());
+        TlsSupportedGroup.BRAINPOOLP256R1TLS13,
+        TlsSupportedGroup.fromDisplayName("brainpoolP256r1tls13"));
+    assertEquals(0x0016, TlsSupportedGroup.SECP256K1.getValue());
+    assertEquals(0x001A, TlsSupportedGroup.BRAINPOOLP256R1.getValue());
+    assertEquals(0x001F, TlsSupportedGroup.BRAINPOOLP256R1TLS13.getValue());
+    assertEquals(0x0020, TlsSupportedGroup.BRAINPOOLP384R1TLS13.getValue());
+    assertEquals(0x0021, TlsSupportedGroup.BRAINPOOLP512R1TLS13.getValue());
     assertEquals(
-        TlsTestToolSteps.TlsSupportedGroup.Tls13Policy.OPTIONAL,
-        TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1.getTls13Policy());
+        TlsSupportedGroup.Tls13Policy.OPTIONAL,
+        TlsSupportedGroup.BRAINPOOLP256R1.getTls13Policy());
     assertEquals(
-        TlsTestToolSteps.TlsSupportedGroup.Tls13Policy.FORBIDDEN,
-        TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13.getTls13Policy());
+        TlsSupportedGroup.Tls13Policy.FORBIDDEN,
+        TlsSupportedGroup.BRAINPOOLP256R1TLS13.getTls13Policy());
     assertEquals(
-        TlsTestToolSteps.TlsSupportedGroup.Tls12Policy.FORBIDDEN,
-        TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13.getTls12Policy());
+        TlsSupportedGroup.Tls12Policy.FORBIDDEN,
+        TlsSupportedGroup.BRAINPOOLP256R1TLS13.getTls12Policy());
 
-    var allowedGroups = TlsTestToolSteps.TlsSupportedGroup.allowedGroups();
-    assertTrue(allowedGroups.contains(TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1));
-    assertFalse(allowedGroups.contains(TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13));
+    var allowedGroups = TlsSupportedGroup.allowedGroups();
+    assertTrue(allowedGroups.contains(TlsSupportedGroup.BRAINPOOLP256R1));
+    assertFalse(allowedGroups.contains(TlsSupportedGroup.BRAINPOOLP256R1TLS13));
   }
 
   /**
@@ -691,25 +583,49 @@ class TlsTestToolStepsTest {
    */
   @Test
   void forbiddenGroupsForTls13ContainsOnlyTls13ForbiddenGroups() {
-    var forbiddenGroups = TlsTestToolSteps.TlsSupportedGroup.forbiddenGroupsForTls13();
+    var forbiddenGroups = TlsSupportedGroup.forbiddenGroupsForTls13();
 
     assertEquals(
         List.of(
-            TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP256R1TLS13,
-            TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP384R1TLS13,
-            TlsTestToolSteps.TlsSupportedGroup.BRAINPOOLP512R1TLS13,
-            TlsTestToolSteps.TlsSupportedGroup.SECP192R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP224R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP521R1,
-            TlsTestToolSteps.TlsSupportedGroup.SECP256K1,
-            TlsTestToolSteps.TlsSupportedGroup.X25519,
-            TlsTestToolSteps.TlsSupportedGroup.X448,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE2048,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE3072,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE4096,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE6144,
-            TlsTestToolSteps.TlsSupportedGroup.FFDHE8192),
+            TlsSupportedGroup.BRAINPOOLP256R1TLS13,
+            TlsSupportedGroup.BRAINPOOLP384R1TLS13,
+            TlsSupportedGroup.BRAINPOOLP512R1TLS13,
+            TlsSupportedGroup.SECP192R1,
+            TlsSupportedGroup.SECP224R1,
+            TlsSupportedGroup.SECP521R1,
+            TlsSupportedGroup.SECP256K1,
+            TlsSupportedGroup.X25519,
+            TlsSupportedGroup.X448,
+            TlsSupportedGroup.FFDHE2048,
+            TlsSupportedGroup.FFDHE3072,
+            TlsSupportedGroup.FFDHE4096,
+            TlsSupportedGroup.FFDHE6144,
+            TlsSupportedGroup.FFDHE8192),
         forbiddenGroups);
+  }
+
+  /**
+   * Verifies that the TLS-1.3 offerable-forbidden set excludes the groups OpenSSL cannot advertise
+   * (secp192r1/secp224r1/secp256k1) while keeping every other TLS-1.3-forbidden group.
+   */
+  @Test
+  void forbiddenGroupsOfferableInTls13ExcludesNonOfferableGroups() {
+    var offerable = TlsSupportedGroup.forbiddenGroupsOfferableInTls13();
+
+    assertEquals(
+        List.of(
+            TlsSupportedGroup.BRAINPOOLP256R1TLS13,
+            TlsSupportedGroup.BRAINPOOLP384R1TLS13,
+            TlsSupportedGroup.BRAINPOOLP512R1TLS13,
+            TlsSupportedGroup.SECP521R1,
+            TlsSupportedGroup.X25519,
+            TlsSupportedGroup.X448,
+            TlsSupportedGroup.FFDHE2048,
+            TlsSupportedGroup.FFDHE3072,
+            TlsSupportedGroup.FFDHE4096,
+            TlsSupportedGroup.FFDHE6144,
+            TlsSupportedGroup.FFDHE8192),
+        offerable);
   }
 
   /**
@@ -717,10 +633,10 @@ class TlsTestToolStepsTest {
    */
   @Test
   void tls13AdvertisedSupportedGroupsAreNotTls12Forbidden() {
-    var advertisedForbiddenGroups = java.util.Arrays.stream(TlsTestToolSteps.TlsSupportedGroup.values())
-        .filter(group -> group.getTls13Policy() == TlsTestToolSteps.TlsSupportedGroup.Tls13Policy.RECOMMENDED
-            || group.getTls13Policy() == TlsTestToolSteps.TlsSupportedGroup.Tls13Policy.OPTIONAL)
-        .filter(group -> group.getTls12Policy() == TlsTestToolSteps.TlsSupportedGroup.Tls12Policy.FORBIDDEN)
+    var advertisedForbiddenGroups = java.util.Arrays.stream(TlsSupportedGroup.values())
+        .filter(group -> group.getTls13Policy() == TlsSupportedGroup.Tls13Policy.RECOMMENDED
+            || group.getTls13Policy() == TlsSupportedGroup.Tls13Policy.OPTIONAL)
+        .filter(group -> group.getTls12Policy() == TlsSupportedGroup.Tls12Policy.FORBIDDEN)
         .toList();
 
     assertEquals(List.of(), advertisedForbiddenGroups);
@@ -761,6 +677,77 @@ class TlsTestToolStepsTest {
   }
 
   /**
+   * Verifies that GS-A_5542 alert validation accepts fatal handshake_failure alerts.
+   */
+  @Test
+  void endpointSendsFatalTlsErrorAlertAcceptsHandshakeFailure() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        Alert message received.
+        Alert.level=02
+        Alert.description=28
+        TLS handshake failed: error:0A000410:SSL routines::sslv3 alert handshake failure
+        """);
+
+    tlsSteps.endpointSendsFatalTlsErrorAlert();
+  }
+
+  /**
+   * Verifies that GS-A_5542 alert validation rejects warning alerts.
+   */
+  @Test
+  void endpointSendsFatalTlsErrorAlertRejectsWarningAlert() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        Alert message received.
+        Alert.level=01
+        Alert.description=28
+        TLS handshake failed: error:0A000410:SSL routines::sslv3 alert handshake failure
+        """);
+
+    var error = assertThrows(AssertionError.class, tlsSteps::endpointSendsFatalTlsErrorAlert);
+
+    assertTrue(error.getMessage().contains("Alert.level=02"));
+  }
+
+  /**
+   * Verifies that GS-A_5542 alert validation rejects non-error alert descriptions.
+   */
+  @Test
+  void endpointSendsFatalTlsErrorAlertRejectsNonErrorAlertDescription() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        Alert message received.
+        Alert.level=02
+        Alert.description=00
+        TLS handshake failed: error:0A000410:SSL routines::sslv3 alert handshake failure
+        """);
+
+    var error = assertThrows(AssertionError.class, tlsSteps::endpointSendsFatalTlsErrorAlert);
+
+    assertTrue(error.getMessage().contains("No fatal TLS error alert description"));
+  }
+
+  /**
+   * Verifies that fatal TLS alert validation keeps scanning after a same-description warning alert.
+   */
+  @Test
+  void endpointSendsFatalTlsErrorAlertAcceptsLaterFatalAlertWithSameDescription() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        Alert message received.
+        Alert.level=01
+        Alert.description=28
+        Alert message received.
+        Alert.level=02
+        Alert.description=28
+        TLS handshake failed: error:0A000410:SSL routines::sslv3 alert handshake failure
+        """);
+
+    tlsSteps.endpointSendsFatalTlsErrorAlert();
+  }
+
+  /**
    * Verifies that secp521r1 is not part of the recommended TLS-1.3 signature scheme set.
    */
   @Test
@@ -786,7 +773,7 @@ class TlsTestToolStepsTest {
    */
   @Test
   void nonRecommendedTls13SignatureSchemesRemainLimitedToPkcs1Schemes() throws Exception {
-    var enumClass = Class.forName("de.gematik.zeta.steps.TlsTestToolSteps$TlsSignatureSchemes");
+    var enumClass = Class.forName("de.gematik.zeta.model.tls.TlsSignatureSchemes");
     var method = enumClass.getDeclaredMethod("nonRecommendedSchemeNames");
     method.setAccessible(true);
 
@@ -830,6 +817,79 @@ class TlsTestToolStepsTest {
     assertFalse(tlsConfig.contains("tlsLibrary=OpenSSL"));
   }
 
+  /** Verifies that TLS 1.2 server configuration can select OpenSSL for OCSP stapling. */
+  @Test
+  void buildTls12ServerConfigCanUseOpenSsl() {
+    var tlsConfig = TlsTestToolConfigBuilder.buildTls12ServerConfig(
+        TlsLibrary.OPENSSL, "(0xC0,0x2B)");
+
+    assertTrue(tlsConfig.contains("tlsLibrary=OpenSSL"));
+    assertFalse(tlsConfig.contains("tlsLibrary=mbed TLS"));
+  }
+
+  /** Verifies ClientHello OCSP request evidence in an OpenSSL trace. */
+  @Test
+  void recognizesOcspStatusRequestInOpenSslClientHelloTrace() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(
+        tlsSteps,
+        """
+        Received TLS Record
+          ClientHello, Length=210
+            extension_type=status_request(5), length=5
+        """);
+
+    tlsSteps.checkIfClientRequestsOcspStapling();
+  }
+
+  /** Verifies stapled CertificateStatus evidence in an OpenSSL server trace. */
+  @Test
+  void recognizesOcspStaplingResponseInOpenSslServerTrace() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(
+        tlsSteps,
+        """
+        Sent TLS Record
+          ServerHello, Length=89
+            extension_type=status_request(5), length=0
+        Sent TLS Record
+          CertificateStatus, Length=471
+        """);
+
+    tlsSteps.checkIfServerProvidesOcspStaplingResponse();
+  }
+
+  /** Verifies successful-handshake evidence emitted by OpenSSL s_server. */
+  @Test
+  void recognizesSuccessfulOpenSslServerHandshake() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(
+        tlsSteps,
+        """
+        SSL_accept:SSLv3/TLS read finished
+        SSL_accept:SSLv3/TLS write finished
+        Received TLS Record
+          Content Type = ApplicationData (23)
+        """);
+
+    tlsSteps.checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation.ERFOLGREICH);
+  }
+
+  /** Verifies rejected-handshake evidence emitted when an OpenSSL peer sends a fatal alert. */
+  @Test
+  void recognizesRejectedOpenSslServerHandshake() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(
+        tlsSteps,
+        """
+        SSL_accept:SSLv3/TLS write server done
+        SSL3 alert read:fatal:bad certificate status response
+        SSL_accept:error in error
+        """);
+
+    tlsSteps.checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation.NICHT_ERFOLGREICH);
+  }
+
   /**
    * Verifies that TLS-1.2 client cipher-suite configuration rejects TLS-1.3 profiles.
    */
@@ -841,7 +901,7 @@ class TlsTestToolStepsTest {
         AssertionError.class,
         () -> tlsSteps.setValidTlsTestToolConfigForCipherSuiteProfile(
             "zeta-kind.local",
-            TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256));
+            TlsCipherSuite.AES_128_GCM_SHA256));
 
     assertEquals("The cipher suite profile is not a TLS 1.2 profile.", error.getMessage());
   }
@@ -856,7 +916,7 @@ class TlsTestToolStepsTest {
     var error = assertThrows(
         AssertionError.class,
         () -> tlsSteps.setValidTls12TlsTestToolServerConfigForCipherSuiteProfile(
-            TlsTestToolSteps.TlsCipherSuite.AES_128_GCM_SHA256));
+            TlsCipherSuite.AES_128_GCM_SHA256));
 
     assertEquals("The cipher suite profile is not a TLS 1.2 profile.", error.getMessage());
   }
@@ -998,15 +1058,15 @@ class TlsTestToolStepsTest {
   }
 
   /**
-   * Verifies RFC 5746 validation accepts no_renegotiation as a fatal alert.
+   * Verifies RFC 5746 validation accepts no_renegotiation as a warning alert.
    */
   @Test
-  void rfc5746CompliantRenegotiationAcceptsFatalNoRenegotiationAlert() {
+  void rfc5746CompliantRenegotiationAcceptsWarningNoRenegotiationAlert() {
     var tlsSteps = new TlsTestToolSteps();
     setTlsLogs(tlsSteps, """
         Handshake successful.
         => renegotiate
-        Alert.level=02
+        Alert.level=01
         Alert.description=64
         TLS Test Tool exiting.
         """);
@@ -1048,19 +1108,19 @@ class TlsTestToolStepsTest {
     var error =
         assertThrows(AssertionError.class, tlsSteps::checkIfTlsRenegotiationIsRfc5746Compliant);
 
-    assertTrue(error.getMessage().contains("Alert.level=02"));
+    assertTrue(error.getMessage().contains("fatal Alert.description=28"));
   }
 
   /**
-   * Verifies RFC 5746 validation only accepts no_renegotiation as a fatal alert.
+   * Verifies RFC 5746 validation rejects no_renegotiation as a fatal alert.
    */
   @Test
-  void rfc5746CompliantRenegotiationRejectsWarningNoRenegotiationAlert() {
+  void rfc5746CompliantRenegotiationRejectsFatalNoRenegotiationAlert() {
     var tlsSteps = new TlsTestToolSteps();
     setTlsLogs(tlsSteps, """
         Handshake successful.
         => renegotiate
-        Alert.level=01
+        Alert.level=02
         Alert.description=64
         TLS Test Tool exiting.
         """);
@@ -1068,27 +1128,27 @@ class TlsTestToolStepsTest {
     var error =
         assertThrows(AssertionError.class, tlsSteps::checkIfTlsRenegotiationIsRfc5746Compliant);
 
-    assertTrue(error.getMessage().contains("Alert.level=02"));
+    assertTrue(error.getMessage().contains("warning Alert.description=64"));
   }
 
   /**
-   * Verifies RFC 5746 validation reports unsupported alert descriptions separately.
+   * Verifies RFC 5746 validation rejects illegal_parameter as an unsupported fatal alert.
    */
   @Test
-  void rfc5746CompliantRenegotiationRejectsUnsupportedFatalAlertDescription() {
+  void rfc5746CompliantRenegotiationRejectsIllegalParameterAlert() {
     var tlsSteps = new TlsTestToolSteps();
     setTlsLogs(tlsSteps, """
         Handshake successful.
         => renegotiate
         Alert.level=02
-        Alert.description=40
+        Alert.description=2f
         TLS Test Tool exiting.
         """);
 
     var error =
         assertThrows(AssertionError.class, tlsSteps::checkIfTlsRenegotiationIsRfc5746Compliant);
 
-    assertTrue(error.getMessage().contains("Alert.description=64 or Alert.description=28"));
+    assertTrue(error.getMessage().contains("fatal Alert.description=28"));
   }
 
   /**

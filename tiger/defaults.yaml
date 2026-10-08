@@ -7,17 +7,34 @@ zeta_base_url: zeta-kind.local
 # Override via environment variable KEYCLOAK_URL or Maven property -Dkeycloak_url=....
 keycloak_url: authserver
 
+# Hostname (without scheme) for the PEP HTTP Proxy endpoint.
+# Override via environment variable PEP_HTTP_PROXY_URL or Maven property -Dpep_http_proxy_url=....
+pep_http_proxy_url: pep-proxy-svc
+
 zeta_proxy_url: localhost:9999
 
-zeta_k8s_namespace: zeta-local
-
 allow_deployment_modification: false
-
 allow_performance_tests: false
 
-zeta_k8s_command_timeout: 60
+# Plaintext gRPC service address of the load dispenser.
+# Override via environment variable LOAD_DISPENSER_URL.
+load_dispenser_url: localhost:50051
 
-zeta_k8s_pod_ready_timeout: 120
+# PoPP token generator endpoint used by functional PoPP token steps.
+# The Load Dispenser signs valid PoPP tokens internally for hellozeta workloads.
+# Override via environment variable POPP_TOKEN_GENERATOR_URL or Maven property
+# -Dpopp_token_generator_url=....
+popp_token_generator_url: https://${zeta_base_url}/popp-token-generator/popp/test/api/v1/token-generator
+
+# config keys related to steps that modify a ZETA Guard deployment
+zeta_k8s_namespace: zeta-local
+zeta_k8s_command_timeout: 300
+zeta_k8s_pod_ready_timeout: 300
+zeta_k8s_helm_deployment_directory: ../zeta-guard-helm
+zeta_k8s_smb_keystore_file: ../zeta-test-certificates/smcb/smcb-certificates.p12.b64
+zeta_k8s_smb_keystore_password_file: ../zeta-test-certificates/smcb/smcb-pw
+zeta_k8s_enable_asl_globally: false
+zeta_k8s_disable_asl_globally: false
 
 schemaValidation:
   # If false, schema validation treats object schemas as strict by default and
@@ -31,6 +48,10 @@ schemaValidation:
 # Override via environment variable OPENSEARCH_URL or Maven property -Dopensearch_url=....
 opensearch_url: ${zeta_base_url}:9200
 
+# Prometheus host (without scheme) for telemetry metrics lookups.
+# Override via environment variable PROMETHEUS_URL or Maven property -Dprometheus_url=....
+prometheus_url: ${zeta_base_url}:9090
+
 # Directory of the sibling zeta-test-certificates checkout.
 # Override via environment variable ZETA_TEST_CERTIFICATES_DIR or Maven property
 # -DtestCertificates.dir=....
@@ -41,6 +62,6 @@ testCertificates.dir: ../zeta-test-certificates
 # -Dzeta_tls_test_tool_service_url=....
 zeta_tls_test_tool_service_url: ${zeta_base_url}:9012
 
-# PoPP token generator URL for performance tests.
-# Override via -Dpopp_token_generator_url=... or environment variable POPP_TOKEN_GENERATOR_URL.
-popp_token_generator_url: https://${zeta_base_url}/popp-token-generator/popp/test/api/v1/token-generator
+# Certificate validation mock URL
+# Override via Maven property -Dzeta_cert_validation_mock_url=....
+zeta_cert_validation_mock_url: ${zeta_base_url}:9013

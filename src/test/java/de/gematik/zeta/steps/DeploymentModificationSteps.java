@@ -24,28 +24,27 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.rbellogger.data.RbelElement;
 import de.gematik.rbellogger.data.core.TracingMessagePairFacet;
+import de.gematik.rbellogger.facets.timing.RbelMessageTimingFacet;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.glue.HttpGlueCode;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
 import de.gematik.test.tiger.lib.reports.SerenityReportUtils;
-import de.gematik.zeta.services.ZetaDeploymentConfigurationService;
-import de.gematik.zeta.services.ZetaDeploymentConfigurationServiceFactory;
+import de.gematik.zeta.services.SystemCommandService;
+import de.gematik.zeta.services.ZetaDeploymentConfiguration;
+import de.gematik.zeta.services.ZetaDeploymentModificationService;
 import de.gematik.zeta.services.model.CommandResult;
+import de.gematik.zeta.services.model.ZetaClientDataForwardingToggleRequest;
 import de.gematik.zeta.services.model.ZetaDeploymentDetails;
-import de.gematik.zeta.services.model.ZetaDisableAslRequest;
-import de.gematik.zeta.services.model.ZetaEnableAslRequest;
 import de.gematik.zeta.services.model.ZetaPoppTokenToggleRequest;
 import de.gematik.zeta.services.model.ZetaPoppTokenValidityRequest;
-import io.cucumber.java.de.Gegebensei;
+import de.gematik.zeta.services.model.ZetaRequiredScopesRequest;
+import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.de.Wenn;
 import io.cucumber.java.en.And;
-import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 import io.restassured.http.Method;
 import java.io.IOException;
@@ -58,10 +57,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import net.serenitybdd.core.Serenity;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber step definitions for modifications of the Zeta Guard deployment.
@@ -73,14 +77,24 @@ public class DeploymentModificationSteps {
   private static final int MAX_KEY_DEPTH = 20;
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final long DEFAULT_POLL_INTERVAL_MILLIS = 250L;
+  private static final int DEFAULT_ROLLBACK_MAX_SECONDS = 660;
+  private static final String DEFAULT_HELM_ROLLBACK_TIMEOUT = "10m";
+  private static final String DEFAULT_ISOLATED_HELM_ROLLBACK_PROOF_INSTALL_TIMEOUT = "10m";
+  private static final String DEFAULT_ISOLATED_HELM_ROLLBACK_PROOF_TIMEOUT = "30s";
+  private static final String ROLLBACK_MAX_SECONDS_CONFIG_KEY = "zeta_k8s_rollback_max_seconds";
+  private static final String HELM_ROLLBACK_TIMEOUT_CONFIG_KEY = "zeta_k8s_helm_rollback_timeout";
+  private static final String ISOLATED_HELM_ROLLBACK_PROOF_TIMEOUT_CONFIG_KEY =
+      "zeta_k8s_isolated_helm_rollback_proof_timeout";
+  private static final String ISOLATED_HELM_ROLLBACK_PROOF_INSTALL_TIMEOUT_CONFIG_KEY =
+      "zeta_k8s_isolated_helm_rollback_proof_install_timeout";
 
-  private final ZetaDeploymentConfigurationService service;
+  private final ZetaDeploymentModificationService service;
 
   /**
    * Creates deployment modification steps backed by the default deployment configuration service instance.
    */
   public DeploymentModificationSteps() {
-    this(ZetaDeploymentConfigurationServiceFactory.getInstance());
+    this(ZetaDeploymentConfiguration.getServiceInstance());
   }
 
   /**
@@ -88,75 +102,52 @@ public class DeploymentModificationSteps {
    *
    * @param service service used to modify and inspect the deployment
    */
-  DeploymentModificationSteps(final ZetaDeploymentConfigurationService service) {
+  DeploymentModificationSteps(final ZetaDeploymentModificationService service) {
     this.service = service;
   }
 
   /**
-   * Cucumber step to disable the Additional Security Layer in a Zeta Guard deployment.
-   *
-   * @throws AssertionError if any exception occurred during setup or execution; added as wrapper for consistency
+   * Mutable evidence collected while a pending request runs through a background image update.
    */
-  @Und("deaktiviere den Additional Security Layer im Zeta Deployment")
-  @And("deactivate the Additional Security Layer in Zeta deployment")
-  public void disableAsl() throws AssertionError {
-    assertModificationIsAllowed();
+  private static final class BackgroundRolloutEvidence {
 
-    ZetaDeploymentDetails details = getDeploymentDetails();
-    ZetaDisableAslRequest request = getDisableAslRequest();
-    try {
-      service.disableAsl(details, request);
-    } catch (TimeoutException te) {
-      throw new AssertionError("Timeout occurred while waiting for command or system state", te);
-    } catch (InterruptedException ie) {
-      throw new AssertionError("Command execution was interrupted", ie);
-    } catch (IOException ioe) {
-      throw new AssertionError("An error occurred handling temporary files", ioe);
-    } catch (Exception e) {
-      throw new AssertionError("An unexpected error occurred", e);
-    }
+    private Instant imageVisibleAt;
+    private Instant responseObservedAt;
+    private Instant responseTransmittedAt;
   }
 
   /**
-   * Cucumber step to enable the Additional Security Layer in a Zeta Guard
-   * deployment.
-   *
-   * @throws AssertionError if any exception occurred during setup or execution; added as wrapper for consistency
+   * Mutable evidence collected while proving literal request takeover after old-pod termination.
    */
-  @Gegebensei("aktiviere den Additional Security Layer im Zeta Deployment")
-  @Given("activate the Additional Security Layer in Zeta deployment")
-  public void enableAsl() throws AssertionError {
-    assertModificationIsAllowed();
+  private static final class LiteralTakeoverEvidence {
 
-    ZetaDeploymentDetails details = getDeploymentDetails();
-    ZetaEnableAslRequest request = getEnableAslRequest();
-    try {
-      service.enableAsl(details, request);
-    } catch (TimeoutException te) {
-      throw new AssertionError("Timeout occurred while waiting for command or system state", te);
-    } catch (InterruptedException ie) {
-      throw new AssertionError("Command execution was interrupted", ie);
-    } catch (IOException ioe) {
-      throw new AssertionError("An error occurred handling temporary files", ioe);
-    } catch (Exception e) {
-      throw new AssertionError("An unexpected error occurred", e);
-    }
+    private Instant upstreamObservedAt;
+    private Instant upstreamTransmittedAt;
+    private Instant podGoneObservedAt;
+    private Instant rolloutFinalizedAt;
+    private Instant newPepWithImageReadyObservedAt;
+    private Instant responseObservedAt;
+    private Instant responseTransmittedAt;
+    private String newPepWithImagePodName;
   }
 
   /**
-   * Cucumber step to disable the PoPP token verification for a route in a ZETA Guard deployment.
+   * Sets PoPP token verification for a route in a ZETA Guard deployment.
    *
+   * @param enabled {@code true} to enable PoPP token verification, {@code false} to disable it
+   * @param targetRoute Route that PoPP token verification should be set for
    * @throws AssertionError if any exception occurred during setup or execution; added as wrapper for consistency
    */
-  @Und("deaktiviere die PoPP Token Verifikation für die Route {tigerResolvedString} im ZETA Deployment")
-  @And("deactivate PoPP token verification for route {tigerResolvedString} in ZETA deployment")
-  public void disablePoppTokenVerification(String targetRoute) throws AssertionError {
+  @Und("{toggleAction} die PoPP Token Verifikation für die Route {tigerResolvedString} im ZETA Deployment")
+  @And("{toggleAction} PoPP token verification for route {tigerResolvedString} in ZETA deployment")
+  public void setPoppTokenVerification(boolean enabled, String targetRoute) throws AssertionError {
     assertModificationIsAllowed();
 
     ZetaDeploymentDetails details = getDeploymentDetails();
     ZetaPoppTokenToggleRequest request = getPoppTokenRequest();
     try {
-      service.disablePoppVerification(details, request, targetRoute);
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setPoppVerification(details, request, targetRoute, enabled);
     } catch (TimeoutException te) {
       throw new AssertionError("Timeout occurred while waiting for command or system state", te);
     } catch (InterruptedException ie) {
@@ -169,19 +160,50 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Cucumber step to enable the PoPP token verification for a route in a ZETA Guard deployment.
+   * Sets client-data forwarding for a route in a ZETA Guard deployment.
    *
+   * @param enabled {@code true} to enable client-data forwarding, {@code false} to disable it
+   * @param targetRoute route that client-data forwarding should be set for
    * @throws AssertionError if any exception occurred during setup or execution; added as wrapper for consistency
    */
-  @Und("aktiviere die PoPP Token Verifikation für die Route {tigerResolvedString} im ZETA Deployment")
-  @And("activate PoPP token verification for route {tigerResolvedString} in ZETA deployment")
-  public void enablePoppTokenVerification(String targetRoute) throws AssertionError {
+  @Und("{toggleAction} die Client-Daten-Weiterleitung für die Route {tigerResolvedString} im ZETA Deployment")
+  @And("{toggleAction} client data forwarding for route {tigerResolvedString} in ZETA deployment")
+  public void setClientDataForwarding(boolean enabled, String targetRoute) throws AssertionError {
     assertModificationIsAllowed();
 
     ZetaDeploymentDetails details = getDeploymentDetails();
-    ZetaPoppTokenToggleRequest request = getPoppTokenRequest();
+    ZetaClientDataForwardingToggleRequest request = getClientDataForwardingRequest();
     try {
-      service.enablePoppVerification(details, request, targetRoute);
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setClientDataForwarding(details, request, targetRoute, enabled);
+    } catch (TimeoutException te) {
+      throw new AssertionError("Timeout occurred while waiting for command or system state", te);
+    } catch (InterruptedException ie) {
+      throw new AssertionError("Command execution was interrupted", ie);
+    } catch (IOException ioe) {
+      throw new AssertionError("An error occurred handling temporary files", ioe);
+    } catch (Exception e) {
+      throw new AssertionError("An unexpected error occurred", e);
+    }
+  }
+
+  /**
+   * Sets the required scopes for a route in a ZETA Guard deployment.
+   *
+   * @param requiredScopes space-separated scopes required by the route
+   * @param targetRoute route for which the required scopes should be set
+   * @throws AssertionError if any exception occurred during setup or execution
+   */
+  @Und("setze die erforderlichen Scopes {tigerResolvedString} für die Route {tigerResolvedString} im ZETA Deployment")
+  @And("set required scopes {tigerResolvedString} for route {tigerResolvedString} in ZETA deployment")
+  public void setRequiredScopes(String requiredScopes, String targetRoute) throws AssertionError {
+    assertModificationIsAllowed();
+
+    ZetaDeploymentDetails details = getDeploymentDetails();
+    ZetaRequiredScopesRequest request = getRequiredScopesRequest();
+    try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setRequiredScopes(details, request, targetRoute, requiredScopes);
     } catch (TimeoutException te) {
       throw new AssertionError("Timeout occurred while waiting for command or system state", te);
     } catch (InterruptedException ie) {
@@ -207,6 +229,7 @@ public class DeploymentModificationSteps {
     ZetaDeploymentDetails details = getDeploymentDetails();
     ZetaPoppTokenValidityRequest request = getPoppTokenValidityRequest();
     try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
       service.setPoppTokenValidity(details, request, validity);
     } catch (TimeoutException te) {
       throw new AssertionError("Timeout occurred while waiting for command or system state", te);
@@ -309,6 +332,23 @@ public class DeploymentModificationSteps {
     TigerGlobalConfiguration.putValue(varName, scaledText, ConfigurationValuePrecedence.TEST_CONTEXT);
   }
 
+
+  /**
+   * Executes "kubectl get pods -o json" and stores a selected logical "wide" column from all
+   * matching pods in a Tiger test variable and returns a comma separated list of these values.
+   *
+   * @param namespace namespace for kubectl query
+   * @param headerName header to extract ("NAME", "READY", "STATUS", "RESTARTS", "AGE", "IP", "NODE", "NOMINATED NODE", "READINESS GATES")
+   * @param rowFilter row filter applied as contains-match against extracted pod values
+   * @param varName target Tiger variable name
+   */
+  @Und("ermittle aus Pods im Namespace {tigerResolvedString} den Wert der Spalte {tigerResolvedString} für alle Zeilen mit {tigerResolvedString} und speichere in der Variable {tigerResolvedString}")
+  @And("extract from pods in namespace {tigerResolvedString} the value from header {tigerResolvedString} for all rows containing {tigerResolvedString} and store in variable {tigerResolvedString}")
+  public void extractAllPodWideColumnValuesToVariable(String namespace, String headerName, String rowFilter, String varName) {
+    var value = getValueFromPodInfo(namespace, headerName, rowFilter, false);
+    TigerGlobalConfiguration.putValue(varName, value, ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
   /**
    * Executes "kubectl get pods -o json" and stores a selected logical "wide" column from the first
    * matching pod in a Tiger test variable.
@@ -321,23 +361,49 @@ public class DeploymentModificationSteps {
   @Und("ermittle aus den Pods im Namespace {tigerResolvedString} den Wert aus der Spalte {tigerResolvedString} der Zeile mit {tigerResolvedString} und speichere in der Variable {tigerResolvedString}")
   @And("extract from pods in namespace {tigerResolvedString} value from header {tigerResolvedString} in row containing {tigerResolvedString} and store in variable {tigerResolvedString}")
   public void extractPodWideColumnToVariable(String namespace, String headerName, String rowFilter, String varName) {
+    var value = getValueFromPodInfo(namespace, headerName, rowFilter, true);
+    TigerGlobalConfiguration.putValue(varName, value, ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
+  /**
+   * Queries pod information from a Kubernetes cluster and extracts a column value from a single or all filtered rows.
+   *
+   * @param namespace namespace for kubectl query
+   * @param headerName header to extract ("NAME", "READY", "STATUS", "RESTARTS", "AGE", "IP", "NODE", "NOMINATED NODE", "READINESS GATES")
+   * @param rowFilter row filter applied as contains-match against extracted pod values
+   * @param matchSingle flag to either break after first found row or append to comma separated list of values
+   * @return a single value or a comma separated list of values extracted from pod information in the cluster
+   */
+  private String getValueFromPodInfo(String namespace, String headerName, String rowFilter, boolean matchSingle) {
     service.verifyRequirements(namespace);
 
-    CommandResult result = service.executeKubectlCommand("-n", namespace, "get", "pods", "-o", "json");
-    if (result.exitCode() != 0) {
-      throw new AssertionError("kubectl get pods failed: " + result.stderr());
+    CommandResult cmdResult = service.executeKubectlCommand("-n", namespace, "get", "pods", "-o", "json");
+    if (cmdResult.exitCode() != 0) {
+      throw new AssertionError("kubectl get pods failed: " + cmdResult.stderr());
     }
+
+    // explicitly append command and result to Serenity report for traceability
+    String cmdStr = String.join(" ", cmdResult.command());
+    log.debug(cmdStr);
+    Serenity.recordReportData()
+        .withTitle("Command:")
+        .andContents(cmdStr);
+    log.debug(cmdResult.toString());
+    Serenity.recordReportData()
+        .withTitle("Result :")
+        .andContents(cmdResult.toString());
 
     JsonNode items;
     try {
-      items = JSON.readTree(result.stdout()).path("items");
-    } catch (IOException e) {
+      items = JSON.readTree(cmdResult.stdout()).path("items");
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse kubectl pods JSON output.", e);
     }
     if (!items.isArray() || items.isEmpty()) {
       throw new AssertionError("kubectl get pods -o json returned no pods in namespace '" + namespace + "'.");
     }
 
+    String result = "";
     String requestedHeader = headerName == null ? "" : headerName.trim();
     String filter = rowFilter == null ? "" : rowFilter.trim();
     JsonNode matchingPod = null;
@@ -347,25 +413,30 @@ public class DeploymentModificationSteps {
       if (!filter.isBlank() && rowProjection.contains(filter)) {
         matchingPod = pod;
         matchedRowProjection = rowProjection;
-        break;
+
+        String value = extractWideColumnValue(matchingPod, requestedHeader);
+        if (value == null) {
+          throw new AssertionError(
+              "Header '" + headerName + "' not supported. Available headers: NAME, READY, STATUS, RESTARTS, AGE, IP, NODE, NOMINATED NODE, READINESS GATES");
+        }
+        if (value.isBlank()) {
+          throw new AssertionError(
+              "Header '" + headerName + "' exists, but value is missing in matched pod projection: " + matchedRowProjection);
+        }
+
+        result = result.isBlank() ? value : result + ", " + value;
+        if (matchSingle) {
+          break;
+        }
       }
     }
-    if (matchingPod == null) {
+
+    if (result.isBlank()) {
       throw new AssertionError(
           "No pod row containing '" + rowFilter + "' found in namespace '" + namespace + "'.");
     }
 
-    String value = extractWideColumnValue(matchingPod, requestedHeader);
-    if (value == null) {
-      throw new AssertionError(
-          "Header '" + headerName + "' not supported. Available headers: NAME, READY, STATUS, RESTARTS, AGE, IP, NODE, NOMINATED NODE, READINESS GATES");
-    }
-    if (value.isBlank()) {
-      throw new AssertionError(
-          "Header '" + headerName + "' exists, but value is missing in matched pod projection: " + matchedRowProjection);
-    }
-
-    TigerGlobalConfiguration.putValue(varName, value, ConfigurationValuePrecedence.TEST_CONTEXT);
+    return result;
   }
 
   /**
@@ -441,22 +512,8 @@ public class DeploymentModificationSteps {
    * @return deployment details used by deployment manipulation service methods
    * @throws AssertionError when required configuration values are missing
    */
-  private ZetaDeploymentDetails getDeploymentDetails() throws AssertionError {
-    String namespace = getNamespace();
-    String pepPodName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.podName")
-        .orElseThrow(() -> new AssertionError("Missing variable: pep.podName"));
-
-    String nginxConfigMapName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.configMapName")
-        .orElseThrow(() -> new AssertionError("Missing variable: pep.nginx.configMapName"));
-    String[] nginxConfigMapSegments = parseKeySegments("zetaDeploymentConfig.pep.nginx.keySegments");
-
-    String wellKnownConfigMapName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.configMapName")
-        .orElseThrow(() -> new AssertionError("Missing variable: pep.wellKnown.configMapName"));
-    String[] wellKnownConfigMapSegments = parseKeySegments("zetaDeploymentConfig.pep.wellKnown.keySegments");
-
-    return new ZetaDeploymentDetails(namespace, pepPodName,
-        nginxConfigMapName, nginxConfigMapSegments,
-        wellKnownConfigMapName, wellKnownConfigMapSegments);
+  private ZetaDeploymentDetails getDeploymentDetails() {
+    return ZetaDeploymentConfiguration.getDeploymentDetails();
   }
 
   /**
@@ -515,6 +572,34 @@ public class DeploymentModificationSteps {
       TigerGlobalConfiguration.putValue(variableName, podName, ConfigurationValuePrecedence.TEST_CONTEXT);
     } catch (Exception e) {
       throw new AssertionError("An unexpected error occurred", e);
+    }
+  }
+
+  /**
+   * Sets the RollingUpdate strategy for a deployment and remembers the original strategy for scenario cleanup.
+   *
+   * @param deploymentName deployment name
+   * @param maxSurge maxSurge value, for example {@code 0} or {@code 25%}
+   * @param maxUnavailable maxUnavailable value, for example {@code 1} or {@code 25%}
+   */
+  @Und("setze die RollingUpdate-Strategie des Deployments {tigerResolvedString} auf maxSurge {tigerResolvedString} und maxUnavailable {tigerResolvedString}")
+  @And("set RollingUpdate strategy of deployment {tigerResolvedString} to maxSurge {tigerResolvedString} and maxUnavailable {tigerResolvedString}")
+  public void setDeploymentRollingUpdateStrategy(String deploymentName, String maxSurge, String maxUnavailable) {
+    assertModificationIsAllowed();
+
+    String namespace = getNamespace();
+    CommandResult strategyResult = service.getDeploymentStrategy(namespace, deploymentName);
+    if (strategyResult.exitCode() != 0 || strategyResult.stdout() == null || strategyResult.stdout().isBlank()) {
+      throw new AssertionError("Could not determine current strategy for deployment '" + deploymentName
+          + "': " + strategyResult.stderr());
+    }
+    Hooks.rememberDeploymentStrategyIfAbsent(deploymentName, strategyResult.stdout());
+
+    CommandResult patchResult =
+        service.setDeploymentRollingUpdateStrategy(namespace, deploymentName, maxSurge, maxUnavailable);
+    if (patchResult.exitCode() != 0) {
+      throw new AssertionError("Could not set RollingUpdate strategy for deployment '" + deploymentName
+          + "': " + patchResult.stderr());
     }
   }
 
@@ -581,6 +666,43 @@ public class DeploymentModificationSteps {
   }
 
   /**
+   * Starts a long-running client request, triggers the deployment image update while that request is pending,
+   * and verifies that rollout activity becomes visible before the tracked request is answered successfully.
+   *
+   * @param requestUrl client URL that is called via the configured Tiger HTTP client
+   * @param headerName header name used to correlate the request
+   * @param headerValue header value used to correlate the request
+   * @param pathPattern RBEL path pattern for the original client request
+   * @param newImage image that triggers the rollout
+   * @param containerName container whose image is changed
+   * @param deploymentName deployment whose image is changed
+   * @param timeoutSeconds maximum verification time
+   */
+  @Wenn(
+      "prüfe, dass eine leere GET Anfrage an {tigerResolvedString} mit Header {tigerResolvedString} gleich"
+          + " {tigerResolvedString} und Pfad {tigerResolvedString} während das Image {tigerResolvedString}"
+          + " für den Container {tigerResolvedString} im Deployment {tigerResolvedString} gesetzt wird,"
+          + " bis zur Sichtbarkeit eines Pods mit diesem Image weiterläuft und anschließend erfolgreich"
+          + " beantwortet wird oder {int} Sekunden vergangen sind")
+  @When(
+      "verify empty GET request to {tigerResolvedString} with header {tigerResolvedString} equal"
+          + " {tigerResolvedString} and path {tigerResolvedString} keeps running while setting image"
+          + " {tigerResolvedString} for container {tigerResolvedString} in deployment {tigerResolvedString}"
+          + " until a pod with this image is visible and then responds successfully or {int} seconds have passed")
+  public void sendRequestAndVerifyBackgroundImageVisibilityBeforeResponse(String requestUrl,
+      String headerName, String headerValue, String pathPattern, String newImage, String containerName,
+      String deploymentName, int timeoutSeconds) {
+    HttpGlueCode httpGlueCode = startEmptyGetRequestWithHeader(requestUrl, headerName, headerValue);
+    try {
+      verifyBackgroundImageVisibilityBeforeRequestAnsweredAfterImageUpdate(
+          pathPattern, "$.header.[~'" + headerName.toLowerCase() + "']", Pattern.quote(headerValue),
+          newImage, containerName, deploymentName, timeoutSeconds);
+    } finally {
+      httpGlueCode.clearDefaultHeader(headerName);
+    }
+  }
+
+  /**
    * Sends repeated GET requests until a deployment has fully switched to a new ready pod.
    */
   @Wenn(
@@ -594,6 +716,46 @@ public class DeploymentModificationSteps {
   public void pollGetUntilDeploymentSwitchedFromKnownPod(String url, String expectedStatusCode, String deploymentName,
       String initialPodName, int timeoutSeconds) {
     pollGetUntilDeploymentSwitchedToNewPod(url, expectedStatusCode, deploymentName, initialPodName, timeoutSeconds);
+  }
+
+  /**
+   * Sends repeated GET requests until the expected HTTP status is observed.
+   *
+   * @param url request URL
+   * @param expectedStatusCode expected HTTP status code
+   * @param timeoutSeconds maximum wait time
+   */
+  @Wenn(
+      "sende wiederholt eine leere GET Anfrage an {tigerResolvedString} und erwarte HTTP Status {tigerResolvedString}"
+          + " innerhalb von {int} Sekunden")
+  @When(
+      "send repeated empty GET requests to {tigerResolvedString} and expect HTTP status {tigerResolvedString}"
+          + " within {int} seconds")
+  public void pollGetUntilExpectedStatus(String url, String expectedStatusCode, int timeoutSeconds) {
+    Instant deadline = Instant.now().plusSeconds(timeoutSeconds);
+    int attempts = 0;
+    AssertionError lastError = null;
+
+    while (!Instant.now().isAfter(deadline)) {
+      attempts++;
+      try {
+        sendEmptyGet(url);
+        String actualStatusCode = extractCurrentResponseCode();
+        if (expectedStatusCode.equals(actualStatusCode)) {
+          SerenityReportUtils.addCustomData("HTTP status polling",
+              "url=" + url + ", expectedStatusCode=" + expectedStatusCode + ", attempts=" + attempts);
+          return;
+        }
+        lastError = new AssertionError("Polling-Request lieferte unerwarteten Statuscode. expected="
+            + expectedStatusCode + ", actual=" + actualStatusCode + ", attempt=" + attempts);
+      } catch (AssertionError e) {
+        lastError = e;
+      }
+      sleepBeforeNextPoll();
+    }
+
+    throw new AssertionError("Timeout beim Polling auf HTTP Status " + expectedStatusCode
+        + ". url=" + url + ", attempts=" + attempts, lastError);
   }
 
   /**
@@ -812,23 +974,44 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Verifies takeover evidence for a long-running request: the old pod disappears while the tracked
-   * request is still pending, rollout finalization happens only afterwards, and the request later
-   * completes successfully.
+   * Sends a long-running client request and verifies literal request takeover by forcefully terminating the old pod
+   * while that same request is still pending.
+   *
+   * @param requestUrl client URL that is called via the configured Tiger HTTP client
+   * @param headerName header name used to correlate the request
+   * @param headerValue header value used to correlate the request
+   * @param clientPathPattern RBEL path pattern for the original client request
+   * @param upstreamPathPattern RBEL path pattern for the forwarded Fachdienst request
+   * @param newImage image that triggers the rollout
+   * @param containerName container whose image is changed
+   * @param deploymentName deployment whose image is changed
+   * @param podName old pod that must be forcefully terminated
+   * @param timeoutSeconds maximum verification time
    */
-  @Und(
-      "prüfe, dass der Pod {tigerResolvedString} verschwindet, während die erste Anfrage mit Pfad"
-          + " {tigerResolvedString} und Knoten {tigerResolvedString} der mit {tigerResolvedString} übereinstimmt,"
-          + " noch keine Antwort hat, und dass das Deployment {tigerResolvedString} erst danach finalisiert wird"
-          + " oder {int} Sekunden vergangen sind")
   @And(
-      "verify pod {tigerResolvedString} disappears while first request to path {tigerResolvedString}"
-          + " with {tigerResolvedString} matching {tigerResolvedString} is still pending and deployment"
-          + " {tigerResolvedString} is finalized only afterwards or {int} seconds have passed")
-  public void verifyPodDisappearsWhileRequestPendingAndDeploymentFinalizesAfterwards(String podName,
-      String pathPattern, String rbelPath, String expectedValueRegex, String deploymentName, int timeoutSeconds) {
-    verifyTakeoverEvidenceBeforeDeploymentFinalized(
-        podName, pathPattern, rbelPath, expectedValueRegex, deploymentName, timeoutSeconds);
+      "verify empty GET request to {tigerResolvedString} with header {tigerResolvedString} equal"
+          + " {tigerResolvedString} and client path {tigerResolvedString} and upstream path {tigerResolvedString}"
+          + " is successfully taken over while setting image {tigerResolvedString} for container"
+          + " {tigerResolvedString} in deployment {tigerResolvedString} after forced termination of pod"
+          + " {tigerResolvedString} with exactly one upstream request or {int} seconds have passed")
+  @Dann(
+      "prüfe, dass eine leere GET Anfrage an {tigerResolvedString} mit Header {tigerResolvedString} gleich"
+          + " {tigerResolvedString} und Client-Pfad {tigerResolvedString} und Fachdienst-Pfad {tigerResolvedString}"
+          + " während das Image {tigerResolvedString} für den Container {tigerResolvedString} im Deployment"
+          + " {tigerResolvedString} gesetzt wird, nach erzwungener Beendigung des Pods {tigerResolvedString}"
+          + " mit genau einer Fachdienst-Anfrage erfolgreich übernommen wird oder {int} Sekunden vergangen sind")
+  public void sendRequestAndVerifyLiteralRequestTakeoverAfterForcedPodTermination(String requestUrl,
+      String headerName, String headerValue, String clientPathPattern, String upstreamPathPattern, String newImage,
+      String containerName, String deploymentName, String podName, int timeoutSeconds) {
+    HttpGlueCode httpGlueCode = startEmptyGetRequestWithHeader(requestUrl, headerName, headerValue);
+    try {
+      verifyLiteralRequestTakeoverEvidenceAfterForcedPodTermination(
+          podName, clientPathPattern, upstreamPathPattern,
+          "$.header.[~'" + headerName.toLowerCase() + "']", Pattern.quote(headerValue), newImage,
+          containerName, deploymentName, timeoutSeconds);
+    } finally {
+      httpGlueCode.clearDefaultHeader(headerName);
+    }
   }
 
   /**
@@ -952,6 +1135,74 @@ public class DeploymentModificationSteps {
   }
 
   /**
+   * Verifies with an isolated PEP image deployment that a faulty Helm update with rollback-on-failure returns
+   * automatically to the expected stable image within the configured rollback time budget.
+   *
+   * @param failedImageTag invalid PEP image tag used to trigger the faulty Helm update
+   * @param containerName target PEP container name
+   * @param deploymentName target PEP deployment name
+   * @param expectedImage expected stable image after Helm rollback
+   * @throws AssertionError if Helm does not fail as expected, rollback is not observed, or the time budget is exceeded
+   */
+  @Und(
+      "prüfe mit einem isolierten Helm-Rollback-Nachweis, dass eine fehlerhafte Aktualisierung des PEP"
+          + " Image-Tags {tigerResolvedString} für den Container {tigerResolvedString} das Deployment"
+          + " {tigerResolvedString} nicht verändert und innerhalb des konfigurierten Rollback-Zeitbudgets"
+          + " automatisch auf das Image {tigerResolvedString} zurückkehrt")
+  @And(
+      "verify faulty Helm update of PEP image tag {tigerResolvedString} for container {tigerResolvedString}"
+          + " in deployment {tigerResolvedString} automatically returns to image {tigerResolvedString}"
+          + " within the configured rollback time budget")
+  public void verifyFaultyHelmPepImageUpdateAutomaticallyReturnsToImageWithinConfiguredSeconds(
+      String failedImageTag, String containerName, String deploymentName, String expectedImage) {
+    assertModificationIsAllowed();
+
+    final int maxDurationSeconds = getConfiguredRollbackMaxSeconds();
+    String namespace = getNamespace();
+    rememberPepOriginalImageIfNeeded(namespace, deploymentName, containerName);
+    long startNanos = System.nanoTime();
+    CommandResult helmResult;
+    try {
+      var isolatedProofInstallTimeout = getIsolatedRollbackProofInstallTimeout();
+      var isolatedProofTimeout = getIsolatedRollbackProofTimeout();
+      SerenityReportUtils.addCustomData("Helm rollback system command timeout",
+          "timeout=" + maxDurationSeconds + " s");
+      helmResult = service.verifyIsolatedPepHelmRollbackOnFailure(
+          namespace, containerName, expectedImage, failedImageTag, isolatedProofInstallTimeout, isolatedProofTimeout,
+          maxDurationSeconds);
+    } catch (AssertionError e) {
+      if (isProcessTimeoutFailure(e)) {
+        throw new AssertionError("Faulty Helm deployment did not finish within the configured rollback time budget.", e);
+      }
+      throw e;
+    }
+
+    Duration helmElapsed = Duration.ofNanos(System.nanoTime() - startNanos);
+    if (helmResult.exitCode() == 0) {
+      throw new AssertionError("Faulty Helm deployment unexpectedly succeeded for PEP image tag '"
+          + failedImageTag + "'.\nstdout:\n" + helmResult.stdout() + "\nstderr:\n" + helmResult.stderr());
+    }
+    assertHelmFailureIsCompatibleWithRollbackProof(helmResult);
+
+    CommandResult verifyResult = service.verifyDeploymentUpdate(namespace, deploymentName, containerName, expectedImage);
+    Duration elapsed = Duration.ofNanos(System.nanoTime() - startNanos);
+    SerenityReportUtils.addCustomData("Faulty Helm rollback-on-failure verification",
+        "Isolated Helm command failed as expected with rollback-on-failure after " + helmElapsed.toMillis() + " ms. "
+            + "Stable deployment remained unchanged and was verified after " + elapsed.toMillis() + " ms. "
+            + "command=" + helmResult.command() + ", stdout=" + helmResult.stdout()
+            + ", stderr=" + helmResult.stderr());
+    if (verifyResult.exitCode() != 0) {
+      throw new AssertionError("Stable image was not active after faulty Helm deployment failed with rollback-on-failure.\n"
+          + "Helm stdout:\n" + helmResult.stdout() + "\nHelm stderr:\n" + helmResult.stderr()
+          + "\nVerification stderr:\n" + verifyResult.stderr());
+    }
+    if (elapsed.compareTo(Duration.ofSeconds(maxDurationSeconds)) > 0) {
+      throw new AssertionError("Helm rollback duration exceeded configured limit. Expected <= "
+          + maxDurationSeconds + " s but was " + elapsed.toMillis() + " ms.");
+    }
+  }
+
+  /**
    * Verifies in one timed window that a failed target image never becomes active and the deployment
    * automatically returns to the expected stable image.
    */
@@ -1011,8 +1262,120 @@ public class DeploymentModificationSteps {
    * @throws AssertionError when the namespace is missing
    */
   private String getNamespace() {
-    return TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
-        .orElseThrow(() -> new AssertionError("Missing variable: namespace"));
+    return ZetaDeploymentConfiguration.getNamespace();
+  }
+
+  /**
+   * Reads the configured maximum rollback duration from Tiger configuration.
+   *
+   * @return configured maximum rollback duration in seconds
+   * @throws AssertionError if the configured duration is not positive
+   */
+  private int getConfiguredRollbackMaxSeconds() {
+    int maxDurationSeconds = TigerGlobalConfiguration.readIntegerOptional(ROLLBACK_MAX_SECONDS_CONFIG_KEY)
+        .orElse(DEFAULT_ROLLBACK_MAX_SECONDS);
+    if (maxDurationSeconds <= 0) {
+      throw new AssertionError("Configured rollback time budget must be positive. Key "
+          + ROLLBACK_MAX_SECONDS_CONFIG_KEY + "=" + maxDurationSeconds);
+    }
+    SerenityReportUtils.addCustomData("Configured rollback time budget",
+        ROLLBACK_MAX_SECONDS_CONFIG_KEY + "=" + maxDurationSeconds + " s");
+    return maxDurationSeconds;
+  }
+
+  /**
+   * Reads the configured Helm timeout used by the rollback-on-failure command.
+   *
+   * @return Helm timeout value, for example {@code 5m}
+   */
+  private String getConfiguredHelmRollbackTimeout() {
+    String timeout = TigerGlobalConfiguration.readStringOptional(HELM_ROLLBACK_TIMEOUT_CONFIG_KEY)
+        .map(DeploymentModificationSteps::resolveHelmRollbackTimeout)
+        .orElse(DEFAULT_HELM_ROLLBACK_TIMEOUT);
+    SerenityReportUtils.addCustomData("Configured Helm rollback timeout",
+        HELM_ROLLBACK_TIMEOUT_CONFIG_KEY + "=" + timeout);
+    return timeout;
+  }
+
+  /**
+   * Resolves a Helm timeout configuration value, falling back to the default for missing or blank values.
+   *
+   * @param configuredTimeout raw configured timeout
+   * @return trimmed configured timeout or default timeout
+   */
+  static String resolveHelmRollbackTimeout(String configuredTimeout) {
+    if (configuredTimeout == null || configuredTimeout.isBlank()) {
+      return DEFAULT_HELM_ROLLBACK_TIMEOUT;
+    }
+    return configuredTimeout.trim();
+  }
+
+  /**
+   * Reads the Helm timeout for installing the temporary stable release used by the isolated rollback proof.
+   *
+   * @return Helm timeout for the temporary stable release setup
+   */
+  private static String getIsolatedRollbackProofInstallTimeout() {
+    String timeout = TigerGlobalConfiguration.readStringOptional(ISOLATED_HELM_ROLLBACK_PROOF_INSTALL_TIMEOUT_CONFIG_KEY)
+        .map(DeploymentModificationSteps::resolveHelmRollbackTimeout)
+        .orElse(DEFAULT_ISOLATED_HELM_ROLLBACK_PROOF_INSTALL_TIMEOUT);
+    SerenityReportUtils.addCustomData("Isolated Helm rollback proof install timeout",
+        ISOLATED_HELM_ROLLBACK_PROOF_INSTALL_TIMEOUT_CONFIG_KEY + "=" + timeout);
+    return timeout;
+  }
+
+  /**
+   * Reads the Helm timeout for the failed upgrade used by the isolated rollback proof.
+   *
+   * @return Helm timeout for the temporary failed upgrade
+   */
+  private static String getIsolatedRollbackProofTimeout() {
+    String timeout = TigerGlobalConfiguration.readStringOptional(ISOLATED_HELM_ROLLBACK_PROOF_TIMEOUT_CONFIG_KEY)
+        .map(DeploymentModificationSteps::resolveHelmRollbackTimeout)
+        .orElse(DEFAULT_ISOLATED_HELM_ROLLBACK_PROOF_TIMEOUT);
+    SerenityReportUtils.addCustomData("Isolated Helm rollback proof failure timeout",
+        ISOLATED_HELM_ROLLBACK_PROOF_TIMEOUT_CONFIG_KEY + "=" + timeout);
+    return timeout;
+  }
+
+  /**
+   * Checks whether an assertion was caused by the system command timeout guard.
+   *
+   * @param throwable assertion or nested cause to inspect
+   * @return {@code true} when a command timeout message is present in the cause chain
+   */
+  private static boolean isProcessTimeoutFailure(Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null && message.contains(SystemCommandService.PROCESS_TIMEOUT_MESSAGE_PREFIX)) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  /**
+   * Rejects command failures that prove the Helm invocation was invalid instead of proving a faulty update rollback.
+   *
+   * @param helmResult failed Helm deployment command result
+   * @throws AssertionError if the command failed before a Helm deployment failure could be observed
+   */
+  private void assertHelmFailureIsCompatibleWithRollbackProof(CommandResult helmResult) {
+    String combinedOutput = ((helmResult.stdout() == null ? "" : helmResult.stdout()) + "\n"
+        + (helmResult.stderr() == null ? "" : helmResult.stderr())).toLowerCase();
+    if (combinedOutput.contains("unknown flag")
+        || combinedOutput.contains("no rule to make target")
+        || combinedOutput.contains("no such file or directory")
+        || combinedOutput.contains("command not found")
+        || combinedOutput.contains("conflict occurred while applying object")
+        || combinedOutput.contains("apply failed")
+        || combinedOutput.contains("another operation")
+        || combinedOutput.contains("unknown option")) {
+      throw new AssertionError("Faulty Helm deployment command failed before a rollback could be proven.\nstdout:\n"
+          + helmResult.stdout() + "\nstderr:\n" + helmResult.stderr());
+    }
   }
 
   private void rememberPepOriginalImageIfNeeded(String namespace, String deploymentName, String containerName) {
@@ -1032,6 +1395,33 @@ public class DeploymentModificationSteps {
     }
 
     Hooks.rememberPepOriginalImageIfAbsent(currentImageResult.stdout());
+  }
+
+  /**
+   * Registers that this scenario owns the ConfigMap backup and removes stale backup data before the first modification.
+   *
+   * @param namespace Kubernetes namespace containing the ConfigMap
+   * @param configMapName ConfigMap name
+   */
+  private void prepareConfigMapBackupForCurrentScenario(String namespace, String configMapName) {
+    if (namespace == null || namespace.isBlank() || configMapName == null || configMapName.isBlank()) {
+      return;
+    }
+    var normalizedConfigMapName = configMapName.trim();
+    if (Hooks.getCapturedConfigMapBackups().contains(normalizedConfigMapName)) {
+      return;
+    }
+
+    if (service.hasConfigMapBackup(namespace, normalizedConfigMapName)) {
+      var deleteResult = service.deleteConfigMapBackup(namespace, normalizedConfigMapName);
+      if (deleteResult.exitCode() != 0) {
+        throw new AssertionError("Could not delete pre-existing ConfigMap backup '" + normalizedConfigMapName
+            + "' before scenario-local backup capture.\n" + deleteResult.stderr());
+      }
+    }
+
+    // Ownership must only be recorded after stale backup state can no longer be restored by cleanup.
+    Hooks.rememberConfigMapBackupIfAbsent(normalizedConfigMapName);
   }
 
   private void rememberPepOriginalImageIfNamedVariableMatches(String variableName, String deploymentName,
@@ -1145,7 +1535,6 @@ public class DeploymentModificationSteps {
         observedRolloutInProgressAfterResponse = true;
         observations.add("rolloutStillInProgressAfterResponse");
       }
-
       if (rolloutFinalizedNow && rolloutObservedAt == null) {
         rolloutObservedAt = Instant.now();
         observations.add("rolloutFinalized=" + rolloutObservedAt);
@@ -1191,11 +1580,6 @@ public class DeploymentModificationSteps {
 
   static boolean hasBackgroundUpdateEvidence(boolean imageVisibleObserved, boolean responseObserved) {
     return imageVisibleObserved && responseObserved;
-  }
-
-  static boolean hasTakeoverBeforeRolloutFinalizationEvidence(boolean podGoneObserved,
-      boolean rolloutObservedAfterPodDisappearance, boolean responseObserved) {
-    return podGoneObserved && rolloutObservedAfterPodDisappearance && responseObserved;
   }
 
   private void verifyRequestResponseAfterPodDisappeared(String pathPattern, String rbelPath,
@@ -1313,16 +1697,29 @@ public class DeploymentModificationSteps {
         + deploymentName + "'. observations=" + observations);
   }
 
-  private void verifyTakeoverEvidenceBeforeDeploymentFinalized(String podName, String pathPattern, String rbelPath,
-      String expectedValueRegex, String deploymentName, int timeoutSeconds) {
+  /**
+   * Verifies that a request is pending before an image update is triggered, then proves that a pod with the new image
+   * becomes visible before the request is answered.
+   *
+   * @param pathPattern RBEL path pattern for the original client request
+   * @param rbelPath RBEL node path used to correlate the tracked request
+   * @param expectedValueRegex expected value regex for the correlation node
+   * @param newImage image that triggers the rollout
+   * @param containerName container whose image is changed
+   * @param deploymentName deployment whose image is changed
+   * @param timeoutSeconds maximum verification time
+   */
+  private void verifyBackgroundImageVisibilityBeforeRequestAnsweredAfterImageUpdate(String pathPattern,
+      String rbelPath, String expectedValueRegex, String newImage, String containerName, String deploymentName,
+      int timeoutSeconds) {
     String namespace = getNamespace();
+    service.verifyRequirements(namespace);
+
     Instant deadline = Instant.now().plusSeconds(Math.abs(timeoutSeconds));
-    Instant responseObservedAt = null;
-    Instant podGoneObservedAt = null;
-    Instant rolloutObservedAt = null;
-    boolean observedRolloutAfterPodDisappearance = false;
+    Instant clientRequestTransmittedAt = null;
     List<String> observations = new ArrayList<>();
 
+    RbelElement initialClientRequest = null;
     while (!Instant.now().isAfter(deadline)) {
       var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
       if (messageHistory == null || messageHistory.isEmpty()) {
@@ -1331,61 +1728,440 @@ public class DeploymentModificationSteps {
       }
 
       List<RbelElement> messages = new ArrayList<>(messageHistory);
-      var request = findFirstRequestMatchingPathAndNode(messages, pathPattern, rbelPath, expectedValueRegex);
-      if (request == null) {
+      initialClientRequest = findFirstRequestMatchingPathAndNode(
+          messages, pathPattern, rbelPath, expectedValueRegex);
+      if (initialClientRequest == null) {
         sleepBeforeNextPoll();
         continue;
       }
 
-      if (responseObservedAt == null) {
-        var response = findResponseForRequest(messages, request);
-        if (response != null) {
-          responseObservedAt = Instant.now();
-          String observedResponseCode = extractResponseCode(response);
-          observations.add("responseObserved=" + responseObservedAt + ", code=" + observedResponseCode);
-          assertObservedSuccessfulResponseCode(observedResponseCode, observations);
-        }
+      RbelElement prematureResponse = findResponseForRequest(messages, initialClientRequest);
+      if (prematureResponse != null) {
+        throw new AssertionError("Tracked request was already answered before rollout image update could be triggered."
+            + " responseTransmittedAt=" + transmissionTimeOf(prematureResponse, "premature response")
+            + ", observations=" + observations);
       }
 
-      if (podGoneObservedAt == null && podMissing(namespace, podName)) {
-        if (rolloutObservedAt != null) {
-          throw new AssertionError("Deployment '" + deploymentName + "' finalized before pod '" + podName
-              + "' disappeared while proving request takeover. observations=" + observations);
-        }
-        podGoneObservedAt = Instant.now();
-        boolean responsePendingWhenPodDisappeared = responseObservedAt == null;
-        observations.add("podGone=" + podGoneObservedAt + ", responsePending=" + responsePendingWhenPodDisappeared);
-        if (!responsePendingWhenPodDisappeared) {
-          throw new AssertionError("Tracked request was already answered before pod '" + podName
-              + "' disappeared. observations=" + observations);
-        }
-      }
-
-      CommandResult rolloutResult = service.executeKubectlCommand(false, "rollout", "status",
-          "deployment/" + deploymentName, "-n", namespace, "--timeout=1s");
-      if (rolloutResult.exitCode() == 0 && rolloutObservedAt == null) {
-        rolloutObservedAt = Instant.now();
-        observations.add("rolloutFinalized=" + rolloutObservedAt);
-        if (podGoneObservedAt != null) {
-          observedRolloutAfterPodDisappearance = true;
-          observations.add("rolloutObservedAfterPodGone");
-        }
-      }
-
-      if (hasTakeoverBeforeRolloutFinalizationEvidence(
-          podGoneObservedAt != null, observedRolloutAfterPodDisappearance, responseObservedAt != null)) {
-        SerenityReportUtils.addCustomData("Takeover before rollout finalization",
-            "deployment=" + deploymentName + ", pod=" + podName + ", requestPath=" + pathPattern
-                + ", podGoneAt=" + podGoneObservedAt + ", rolloutFinalizedAt=" + rolloutObservedAt
-                + ", responseObservedAt=" + responseObservedAt + ", observations=" + observations);
-        return;
-      }
-
-      sleepBeforeNextPoll();
+      clientRequestTransmittedAt = transmissionTimeOf(initialClientRequest, "client request");
+      observations.add("clientRequestPending=" + Instant.now() + ", clientRequestTransmittedAt="
+          + clientRequestTransmittedAt);
+      break;
     }
 
-    throw new AssertionError("Timeout while proving takeover before rollout finalization for deployment '"
-        + deploymentName + "' and pod '" + podName + "'. observations=" + observations);
+    if (initialClientRequest == null) {
+      throw new AssertionError("Timeout while waiting for pending client request to path '" + pathPattern
+          + "' before triggering rollout image update. observations=" + observations);
+    }
+
+    Instant imageUpdateTriggeredAt = Instant.now();
+    observations.add("imageUpdateTriggered=" + imageUpdateTriggeredAt + ", image=" + newImage);
+    final CompletableFuture<CommandResult> imageUpdate =
+        startDeploymentImageUpdate(namespace, deploymentName, containerName, newImage);
+    final BackgroundRolloutEvidence evidence = new BackgroundRolloutEvidence();
+
+    try {
+      while (!Instant.now().isAfter(deadline)) {
+        var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+        if (messageHistory == null || messageHistory.isEmpty()) {
+          sleepBeforeNextPoll();
+          continue;
+        }
+
+        List<RbelElement> messages = new ArrayList<>(messageHistory);
+        var clientRequest = findFirstRequestMatchingPathAndNode(messages, pathPattern, rbelPath, expectedValueRegex);
+        if (clientRequest == null) {
+          sleepBeforeNextPoll();
+          continue;
+        }
+
+        var response = findResponseForRequest(messages, clientRequest);
+        if (evidence.imageVisibleAt == null
+            && deploymentShowsPodWithImage(namespace, deploymentName, newImage, containerName)) {
+          evidence.imageVisibleAt = Instant.now();
+          boolean responsePendingWhenImageVisible = response == null;
+          observations.add("imageVisible=" + evidence.imageVisibleAt
+              + ", responsePending=" + responsePendingWhenImageVisible);
+          if (!responsePendingWhenImageVisible) {
+            throw new AssertionError("Matching request was already answered before rollout activity with image '"
+                + newImage + "' became visible for deployment '" + deploymentName + "'. observations=" + observations);
+          }
+        }
+
+        if (evidence.responseObservedAt == null && response != null) {
+          evidence.responseObservedAt = Instant.now();
+          evidence.responseTransmittedAt = transmissionTimeOf(response, "client response");
+          String observedResponseCode = extractResponseCode(response);
+          observations.add("responseObserved=" + evidence.responseObservedAt + ", responseTransmittedAt="
+              + evidence.responseTransmittedAt + ", code=" + observedResponseCode);
+          assertObservedSuccessfulResponseCode(observedResponseCode, observations);
+          if (evidence.imageVisibleAt == null) {
+            throw new AssertionError("Tracked request was answered before rollout activity with image '"
+                + newImage + "' became visible for deployment '" + deploymentName + "'. observations=" + observations);
+          }
+        }
+
+        if (hasBackgroundUpdateEvidence(evidence.imageVisibleAt != null, evidence.responseObservedAt != null)) {
+          CommandResult imageUpdateResult = imageUpdate.join();
+          observations.add("imageUpdateExitCode=" + imageUpdateResult.exitCode());
+          if (imageUpdateResult.exitCode() != 0) {
+            throw new AssertionError("Failed to trigger rollout image update while proving background rollout."
+                + " stderr=" + imageUpdateResult.stderr() + ", observations=" + observations);
+          }
+          SerenityReportUtils.addCustomData("Background rollout evidence",
+              "deployment=" + deploymentName + ", expectedImage=" + newImage + ", requestPath=" + pathPattern
+                  + ", clientRequestTransmittedAt=" + clientRequestTransmittedAt
+                  + ", imageUpdateTriggeredAt=" + imageUpdateTriggeredAt
+                  + ", imageVisibleAt=" + evidence.imageVisibleAt
+                  + ", responseObservedAt=" + evidence.responseObservedAt
+                  + ", responseTransmittedAt=" + evidence.responseTransmittedAt + ", observations=" + observations);
+          return;
+        }
+
+        sleepBeforeNextPoll();
+      }
+
+      throw new AssertionError("Timeout while proving background rollout during pending request for deployment '"
+          + deploymentName + "'. observations=" + observations);
+    } finally {
+      awaitDeploymentImageUpdateBeforeScenarioExit(imageUpdate, deploymentName, observations);
+    }
+  }
+
+  /**
+   * Verifies literal takeover evidence for a client request after the old pod is forcefully terminated.
+   *
+   * @param podName old pod that must be forcefully terminated
+   * @param clientPathPattern RBEL path pattern for the original client request
+   * @param upstreamPathPattern RBEL path pattern for the forwarded Fachdienst request
+   * @param rbelPath RBEL node path used to identify the tracked request
+   * @param expectedValueRegex expected node value regex
+   * @param newImage image that triggers the rollout
+   * @param containerName container whose image is changed
+   * @param deploymentName deployment whose image is changed
+   * @param timeoutSeconds maximum verification time
+   */
+  private void verifyLiteralRequestTakeoverEvidenceAfterForcedPodTermination(
+      String podName, String clientPathPattern, String upstreamPathPattern, String rbelPath, String expectedValueRegex,
+      String newImage, String containerName, String deploymentName, int timeoutSeconds) {
+    Instant deadline = Instant.now().plusSeconds(Math.abs(timeoutSeconds));
+    Instant clientRequestTransmittedAt = null;
+    List<String> observations = new ArrayList<>();
+
+    RbelElement initialClientRequest = null;
+    while (!Instant.now().isAfter(deadline)) {
+      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      if (messageHistory == null || messageHistory.isEmpty()) {
+        sleepBeforeNextPoll();
+        continue;
+      }
+      List<RbelElement> messages = new ArrayList<>(messageHistory);
+      initialClientRequest = findFirstRequestMatchingPathAndNode(
+          messages, clientPathPattern, rbelPath, expectedValueRegex);
+      if (initialClientRequest == null) {
+        sleepBeforeNextPoll();
+        continue;
+      }
+      RbelElement prematureResponse = findResponseForRequest(messages, initialClientRequest);
+      if (prematureResponse != null) {
+        throw new AssertionError("Tracked request was already answered before rollout and forced pod termination"
+            + " could be triggered. responseTransmittedAt=" + transmissionTimeOf(prematureResponse, "premature response")
+            + ", observations=" + observations);
+      }
+      clientRequestTransmittedAt = transmissionTimeOf(initialClientRequest, "client request");
+      observations.add("clientRequestPending=" + Instant.now() + ", clientRequestTransmittedAt="
+          + clientRequestTransmittedAt);
+      break;
+    }
+    if (initialClientRequest == null) {
+      throw new AssertionError("Timeout while waiting for pending client request to path '" + clientPathPattern
+          + "' before proving literal takeover. observations=" + observations);
+    }
+
+    String namespace = getNamespace();
+    Instant imageUpdateTriggeredAt = Instant.now();
+    observations.add("imageUpdateTriggered=" + imageUpdateTriggeredAt + ", image=" + newImage);
+    final CompletableFuture<CommandResult> imageUpdate =
+        startDeploymentImageUpdate(namespace, deploymentName, containerName, newImage);
+    try {
+      forceDeletePod(namespace, podName, observations);
+      Instant forcedDeletionAt = Instant.now();
+      observations.add("oldPodForceDeleted=" + forcedDeletionAt);
+      final LiteralTakeoverEvidence evidence = new LiteralTakeoverEvidence();
+
+      while (!Instant.now().isAfter(deadline)) {
+        var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+        if (messageHistory == null || messageHistory.isEmpty()) {
+          sleepBeforeNextPoll();
+          continue;
+        }
+
+        List<RbelElement> messages = new ArrayList<>(messageHistory);
+        var clientRequest = findFirstRequestMatchingPathAndNode(
+            messages, clientPathPattern, rbelPath, expectedValueRegex);
+        if (clientRequest == null) {
+          sleepBeforeNextPoll();
+          continue;
+        }
+
+        long upstreamRequestCount = countRequestMessagesMatchingPathAndNode(
+            messages, upstreamPathPattern, rbelPath, expectedValueRegex);
+        if (upstreamRequestCount > 1) {
+          throw new AssertionError("Observed " + upstreamRequestCount + " matching Fachdienst requests while proving"
+              + " literal request takeover. A retry does not prove takeover. observations=" + observations);
+        }
+
+        if (evidence.upstreamObservedAt == null && upstreamRequestCount == 1) {
+          evidence.upstreamObservedAt = Instant.now();
+          var upstreamRequest = findFirstRequestMatchingPathAndNode(
+              messages, upstreamPathPattern, rbelPath, expectedValueRegex);
+          evidence.upstreamTransmittedAt = transmissionTimeOf(upstreamRequest, "upstream request");
+          observations.add("upstreamObserved=" + evidence.upstreamObservedAt + ", upstreamTransmittedAt="
+              + evidence.upstreamTransmittedAt);
+        }
+
+        if (evidence.podGoneObservedAt == null && podMissing(namespace, podName)) {
+          evidence.podGoneObservedAt = Instant.now();
+          observations.add("oldPodGone=" + evidence.podGoneObservedAt);
+        }
+
+        if (evidence.rolloutFinalizedAt == null) {
+          CommandResult rolloutResult = service.executeKubectlCommand(false, "rollout", "status",
+              "deployment/" + deploymentName, "-n", namespace, "--timeout=1s");
+          if (rolloutResult.exitCode() == 0) {
+            evidence.rolloutFinalizedAt = Instant.now();
+            observations.add("rolloutFinalized=" + evidence.rolloutFinalizedAt);
+            if (!hasLiteralTakeoverFinalizationTiming(evidence.podGoneObservedAt, evidence.rolloutFinalizedAt)) {
+              throw new AssertionError("Deployment '" + deploymentName + "' finalized before old pod '" + podName
+                  + "' disappeared while proving literal request takeover. observations=" + observations);
+            }
+          }
+        }
+
+        if (evidence.newPepWithImageReadyObservedAt == null) {
+          evidence.newPepWithImagePodName =
+              findReadyDeploymentPodWithImage(namespace, deploymentName, newImage, containerName);
+          if (evidence.newPepWithImagePodName != null) {
+            evidence.newPepWithImageReadyObservedAt = Instant.now();
+            observations.add("newPepWithImageReady=" + evidence.newPepWithImageReadyObservedAt + ", pod="
+                + evidence.newPepWithImagePodName);
+          }
+        }
+
+        if (evidence.responseObservedAt == null) {
+          var response = findResponseForRequest(messages, clientRequest);
+          if (response != null) {
+            evidence.responseObservedAt = Instant.now();
+            evidence.responseTransmittedAt = transmissionTimeOf(response, "client response");
+            String observedResponseCode = extractResponseCode(response);
+            observations.add("responseObserved=" + evidence.responseObservedAt + ", responseTransmittedAt="
+                + evidence.responseTransmittedAt + ", code=" + observedResponseCode);
+            assertObservedSuccessfulResponseCode(observedResponseCode, observations);
+            if (!hasLiteralTakeoverResponseTiming(evidence.responseTransmittedAt, forcedDeletionAt)) {
+              throw new AssertionError("Tracked request response was transmitted before the old pod was force-deleted."
+                  + " responseTransmittedAt=" + evidence.responseTransmittedAt
+                  + ", oldPodForceDeletedAt=" + forcedDeletionAt + ", observations=" + observations);
+            }
+            if (!hasLiteralTakeoverNewPepTiming(
+                clientRequestTransmittedAt, evidence.newPepWithImageReadyObservedAt, evidence.responseTransmittedAt)) {
+              throw new AssertionError("Tracked request response was transmitted before a new ready PEP pod with image '"
+                  + newImage + "' was observed after the client request. clientRequestTransmittedAt="
+                  + clientRequestTransmittedAt + ", newPepWithImageReadyObservedAt="
+                  + evidence.newPepWithImageReadyObservedAt
+                  + ", responseTransmittedAt=" + evidence.responseTransmittedAt + ", observations=" + observations);
+            }
+          }
+        }
+
+        if (evidence.podGoneObservedAt != null && evidence.rolloutFinalizedAt != null
+            && evidence.newPepWithImageReadyObservedAt != null && evidence.responseObservedAt != null) {
+          long finalUpstreamRequestCount = countRequestMessagesMatchingPathAndNode(
+              messages, upstreamPathPattern, rbelPath, expectedValueRegex);
+          if (finalUpstreamRequestCount != 1) {
+            throw new AssertionError("Expected exactly one matching Fachdienst request while proving literal request"
+                + " takeover, but observed " + finalUpstreamRequestCount + ". observations=" + observations);
+          }
+          CommandResult imageUpdateResult = imageUpdate.join();
+          observations.add("imageUpdateExitCode=" + imageUpdateResult.exitCode());
+          if (imageUpdateResult.exitCode() != 0) {
+            throw new AssertionError("Failed to trigger rollout image update while proving literal request takeover."
+                + " stderr=" + imageUpdateResult.stderr() + ", observations=" + observations);
+          }
+          SerenityReportUtils.addCustomData("Literal request takeover after forced pod termination",
+              "pod=" + podName + ", clientPath=" + clientPathPattern + ", upstreamPath=" + upstreamPathPattern
+                  + ", clientRequestTransmittedAt=" + clientRequestTransmittedAt + ", upstreamObservedAt="
+                  + evidence.upstreamObservedAt + ", upstreamTransmittedAt=" + evidence.upstreamTransmittedAt
+                  + ", imageUpdateTriggeredAt=" + imageUpdateTriggeredAt + ", oldPodForceDeletedAt="
+                  + forcedDeletionAt + ", oldPodGoneAt=" + evidence.podGoneObservedAt + ", newPepWithImagePod="
+                  + evidence.newPepWithImagePodName + ", rolloutFinalizedAt=" + evidence.rolloutFinalizedAt
+                  + ", newPepWithImageReadyObservedAt=" + evidence.newPepWithImageReadyObservedAt
+                  + ", responseObservedAt=" + evidence.responseObservedAt + ", responseTransmittedAt="
+                  + evidence.responseTransmittedAt + ", upstreamRequestCount=" + finalUpstreamRequestCount
+                  + ", observations=" + observations);
+          return;
+        }
+
+        sleepBeforeNextPoll();
+      }
+
+      throw new AssertionError("Timeout while proving literal request takeover after forced termination of pod '"
+          + podName + "'. observations=" + observations);
+    } finally {
+      awaitDeploymentImageUpdateBeforeScenarioExit(imageUpdate, deploymentName, observations);
+    }
+  }
+
+  /**
+   * Checks whether the response was transmitted after the old pod force-delete command completed.
+   *
+   * @param responseTransmittedAt RBEL transmission time of the tracked client response
+   * @param oldPodForceDeletedAt local time after the old pod force-delete command completed
+   * @return {@code true} when the response is after the forced pod termination
+   */
+  static boolean hasLiteralTakeoverResponseTiming(Instant responseTransmittedAt, Instant oldPodForceDeletedAt) {
+    return responseTransmittedAt != null
+        && oldPodForceDeletedAt != null
+        && responseTransmittedAt.isAfter(oldPodForceDeletedAt);
+  }
+
+  /**
+   * Checks whether the new ready PEP observation is strictly between the client request and its response.
+   *
+   * @param clientRequestTransmittedAt RBEL transmission time of the tracked client request
+   * @param newPepWithImageReadyObservedAt local time when a ready PEP pod with the target image was observed
+   * @param responseTransmittedAt RBEL transmission time of the tracked client response
+   * @return {@code true} when the new PEP was observed after the request and before the response
+   */
+  static boolean hasLiteralTakeoverNewPepTiming(
+      Instant clientRequestTransmittedAt,
+      Instant newPepWithImageReadyObservedAt,
+      Instant responseTransmittedAt) {
+    return clientRequestTransmittedAt != null
+        && newPepWithImageReadyObservedAt != null
+        && responseTransmittedAt != null
+        && newPepWithImageReadyObservedAt.isAfter(clientRequestTransmittedAt)
+        && responseTransmittedAt.isAfter(newPepWithImageReadyObservedAt);
+  }
+
+  /**
+   * Checks whether rollout finalization was observed after the old pod disappeared.
+   *
+   * @param oldPodGoneAt local time when the old pod was no longer visible
+   * @param rolloutFinalizedAt local time when Kubernetes reported rollout finalization
+   * @return {@code true} when finalization follows the takeover evidence
+   */
+  static boolean hasLiteralTakeoverFinalizationTiming(Instant oldPodGoneAt, Instant rolloutFinalizedAt) {
+    return oldPodGoneAt != null
+        && rolloutFinalizedAt != null
+        && rolloutFinalizedAt.isAfter(oldPodGoneAt);
+  }
+
+  /**
+   * Starts an empty GET request through the Tiger HTTP client without waiting for the response.
+   *
+   * @param requestUrl URL to call
+   * @param headerName correlation header name
+   * @param headerValue correlation header value
+   * @return HTTP glue instance holding the temporary default header until the caller clears it
+   */
+  private HttpGlueCode startEmptyGetRequestWithHeader(String requestUrl, String headerName,
+      String headerValue) {
+    var httpGlueCode = new HttpGlueCode();
+    try {
+      httpGlueCode.setDefaultHeader(headerName, headerValue);
+      httpGlueCode.sendEmptyRequestNonBlocking(Method.GET, new URI(requestUrl));
+      return httpGlueCode;
+    } catch (Exception e) {
+      httpGlueCode.clearDefaultHeader(headerName);
+      throw new AssertionError("Failed to start asynchronous client request to '" + requestUrl + "'.", e);
+    }
+  }
+
+  /**
+   * Extracts the RBEL transmission time of a message.
+   *
+   * @param message RBEL message
+   * @param context human-readable failure context
+   * @return transmission time
+   */
+  private Instant transmissionTimeOf(RbelElement message, String context) {
+    if (message == null) {
+      throw new AssertionError("Missing RBEL message for " + context + ".");
+    }
+    return message.getFacet(RbelMessageTimingFacet.class)
+        .orElseThrow(() -> new AssertionError("Missing RbelMessageTimingFacet for " + context + "."))
+        .getTransmissionTime()
+        .toInstant();
+  }
+
+  /**
+   * Forcefully deletes a pod and fails the current scenario when Kubernetes cannot delete it.
+   *
+   * @param namespace Kubernetes namespace
+   * @param podName pod name
+   * @param observations observation log enriched with the command result
+   */
+  private void forceDeletePod(String namespace, String podName, List<String> observations) {
+    CommandResult deleteResult = service.executeKubectlCommand(false,
+        "-n", namespace, "delete", "pod", podName, "--grace-period=0", "--force", "--wait=true");
+    observations.add("forceDeleteExitCode=" + deleteResult.exitCode());
+    if (deleteResult.exitCode() != 0) {
+      throw new AssertionError("Failed to force-delete pod '" + podName + "'. stderr=" + deleteResult.stderr()
+          + ", observations=" + observations);
+    }
+  }
+
+  /**
+   * Starts a deployment image update without blocking the takeover proof before the old pod is force-deleted.
+   *
+   * @param namespace Kubernetes namespace
+   * @param deploymentName deployment name
+   * @param containerName container whose image is changed
+   * @param newImage target image
+   * @return future containing the image update command result
+   */
+  private CompletableFuture<CommandResult> startDeploymentImageUpdate(String namespace, String deploymentName,
+      String containerName, String newImage) {
+    rememberPepOriginalImageIfNeeded(namespace, deploymentName, containerName);
+    return CompletableFuture.supplyAsync(() -> {
+      try {
+        return service.setDeploymentContainerImage(namespace, deploymentName, containerName, newImage);
+      } catch (Exception e) {
+        return new CommandResult(
+            List.of("kubectl", "set", "image", "deployment/" + deploymentName, containerName + "=" + newImage),
+            1,
+            "",
+            "Could not update deployment image: " + e.getMessage()
+        );
+      }
+    });
+  }
+
+  /**
+   * Waits for an already started deployment image update before the scenario may enter after-hook cleanup.
+   *
+   * <p>This method intentionally does not throw, so an evidence failure from the scenario is not hidden by
+   * a cleanup-synchronization failure. The after hook still restores deployment state afterwards.</p>
+   *
+   * @param imageUpdate asynchronous deployment image update command
+   * @param deploymentName deployment being modified
+   * @param observations mutable observation log for diagnostics
+   */
+  static void awaitDeploymentImageUpdateBeforeScenarioExit(
+      CompletableFuture<CommandResult> imageUpdate, String deploymentName, List<String> observations) {
+    if (imageUpdate == null || imageUpdate.isDone()) {
+      return;
+    }
+
+    observations.add("waitingForImageUpdateCompletionBeforeScenarioExit=" + Instant.now());
+    try {
+      CommandResult imageUpdateResult = imageUpdate.join();
+      observations.add("imageUpdateCompletedBeforeScenarioExitExitCode=" + imageUpdateResult.exitCode());
+    } catch (RuntimeException e) {
+      observations.add("imageUpdateCompletionBeforeScenarioExitFailed=" + e.getClass().getSimpleName()
+          + ": " + e.getMessage());
+      log.warn("Image update for deployment '{}' did not complete cleanly before scenario exit.",
+          deploymentName, e);
+    }
   }
 
   private void sleepBeforeNextPoll() {
@@ -1428,6 +2204,35 @@ public class DeploymentModificationSteps {
         .filter(message -> matchesNodeValue(message, rbelPath, expectedValueRegex))
         .findFirst()
         .orElse(null);
+  }
+
+  /**
+   * Counts HTTP request messages matching the given path and node value.
+   *
+   * @param messages recorded RBEL messages
+   * @param pathPattern path pattern to match
+   * @param rbelPath RBEL node path used for correlation
+   * @param expectedValueRegex expected node value regex
+   * @return number of matching request messages
+   */
+  private long countRequestMessagesMatchingPathAndNode(Collection<RbelElement> messages, String pathPattern,
+      String rbelPath, String expectedValueRegex) {
+    return messages.stream()
+        .filter(Objects::nonNull)
+        .filter(this::isHttpRequestMessage)
+        .filter(message -> matchesPath(message, pathPattern))
+        .filter(message -> matchesNodeValue(message, rbelPath, expectedValueRegex))
+        .count();
+  }
+
+  /**
+   * Checks whether an RBEL element represents an HTTP request.
+   *
+   * @param message RBEL message
+   * @return {@code true} if the message contains an HTTP method node
+   */
+  private boolean isHttpRequestMessage(RbelElement message) {
+    return !message.findRbelPathMembers("$.method").isEmpty();
   }
 
   private boolean matchesPath(RbelElement message, String pathPattern) {
@@ -1482,7 +2287,7 @@ public class DeploymentModificationSteps {
 
     try {
       return isDeploymentRolloutFinalized(JSON.readTree(result.stdout()));
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse kubectl deployment JSON output.", e);
     }
   }
@@ -1556,7 +2361,7 @@ public class DeploymentModificationSteps {
     JsonNode items;
     try {
       items = JSON.readTree(result.stdout()).path("items");
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse kubectl pods JSON output.", e);
     }
 
@@ -1583,7 +2388,7 @@ public class DeploymentModificationSteps {
     JsonNode items;
     try {
       items = JSON.readTree(result.stdout()).path("items");
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse kubectl pods JSON output.", e);
     }
 
@@ -1602,6 +2407,21 @@ public class DeploymentModificationSteps {
 
   private String findDeploymentPodWithImage(String namespace, String deploymentName, String expectedImage,
       String containerName) {
+    return findDeploymentPodWithImage(namespace, deploymentName, expectedImage, containerName, false);
+  }
+
+  /**
+   * Finds a deployment pod that uses the expected image for the selected container.
+   *
+   * @param namespace Kubernetes namespace
+   * @param deploymentName deployment name used as pod name prefix
+   * @param expectedImage expected container image
+   * @param containerName container name
+   * @param requireReady whether the pod must be ready
+   * @return matching pod name, or {@code null} if none matches
+   */
+  private String findDeploymentPodWithImage(String namespace, String deploymentName, String expectedImage,
+      String containerName, boolean requireReady) {
     CommandResult result = service.executeKubectlCommand("-n", namespace, "get", "pods", "-o", "json");
     if (result.exitCode() != 0) {
       throw new AssertionError("kubectl get pods failed: " + result.stderr());
@@ -1610,13 +2430,16 @@ public class DeploymentModificationSteps {
     JsonNode items;
     try {
       items = JSON.readTree(result.stdout()).path("items");
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse kubectl pods JSON output.", e);
     }
 
     for (JsonNode pod : items) {
       String podName = pod.path("metadata").path("name").asText("");
       if (!podName.startsWith(deploymentName + "-")) {
+        continue;
+      }
+      if (requireReady && !isPodReady(pod)) {
         continue;
       }
 
@@ -1627,6 +2450,20 @@ public class DeploymentModificationSteps {
     }
 
     return null;
+  }
+
+  /**
+   * Finds a ready deployment pod that uses the expected image for the selected container.
+   *
+   * @param namespace Kubernetes namespace
+   * @param deploymentName deployment name used as pod name prefix
+   * @param expectedImage expected container image
+   * @param containerName container name
+   * @return matching ready pod name, or {@code null} if none matches
+   */
+  private String findReadyDeploymentPodWithImage(String namespace, String deploymentName, String expectedImage,
+      String containerName) {
+    return findDeploymentPodWithImage(namespace, deploymentName, expectedImage, containerName, true);
   }
 
   private String extractContainerImage(JsonNode pod, String containerName) {
@@ -1664,51 +2501,6 @@ public class DeploymentModificationSteps {
     return true;
   }
 
-
-  /**
-   * Builds the request object for enabling ASL based on Tiger configuration values.
-   *
-   * @return request payload for enabling ASL
-   * @throws AssertionError when required configuration values are missing
-   */
-  private ZetaEnableAslRequest getEnableAslRequest() throws AssertionError {
-    String nginxAslRegex = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.asl.nginxConfigRegex")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.nginx.asl.nginxConfigRegex"));
-
-    String nginxAslAnchorRegex = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.asl.nginxConfigAnchorRegex")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.nginx.asl.nginxConfigAnchorRegex"));
-
-    String nginxAslConfig = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.asl.nginxConfig")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.nginx.asl.nginxConfig"));
-
-    String wellKnownAslRegex = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.asl.resourceRegex")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.wellKnown.asl.resourceRegex"));
-
-    String wellKnownAslEnableValue = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.asl.aslEnabledValue")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.wellKnown.asl.aslEnabledValue"));
-
-    return new ZetaEnableAslRequest(nginxAslRegex, nginxAslAnchorRegex, nginxAslConfig, wellKnownAslRegex, wellKnownAslEnableValue);
-  }
-
-  /**
-   * Builds the request object for disabling ASL based on Tiger configuration values.
-   *
-   * @return request payload for disabling ASL
-   * @throws AssertionError when required configuration values are missing
-   */
-  private ZetaDisableAslRequest getDisableAslRequest() throws AssertionError {
-    String nginxAslRegex = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.asl.nginxConfigRegex")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.nginx.asl.nginxConfigRegex"));
-
-    String wellKnownAslRegex = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.asl.resourceRegex")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.wellKnown.asl.resourceRegex"));
-
-    String wellKnownAslDisableValue = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.wellKnown.asl.aslDisabledValue")
-        .orElseThrow(() -> new AssertionError("Missing variable: zetaDeploymentConfig.pep.wellKnown.asl.aslDisabledValue"));
-
-    return new ZetaDisableAslRequest(nginxAslRegex, wellKnownAslRegex, wellKnownAslDisableValue);
-  }
-
   /**
    * Builds the request object used to enable or disable PoPP verification in deployment configuration.
    *
@@ -1730,6 +2522,55 @@ public class DeploymentModificationSteps {
         nginxPoppEnabled,
         nginxPoppDisabled
     );
+  }
+
+  /**
+   * Builds the request object used to enable or disable client-data forwarding in deployment configuration.
+   *
+   * @return request payload for client-data forwarding toggling
+   * @throws AssertionError when required configuration values are missing
+   */
+  private ZetaClientDataForwardingToggleRequest getClientDataForwardingRequest() {
+    String nginxClientDataForwardingRegex = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigRegex")
+        .orElseThrow(() -> new AssertionError(
+            "Missing variable: zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigRegex"));
+
+    String nginxClientDataForwardingEnabled = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigEnabled")
+        .orElseThrow(() -> new AssertionError(
+            "Missing variable: zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigEnabled"));
+
+    String nginxClientDataForwardingDisabled = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigDisabled")
+        .orElseThrow(() -> new AssertionError(
+            "Missing variable: zetaDeploymentConfig.pep.nginx.clientDataForwarding.nginxConfigDisabled"));
+
+    return new ZetaClientDataForwardingToggleRequest(
+        nginxClientDataForwardingRegex,
+        nginxClientDataForwardingEnabled,
+        nginxClientDataForwardingDisabled
+    );
+  }
+
+  /**
+   * Builds the request object used to configure required scopes in the deployment.
+   *
+   * @return request payload for required-scope modification
+   * @throws AssertionError when required configuration values are missing
+   */
+  private ZetaRequiredScopesRequest getRequiredScopesRequest() {
+    String nginxRequiredScopesRegex = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.requiredScopes.nginxConfigRegex")
+        .orElseThrow(() -> new AssertionError(
+            "Missing variable: zetaDeploymentConfig.pep.nginx.requiredScopes.nginxConfigRegex"));
+
+    String nginxRequiredScopesTemplate = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.requiredScopes.nginxConfigTemplate")
+        .orElseThrow(() -> new AssertionError(
+            "Missing variable: zetaDeploymentConfig.pep.nginx.requiredScopes.nginxConfigTemplate"));
+
+    return new ZetaRequiredScopesRequest(nginxRequiredScopesRegex, nginxRequiredScopesTemplate);
   }
 
   /**

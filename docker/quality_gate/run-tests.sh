@@ -31,14 +31,16 @@ tests_jar="$(find /app -maxdepth 1 -name '*-tests.jar' | head -n1 || true)"
 classpath="${tests_jar}:/app/libs/*"
 
 common_property_args="$(tiger_common_property_args)"
+effective_cucumber_tags="${CUCUMBER_FILTER_TAGS:-${CUCUMBER_TAGS:-}}"
 run_quality_gate() {
-  if [ -n "${CUCUMBER_TAGS:-}" ]; then
+  if [ -n "${effective_cucumber_tags}" ]; then
     # shellcheck disable=SC2086 # Shared helper intentionally returns a list of -D args.
     java -Dserenity.outputDirectory="${serenity_dir}" \
       "-Dzeta.cucumber.outputDirectory=${cucumber_dir}" \
+      "-Dallure.results.directory=${allure_dir}" \
       -Djava.net.preferIPv4Stack=true \
       ${common_property_args} \
-      "-Dcucumber.filter.tags=${CUCUMBER_TAGS}" \
+      "-Dcucumber.filter.tags=${effective_cucumber_tags}" \
       -javaagent:"${agent}" \
       -cp "${classpath}" \
       de.gematik.zeta.TigerTestsuiteMain "$@"
@@ -46,6 +48,7 @@ run_quality_gate() {
     # shellcheck disable=SC2086 # Shared helper intentionally returns a list of -D args.
     java -Dserenity.outputDirectory="${serenity_dir}" \
       "-Dzeta.cucumber.outputDirectory=${cucumber_dir}" \
+      "-Dallure.results.directory=${allure_dir}" \
       -Djava.net.preferIPv4Stack=true \
       ${common_property_args} \
       -javaagent:"${agent}" \
@@ -59,14 +62,22 @@ run_quality_gate "$@"
 rc=$?
 set -e
 
-cli="/app/tools/serenity-cli.jar"
-if [ ! -f "${cli}" ]; then
-  cli="$(find /app/tools -name 'serenity-cli*.jar' | head -n1 || true)"
-fi
+report_rc=0
+echo "Generating Serenity reports..."
+java -cp "${classpath}" \
+  de.gematik.zeta.reporting.SerenityExtendedReportsMain \
+  "${serenity_dir}" "${serenity_dir}" \
+  "/app/src/test/resources/features" || report_rc=$?
 
-if [ -n "${cli}" ] && [ -f "${cli}" ]; then
-  echo "Aggregating Serenity report via serenity-cli..."
-  java -jar "${cli}" --source "${serenity_dir}" --destination "${serenity_dir}" || true
+for expected_report in index.html serenity-summary.html serenity-summary.json; do
+  if [ ! -s "${serenity_dir}/${expected_report}" ]; then
+    echo "Missing generated Serenity report: ${serenity_dir}/${expected_report}" >&2
+    report_rc=1
+  fi
+done
+
+if [ "${rc}" -eq 0 ] && [ "${report_rc}" -ne 0 ]; then
+  rc="${report_rc}"
 fi
 
 exit ${rc}

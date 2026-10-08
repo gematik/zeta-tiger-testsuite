@@ -48,6 +48,7 @@ Das wiederverwendete Refresh Token bleibt ungültig.
 * <<TA_A_25662_02>>
 * <<TA_A_25782_05>>
 * <<TA_A_26662_01>>
+* <<TA_A_27725-01_15>>
 
 |===
 

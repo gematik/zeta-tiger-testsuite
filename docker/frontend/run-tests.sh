@@ -26,8 +26,6 @@ common_property_args="$(tiger_common_property_args)"
 set -- \
   -Dmaven.repo.local=/tmp/.m2/repository \
   -Djava.awt.headless=true \
-  -Dlicense.skip=true \
-  -Dcheckstyle.skip=true \
   -Dtiger.lib.activateWorkflowUi=false \
   -Dtiger.lib.startBrowser=false \
   -Dtiger.lib.trafficVisualization=false \

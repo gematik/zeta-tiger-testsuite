@@ -1,3 +1,25 @@
 client:
   storage:
-      dpop_private_key: "$.body.[?(key =~ '^dpop_private_key(_.+)?$')]"
+    dpop_private_key: "$.body.[?(key =~ '^dpop_private_key(_.+)?$')]"
+
+responseCode: "$.responseCode"
+path: "$.path"
+
+oidc:
+  bindEmailRequest:
+    email: "$.body.email"
+  emailVerificationRequest:
+    code: "$.body.code"
+  tokenRequest:
+    grantType: "$.body.grant_type"
+  tokenResponse:
+    idToken:
+      root: "$.body.id_token"
+  opaRequest:
+    authorizationRequest:
+      grantType: "$.body.input.authorization_request.grant_type"
+    userInfo:
+      root: "$.body.input.user_info"
+      identifier: "$.body.input.user_info.identifier"
+      commonName: "$.body.input.user_info.commonName"
+      professionOid: "$.body.input.user_info.professionOID"

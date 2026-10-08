@@ -1,10 +1,24 @@
 [#TA_A_25783-01_02]
-===== TA_A_25783-01_02  - Anweisung befolgen erneute Authentifizierung
+===== TA_A_25783-01_02 - Anweisung befolgen Re-Autorisierung - Authorization Server
 
 "Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben der Resource Server und Zero Trust-APIs auswerten und **den Anweisungen daraus folgen** und insbesondere
 
-* eine [...] **erneute** Authentifizierung des Nutzers,
+* eine **Re-Autorisierung** und **erneute Attestation der Client-Instanz**,
 
 +++[...]+++
 
 umsetzen. **[<=]**"
+
+Siehe auch:
+
+.. Bei einem 401 Unauthorized Statuscode bei einem Request gegen den PDP im Rahmen der Client-Registrierung, der Authentifizierung oder des Token Refreshs kann der Client einen **Request nach einer erneuten Authentifizierung einmalig wiederholen**. Die angenommenen Fehlersituationen hier sind z.B. während des Requests ablaufende Zertifikate/Token (time-of-check to time-of-use Situation), oder die Invalidierung eines Access Token durch Impossible-Travel Detektion oder ähnliches. Die Authentifizierung soll maximal einmal wiederholt werden, bevor ein 401/403 Status nach einem wiederholten Request als abschließend nicht erfolgreich gewertet wird."
+
++++[...]+++
+
+[start=3]
+. Step-Up Authentifizierung:
++
+[arabic]
+.. Bei einem 401 Unauthorized Statuscode bei einem Request gegen den PDP im Rahmen der Client-Registrierung, der Authentifizierung oder des Token Refreshs kann der Client einen **Request nach einer erneuten Authentifizierung einmalig wiederholen**. Die angenommenen Fehlersituationen hier sind z.B. während des Requests ablaufende Zertifikate/Token (time-of-check to time-of-use Situation), oder die Invalidierung eines Access Token durch Impossible-Travel Detektion oder ähnliches. Die Authentifizierung soll maximal einmal wiederholt werden, bevor ein 401/403 Status nach einem wiederholten Request als abschließend nicht erfolgreich gewertet wird.
+
++++[...]+++"

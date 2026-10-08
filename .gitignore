@@ -368,4 +368,5 @@ src/test/resources/features/UserStory_01/orphan
 docs/scripts/src/testsuite_docs/fetch_youtrack_testaspects.py
 .gitlab-ci.yml
 docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv
+AGENTS.md
 

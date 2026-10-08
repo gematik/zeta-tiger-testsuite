@@ -31,7 +31,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
 
   Szenariogrundriss: CRUD - Rezept anlegen lesen aktualisieren löschen
     # Setup
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-SMOKE-<lauf>-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-SMOKE-<lauf>" und speichere in Variable "uniquePrescriptionId"
 
     # CREATE
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
@@ -161,7 +161,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
       | 3    | ERezept3 |
 
   Szenario: CREATE - Doppelte PrescriptionId gibt 409 CONFLICT zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-ERROR" und speichere in Variable "uniquePrescriptionId"
     # Erstes Rezept erstellen
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
@@ -199,7 +199,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: CREATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-ERROR" und speichere in Variable "uniquePrescriptionId"
     # Fehlendes Pflichtfeld: medicationName
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
@@ -215,7 +215,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: CREATE - Fehlerhaftes JSON gibt 400 BAD REQUEST zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-ERROR" und speichere in Variable "uniquePrescriptionId"
     # Fehlerhaftes JSON senden
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
@@ -249,7 +249,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
 
   Szenario: UPDATE - Nicht existierende ID gibt 404 NOT FOUND zurück
     Und TGR setze lokale Feature Variable "nonExistentId" auf "999999"
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-ERROR" und speichere in Variable "uniquePrescriptionId"
     Wenn TGR sende eine PUT Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}/${nonExistentId}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {
@@ -269,7 +269,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: UPDATE - Fehlende Pflichtfelder geben 400 BAD REQUEST zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-UPDATE-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-UPDATE-ERROR" und speichere in Variable "uniquePrescriptionId"
     # Rezept für Update-Test erstellen
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
@@ -310,7 +310,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: DELETE -  Bereits gelöschtes Rezept gibt 404 NOT FOUND zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-DELETE-TWICE-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-DELETE-TWICE" und speichere in Variable "uniquePrescriptionId"
     # Rezept für doppelten Löschtest erstellen
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
@@ -341,7 +341,7 @@ Funktionalität: REST API - E-Rezept CRUD Lebenszyklus Test
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
 
   Szenario: CREATE - Ungültiges Datumsformat gibt 400 BAD REQUEST zurück
-    Und TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-ERROR-${free.port.50}"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-ERROR" und speichere in Variable "uniquePrescriptionId"
     Wenn TGR sende eine POST Anfrage an "${paths.client.baseUrl}${paths.erezept.rest.proxyPath}" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
       """
       {

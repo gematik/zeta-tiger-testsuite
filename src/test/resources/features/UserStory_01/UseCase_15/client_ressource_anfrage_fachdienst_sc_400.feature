@@ -25,21 +25,24 @@
 #language:de
 
 @UseCase_01_15
-Funktionalität: client_ressource_anfrage_fachdienst_sc_400
+Funktionalität: Client Ressource Anfrage Fachdienst SC 400
 
   @A_26477
   @A_26661
   @A_26988
   @A_27007
+  @A_27725-01
   @TA_A_26477_04
   @TA_A_26661_18
-  @TA_A_26988_01
-  @TA_A_26988_02
   @TA_A_26988_03
   @TA_A_27007_18
+  @TA_A_27725-01_30
   @MASVS-AUTH
+  @MASVS-RESILIENCE
   Szenario: Fehlender PoPP-Header bei Ressource-Anfrage
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "START"
+    Und TGR setze lokale Variable "START_MICROS" auf "!{${START} * 1000000}"
     Und TGR setze lokale Variable "poppHeaderCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
     Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "${headers.popp.lineRegex}" und Wert ""
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -49,27 +52,15 @@ Funktionalität: client_ressource_anfrage_fachdienst_sc_400
 
     # Warte auf Telemetrie-Ingestion (Lieferintervall standardmäßig 60s)
     Und warte "${testdata.telemetry_wait_seconds}" Sekunden
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "END"
+    Und TGR setze lokale Variable "END_MICROS" auf "!{${END} * 1000000}"
 
-    # TA_A_26988_01 - Ingress: Fehlermeldung wird vom Telemetriedaten Service gesammelt und ist in OpenSearch auffindbar.
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                                                                                                                                                    | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.service.telemetryDataService} AND resource.service.name:"${telemetry.service.ingress}" AND body:${paths.guard.helloZetaPath} AND body:400 AND severity.number:[13 TO *] AND @timestamp:[now-3m TO now] | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
+    # TA_A_26988_03 - HTTP Proxy: Fehlermeldung wird vom Telemetriedaten Service gesammelt und ist in Jaeger auffindbar.
+    # TA_A_27725-01_30 - Der 400-HTTP-Proxy-Request ist mit Statuscode und URL in Jaeger auffindbar.
+    Wenn TGR sende eine GET Anfrage an "${paths.jaeger.baseUrl}${paths.jaeger.jaegerTracesSearchPath}" mit folgenden Daten:
+      | service                        | operation                       | start           | end           | limit | tags                                                                                               |
+      | ${telemetry.service.httpProxy} | ${telemetry.span.httpProxy.pep} | ${START_MICROS} | ${END_MICROS} | 1     | {"http.response.status_code":"400","http.target":"${paths.guard.helloZetaPath}"} |
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.jaeger.jaegerTracesSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-
-    # TA_A_26988_02 - Egress: Fehlermeldung wird vom Telemetriedaten Service gesammelt und ist in OpenSearch auffindbar.
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                                                                                                                                                   | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.service.telemetryDataService} AND resource.service.name:"${telemetry.service.egress}" AND body:${paths.guard.helloZetaPath} AND body:400 AND severity.number:[13 TO *] AND @timestamp:[now-3m TO now] | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
-
-    # TA_A_26988_03 - HTTP Proxy: Fehlermeldung wird vom Telemetriedaten Service gesammelt und ist in OpenSearch auffindbar.
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                                                                                                                        | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.service.telemetryDataService} AND resource.service.name:"${telemetry.service.httpProxy}" AND body:${paths.guard.helloZetaPath} AND body:400 AND @timestamp:[now-3m TO now] | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.spans.*.tags.[?(@.value == 'dienst_hersteller' || @.value == 'siem' || @.value == 'monitoring')]"

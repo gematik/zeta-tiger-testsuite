@@ -1,26 +1,57 @@
 namespace: ${zeta_k8s_namespace}
-command_timeout: ${zeta_k8s_command_timeout}
-pod_ready_timeout: ${zeta_k8s_pod_ready_timeout}
+commandTimeout: ${zeta_k8s_command_timeout}
+podReadyTimeout: ${zeta_k8s_pod_ready_timeout}
+helmDeploymentDirectory: ${zeta_k8s_helm_deployment_directory}
+helmDeploymentTargetStage: local
+helmReleaseName: "zeta-testenv-local"
+helmValuesFile: "local-test/values.local.yaml"
+helmDeploymentArgs: "--force-conflicts"
+immutableServiceClusterIpOverrides:
+  "0":
+    serviceName: "tiger-proxy"
+    helmValueKey: "global.dns.tigerStaticClusterIP"
+  "1":
+    serviceName: "zeta-cert-validation-mock"
+    helmValueKey: "zeta-cert-validation-mock.service.clusterIP"
+    targetStage: "achelos"
+environmentVariables:
+  SMB_KEYSTORE_PW_FILE: ${zeta_k8s_smb_keystore_password_file}
+  SMB_KEYSTORE_FILE_B64: ${zeta_k8s_smb_keystore_file}
 
+# Shared Keycloak values used by key preflight resolvers.
+keycloak:
+  databaseName: "keycloak"
+  databasePodSelector: "cnpg.io/cluster=keycloak-db,role=primary"
+  databaseContainerName: "postgres"
+  realmName: "zeta-guard"
+  kubectlRequestTimeout: "10s"
+  signingKey:
+    providerId: "ecdsa-generated"
+  oidcDecryptionKey:
+    providerId: "ecdh-generated"
+    privateKeyConfigName: "ecdhPrivateKey"
+    publicKeyConfigName: "ecdhPublicKey"
+
+opa:
+  pollingIntervalSeconds: 60
 pep:
   podName: "pep-deployment"
+  helm:
+    aslFlag: "zeta-guard.pepproxy.asl_enabled="
+    imageTagFlag: "zeta-guard.pepproxy.image.tag="
   nginx:
     containerName: "nginx"
     configMapName: "pep-test-nginx-conf"
     keySegments:
       "0": "data"
       "1": "nginx.conf"
-    asl:
-      nginxConfigAnchorRegex: "location\\s+/.well-known/\\s+\\{[^}]*}"
-      nginxConfigRegex: "location\\s+/ASL\\s+\\{[^}]*}"
-      nginxConfig: |
-        location /ASL {
-          pep                   on;
-          asl                   on;
-          pep_require_aud       https://${zeta_base_url};
-          # pep_require_scope     "";
-          # pep_leeway           60; # s
-        }
+    clientDataForwarding:
+      nginxConfigRegex:    "pep_forward_client_data\\s+(on|off)\\s*;"
+      nginxConfigEnabled:  "pep_forward_client_data on;"
+      nginxConfigDisabled: "pep_forward_client_data off;"
+    requiredScopes:
+      nginxConfigRegex:    "pep_require_scope\\s+\"[^\"]+\"\\s*;"
+      nginxConfigTemplate: "pep_require_scope \"%s\";"
     popp:
       nginxConfigRegex:    "pep_require_popp\\s+(on|off)\\s*;"
       nginxConfigEnabled:  "pep_require_popp      on;"
@@ -31,7 +62,7 @@ pep:
         nginxConfigTemplate: "pep_popp_validity \"%s\";"
   image:
     versionUpdate: "main"
-    versionDowngrade: "0.5.1"
+    versionDowngrade: "main-a7c3423f"
     versionInvalid: "nonexistent-rollout-test-20260311"
   wellKnown:
     configMapName: "pep-well-known"

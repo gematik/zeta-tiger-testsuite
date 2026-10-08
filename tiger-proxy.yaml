@@ -2,7 +2,12 @@ tigerProxy:
   proxyId: Cluster
   downloadInitialTrafficFromEndpoints: false
   skipTrafficEndpointsSubscription: false
+#  maxSocketTimeoutInMillis: null            # Tiger 4.4 default – no explicit socket-timeout ceiling
+#  clockSyncSamples: 3                       # Tiger 4.4 default – compensate remote-proxy clock skew
+#  honorHostHeaderRouting: false             # Tiger 4.4 default – route by configured target, not Host
+#  redactedConfigurationPaths: []            # Tiger 4.4 default – redact additional /configuration paths
   activateRbelParsingFor:
     - asl
+    - OCSP
   trafficEndpoints:
     - "http://${zeta_proxy_url}"

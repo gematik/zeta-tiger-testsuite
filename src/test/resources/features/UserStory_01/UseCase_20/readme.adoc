@@ -50,8 +50,8 @@ Der MA ist informiert und kann die Anfrage zu einem späteren Zeitpunkt erneut s
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_26661_23>>
-* <<TA_A_26661_23>>
 * <<TA_A_27007_23>>
+* <<TA_A_27725-01_37>>
 |===
 
 [#usecase_01_20_sequence]
@@ -81,5 +81,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-//include::Client_ressource_anfrage_fachdienst_SC_502.feature[]
+include::client_ressource_anfrage_fachdienst_sc_502.feature[]
 ----

@@ -25,7 +25,6 @@
 #language:de
 
 @UseCase_Smoke_01
-@dev
 Funktionalität: Smoke Test
 
   @A_26640
@@ -52,13 +51,20 @@ Funktionalität: Smoke Test
       | zweite Anfrage |
       | dritte Anfrage |
 
+  @normal
+  Szenario: SMC-B OCSP-Anfrage wird über Tiger Proxy sichtbar
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR lösche aufgezeichnete Nachrichten
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die erste Anfrage mit Pfad "^/ecc-ocsp"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.responseCode"
+
+  # requires globally enabled ASL; see tiger/defaults.yaml -> zeta_k8s_enable_asl_globally
   @Ignore
   @blocker
   @deployment_modification
-  @dev
   @no_proxy
   Szenario: Einfache Ressource-Anfrage mit ASL — Ein Client fordert die "Hello ZETA!" Resource vom Testfachdienst an
-    Wenn aktiviere den Additional Security Layer im Zeta Deployment
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
@@ -72,13 +78,11 @@ Funktionalität: Smoke Test
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.decrypted.body.message" überein mit "Hello ZETA!"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Dann gebe die Antwortzeit vom aktuellen Nachrichtenpaar aus
-    Und deaktiviere den Additional Security Layer im Zeta Deployment
     Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
   @Ignore
   @blocker
   @deployment_modification
-  @dev
   @popp_deployment_toggle
   Szenario: Einfache Ressource-Anfrage mit PoPP Toggle im Deployment
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -89,13 +93,13 @@ Funktionalität: Smoke Test
     Dann Setze im TigerProxy für JWT in "${headers.popp.root}" das Feld "body.insurerId" auf Wert "${PoPP_INSURER_ID}" mit privatem Schlüssel "${PoPP_PRIVATE_KEY}" für Pfad "${pathCondition}" und 2 Ausführungen und ersetze JWK
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und deaktiviere die PoPP Token Verifikation für die Route "/pep/" im ZETA Deployment
+    Und deaktiviere die PoPP Token Verifikation für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und aktiviere die PoPP Token Verifikation für die Route "/pep/" im ZETA Deployment
+    Und aktiviere die PoPP Token Verifikation für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
@@ -103,7 +107,6 @@ Funktionalität: Smoke Test
   @Ignore
   @blocker
   @deployment_modification
-  @dev
   @popp_deployment_toggle
   Szenario: Einfache Ressource-Anfrage mit PoPP Toggle und impliziter Wiederherstellung der Konfiguration
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -120,7 +123,7 @@ Funktionalität: Smoke Test
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und deaktiviere die PoPP Token Verifikation für die Route "/pep/" im ZETA Deployment
+    Und deaktiviere die PoPP Token Verifikation für die Route "${paths.guard.pepRoutePrefix}" im ZETA Deployment
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"

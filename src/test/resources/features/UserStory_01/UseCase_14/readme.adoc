@@ -52,7 +52,9 @@ gewünschten Ressource.
 * <<TA_A_26281-01_02>>
 * <<TA_A_26560_01>>
 * <<TA_A_26661_01>>
+* <<TA_A_26661_17>>
 * <<TA_A_27007_17>>
+* <<TA_A_27725-01_29>>
 
 |===
 
@@ -81,5 +83,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-// include::UseCase_ab_cd.feature[]
+include::client_ressource_anfrage_fachdienst_sc_302.feature[]
 ----

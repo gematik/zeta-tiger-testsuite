@@ -1,0 +1,40 @@
+docker-image-frontend:
+  stage: container
+  extends: .docker_job
+  rules:
+    - !reference [.rules_container_selfhosted_only, rules]
+  script:
+    - zeta_docker_create_builder multiarch-builder
+    - |
+      set -- \
+        -f docker/frontend/Dockerfile \
+        -t "${CI_REGISTRY_IMAGE}:frontend" \
+        -t "${CI_REGISTRY_IMAGE}/frontend:latest"
+      if [ -n "${CI_COMMIT_TAG}" ]; then
+        set -- "$@" -t "${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_TAG}"
+      fi
+      zeta_docker_buildx_build "frontend" "$@" .
+
+docker-image-qualitygate:
+  stage: container
+  extends: .docker_job
+  cache:
+    key: "docker-build-${CI_SERVER_HOST}-${CI_PROJECT_PATH_SLUG}"
+    paths:
+      - .cache/git/
+    policy: pull-push
+  rules:
+    - !reference [.rules_container_selfhosted_only, rules]
+  script:
+    - apk add --no-cache git
+    - ./.gitlab/scripts/prepare-quality-gate-certificates.sh
+    - zeta_docker_create_builder multiarch-builder-qg
+    - |
+      set -- \
+        -f docker/quality_gate/Dockerfile \
+        -t "${CI_REGISTRY_IMAGE}:quality_gate" \
+        -t "${CI_REGISTRY_IMAGE}/quality_gate:latest"
+      if [ -n "${CI_COMMIT_TAG}" ]; then
+        set -- "$@" -t "${CI_REGISTRY_IMAGE}/quality_gate:${CI_COMMIT_TAG}"
+      fi
+      zeta_docker_buildx_build "quality-gate" "$@" .

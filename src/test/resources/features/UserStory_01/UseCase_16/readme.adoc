@@ -48,8 +48,11 @@ Der Ressourcenzugriff wurde abgewiesen. Der MA muss eine erneute Authentisierung
 * <<TA_A_26661_01>>
 * <<TA_A_26661_19>>
 * <<TA_A_27007_19>>
+* <<TA_A_27725-01_31>>
 * <<TA_A_27802-02_01>>
 * <<TA_A_27802-02_02>>
+* <<TA_A_28525-01_01>>
+* <<TA_A_28525-01_02>>
 * <<TA_A_28963_01>>
 
 |===

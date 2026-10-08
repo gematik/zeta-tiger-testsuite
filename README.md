@@ -9,11 +9,6 @@
 > wenigen Custom-Glue-Klassen — stattdessen sollen die TGR-Hilfssteps (Tiger Glue / TGR) verwendet
 > werden.
 
-> **BITTE BEACHTEN**
-> Der Testplan referenziert die Vorabveröffentlichung der Spezifikation vom 16.03.2026. 
-> Er referenziert nicht den aktuellen Status der Implementierung der Testaspekte bzgl. der neuen oder
-> geänderten Anforderungen.
-
 ---
 
 ## Inhaltsverzeichnis
@@ -53,10 +48,40 @@ Testhilfen für die Testausführung.
 - TLS Test Tool Service für die TLS-UseCases.
   Die zugehörigen Zertifikatsfixtures liegen unter `src/test/resources/tls-test-tool/certificates`.
 
-Zum Ausführen des Features `Client_ressource_anfrage_fachdienst_SC_200` ist die Beschaffung des
-Keycloak-Signaturschlüssels für die jeweilige Umgebung notwendig.
-Legen Sie ihn zum Beispiel unter `src/test/resources/keys/zeta-kind.local.pem` oder
-`src/test/resources/mocks/jwt-sign-key.pem` ab.
+### Signing-Key für Access-Token-Manipulationen
+
+Tests, die Access Tokens neu signieren, benötigen den privaten ES256-Signing-Key der jeweiligen
+Zielumgebung.
+Der Key muss am konfigurierten Pfad
+`src/test/resources/keys/${zeta_base_url}-ecKey.pem` liegen.
+Wird die Datei für den aktuellen Host ersetzt, ist weder ein zusätzlicher Mount noch der Parameter
+`paths.guard.ecKeyFile` notwendig.
+Private Keys dürfen ausschließlich aus dafür vorgesehenen Testumgebungen bezogen werden.
+Eine lokal durch einen Umgebungs-Key ersetzte Datei darf nicht committed werden.
+
+Für das lokale KIND-Deployment wird der Access-Token-Key von der `ecdsa-generated`-Komponente des
+Keycloak-Realms `zeta-guard` verwendet.
+Der über `HSM_PROXY_KEY_ID` konfigurierte Key ist lediglich der TLS-Key des Authservers.
+Der `@require_signing_key`-Hook prüft den abgelegten Key zunächst gegen einen frisch ausgestellten
+Access Token.
+Wenn der Key fehlt oder nicht passt, fragt der Hook die aktiven und aktivierten
+`ecdsa-generated`-Keys direkt über den vorhandenen Java-Kubernetes-Zugriff aus Keycloak ab,
+ermittelt den passenden privaten Key kryptografisch und legt ihn am konfigurierten Pfad ab.
+Nur wenn auch diese Abfrage nicht möglich ist oder keinen eindeutigen Treffer liefert, werden die
+betroffenen Szenarien übersprungen.
+Die deploymentabhängigen Keycloak-Werte für diese Abfrage stehen in
+`tiger/zeta-deployment-config.yaml` unter `keycloakSigningKey`.
+
+Nach einer Neuerzeugung des Realm-Keys oder einem Neuaufsetzen der Keycloak-Datenbank muss die
+lokale Kopie beim nächsten `@require_signing_key`-Szenario automatisch erneuert werden.
+Der JWT-Szenariogrundriss kann anschließend wie folgt ausgeführt werden:
+
+```bash
+mvn clean verify -Pproxy \
+  '-Dcucumber.filter.name=^ZETA Guard Integrationstest, JWT Prüfung.*$' \
+  '-Dzeta_base_url=zeta-kind.local' \
+  '-Dtiger.lib.activateWorkflowUi=false'
+```
 
 ---
 
@@ -70,7 +95,6 @@ mvn verify
 # Optionen:
 # Smoke Tests         @blocker
 # Status ok           @critical
-# Status fail         @dev
 # Performance         @performance
 # AFO Aspects         @TA_A_xxxx
 mvn verify -Pproxy "-Dcucumber.filter.tags=@TA_A_25761_02 or @TA_A_27802_01"
@@ -121,6 +145,8 @@ Für den Build des `quality_gate`-Docker-Images wird das Zertifikats-Repository 
 Dabei wird für das Image nur die Teilmenge `manifest/keystore-manifest.tsv` plus `keystores/` übernommen.
 In GitLab CI erfolgt der Checkout dafür per Sparse-Checkout, damit nur `manifest/` und `keystores/` aus dem Zertifikats-Repository geladen werden.
 Lokal können Sie dafür das vorhandene Checkout nach `.cache/zeta-test-certificates` klonen oder kopieren.
+Die Deployment-SMC-B-Defaults aus [tiger/defaults.yaml](tiger/defaults.yaml) nutzen dagegen die lokale Repository-Struktur unter `../zeta-test-certificates/smcb/`.
+Dieser Pfad ist der Default-Fallback, wenn keine expliziten SMC-B-Dateipfade gesetzt werden.
 Für CI oder abweichende Workspaces können Sie stattdessen explizit setzen:
 
 ```bash
@@ -131,6 +157,10 @@ Erwartetes Repository-Layout:
 
 ```text
 zeta-test-certificates/
+├── asl/
+│   ├── zeta-guard.asl.issuer.pem
+│   ├── zeta-guard.asl.signer.key.pem
+│   └── zeta-guard.asl.signer.pem
 ├── certs/
 │   ├── block-000000-009999/
 │   ├── block-010000-019999/
@@ -143,6 +173,10 @@ zeta-test-certificates/
 ├── keystores/
 │   ├── block-000000-009999/
 │   └── README.md
+├── smcb/
+│   ├── smcb-certificates.p12
+│   ├── smcb-certificates.p12.b64
+│   └── smcb-pw
 ├── pyproject.toml
 ├── src/
 │   └── zeta_certificates/
@@ -159,6 +193,8 @@ Wichtig für die Testsuite:
 - `testCertificates.dir` beziehungsweise `ZETA_TEST_CERTIFICATES_DIR` muss auf das Repository-Wurzelverzeichnis zeigen.
 - Das Zertifikat-Manifest wird fest unter `manifest/cert-manifest.tsv` erwartet.
 - Die im Manifest referenzierten Zertifikats- und Keystore-Dateien müssen relativ zu diesem Repository-Wurzelverzeichnis auflösbar sein.
+- Die Default-Pfade für die Deployment-SMC-B-Testidentität sind `../zeta-test-certificates/smcb/smcb-certificates.p12.b64` und `../zeta-test-certificates/smcb/smcb-pw`.
+- CI- und Docker-Läufe sollten diese Pfade bei Bedarf explizit über die jeweilige Laufzeitkonfiguration setzen.
 
 Verfügbare Glue-Methoden:
 
@@ -168,7 +204,7 @@ Verfügbare Glue-Methoden:
   `Dann lade 100 Zertifikat-Einträge ab Nummer 1 aus dem Testzertifikat-Manifest in Variablen mit Präfix "perf.clients"`
 - Einzelnen Eintrag per Stem laden:
   `Dann lade Zertifikat mit Stem "80276883110001000001-C_SMCB57_AUT_E256_X509" aus dem Testzertifikat-Manifest in Variablen mit Präfix "perf.client"`
-- Slice für JMeter/Perf als TSV exportieren:
+- Slice für externe Werkzeuge als TSV exportieren:
   `Dann exportiere 100 Zertifikat-Einträge ab Nummer 1 aus dem Testzertifikat-Manifest nach "target/test-certificates/perf-slice.tsv"`
 
 Nach dem Laden eines Eintrags stehen u. a. folgende Variablen zur Verfügung:
@@ -188,9 +224,27 @@ Nach dem Laden eines Eintrags stehen u. a. folgende Variablen zur Verfügung:
 
 Beim Laden mehrerer Einträge werden zusätzlich `${perf.clients.count}`, `${perf.clients.start_index}` sowie `${perf.clients.1.*}` bis `${perf.clients.N.*}` gesetzt.
 
-Der TSV-Export ist für Tools wie JMeter gedacht.
+Der TSV-Export ist für externe Werkzeuge gedacht.
 Er enthält absolute Dateipfade für Zertifikat, Private Key und Public Key sowie den inline aufgelösten Base64-Keystore.
 Die Inline-Werte der geladenen Zertifikate werden ebenfalls Base64-kodiert bereitgestellt, damit binäre DER-Dateien nicht als UTF-8 fehlinterpretiert werden.
+
+## Additional Security Layer (ASL)
+
+Die Testsuite kann so konfiguriert werden, dass das ZETA Guard Deployment vor der Testausführung explizit mit
+oder ohne ASL neu deployed wird. Das Deployment mit entsprechenden Parametern geschieht automatisch vor der Ausführung
+jeglicher Szenarien und nach der Ausführung wird das Deployment wiederhergestellt, i.S.v. ohne zusätzliche Anpassungen
+mit dem aktuellen Stand des lokalen `zeta-guard-helm` Repositories deployed.
+
+### Voraussetzungen
+- lokaler Klon des `zeta-guard-helm` Repository sowie dessen Voraussetzungen für ein Deployment (Zertifikate, Passwörter etc.)
+- ASL Zertifikate müssen als `asl-identity` Kubernetes Secret im Cluster vorhanden sein
+- folgende Tools müssen über die `$PATH` Umgebungsvariable verfügbar sein:
+    - `make`
+    - `helm`
+    - `kubectl`
+- `config` Datei für `kubectl` mit den Berechtigungen, ein komplettes  Deployment auszuführen
+
+[Details zur Konfiguration finden sich im Abschnitt Konfiguration](#additional-security-layer-asl-konfigurieren)
 
 ## Tiger-Konfigurationen
 
@@ -214,7 +268,15 @@ Für OpenTelemetry-Log-Abfragen wird `opensearch_url` verwendet (OpenSearch-Host
 Sie können `OPENSEARCH_URL` setzen oder `-Dopensearch_url=zeta-kind.local:9200` verwenden.
 Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9200`.
 
-Für OpenTelemetry-Metrik-Abfragen wird `https://${zeta_base_url}/prometheus` verwendet.
+Für OpenTelemetry-Metrik-Abfragen wird `prometheus_url` verwendet (Prometheus-Host ohne Scheme).
+Sie können `PROMETHEUS_URL` setzen oder `-Dprometheus_url=zeta-kind.local:9090` verwenden.
+Wenn kein Wert gesetzt ist, greift der Default `${zeta_base_url}:9090`.
+
+Für die funktionalen PoPP-Token-Schritte wird `popp_token_generator_url` verwendet.
+Sie können `POPP_TOKEN_GENERATOR_URL` setzen oder
+`-Dpopp_token_generator_url=https://.../popp/test/api/v1/token-generator` verwenden.
+Die Load-Dispenser-Workloads `test=hellozeta` erzeugen gültige PoPP-Token intern und benötigen
+diese URL nicht.
 
 Für das TLS-Test-Tool wird `zeta_tls_test_tool_service_url` verwendet (Host ohne Scheme).
 Sie können `ZETA_TLS_TEST_TOOL_SERVICE_URL` setzen oder `-Dzeta_tls_test_tool_service_url=zeta-tls-test-tool-service.zeta-staging.svc:9012` verwenden.
@@ -235,6 +297,12 @@ Ohne Angabe wird kein Proxy-Profil geladen.
   werden nicht getaggte Szenarien automatisch übersprungen.
 
 ### `kubectl`-Abfragen
+
+Zu Beginn jedes Testlaufs erfasst die Testsuite mit einem lesenden `kubectl get pods` automatisch die getesteten Container-Images im konfigurierten Namespace.
+Hierfür ist `allow_deployment_modification` nicht erforderlich.
+Wenn `kubectl`, Clusterzugriff oder die Berechtigung zum Auflisten der Pods fehlen, läuft die Testsuite ohne Versionsinformationen weiter.
+Serenity gruppiert die Ergebnisse in `build-info.html` nach Namespace und Pod und zeigt je Container Image-Tag und Digest getrennt durch ` | ` an.
+Allure erhält dieselben Laufzeitinformationen als `deployment.version.*` in `target/allure-results/environment.properties`.
 
 - Szenarien, die `kubectl` und Zugriff auf den konfigurierten Kubernetes-Namespace benötigen,
   aber keine Modifikationen am Deployment vornehmen, mit `@require_kubectl` taggen.
@@ -257,6 +325,27 @@ Ohne Angabe wird kein Proxy-Profil geladen.
 > Für Deployment-Manipulationsschritte und bestimmte `kubectl`-basierte Checks wird `kubectl` innerhalb von WSL genutzt.  
 > Unter Windows funktionieren diese Teile der Testsuite daher nur, wenn WSL eingerichtet ist und dort ein funktionsfähiges `kubectl` inklusive `kubeconfig` verfügbar ist.  
 > Ein ausschließlich unter Windows installiertes `kubectl.exe` (ohne WSL-Setup) ist für diese Checks nicht ausreichend.
+
+### Additional Security Layer (ASL) konfigurieren
+
+Für die explizite De-/Aktivierung des ASL müssen einige Konfigurationsschritte vorgenommen werden. Die Werte können 
+jeweils in der `tiger/defaults.yaml` Datei gesetzt werden oder beim Aufruf über `-D<config-key>=<config-value>` 
+gesetzt bzw. überschrieben werden.
+
+- Pfad zum `zeta-guard-helm` Repository festlegen: <br>&nbsp;&nbsp; `zeta_k8s_helm_deployment_directory: /path/to/repository`
+- Deployment Modifikationen allgemein erlauben: <br>&nbsp;&nbsp; `allow_deployment_modification: true`
+- ASL aktivieren: <br>&nbsp;&nbsp; `zeta_k8s_enable_asl_globally: true`
+- ASL deaktivieren: <br>&nbsp;&nbsp; `zeta_k8s_disable_asl_globally: true`
+- Datei mit dem SMCB Keystore für den PDP : <br>&nbsp;&nbsp; `zeta_k8s_smb_keystore_file`
+- Datei mit dem Password für den SMCB Keystore für den PDP : <br>&nbsp;&nbsp; `zeta_k8s_smb_keystore_password_file`
+
+**Anmerkung:** Da die Konfiguration über die erwähnten Schalter grundsätzlich ungültige Zustände definieren kann, wird 
+die Konfiguration zur Laufzeit geprüft und die Ausführung bei ungültiger Konfiguration mit einer Fehlermeldung abgebrochen.
+
+Das Deployment aus dem `zeta-guard-helm` Repository heraus kann jeweils weitere Anforderungen haben, z.B. bezüglich 
+Umgebungsvariablen für sensible Werte. Details zu diesen Voraussetzungen befinden sich in der Dokumentation
+des `zeta-guard-helm` Repositories.
+
 
 ### Tiger Optionen
 

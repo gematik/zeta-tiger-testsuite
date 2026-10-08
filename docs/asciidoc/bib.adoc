@@ -30,3 +30,8 @@ Online verfügbar: https://www.rfc-editor.org/rfc/rfc9728
 *OAuth 2.0 Authorization Server Metadata*
 Online verfügbar: https://www.rfc-editor.org/rfc/rfc8414
 (zuletzt abgerufen am 31. Oktober 2025)
+
+* [[[OpenID.Federation]]] R. Hedberg, M. B. Jones, A. Å. Solberg, J. Bradley, V. Dzhuvinov:
+*OpenID Federation 1.0*, OpenID Foundation, Februar 2026.
+Online verfügbar: https://openid.net/specs/openid-federation-1_0.html
+(zuletzt abgerufen am 24. August 2026).

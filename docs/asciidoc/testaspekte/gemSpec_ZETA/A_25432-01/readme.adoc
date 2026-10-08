@@ -11,5 +11,3 @@ include::TA_A_25432-01_03.adoc[]
 include::TA_A_25432-01_04.adoc[]
 
 include::TA_A_25432-01_05.adoc[]
-
-include::TA_A_25432-01_06.adoc[]

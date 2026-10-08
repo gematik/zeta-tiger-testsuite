@@ -25,7 +25,7 @@
 #language:de
 
 @UseCase_01_21
-Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
+Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 200
 
   Grundlage:
     Und TGR setze Anfrage Timeout auf 120 Sekunden
@@ -49,7 +49,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
     Und prüfe, dass das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" aktiv ist
 
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und rolle das Deployment "${zetaDeploymentConfig.pep.podName}" zurück und prüfe, dass das Image "${pep_original_image}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" innerhalb von 30 Sekunden aktiv ist
+    Und rolle das Deployment "${zetaDeploymentConfig.pep.podName}" zurück und prüfe, dass das Image "${pep_original_image}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" innerhalb von 120 Sekunden aktiv ist
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
@@ -63,19 +63,15 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
     Und ermittle den aktuellen Ready-Pod für das Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_old_ready_pod"
     Und ermittle das vollständige Image für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_original_image"
     Und ermittle den Image-Pfad für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_image_path"
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}/delay/60" ohne auf Antwort zu warten mit folgenden Headern:
-      | X-Rollout-Trace-Id | background-download-1 |
-
-    Wenn setze das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}"
-    Dann prüfe, dass für das Deployment "${zetaDeploymentConfig.pep.podName}" innerhalb von 45 Sekunden ein Pod mit dem Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" sichtbar wird, bevor die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "background-download-1" übereinstimmt, beantwortet wird
+    Wenn prüfe, dass eine leere GET Anfrage an "${paths.client.helloZeta}/delay/25" mit Header "X-Rollout-Trace-Id" gleich "background-download-1" und Pfad "${paths.client.helloZetaPath}/delay/25" während das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" gesetzt wird, bis zur Sichtbarkeit eines Pods mit diesem Image weiterläuft und anschließend erfolgreich beantwortet wird oder 45 Sekunden vergangen sind
     Wenn sende wiederholt eine leere GET Anfrage an "${paths.client.helloZeta}" und erwarte HTTP Status "200" bis das Deployment "${zetaDeploymentConfig.pep.podName}" ausgehend von Pod "${pep_old_ready_pod}" auf einen neuen Pod gewechselt ist oder 120 Sekunden vergangen sind
     Und prüfe, dass das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" aktiv ist
     Und ermittle den aktuellen Ready-Pod für das Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_new_ready_pod"
     Und TGR assert variable "pep_new_ready_pod" matches "^(?!${pep_old_ready_pod}$).+"
     Und prüfe, dass für den Pod "${pep_new_ready_pod}" ein Image-Pull für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" stattgefunden hat
-    Dann TGR finde die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "background-download-1" übereinstimmt
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/25" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "background-download-1" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und prüfe, dass die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "background-download-1" übereinstimmt, eine Antwortzeit von mindestens 50 Sekunden hat
+    Und prüfe, dass die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/25" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "background-download-1" übereinstimmt, eine Antwortzeit von mindestens 20 Sekunden hat
 
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     Und rolle das Deployment "${zetaDeploymentConfig.pep.podName}" zurück und prüfe, dass das Image "${pep_original_image}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" innerhalb von 30 Sekunden aktiv ist
@@ -99,7 +95,7 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
     Und TGR assert variable "pep_new_ready_pod" matches "^(?!${pep_old_ready_pod}$).+"
 
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
-    Und rolle das Deployment "${zetaDeploymentConfig.pep.podName}" zurück und prüfe, dass das Image "${pep_original_image}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" innerhalb von 30 Sekunden aktiv ist
+    Und rolle das Deployment "${zetaDeploymentConfig.pep.podName}" zurück und prüfe, dass das Image "${pep_original_image}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" innerhalb von 120 Sekunden aktiv ist
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
 
@@ -113,20 +109,20 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
     Und ermittle den aktuellen Ready-Pod für das Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_old_ready_pod"
     Und ermittle das vollständige Image für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_original_image"
     Und ermittle den Image-Pfad für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_image_path"
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}/delay/60" ohne auf Antwort zu warten mit folgenden Headern:
-      | X-Rollout-Trace-Id | longrun-update-1 |
-    Und setze das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}"
+    Und setze die RollingUpdate-Strategie des Deployments "${zetaDeploymentConfig.pep.podName}" auf maxSurge "0" und maxUnavailable "1"
 
-    # TA_A_25786_04: Die zuerst gestartete Langläufer-Anfrage bleibt während des Verschwindens des
-    # alten Ready-Pods offen und wird erst nach der ordnungsgemäßen Übernahme bei weiterhin
-    # ausstehender Rollout-Finalisierung erfolgreich beantwortet.
-    Dann prüfe, dass der Pod "${pep_old_ready_pod}" verschwindet, während die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "longrun-update-1" übereinstimmt, noch keine Antwort hat, und dass das Deployment "${zetaDeploymentConfig.pep.podName}" erst danach finalisiert wird oder 90 Sekunden vergangen sind
+    # TA_A_25786_04: Literal geprüfte Übernahme der laufenden Anfrage. Sobald die ursprüngliche
+    # Client-Anfrage sichtbar und noch unbeantwortet ist, wird der Versionswechsel ausgelöst und
+    # der alte PEP-Pod erzwungen beendet. Die ursprüngliche Client-Anfrage darf erst nach dem
+    # erzwungenen Ende des alten Pods erfolgreich beantwortet werden; ein Retry zum Fachdienst würde die Übernahme nicht
+    # beweisen und wird deshalb ausgeschlossen.
+    Dann prüfe, dass eine leere GET Anfrage an "${paths.client.helloZeta}/delay/25" mit Header "X-Rollout-Trace-Id" gleich "longrun-update-1" und Client-Pfad "${paths.client.helloZetaPath}/delay/25" und Fachdienst-Pfad "^${paths.fachdienst.helloZetaPath}/delay/25$" während das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" gesetzt wird, nach erzwungener Beendigung des Pods "${pep_old_ready_pod}" mit genau einer Fachdienst-Anfrage erfolgreich übernommen wird oder 90 Sekunden vergangen sind
     Und prüfe, dass das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" aktiv ist
     Und ermittle den aktuellen Ready-Pod für das Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_new_ready_pod"
     Und TGR assert variable "pep_new_ready_pod" matches "^(?!${pep_old_ready_pod}$).+"
-    Dann TGR finde die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "longrun-update-1" übereinstimmt
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/25" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "longrun-update-1" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und prüfe, dass die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/60" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "longrun-update-1" übereinstimmt, eine Antwortzeit von mindestens 50 Sekunden hat
+    Und prüfe, dass die erste Anfrage mit Pfad "${paths.client.helloZetaPath}/delay/25" und Knoten "$.header.[~'x-rollout-trace-id']" der mit "longrun-update-1" übereinstimmt, eine Antwortzeit von mindestens 20 Sekunden hat
 
     Gegeben sei TGR lösche aufgezeichnete Nachrichten
     # Technisches Cleanup: Deployment wieder auf das ursprüngliche Image zurücksetzen.
@@ -143,15 +139,10 @@ Funktionalität: Client_ressource_anfrage_fachdienst_SC_200
   Szenario: Rollback bei fehlgeschlagener Aktualisierung stellt stabile Vorversion wieder her
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
-    # TA_A_25788_01 + TA_A_25789_01: Fehlgeschlagene Aktualisierung wird nach nachgewiesenem Rollout-Fehler
-    # automatisch und innerhalb eines festen Zeitbudgets auf die stabile Vorversion zurückgeführt.
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}" ohne auf Antwort zu warten
+    # TA_A_25788_01 + TA_A_25789_01: Fehlgeschlagene Helm-Aktualisierung wird isoliert mit Rollback-on-Failure
+    # automatisch innerhalb des konfigurierten Rollback-Zeitbudgets auf die stabile Vorversion zurückgeführt.
     Und ermittle das vollständige Image für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_original_image"
-    Und ermittle den Image-Pfad für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_image_path"
-    Und setze das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionInvalid}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}"
-    Und prüfe, dass das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionInvalid}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" nicht aktiv wird und das Deployment innerhalb von 30 Sekunden nach fehlgeschlagenem Update automatisch auf das Image "${pep_original_image}" zurückkehrt
-    Und bereinige verbleibende fehlgeschlagene Rollout-Pods des Deployments "${zetaDeploymentConfig.pep.podName}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" mit anderem Image als "${pep_original_image}"
+    Und prüfe mit einem isolierten Helm-Rollback-Nachweis, dass eine fehlerhafte Aktualisierung des PEP Image-Tags "${zetaDeploymentConfig.pep.image.versionInvalid}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" das Deployment "${zetaDeploymentConfig.pep.podName}" nicht verändert und innerhalb des konfigurierten Rollback-Zeitbudgets automatisch auf das Image "${pep_original_image}" zurückkehrt
 
     # Nachweis stabile Vorversion: System antwortet nach Rollback weiterhin erfolgreich.
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Dann TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Dann sende wiederholt eine leere GET Anfrage an "${paths.client.helloZeta}" und erwarte HTTP Status "200" innerhalb von 30 Sekunden

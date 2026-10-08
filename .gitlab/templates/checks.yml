@@ -1,0 +1,89 @@
+utf8_posix_check:
+  stage: preflight
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    - apk add --no-cache git grep libintl
+  script:
+    - ./.gitlab/scripts/check-text-files.sh
+
+unit-tests:
+  stage: static-checks
+  extends:
+    - .maven_job
+    - .rules_gitlab_com_tests
+  variables:
+    MAVEN_CLI_OPTS_EXTRA: "-q -T 1C -Dskip.unit.tests=false"
+  script:
+    - mvn $MAVEN_CLI_OPTS test
+  artifacts:
+    when: always
+    reports:
+      junit: target/surefire-reports/TEST-*.xml
+    paths:
+      - target/surefire-reports
+    expire_in: 1 week
+  allow_failure: false
+
+checkstyle:
+  stage: static-checks
+  extends:
+    - .maven_job
+    - .rules_lint_changes
+  variables:
+    MAVEN_OPTS_EXTRA: "-Xmx512m"
+    MAVEN_CLI_OPTS_EXTRA: "-DskipTests=true"
+  script:
+    - mvn $MAVEN_CLI_OPTS checkstyle:check --fail-at-end
+  artifacts:
+    when: always
+    paths:
+      - target/checkstyle-result.xml
+  allow_failure: false
+
+license_headers:
+  stage: static-checks
+  extends:
+    - .maven_job
+    - .rules_license_changes
+  variables:
+    MAVEN_OPTS_EXTRA: "-Xmx512m"
+    MAVEN_CLI_OPTS_EXTRA: "-DskipTests=true"
+  script:
+    - mvn $MAVEN_CLI_OPTS -Pdistribution license:check
+  allow_failure: false
+
+schema_drift_check:
+  stage: static-checks
+  extends: .rules_schema_check
+  image: ghcr.io/astral-sh/uv:0.11.14-debian-slim@sha256:2702577da32d9c3d55c8073e07d4476cd7402c085efbf71921104548c851d96a
+  variables:
+    UV_LINK_MODE: "copy"
+    ZETA_SCHEMA_REF: "v1.3.1-2"
+  script:
+    - uv sync --project docs/scripts
+    - uv run --project docs/scripts check-zeta-schemas --ref "${ZETA_SCHEMA_REF}"
+  artifacts:
+    when: always
+    paths:
+      - target/schema-drift.diff
+    expire_in: 1 week
+  allow_failure: true
+
+third_party_licenses:
+  stage: static-checks
+  extends:
+    - .maven_job
+    - .rules_third_party_license_changes
+  variables:
+    MAVEN_OPTS_EXTRA: "-Xmx512m"
+    MAVEN_CLI_OPTS_EXTRA: "-DskipTests=true -DskipITs=true"
+  script:
+    - mvn $MAVEN_CLI_OPTS -Pdistribution org.codehaus.mojo:license-maven-plugin:add-third-party
+  artifacts:
+    when: always
+    paths:
+      - target/generated-sources/license/THIRD-PARTY.txt
+  allow_failure: false

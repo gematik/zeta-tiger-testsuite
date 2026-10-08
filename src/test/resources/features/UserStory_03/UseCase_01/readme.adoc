@@ -1,0 +1,142 @@
+[#UC_03_01]
+== UseCase_03_01: Mobiler Client Authentisierung und Autorisierung OIDC SC 200
+
+.UseCase_03_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Mobiler Client Authentisierung und Autorisierung OIDC SC 200
+
+| Akteur: |
+*Versicherter*
+
+| weitere Akteure: |
+- *Mobiler ZETA Client*
+- *Sektoraler IDP*
+- *PDP Authorization Server*
+- *PDP Policy Engine*
+- *Resource Server*
+
+| Auslöser: |
+Ein Versicherter möchte über den mobilen ZETA Client auf einen geschützten Resource Server zugreifen.
+
+| Kurzbeschreibung: |
+Der Versicherte authentifiziert sich mit dem mobilen ZETA Client per OIDC Authorization Code Flow gegenüber einem sektoralen IDP.
+Der PDP Authorization Server tauscht den Authorization Code ein, liest die Pflicht-Claims aus dem `id_token` aus, mappt sie auf `zeta-user-info` und übergibt die Nutzer-Daten an die Policy Engine.
+Nach erfolgreicher Autorisierungsentscheidung wird die geschützte Ressource mit ``200 OK`` ausgeliefert.
+Der OIDC-Testfall richtet dafür zuerst die Offband-Bestätigung über E-Mail und OTP ein und weist anschließend sowohl das Claim-Mapping als auch den erfolgreichen Ressourcenzugriff nach.
+Ein separates Komponentenszenario prüft zusätzlich, dass das Entity Statement des PDP Authorization Servers die erlaubten Redirect-URLs des lokalen OIDC-Clients ausweist.
+
+| Vorbedingung: |
+Der mobile ZETA Client ist für den OIDC Flow für Versicherte konfiguriert.
+Der sektorale IDP ist erreichbar und liefert für den Versicherten ein `id_token` mit den Pflicht-Claims `urn:telematik:claims:id` und `urn:telematik:claims:profession`.
+Der PDP Authorization Server vertraut dem sektoralen IDP.
+Die Policy Engine akzeptiert den Zugriff.
+Das Entity Statement des PDP Authorization Servers ist unter
+``/auth/realms/zeta-guard/.well-known/openid-federation`` erreichbar und enthält
+die in ``tiger/oidc_test_data.yaml`` dokumentierten Redirect-URLs des lokalen
+OIDC-Testclients.
+Das dafür verwendete Struktur-Schema liegt unter
+``src/test/resources/schemas/openid-federation-entity-statement.yaml``.
+Die normative Grundlage für Entity Statements und die
+``openid_relying_party``-Metadaten ist
+https://openid.net/specs/openid-federation-1_0.html[OpenID Federation 1.0].
+Das Szenario richtet die erforderliche TOFU-Bindung (E-Mail/OTP)
+mit einer neuen OIDC-Testidentität selbstständig ein und prüft zusätzlich den
+Offband-Versand über Mailcatcher.
+Der OIDC-Testdriver übernimmt den OTP aus der für die Testidentität zugestellten
+Mailcatcher-Nachricht automatisch; der nachgelagerte asynchrone Folgeaufruf wird
+für die Korrelation des weiteren Flows abgewartet.
+Der OIDC-Testdaten-Schritt erzeugt pro isoliertem Lauf eine neue valide Test-KVNR.
+Diese KVNR wird zugleich als E-Mail-Local-Part verwendet und zusammen mit der
+E-Mail-Adresse über ``POST /oidc/kvnr-email`` am Testdriver gesetzt, bevor der
+Ressourcenzugriff beginnt.
+Das Szenario weist anschließend am beobachteten ``POST /zeta/identity/bind-email``
+nach, dass der Client genau diese Nutzereingabe an den Authorization Server überträgt.
+Die für die Test-E-Mail verwendete Domain ist in
+``tiger/oidc_test_data.yaml`` unter ``emailDomain`` konfiguriert.
+Die Regeln für Aufbau und Prüfziffer sind in der Referenz
+https://de.wikipedia.org/wiki/Krankenversichertennummer[Krankenversichertennummer – Wikipedia] beschrieben.
+Die fachliche Prüfziffernberechnung ist zusätzlich im offiziellen
+https://www.gkv-datenaustausch.de/media/dokumente/kvnr/Anlage_1_20230102_Pruefziffernberechnung-KVNR.pdf[GKV-Datenaustausch-Dokument] beschrieben.
+Der Use Case ist eigenständig ausführbar; eine vorherige Ausführung ist nicht
+erforderlich.
+
+| Nebenbedingung: |
+Der Testtreiber ist so konfiguriert, dass der OIDC Flow verwendet wird.
+
+| Ablauf: |
+. Der mobile ZETA Client startet den geschützten Ressourcenzugriff und richtet die erforderliche Offband-Bestätigung per E-Mail, Mailcatcher und OTP ein.
+. Der mobile ZETA Client startet beim PDP Authorization Server den OIDC Authorization Code Flow.
+. Der Versicherte authentifiziert sich über den mobilen ZETA Client gegenüber dem sektoralen IDP.
+. Der sektorale IDP liefert einen Authorization Code zurück.
+. Der PDP Authorization Server tauscht den Authorization Code am sektoralen IDP gegen Token und `id_token` ein.
+. Der PDP Authorization Server liest die Pflicht-Claims `urn:telematik:claims:id` und `urn:telematik:claims:profession` aus dem `id_token` aus.
+. Der PDP Authorization Server mappt die Claims auf `zeta-user-info` und ruft die Policy Engine mit den Nutzer-Daten auf.
+. Die Policy Engine antwortet mit ``200 OK``.
+. Der PDP Authorization Server liefert eine erfolgreiche Antwort an den mobilen ZETA Client zurück.
+. Der mobile ZETA Client sendet die Ressourcenanfrage an den Resource Server.
+. Der Resource Server antwortet mit ``200 OK``.
+
+Die Nutzer-Daten werden dabei wie folgt gemappt:
+- `urn:telematik:claims:id` entspricht `identifier`.
+- `urn:telematik:claims:id` entspricht `commonName`.
+- `urn:telematik:claims:profession` entspricht `professionOID`.
+
+| Nachbedingung: |
+Der Versicherte ist authentisiert und autorisiert.
+Die Claims aus dem `id_token` wurden als schemakonforme `user_info` an die Policy Engine übergeben.
+Der Resource Server hat die angeforderte Ressource mit ``200 OK`` zurückgegeben.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25432-01_02>>
+* <<TA_A_25432-01_05>>
+* <<TA_A_25651_01>>
+* <<TA_A_25656_01>>
+* <<TA_A_25657_01>>
+* <<TA_A_25758_01>>
+* <<TA_A_25758_02>>
+* <<TA_A_26586_02>>
+* <<TA_A_26973-01_01>>
+* <<TA_A_27867-01_04>>
+
+|===
+
+[#usecase_03_01_sequence]
+[mermaid,usecase-02-01-sequence,svg]
+....
+sequenceDiagram
+    autonumber
+
+    actor V as Versicherter
+    participant ZC as Mobiler ZETA Client
+    participant SIDP as Sektoraler IDP
+    participant PDP-AS as PDP Authorization<br>Server
+    participant PDP-PE as PDP Policy Engine
+    participant RS as Resource Server
+
+    V->>+ZC: Starte Zugriff auf Resource Server
+    ZC->>+PDP-AS: Starte OIDC Authorization Code Flow
+    PDP-AS-->>-ZC: Authorization Redirect
+    ZC->>+SIDP: Authentifizierung Versicherter
+    SIDP-->>-ZC: Authorization Code
+    ZC->>+PDP-AS: POST /token grant_type=authorization_code
+    PDP-AS->>+SIDP: Token Request mit Authorization Code
+    SIDP-->>-PDP-AS: 200 OK mit Token und id_token
+    PDP-AS->>PDP-AS: Lese Claims aus id_token und mappe user_info
+    PDP-AS->>+PDP-PE: POST /v1/data/policies/zeta/authz/decision mit user_info
+    PDP-PE-->>-PDP-AS: 200 OK
+    PDP-AS-->>-ZC: 200 OK mit Tokens
+    ZC->>+RS: Resource Request
+    RS-->>-ZC: 200 OK
+    ZC-->>-V: "Zugriff gestattet"
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::oidc_authentisierung_und_offband.feature[]
+----
+endif::[]

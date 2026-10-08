@@ -26,9 +26,6 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.TigerHttpClient;
@@ -44,6 +41,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber step definitions for PoPP token generation.
@@ -116,7 +116,7 @@ public class PoppTokenSteps {
   private JsonNode readJson(Response response, String label) {
     try {
       return JSON.readTree(new String(response.body().asByteArray(), StandardCharsets.UTF_8));
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError(label + " did not return valid JSON: " + e.getMessage(), e);
     }
   }
@@ -179,7 +179,7 @@ public class PoppTokenSteps {
   private String writeJson(Object value) {
     try {
       return JSON.writeValueAsString(value);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to serialize PoPP token request.", e);
     }
   }

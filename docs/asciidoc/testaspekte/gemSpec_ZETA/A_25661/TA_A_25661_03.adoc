@@ -5,6 +5,4 @@
 
 der Ausgabe eines Access und eines Refresh Token umsetzen bzw. eine
 
-**Zugriffsverweigerung mit einem HTTP-Statuscode 403** quittieren.
-
-[...]"
+**Zugriffsverweigerung mit einem HTTP-Statuscode 403** quittieren. [...]"

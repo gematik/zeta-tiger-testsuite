@@ -65,11 +65,22 @@ Der ZETA Client verfügt über ein gültiges PoPP Token sowie auch eine bestehen
 12. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
 13. Der ZETA Client liefert die Ressource an den MA.
 
+| Hinweis: |
+Gemäß Fachaustausch vom 02.07.2026 prüft der PoPP-Verifier des ZETA Guard ausschließlich die Claims ``iss``, ``iat`` und ``actorId``.
+Alle weiteren Claims werden durch den Fachdienst geprüft.
+Für gültige PoPP Token werden die erwarteten Header-Attribute und vorhandenen Claims im am Guard eingegangenen Token geprüft.
+Aus diesen Inhaltsprüfungen wird keine Validierung der weiteren Claims durch den PEP abgeleitet.
+Für <<TA_A_26452_01>> muss der ``iss``-Claim das konfigurierte ``sub``-Attribut des PoPP-Service-Entity-Statements enthalten.
+Die Ablehnung abweichender Werte für ``iss``, ``iat`` und ``actorId`` wird in <<UC_01_17>> geprüft.
+
 | Nachbedingung: |
 Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25669-01_05>>
+* <<TA_A_26450_02>>
+* <<TA_A_26452_01>>
+* <<TA_A_26452_02>>
 * <<TA_A_26452_03>>
 * <<TA_A_26477_01>>
 * <<TA_A_26477_02>>

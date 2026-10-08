@@ -1,0 +1,13 @@
+# OAuth parameter values defined by the ZETA token request specification.
+# Form-urlencoded request assertions apply Tiger's urlEncoded resolver at the
+# RBEL boundary instead of storing an HTTP-specific representation here.
+# https://datatracker.ietf.org/doc/html/rfc6749
+grant_type:
+  tokenExchange: urn:ietf:params:oauth:grant-type:token-exchange
+  refreshToken: refresh_token
+# https://datatracker.ietf.org/doc/html/rfc6749
+token_type:
+  jwt: urn:ietf:params:oauth:token-type:jwt
+# https://www.rfc-editor.org/info/rfc7521/
+client_assertion_type:
+  jwtBearer: urn:ietf:params:oauth:client-assertion-type:jwt-bearer

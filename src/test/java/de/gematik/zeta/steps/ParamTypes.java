@@ -24,40 +24,14 @@
 
 package de.gematik.zeta.steps;
 
-import de.gematik.zeta.Metric;
+import de.gematik.zeta.JwtVariant;
 import de.gematik.zeta.TigerMetric;
 import io.cucumber.java.ParameterType;
-import java.util.Locale;
 
 /**
  * Central Cucumber parameter types for custom step definitions.
  */
 public class ParamTypes {
-
-  /**
-   * Defines a parameter type for performance metrics. Matches patterns like pNN (e.g., p95, p99) or
-   * keywords max, min, avg.
-   *
-   * @param token metric identifier from the step
-   * @return Metric object representing the requested metric
-   */
-  @ParameterType("p\\d{1,3}|max|min|avg")
-  public Metric metric(String token) {
-    String t = token.toLowerCase(Locale.ROOT).trim();
-    if (t.startsWith("p")) {
-      int nn = Integer.parseInt(t.substring(1));
-      if (nn < 0 || nn > 100) {
-        throw new IllegalArgumentException("Percentile out of range: " + nn);
-      }
-      return Metric.percentile(nn / 100.0);
-    }
-    return switch (t) {
-      case "max" -> Metric.max();
-      case "min" -> Metric.min();
-      case "avg" -> Metric.avg();
-      default -> throw new IllegalArgumentException("Unsupported metric: " + token);
-    };
-  }
 
   /**
    * Defines a parameter type for Tiger metrics. Allowed values: e2e_ms, forward_ms, service_ms,
@@ -86,5 +60,31 @@ public class ParamTypes {
   @ParameterType("livenessProbe|readinessProbe|startupProbe")
   public String kubeProbe(String probeName) {
     return probeName;
+  }
+
+  /**
+   * Defines a parameter type for supported JWT manipulation variants.
+   *
+   * @param variant JWT variant token from the step
+   * @return matching JWT variant
+   */
+  @ParameterType(JwtVariant.PATTERN)
+  public JwtVariant jwtVariant(String variant) {
+    return JwtVariant.fromToken(variant);
+  }
+
+  /**
+   * Defines a parameter type for toggling a binary configuration.
+   *
+   * @param action action from the step text
+   * @return {@code true} for enable actions, {@code false} for disable actions
+   */
+  @ParameterType("aktiviere|deaktiviere|activate|deactivate")
+  public boolean toggleAction(String action) {
+    return switch (action) {
+      case "aktiviere", "activate" -> true;
+      case "deaktiviere", "deactivate" -> false;
+      default -> throw new IllegalArgumentException("Unsupported toggle action: " + action);
+    };
   }
 }

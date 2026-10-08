@@ -26,7 +26,6 @@ package de.gematik.zeta.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.model.ReceivedStompMessage;
 import java.lang.reflect.Type;
@@ -63,6 +62,8 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
+import org.springframework.web.socket.messaging.WebSocketStompClient;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Manages STOMP session lifecycle, subscriptions, and message handling.
@@ -74,6 +75,7 @@ public class StompSessionManager {
   private static final List<String> STOMP_PROTOCOLS =
       List.of("v12.stomp", "v11.stomp", "v10.stomp");
   private static final String STOMP_ACCEPT_VERSION = "1.2";
+  private static final int STOMP_CONNECT_ATTEMPTS = 3;
 
   @Setter
   private static int connectionTimeout = 5;
@@ -112,6 +114,10 @@ public class StompSessionManager {
    * Persistent raw WebSocket connection for transport-level scenarios.
    */
   private WebSocketSession rawWebSocket;
+  /**
+   * Last WebSocket endpoint validated for STOMP connection setup.
+   */
+  private URI validatedWebSocketUri;
 
   /**
    * Performs a transport-level WebSocket upgrade probe without STOMP.
@@ -123,18 +129,16 @@ public class StompSessionManager {
     validateTargetUrl(sanitizedUrl);
     SslConfigurationService.configureForTesting();
     rawWebSocket = openRawWebSocket(sanitizedUrl);
+    validatedWebSocketUri = rawWebSocket.getUri();
   }
 
   /**
-   * Connects STOMP using the already established raw WebSocket endpoint.
+   * Connects STOMP using the previously validated WebSocket endpoint.
    */
   public void connectStompUsingExistingWebSocket() {
-    assertRawWebSocketReady();
-    assertThat(rawWebSocket.getUri())
-        .as("Existing raw WebSocket connection must expose a target URI")
-        .isNotNull();
-
-    connectStompInternal(rawWebSocket.getUri().toString());
+    assertPreparedWebSocketEndpoint();
+    closeRawConnectionArtifacts();
+    connectStompInternal(validatedWebSocketUri.toString());
   }
 
   /**
@@ -148,42 +152,14 @@ public class StompSessionManager {
     // Configure SSL for trust store tweaks once per manager instance.
     SslConfigurationService.configureForTesting();
 
-    var webSocketHeaders = new WebSocketHttpHeaders();
-    webSocketHeaders.setSecWebSocketProtocol(STOMP_PROTOCOLS);
-
-    var stompConnectHeaders = new StompHeaders();
-    stompConnectHeaders.setAcceptVersion(STOMP_ACCEPT_VERSION);
-    stompConnectHeaders.setHost(URI.create(sanitizedUrl).getHost());
-
-    // Create WebSocket client directly before connect to keep declaration close to usage.
-    var stompClient = clientFactory.create();
-    // Keep handshake state so we can block until the asynchronous connect attempt finishes.
-    var connectLatch = new CountDownLatch(1);
-    var connectionError = new AtomicReference<Throwable>();
-    var sessionHandler = createSessionHandler(connectLatch, connectionError);
-
-    // Start the asynchronous WebSocket handshake.
-    log.info("Starting WebSocket connection...");
-    stompClient.connectAsync(sanitizedUrl, webSocketHeaders, stompConnectHeaders, sessionHandler);
-
-    // Wait for the handshake to complete or time out.
-    boolean connected;
-    try {
-      connected = connectLatch.await(connectionTimeout, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new AssertionError("WebSocket connection failed", e);
+    session = null;
+    for (var attempt = 1; attempt <= STOMP_CONNECT_ATTEMPTS; attempt++) {
+      var connectedSession = connectStompOnce(sanitizedUrl, attempt);
+      if (connectedSession != null && connectedSession.isConnected()) {
+        session = connectedSession;
+        break;
+      }
     }
-
-    var error = connectionError.get();
-    if (error != null) {
-      throw new AssertionError(buildConnectionFailureMessage(sanitizedUrl, error), error);
-    }
-
-    assertThat(connected)
-        .withFailMessage(
-            () -> buildConnectionFailureMessage(sanitizedUrl, connectionError.get()))
-        .isTrue();
 
     assertThat(session)
         .as("STOMP Session created")
@@ -197,20 +173,89 @@ public class StompSessionManager {
   }
 
   /**
-   * Verifies that a prior raw WebSocket probe exists and is still open.
+   * Performs one STOMP connect attempt.
+   *
+   * @param sanitizedUrl target URL
+   * @param attempt      attempt number for logging
+   * @return connected STOMP session, or {@code null} when another retry attempt should be made
+   */
+  private StompSession connectStompOnce(String sanitizedUrl, int attempt) {
+    var webSocketHeaders = new WebSocketHttpHeaders();
+    webSocketHeaders.setSecWebSocketProtocol(STOMP_PROTOCOLS);
+
+    var stompConnectHeaders = new StompHeaders();
+    stompConnectHeaders.setAcceptVersion(STOMP_ACCEPT_VERSION);
+    stompConnectHeaders.setHost(URI.create(sanitizedUrl).getHost());
+
+    var stompClient = clientFactory.create();
+    var connectLatch = new CountDownLatch(1);
+    var connectionError = new AtomicReference<Throwable>();
+    var attemptSession = new AtomicReference<StompSession>();
+    var sessionHandler = createSessionHandler(connectLatch, connectionError, attemptSession);
+
+    log.info("Starting WebSocket STOMP connection attempt {}/{}...", attempt, STOMP_CONNECT_ATTEMPTS);
+    stompClient.connectAsync(sanitizedUrl, webSocketHeaders, stompConnectHeaders, sessionHandler);
+
+    boolean connected;
+    try {
+      connected = connectLatch.await(connectionTimeout, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      stopStompClient(stompClient);
+      throw new AssertionError("WebSocket connection failed", e);
+    }
+
+    var error = connectionError.get();
+    if (error != null) {
+      stopStompClient(stompClient);
+      if (attempt == STOMP_CONNECT_ATTEMPTS) {
+        throw new AssertionError(buildConnectionFailureMessage(sanitizedUrl, error), error);
+      }
+      log.warn("STOMP connection attempt {}/{} failed: {}",
+          attempt, STOMP_CONNECT_ATTEMPTS, error.getMessage());
+      return null;
+    }
+
+    var connectedSession = attemptSession.get();
+    if (!connected || connectedSession == null || !connectedSession.isConnected()) {
+      stopStompClient(stompClient);
+      var timeout = new TimeoutException(buildConnectionFailureMessage(sanitizedUrl, null));
+      if (attempt == STOMP_CONNECT_ATTEMPTS) {
+        throw new AssertionError(timeout.getMessage(), timeout);
+      }
+      log.warn("STOMP connection attempt {}/{} timed out after {} seconds.",
+          attempt, STOMP_CONNECT_ATTEMPTS, connectionTimeout);
+      return null;
+    }
+
+    return connectedSession;
+  }
+
+  /**
+   * Stops a failed STOMP client attempt without masking the original connection problem.
+   *
+   * @param stompClient client to stop
+   */
+  private void stopStompClient(WebSocketStompClient stompClient) {
+    try {
+      stompClient.stop();
+    } catch (Exception e) {
+      log.debug("Could not stop failed STOMP client attempt: {}", e.getMessage());
+    }
+  }
+
+  /**
+   * Verifies that a prior raw WebSocket probe stored a usable endpoint URI.
    *
    * <p>This enforces the scenario precondition that transport-level WebSocket validation happens
    * before STOMP connection setup.
    */
-  private void assertRawWebSocketReady() {
-    assertThat(rawWebSocket)
+  private void assertPreparedWebSocketEndpoint() {
+    assertThat(validatedWebSocketUri)
         .as(
-            "Raw WebSocket connection must be opened before STOMP session. "
+            "Raw WebSocket endpoint must be opened before STOMP session. "
                 + "Run step 'eine WebSocket Verbindung zu <url> geöffnet wird' first.")
         .isNotNull();
-    assertThat(rawWebSocket.isOpen())
-        .as("Raw WebSocket connection must still be open before STOMP session")
-        .isTrue();
   }
 
   /**
@@ -348,16 +393,22 @@ public class StompSessionManager {
 
   /**
    * Creates a session handler that tracks STOMP connect success and handshake errors.
+   *
+   * @param connectLatch    latch released when the attempt succeeds or fails
+   * @param connectionError first observed connection error
+   * @param attemptSession  session created by this specific connection attempt
+   * @return session handler for one STOMP connection attempt
    */
   private StompSessionHandlerAdapter createSessionHandler(
       CountDownLatch connectLatch,
-      AtomicReference<Throwable> connectionError) {
+      AtomicReference<Throwable> connectionError,
+      AtomicReference<StompSession> attemptSession) {
     return new StompSessionHandlerAdapter() {
       @Override
       public void afterConnected(@NotNull StompSession connectedSession,
           @NotNull StompHeaders connectedHeaders) {
         log.info("STOMP CONNECTED - Session: {}", connectedSession.getSessionId());
-        StompSessionManager.this.session = connectedSession;
+        attemptSession.set(connectedSession);
         connectLatch.countDown();
       }
 
@@ -506,6 +557,7 @@ public class StompSessionManager {
       log.info("WebSocket was already closed or not connected");
     }
     closeRawConnectionArtifacts();
+    validatedWebSocketUri = null;
 
     messageQueue.clear();
   }

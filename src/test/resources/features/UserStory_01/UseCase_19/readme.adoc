@@ -12,20 +12,22 @@
 | weitere Akteure: |
 - *ZETA Client*
 - *PEP HTTP Proxy*
+- *Resource Server*
 
 | Auslöser: |
 Ein MA einer LEI fordert eine Ressource über den ZETA Client an, verwendet aber eine für den Endpunkt nicht erlaubte HTTP Methode.
 
 | Kurzbeschreibung: |
 Der ZETA Client sendet eine Anfrage mit gültigem Access Token und DPoP Nachweis an den PEP HTTP Proxy.
-Der Endpunkt unterstützt die verwendete HTTP Methode nicht, daher liefert der PEP HTTP Proxy
-``405 Method Not Allowed`` und verweigert den Zugriff.
+Der PEP HTTP Proxy leitet die Anfrage mit unveränderter Request-Zeile an den Resource Server weiter.
+Der Endpunkt unterstützt die verwendete HTTP Methode nicht, daher wird der Zugriff mit
+``405 Method Not Allowed`` abgewiesen.
 
 | Vorbedingung: |
 Der ZETA Client ist registriert, authentisiert und autorisiert.
 
 | Nebenbedingung: |
-Der PEP HTTP Proxy ist so konfiguriert, dass der Endpunkt nur eine bestimmte HTTP Methode (z. B. ``GET``) erlaubt.
+Der geschützte Endpunkt ist so konfiguriert, dass nur eine bestimmte HTTP Methode (z. B. ``GET``) erlaubt ist.
 
 | Ablauf: |
 1. MA startet den Abruf einer geschützten Ressource über den ZETA Client mit einer nicht erlaubten HTTP Methode.
@@ -34,9 +36,11 @@ Der PEP HTTP Proxy ist so konfiguriert, dass der Endpunkt nur eine bestimmte HTT
 - ``POST /resource`` (Beispiel für nicht erlaubte Methode)
 - ``Authorization: DPoP ... (Access Token)``
 - ``DPoP: ... (DPoP Token)``
-4. Der PEP HTTP Proxy validiert die Nachweise und prüft die HTTP Methode.
-5. Der PEP HTTP Proxy antwortet mit ``405 Method Not Allowed``.
-6. Der ZETA Client informiert den MA, dass die Anfrage mit der gewählten HTTP Methode nicht unterstützt wird.
+4. Der PEP HTTP Proxy validiert die Nachweise.
+5. Der PEP HTTP Proxy leitet die Anfrage mit unveränderter Request-Zeile an den Resource Server weiter.
+6. Der Resource Server antwortet mit ``405 Method Not Allowed``.
+7. Der PEP HTTP Proxy gibt die Antwort ``405 Method Not Allowed`` an den ZETA Client zurück.
+8. Der ZETA Client informiert den MA, dass die Anfrage mit der gewählten HTTP Methode nicht unterstützt wird.
 
 | Nachbedingung: |
 Der Ressourcenzugriff wurde abgewiesen.
@@ -44,6 +48,8 @@ Der Ressourcenzugriff wurde abgewiesen.
 | Abgedeckte Testaspekte: |
 * <<TA_A_26661_22>>
 * <<TA_A_27007_22>>
+* <<TA_A_27265_02>>
+* <<TA_A_27725-01_34>>
 |===
 
 [#usecase_01_19_sequence]
@@ -55,11 +61,14 @@ sequenceDiagram
     actor MA as MA einer LEI
     participant ZC as ZETA Client
     participant PEP-HP as PEP HTTP Proxy
+    participant RS as Resource Server
 
     MA->>+ZC: Abruf geschützter Ressource (nicht erlaubte Methode)
     ZC->>ZC: Erstellen von DPoP Nachweis
     ZC->>+PEP-HP: POST /resource (Access Token + DPoP)
-    PEP-HP->>PEP-HP: Token validieren und Methode prüfen
+    PEP-HP->>PEP-HP: Token validieren
+    PEP-HP->>+RS: POST /resource unverändert weiterleiten
+    RS-->>-PEP-HP: 405 Method Not Allowed
     PEP-HP-->>-ZC: 405 Method Not Allowed
     ZC-->>-MA: HTTP Methode für Endpunkt nicht erlaubt
 ....

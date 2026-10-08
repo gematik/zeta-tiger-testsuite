@@ -1,0 +1,6 @@
+[#TA_A_27725-01_30]
+===== TA_A_27725-01_30 - ZETA Guard, Telemetriedaten Service, Status Codes - HTTP Proxy - 400 Bad Request
+
+Der Telemetriedaten Service im ZETA Guard MUSS im Parameter *http.response.status_code* einen konkreten 3-stelligen HTTP-Statuscode gemäß Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes übermitteln.
+
+Dieser Testaspekt fokussiert die in <<A_27007>> spezifizierte Variante *HTTP Proxy* mit dem Statuscode *400 Bad Request*.

@@ -1,0 +1,6 @@
+[#TA_A_27725-01_25]
+===== TA_A_27725-01_25 - ZETA Guard, Telemetriedaten Service, Status Codes - Clientregistrierung - 429 Too Many Requests
+
+Der Telemetriedaten Service im ZETA Guard MUSS im Parameter *http.response.status_code* einen konkreten 3-stelligen HTTP-Statuscode gemäß Tab_gemSpec_ZETA_Telemetriedaten_HTTP_Statuscodes übermitteln.
+
+Dieser Testaspekt fokussiert die in <<A_27007>> spezifizierte Variante *Clientregistrierung* mit dem Statuscode *429 Too Many Requests*.

@@ -24,10 +24,6 @@
 
 package de.gematik.zeta.traceability;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -47,6 +43,10 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Immutable container for the aggregated traceability data produced by the docs pipeline.
@@ -64,7 +64,7 @@ public record TraceabilityLookup(
 ) {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(
-      new JsonFactory().enable(JsonParser.Feature.AUTO_CLOSE_SOURCE));
+      JsonFactory.builder().enable(StreamReadFeature.AUTO_CLOSE_SOURCE).build());
 
   private static final List<Path> DEFAULT_JSON_LOCATIONS = List.of(
       Paths.get("target/generated-docs/traceability.json"),
@@ -179,7 +179,7 @@ public record TraceabilityLookup(
     Map<String, RequirementInfo> map = new LinkedHashMap<>();
     for (var entry : node.properties()) {
       var value = entry.getValue();
-      map.put(entry.getKey(), new RequirementInfo(entry.getKey(), value.path("title").asText("")));
+      map.put(entry.getKey(), new RequirementInfo(entry.getKey(), value.path("title").asString("")));
     }
     return map;
   }
@@ -192,8 +192,8 @@ public record TraceabilityLookup(
     for (var entry : node.properties()) {
       var value = entry.getValue();
       map.put(entry.getKey(), new TestAspectInfo(entry.getKey(),
-          value.path("title").asText(""),
-          value.path("requirement_id").asText("")));
+          value.path("title").asString(""),
+          value.path("requirement_id").asString("")));
     }
     return map;
   }
@@ -207,12 +207,12 @@ public record TraceabilityLookup(
       var value = entry.getValue();
       var featureFiles = new ArrayList<String>();
       if (value.path("feature_files").isArray()) {
-        value.path("feature_files").forEach(item -> featureFiles.add(item.asText()));
+        value.path("feature_files").forEach(item -> featureFiles.add(item.asString()));
       }
       map.put(entry.getKey(), new UseCaseInfo(entry.getKey(),
-          value.path("tag_id").asText(entry.getKey()),
-          value.path("title").asText(entry.getKey()),
-          value.path("user_story_id").asText(""),
+          value.path("tag_id").asString(entry.getKey()),
+          value.path("title").asString(entry.getKey()),
+          value.path("user_story_id").asString(""),
           featureFiles));
     }
     return map;
@@ -227,16 +227,16 @@ public record TraceabilityLookup(
     }
     return StreamSupport.stream(node.spliterator(), false)
         .map(linkNode -> {
-          var requirement = linkNode.path("requirement").asText(null);
-          var testAspect = linkNode.path("test_aspect").asText(null);
-          var useCase = nullIfBlank(linkNode.path("use_case").asText(null));
+          var requirement = linkNode.path("requirement").asString(null);
+          var testAspect = linkNode.path("test_aspect").asString(null);
+          var useCase = nullIfBlank(linkNode.path("use_case").asString(null));
           if (requirement == null || testAspect == null) {
             return null;
           }
           List<String> scenarios = new ArrayList<>();
           if (linkNode.path("scenarios").isArray()) {
             linkNode.path("scenarios").forEach(item -> {
-              var scenario = item.asText(null);
+              var scenario = item.asString(null);
               if (scenario != null && !scenario.isBlank()) {
                 scenarios.add(scenario);
               }

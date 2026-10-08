@@ -28,15 +28,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import de.gematik.zeta.services.model.CommandResult;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -48,6 +51,9 @@ public class SystemCommandService implements AutoCloseable {
   public static final String WIN_PATH_USERS = "C:\\Users\\";
   public static final String WSL_PATH_USERS = "/mnt/c/Users/";
   public static final String WSL = "wsl";
+  private static final String WSL_CHANGE_DIRECTORY_ARGUMENT = "--cd";
+  private static final String WSL_EXEC_ARGUMENT = "--exec";
+  public static final String PROCESS_TIMEOUT_MESSAGE_PREFIX = "Process exceeded timeout limit";
 
   private final ThreadPoolTaskExecutor executor = setupExecutor();
   private final int processTimeoutSeconds;
@@ -66,6 +72,7 @@ public class SystemCommandService implements AutoCloseable {
    *
    * @param command Full command to be passed to process
    * @return Execution result of given command
+   * @throws AssertionError if errors occur during command execution
    */
   public CommandResult executeCommand(List<String> command) throws AssertionError {
     return executeCommand(command, true);
@@ -75,32 +82,83 @@ public class SystemCommandService implements AutoCloseable {
    * Executes the given command in a new process and returns the result.
    *
    * @param command Full command to be passed to process
+   * @param workDir target workdir where the command should be invoked
+   * @return Execution result of given command
+   * @throws AssertionError if errors occur during command execution
+   */
+  public CommandResult executeCommand(List<String> command, String workDir) throws AssertionError {
+    return executeCommand(command, true, workDir, new HashMap<>());
+  }
+
+  /**
+   * Executes the given command in a new process and returns the result.
+   *
+   * @param command Full command to be passed to process
+   * @param workDir target workdir where the command should be invoked
+   * @param environmentVariables set of environment variables for the command process
+   * @return Execution result of given command
+   * @throws AssertionError if errors occur during command execution
+   */
+  public CommandResult executeCommand(List<String> command, String workDir, Map<String, String> environmentVariables)
+      throws AssertionError {
+    return executeCommand(command, true, workDir, environmentVariables);
+  }
+
+  /**
+   * Executes the given command in a new process and returns the result.
+
+   * @param command Full command to be passed to process
    * @param verbose logging of response/error messages
    * @return Execution result of given command
+   * @throws AssertionError if errors occur during command execution
    */
-  public CommandResult executeCommand(List<String> command, boolean verbose) {
+  public CommandResult executeCommand(List<String> command, boolean verbose) throws AssertionError {
+    return executeCommand(command, verbose, "", new HashMap<>());
+  }
+
+  /**
+   * Executes the given command in a new process and returns the result.
+   *
+   * @param command Full command to be passed to process
+   * @param verbose logging of response/error messages
+   * @param workDir target workdir where the command should be invoked
+   * @param environmentVariables set of environment variables for the command process
+   * @return Execution result of given command
+   * @throws AssertionError if errors occur during command execution
+   */
+  public CommandResult executeCommand(List<String> command, boolean verbose, String workDir,
+                                      Map<String, String> environmentVariables)
+      throws AssertionError {
     String commandLine = String.join(" ", command);
 
     boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
-    if (isWindows) {
-      command.add(0, WSL);
-
-      // adapt path in command
-      command = command.stream()
-          .map(s -> s.contains(WIN_PATH_USERS)
-              ? s.replace(WIN_PATH_USERS, WSL_PATH_USERS).replace("\\", "/")
-              : s)
-          .toList();
-
-      // adapt path in logging string
-      commandLine = String.join(" ", command);
+    ProcessBuilder builder = new ProcessBuilder();
+    if (environmentVariables != null) {
+      builder.environment().putAll(environmentVariables);
     }
-    log.debug("Trying to execute: {}", commandLine);
 
+    boolean shouldChangeWorkDir = workDir != null && !workDir.isBlank();
+
+    if (isWindows) {
+      command = prepareWindowsCommand(command, workDir);
+      commandLine = String.join(" ", command);
+      if (shouldChangeWorkDir) {
+        log.debug("Trying to execute following command in directory '{}': {}", workDir, commandLine);
+      }
+
+      // make sure to pass all vars to process in WSL via WSLENV
+      builder.environment().putAll(prepareWslEnvVariable(environmentVariables));
+    } else {
+      if (shouldChangeWorkDir) {
+        builder.directory(new File(workDir));
+      }
+    }
+
+    builder.command(command);
     Process process;
     try {
-      process = new ProcessBuilder(command).start();
+      process = builder.start();
     } catch (IOException e) {
       throw new AssertionError("Failed to start command: " + commandLine, e);
     }
@@ -121,7 +179,8 @@ public class SystemCommandService implements AutoCloseable {
         if (process.isAlive()) {
           process.destroyForcibly();
         }
-        throw new AssertionError(String.format("Process exceeded timeout limit of %d seconds", processTimeoutSeconds));
+        throw new AssertionError(String.format(
+            "%s of %d seconds", PROCESS_TIMEOUT_MESSAGE_PREFIX, processTimeoutSeconds));
       }
     } catch (AssertionError e) {
       // rethrow AssertionError explicitly to propagate process wait imeout event
@@ -150,6 +209,60 @@ public class SystemCommandService implements AutoCloseable {
     }
 
     return new CommandResult(List.copyOf(command), exitCode, stdout, stderr);
+  }
+
+  /**
+   * Builds a WSL command that avoids Linux shell interpretation of the original arguments.
+   *
+   * <p>{@code wsl --exec} forwards the command as an argument vector. This is required for
+   * arguments such as SQL statements and pipe characters.
+   * {@code wsl --cd} replaces the previous shell-based working-directory workaround.</p>
+   *
+   * @param command command and arguments to execute inside WSL
+   * @param workDir optional working directory
+   * @return command suitable for a Windows {@link ProcessBuilder}
+   */
+  static List<String> prepareWindowsCommand(final List<String> command, final String workDir) {
+    var wslCommand = new ArrayList<String>();
+    wslCommand.add(WSL);
+    if (workDir != null && !workDir.isBlank()) {
+      wslCommand.add(WSL_CHANGE_DIRECTORY_ARGUMENT);
+      wslCommand.add(adaptWindowsPathForWsl(workDir));
+    }
+    wslCommand.add(WSL_EXEC_ARGUMENT);
+    command.stream()
+        .map(SystemCommandService::adaptWindowsPathForWsl)
+        .forEach(wslCommand::add);
+    return List.copyOf(wslCommand);
+  }
+
+  /**
+   * Converts a Windows user-directory path to its WSL mount path.
+   *
+   * @param value command argument or working directory
+   * @return value with a WSL-compatible path when conversion is required
+   */
+  private static String adaptWindowsPathForWsl(final String value) {
+    return value.contains(WIN_PATH_USERS)
+        ? value.replace(WIN_PATH_USERS, WSL_PATH_USERS).replace("\\", "/")
+        : value;
+  }
+
+  private Map<String, String> prepareWslEnvVariable(Map<String, String> targetEnvVars) {
+    var m = new HashMap<String, String>();
+    if (targetEnvVars == null || targetEnvVars.isEmpty()) {
+      return m;
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (var key : targetEnvVars.keySet()) {
+      sb.append(key);
+      sb.append(":");
+    }
+    var wslEnvStr = sb.toString();
+    wslEnvStr = wslEnvStr.substring(0, wslEnvStr.length() - 1);
+    m.put("WSLENV", wslEnvStr);
+    return m;
   }
 
   /**

@@ -3,8 +3,7 @@
 # Do not compose paths via concatenation like ${headers.dpop}.body.jti.
 
 authorization:
-  root: "$.header.Authorization"
-  lenient: "$.header.[~'Authorization']"
+  root: "$.header.[~'Authorization']"
   strict: "$.header.Authorization"
   dpopToken:
     root: "$.header.[~'Authorization'].DpopToken"
@@ -48,10 +47,22 @@ popp:
   root: "$.header.[~'PoPP']"
   strict: "$.header.PoPP"
   lineRegex: '(?im)^popp:[^\r\n]*\r?\n?'
+  header:
+    root: "$.header.[~'PoPP'].header"
+    typ: "$.header.[~'PoPP'].header.typ"
+    alg: "$.header.[~'PoPP'].header.alg"
+    kid: "$.header.[~'PoPP'].header.kid"
+  signature:
+    isValid: "$.header.[~'PoPP'].signature.isValid"
   body:
     root: "$.header.[~'PoPP'].body"
+    version: "$.header.[~'PoPP'].body.version"
+    iss: "$.header.[~'PoPP'].body.iss"
+    proofMethod: "$.header.[~'PoPP'].body.proofMethod"
+    patientId: "$.header.[~'PoPP'].body.patientId"
     actorId: "$.header.[~'PoPP'].body.actorId"
     insurerId: "$.header.[~'PoPP'].body.insurerId"
+    actorProfessionOid: "$.header.[~'PoPP'].body.actorProfessionOid"
     iat: "$.header.[~'PoPP'].body.iat"
     patientProofTime: "$.header.[~'PoPP'].body.patientProofTime"
 
@@ -101,3 +112,6 @@ rateLimit:
   limit: "$.header.[~'x-rate-limit-limit']"
   remaining: "$.header.[~'x-rate-limit-remaining']"
   reset: "$.header.[~'x-rate-limit-reset']"
+location:
+  lenient: "$.header.[~'Location']"
+  strict: "$.header.Location"
