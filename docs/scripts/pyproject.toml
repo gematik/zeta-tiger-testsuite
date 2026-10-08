@@ -1,6 +1,6 @@
 [project]
 name = "testsuite-docs-tools"
-version = "1.0.1"
+version = "1.2.0"
 description = "Python utilities supporting the docs toolchain for the testsuite project."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,6 +22,8 @@ generate-cucumber-methods = "testsuite_docs.generate_cucumber_methods:main"
 generate-zeta-afos = "testsuite_docs.zeta_afos:main"
 gitlab-issue-sync = "testsuite_docs.gitlab_issue_sync:main"
 tag-masvs-scenarios = "testsuite_docs.masvs_tags:main"
+check-zeta-schemas = "testsuite_docs.zeta_schemas:check_main"
+update-zeta-schemas = "testsuite_docs.zeta_schemas:update_main"
 
 [build-system]
 requires = ["setuptools>=80.9.0"]

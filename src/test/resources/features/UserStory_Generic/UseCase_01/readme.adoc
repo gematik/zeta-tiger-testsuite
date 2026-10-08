@@ -1,0 +1,51 @@
+[#UC_GENERIC_01]
+== UseCase_Generic_01: Szenarien mit Bezug zur Laufzeitumgebung des ZETA-Guard
+
+.UseCase_Generic_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Szenarien mit Bezug zur Laufzeitumgebung des ZETA-Guard
+
+| Akteur: |
+*Testsuite*
+
+| weitere Akteure: |
+*Kubernetes Cluster*
+
+| Auslöser: |
+Die Testsuite prüft die im Ziel-Namespace betriebenen Pods des ZETA Guard.
+
+| Kurzbeschreibung: |
+Die Testsuite liest die Pod-Namen aus dem Kubernetes Cluster und weist anhand der erwarteten Namenspräfixe nach, dass die erforderlichen ZETA-Guard-Komponenten als Pods vorhanden sind.
+Bei gemeinsamem Namenspräfix wird zusätzlich ausgeschlossen, dass ein Pod eines anderen Dienstes als Nachweis verwendet wird.
+
+| Vorbedingung: |
+. Der Zugriff auf das Ziel-Kubernetes-Cluster ist konfiguriert.
+. Der Namespace ist in ``${zetaDeploymentConfig.namespace}`` hinterlegt.
+. Die ZETA-Guard-Komponenten sind im Ziel-Namespace bereitgestellt.
+
+| Nebenbedingung: |
+Die von Kubernetes erzeugten zufälligen Suffixe der Pod-Namen werden nicht in den Vergleich einbezogen.
+
+| Ablauf: |
+. Die Testsuite ermittelt für jede erwartete Komponente den Pod-Namen aus der Spalte ``NAME``.
+. Der ermittelte Pod-Name wird mit dem erwarteten Namenspräfix verglichen.
+. Ein gegebenenfalls angegebenes, abweichendes Namenspräfix wird ausgeschlossen.
+
+| Nachbedingung: |
+Die erwarteten ZETA-Guard-Komponenten wurden anhand ihrer Pod-Namen im Ziel-Kubernetes-Cluster nachgewiesen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_28798_01>>
+
+|===
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case
+
+[source]
+----
+include::environment.feature[]
+----
+endif::[]

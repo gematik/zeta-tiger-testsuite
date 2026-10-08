@@ -3,4 +3,4 @@
 
 "Die Komponente Authorization Server MUSS die Zugriffs-Entscheidung eines PDP mittels
 
-der **Ausgabe eines** **Access** und eines Refresh **Token** umsetzen[...]"
+der **Ausgabe eines** **Access** und eines Refresh **Token** umsetzen [...]"

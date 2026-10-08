@@ -36,7 +36,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
     Und setze Timeout für WebSocket Nachrichten auf 10 Sekunden
 
   Szenario: CREATE - Doppelte PrescriptionId gibt Konflikt zurück
-    Gegeben sei TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-WS-ERROR-${free.port.50}"
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-WS-ERROR" in Variable "uniquePrescriptionId"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-dup1" abonniert wird
@@ -112,6 +112,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
     Und wird die WebSocket Verbindung geschlossen
 
   Szenario: CREATE - Ungültiges Datumsformat gibt BAD REQUEST zurück
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-INVALID-DATE" in Variable "invalidDatePrescriptionId"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-invalid-date" abonniert wird
@@ -125,7 +126,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
         "status": "${eRezeptTestData.ERezept1.status}",
         "patientId": "${eRezeptTestData.ERezept1.patientId}",
         "practitionerId": "${eRezeptTestData.ERezept1.practitionerId}",
-        "prescriptionId": "RX-INVALID-DATE-${free.port.53}"
+        "prescriptionId": "${invalidDatePrescriptionId}"
       }
       """
     Dann wird eine Nachricht auf dem Kanal "${paths.erezept.websocket.userQueue}" empfangen
@@ -163,7 +164,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
     Und wird die WebSocket Verbindung geschlossen
 
   Szenario: UPDATE - Fehlende Pflichtfelder geben BAD REQUEST zurück
-    Gegeben sei TGR setze lokale Feature Variable "updateValidationPrescriptionId" auf "RX-WS-UPDATE-VALIDATION-${free.port.54}"
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-WS-UPDATE-VALIDATION" in Variable "updateValidationPrescriptionId"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-update-validation" abonniert wird
@@ -208,7 +209,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
     Und wird die WebSocket Verbindung geschlossen
 
   Szenario: DELETE - Bereits gelöschtes Rezept gibt NOT FOUND zurück
-    Gegeben sei TGR setze lokale Feature Variable "doubleDeletePrescriptionId" auf "RX-WS-DOUBLE-DELETE-${free.port.55}"
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-WS-DOUBLE-DELETE" in Variable "doubleDeletePrescriptionId"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-double-delete" abonniert wird
@@ -237,8 +238,8 @@ Funktionalität: WebSocket/STOMP - E-Rezept Fehlerbehandlung und Grenzfälle
     Und wird die WebSocket Verbindung geschlossen
 
   Szenario: UPDATE - PrescriptionId Konflikt gibt Fehler zurück
-    Gegeben sei TGR setze lokale Feature Variable "conflictIdA" auf "RX-WS-CONFLICT-A-${free.port.51}"
-    Und TGR setze lokale Feature Variable "conflictIdB" auf "RX-WS-CONFLICT-B-${free.port.52}"
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-WS-CONFLICT-A" in Variable "conflictIdA"
+    Und erzeuge eindeutige Test-ID mit Präfix "RX-WS-CONFLICT-B" und speichere in Variable "conflictIdB"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-conflict" abonniert wird

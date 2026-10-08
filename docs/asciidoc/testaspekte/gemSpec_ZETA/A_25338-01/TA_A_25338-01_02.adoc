@@ -5,7 +5,6 @@
 
 Dabei MUSS die von der gematik für das Clientsystem ausgestellte **product_id** nach [A_25337] [...] nach folgendem Schema verwendet werden:
 
-* <product_id> **gemäß Registrierung** bei der gematik **mit Länge maximal 20 Zeichen, Zeichenvorrat [0-9a-zA-Z-]**,
+* <product_id> **gemäß Registrierung** bei der gematik **mit Länge maximal 20 Zeichen, Zeichenvorrat +++[0-9a-zA-Z-]+++**,
 
-[...]
-"
++++[...]+++"

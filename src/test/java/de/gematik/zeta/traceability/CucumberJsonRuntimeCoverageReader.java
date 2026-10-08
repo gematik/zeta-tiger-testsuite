@@ -24,8 +24,6 @@
 
 package de.gematik.zeta.traceability;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.plugin.event.Status;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,6 +36,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Fallback reader for Cucumber JSON files produced outside plugin event delivery.
@@ -124,7 +125,7 @@ final class CucumberJsonRuntimeCoverageReader {
       for (var feature : root) {
         readFeature(feature);
       }
-    } catch (IOException exception) {
+    } catch (JacksonException exception) {
       log.warn("Unable to parse cucumber JSON {} for runtime coverage fallback.", jsonPath,
           exception);
     }

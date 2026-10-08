@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -124,6 +124,14 @@ class SchemaValidationStepsTest {
   private final SchemaValidationSteps validator = new SchemaValidationSteps();
 
   /**
+   * Cleanup soft assertions after each test if necessary.
+   */
+  @AfterEach
+  void resetSoftAssertionsContext() {
+    SoftAssertionsContext.reset();
+  }
+
+  /**
    * Reads the content of the resource.
    *
    * @param resource a path to a text file
@@ -155,22 +163,11 @@ class SchemaValidationStepsTest {
     try {
       assertion.run();
     } finally {
-      restoreTigerConfigValue(configKey, originalValue);
-    }
-  }
-
-  /**
-   * Restores or removes a Tiger configuration value after a test-local override.
-   *
-   * @param configKey     Tiger configuration key
-   * @param originalValue original effective value before the override
-   */
-  private static void restoreTigerConfigValue(String configKey, Optional<String> originalValue) {
-    if (originalValue.isPresent()) {
-      TigerGlobalConfiguration.putValue(configKey, originalValue.get(),
-          ConfigurationValuePrecedence.TEST_CONTEXT);
-    } else {
-      TigerGlobalConfiguration.deleteFromAllSources(new TigerConfigurationKey(configKey.split("\\.")));
+      originalValue.ifPresentOrElse(
+          previousValue -> TigerGlobalConfiguration.putValue(configKey, previousValue,
+              ConfigurationValuePrecedence.TEST_CONTEXT),
+          () -> TigerGlobalConfiguration.deleteFromAllSources(
+              new TigerConfigurationKey(configKey.split("\\."))));
     }
   }
 
@@ -196,7 +193,6 @@ class SchemaValidationStepsTest {
    */
   @Test
   void wellKnown_passesWithRequiredFields() {
-
     assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(EXAMPLE_AS_WELL_KNOWN,
         AS_WELL_KNOWN_SCHEMA));
   }
@@ -206,7 +202,6 @@ class SchemaValidationStepsTest {
    */
   @Test
   void accessToken_payloadValidated() {
-
     assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN,
         ACCESS_TOKEN_SCHEMA));
   }
@@ -216,7 +211,6 @@ class SchemaValidationStepsTest {
    */
   @Test
   void testMissingRequiredClaimFails() {
-
     withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
       assertThrows(AssertionError.class,
           () -> validator.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN_WITH_INVALID_HEADER,
@@ -232,11 +226,9 @@ class SchemaValidationStepsTest {
    */
   @Test
   void testBase64EncodedJwtVerifiesAgainstSchema() {
-
     assertDoesNotThrow(
         () -> validator.validateEncodedJwtAgainstYamlSchema(ENCODED_SUBJECT_TOKEN,
             SUBJECT_TOKEN_SMB_SCHEMA));
-
   }
 
   /**
@@ -244,7 +236,6 @@ class SchemaValidationStepsTest {
    */
   @Test
   void testJwtVerifiesAgainstSchemaWithRef() {
-
     assertDoesNotThrow(
         () -> validator.validateJsonAgainstYamlSchema(VALID_CLIENT_ASSERTION_JWT,
             CLIENT_ASSERTION_JWT_SCHEMA));
@@ -254,25 +245,13 @@ class SchemaValidationStepsTest {
    * Verifies that the global "soft assert" switch is considered correctly.
    */
   @Test
-  public void testJwtVerifiesSoftlyAgainstSchemaWithRef() {
-    var originalValue =
-            TigerGlobalConfiguration.readStringOptional(SOFT_ASSERT_CONFIG);
-    TigerGlobalConfiguration.putValue(SOFT_ASSERT_CONFIG, "true",
-            ConfigurationValuePrecedence.TEST_CONTEXT);
-    try {
+  public void testTigerConfigEnablesSoftAssertion() {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "true", () -> {
       assertDoesNotThrow(
           () -> validator.validateJsonAgainstYamlSchema(EXAMPLE_ACCESS_TOKEN_WITH_INVALID_HEADER,
               ACCESS_TOKEN_SCHEMA));
-    } finally {
-      SoftAssertionsContext.reset();
-      if (originalValue.isPresent()) {
-        TigerGlobalConfiguration.putValue(SOFT_ASSERT_CONFIG, originalValue.get(),
-                ConfigurationValuePrecedence.TEST_CONTEXT);
-      } else {
-        TigerGlobalConfiguration.deleteFromAllSources(
-                new TigerConfigurationKey(SOFT_ASSERT_CONFIG.split("\\.")));
-      }
-    }
+      assertThrows(AssertionError.class, SoftAssertionsContext::assertAll);
+    });
   }
 
   /**

@@ -1,10 +1,25 @@
 [#TA_A_25783-01_01]
-===== TA_A_25783-01_01 - Anweisung befolgen Step-Up Authentifizierung
+===== TA_A_25783-01_01 - Anweisung befolgen Step-Up oder erneute Authentifizierung - HTTP Proxy
 
 "Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben der Resource Server und Zero Trust-APIs auswerten und **den Anweisungen daraus folgen** und insbesondere
 
-* eine **Step-Up** [...]Authentifizierung des Nutzers,
-
+* eine **Step-Up- oder erneute Authentifizierung des Nutzers**,
 +++[...]+++
 
 umsetzen. **[<=]**"
+
+Siehe auch:
+
+.. Bei einem 401 Unauthorized sowie bei einem 403 Forbidden beim Zugriff auf eine Ressource über den PEP HTTP Proxy sowie andere PDP APIs (z.B. Client Management in Stufe 2) **kann der Client statt einer vollständig neuen Authentifizierung einen Token-Refresh unter Nutzung eines vorhandenen Refresh-Token versuchen. Falls dort ein weiterer 401/403 Statuscode erhalten wird, wird dann einmalig eine volle Authentifizierung durchgeführt,** bevor der ursprüngliche Request mit neuem Access Token wiederholt werden kann."
+
++++[...]+++
+
+[start=3]
+. Step-Up Authentifizierung:
++
++++[...]+++
+[arabic]
+[start=2]
+.. Bei einem 401 Unauthorized sowie bei einem 403 Forbidden beim Zugriff auf eine Ressource über den PEP HTTP Proxy sowie andere PDP APIs (z.B. Client Management in Stufe 2) **kann der Client statt einer vollständig neuen Authentifizierung einen Token-Refresh unter Nutzung eines vorhandenen Refresh-Token versuchen. Falls dort ein weiterer 401/403 Statuscode erhalten wird, wird dann einmalig eine volle Authentifizierung durchgeführt,** bevor der ursprüngliche Request mit neuem Access Token wiederholt werden kann.
+
++++[...]+++"

@@ -96,9 +96,13 @@ Umgebungsvariablen (beide Images, außer angegeben):
 | `ALLOW_DEPLOYMENT_MODIFICATION`        | nein    | (leer)                                                                               | Setzt `-Dallow_deployment_modification=true\|false` für Szenarien mit `@deployment_modification`.                                                                          |
 | `ALLOW_PERFORMANCE_TESTS`              | nein    | (leer)                                                                               | Setzt `-Dallow_performance_tests=true\|false` für Szenarien mit `@performance`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                         |
 | `ALLOW_LONGRUNNING_TESTS`              | nein    | (leer)                                                                               | Setzt `-Dallow_longrunning_tests=true\|false` für Szenarien mit `@longrunning`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                         |
+| `TPM_ENVIRONMENT`                      | nein    | (leer)                                                                               | Setzt `-Dtpm_environment=true\|false` für Szenarien mit `@tpm_environment`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                             |
 | `OPENSEARCH_URL`                       | nein    | `${zeta_base_url}:9200`                                                              | OpenSearch-URL (Telemetry-Logs), ohne Scheme.                                                                                                                              |
+| `PROMETHEUS_URL`                       | nein    | `${zeta_base_url}:9090`                                                              | Prometheus-Host (Telemtry Metriken), ohne Scheme.                                                                                                                          |
 | `ZETA_TLS_TEST_TOOL_SERVICE_URL`       | nein    | `${zeta_base_url}:9012`                                                              | Service-URL des TLS-Test-Tools, ohne Scheme; z. B. `zeta-tls-test-tool-service.zeta-staging.svc:9012`.                                                                     |
 | `ZETA_TEST_CERTIFICATES_DIR`           | nein    | `/app/zeta-test-certificates` im Quality-Gate-Image, sonst aus `tiger/defaults.yaml` | Verzeichnis des `zeta-test-certificates` Checkouts; wird als `-DtestCertificates.dir=...` weitergereicht.                                                                  |
+| `SMB_KEYSTORE_FILE_B64`                | nein    | aus `tiger/defaults.yaml`                                                            | Pfad zur Base64-codierten SMC-B PKCS#12-Datei; wird als `-Dzeta_k8s_smb_keystore_file=...` weitergereicht.                                                                 |
+| `SMB_KEYSTORE_PW_FILE`                 | nein    | aus `tiger/defaults.yaml`                                                            | Pfad zur Passwortdatei der SMC-B PKCS#12-Datei; wird als `-Dzeta_k8s_smb_keystore_password_file=...` weitergereicht.                                                       |
 | `PROFILE`                              | nein    | (leer)                                                                               | Optionales Tiger-Profil (z. B. `proxy`).                                                                                                                                   |
 | `SERENITY_EXPORT_DIR`                  | nein    | (leer)                                                                               | Optionaler Ausgabeordner für Serenity-Reports.                                                                                                                             |
 | `CUCUMBER_EXPORT_DIR`                  | nein    | (leer)                                                                               | Optionaler Ausgabeordner für Cucumber-JSON.                                                                                                                                |
@@ -112,6 +116,10 @@ Wichtig:
 - `ZETA_TEST_CERTIFICATES_DIR` wird, falls gesetzt, als `-DtestCertificates.dir=...`
   weitergereicht.
 - `ZETA_K8S_NAMESPACE` wird, falls gesetzt, als `-Dzeta_k8s_namespace=...` weitergereicht.
+- `SMB_KEYSTORE_FILE_B64` und `SMB_KEYSTORE_PW_FILE` werden, falls gesetzt,
+  als `-Dzeta_k8s_smb_keystore_file=...` und `-Dzeta_k8s_smb_keystore_password_file=...` weitergereicht.
+- Sind die beiden Variablen nicht gesetzt, gelten die Defaults aus `tiger/defaults.yaml`.
+  Diese Defaults erwarten lokal `../zeta-test-certificates/smcb/smcb-certificates.p12.b64` und `../zeta-test-certificates/smcb/smcb-pw`.
 - `ZETA_RUNTIME_FAILURE_ANNOTATIONS_CSV` wird direkt vom Runtime-Coverage-Plugin gelesen.
   Wird die Variable nicht gesetzt, nutzt das Plugin den relativen Standardpfad unter `/app`.
   Für Container-Runs kann die Datei entweder an diesen Standardpfad gemountet oder die Variable auf einen gemounteten Alternativpfad gesetzt
@@ -122,9 +130,11 @@ Wichtig:
   `-Dallow_performance_tests=...` weitergereicht.
 - `ALLOW_LONGRUNNING_TESTS` wird, falls gesetzt, als
   `-Dallow_longrunning_tests=...` weitergereicht.
+- `TPM_ENVIRONMENT` wird, falls gesetzt, als
+  `-Dtpm_environment=...` weitergereicht.
 - `CUCUMBER_TAGS` wird bei leerem Wert bewusst leer weitergereicht.
   Dadurch wird im Docker-/CI-Pfad nicht implizit auf `@blocker` oder `@critical` eingeschränkt.
-- Szenarien mit `@performance` oder `@longrunning` werden ohne die jeweiligen Opt-in-Flags weiterhin entdeckt,
+- Szenarien mit `@performance`, `@longrunning` oder `@tpm_environment` werden ohne die jeweiligen Opt-in-Flags weiterhin entdeckt,
   aber im Report als `skipped` markiert.
 - Leere oder nicht gesetzte Werte fallen auf die Defaults aus `tiger/defaults.yaml` zurück
   (typisch `zeta-local`), was in Staging-Umgebungen zu falschen Telemetrie-Ergebnissen führen kann.
@@ -187,6 +197,7 @@ quality-gate:
     # PROFILE: "proxy"  # nur bei Bedarf für Proxy-Erfassung setzen
     # ZETA_RUNTIME_FAILURE_ANNOTATIONS_CSV: "docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv"  # optional für interne rote Testrun-Erklärungen
     # OPENSEARCH_URL: "zeta-kind.local:9200"  # optional für Telemetrie-Log-Abfragen
+    # PROMETHEUS_URL: "zeta-kind.local:9090"  # optional für Telemetry-Metrik Abfragen
     # ZETA_TLS_TEST_TOOL_SERVICE_URL: "zeta-tls-test-tool-service.zeta-staging.svc:9012"  # optional für das TLS-Test-Tool
   artifacts:
     when: always
@@ -199,16 +210,30 @@ quality-gate:
 
 Hinweise:
 
-- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` nach Bedarf setzen.
+- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`PROMETHEUS_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` nach Bedarf setzen.
 - Ein leerer `CUCUMBER_TAGS`-Wert bedeutet im Docker-/CI-Pfad: keine feste Tag-Vorauswahl,
   also breiter Lauf mit den zusätzlichen Skip-Guards aus `Hooks`.
 - `ALLOW_PERFORMANCE_TESTS=true` und `ALLOW_LONGRUNNING_TESTS=true` nur dann setzen,
   wenn diese Szenarien in CI wirklich ausgeführt werden sollen.
 - Das Quality-Gate-Image erwartet beim Build ein Checkout unter `.cache/zeta-test-certificates`.
 - Lokal lässt sich das einfach aus `~/IdeaProjects/zeta-test-certificates` nach `.cache/zeta-test-certificates` klonen.
-- Nach dem Build sind im Quality-Gate-Image standardmäßig nur `manifest/keystore-manifest.tsv` und `keystores/` unter
+- Nach dem Build sind im Quality-Gate-Image standardmäßig die Manifestdateien und `keystores/` unter
   `/app/zeta-test-certificates` enthalten.
+- Die Deployment-SMC-B-Testidentität wird nicht in das Image eingebaut.
+  Stellen Sie die Pfade zur Base64-codierten PKCS#12-Datei und zur Passwortdatei über `SMB_KEYSTORE_FILE_B64`/`SMB_KEYSTORE_PW_FILE` bereit.
+  In GitLab CI sollten diese Variablen beim Testsuite-Aufruf aus den gleichnamigen GitLab-Variablen gesetzt werden.
 - Zusätzliche Ausgabeordner per `SERENITY_EXPORT_DIR` / `CUCUMBER_EXPORT_DIR` mounten.
+- Zu Beginn jedes Testlaufs fragt die Testsuite die Container-Versionen per `kubectl` aus dem konfigurierten Namespace ab.
+  Wenn `kubectl`, Clusterzugriff oder Berechtigungen fehlen, wird der Testlauf ohne Versionsinventar fortgesetzt.
+  Die Serenity-Systeminformationen werden als
+  `target/site/serenity/buildInfo.json` persistiert.
+  Die Serenity-Umgebungsdetails gruppieren die Container nach Namespace und Pod.
+  Die zweite Spalte zeigt Image-Tag und Digest getrennt durch ` | `.
+  Jeder Eintrag wird außerdem als `deployment.version.*` in den
+  Allure-Umgebungsinformationen angezeigt.
+  Die Serenity-Umgebungsdetails sind über das Informationssymbol im Kopf des Hauptreports
+  (`index.html`) erreichbar und werden auf `build-info.html` dargestellt.
+- Das Quality-Gate erzeugt `index.html`, `serenity-summary.html` und `serenity-summary.json` selbst und behandelt fehlende Reports als Fehler.
 - Interne Fehlerannotationen können per `ZETA_RUNTIME_FAILURE_ANNOTATIONS_CSV` auf eine gemountete CSV gesetzt werden.
   Das CSV-Format ist in `docs/scripts/README.md` beschrieben.
   Die Spalte `Verantwortlich` kann für die verantwortliche Partei gepflegt werden.
@@ -219,6 +244,8 @@ Hinweise:
 
 Der Container-Build-Job für `quality_gate` in `.gitlab-ci.yml` holt das Zertifikats-Repository vor `docker build` per Sparse-Checkout in den
 Build-Kontext.
+Der Job nutzt zusätzlich einen GitLab-Cache für das Bare-Repository unter `.cache/git/`, damit Folgepipelines nur noch die Änderungen aus GitLab
+nachladen müssen.
 Empfohlen ist dafür in GitLab CI/CD:
 
 - standardmäßig wird `${CI_PROJECT_NAMESPACE}/zeta-test-certificates` auf derselben GitLab-Instanz verwendet
@@ -236,14 +263,31 @@ docker-image-qualitygate:
   image: docker:29-cli
   variables:
     CERT_REPO_DIR: ".cache/zeta-test-certificates"
+    CERT_REPO_GIT_CACHE_DIR: ".cache/git/zeta-test-certificates.git"
+  cache:
+    key: "docker-build-${CI_SERVER_HOST}-${CI_PROJECT_PATH_SLUG}"
+    paths:
+      - .cache/git/
+    policy: pull-push
   script:
     - apk add --no-cache git
     - test -n "${CI_SERVER_URL}" && test -n "${CI_PROJECT_NAMESPACE}"
-    - git clone --depth 1 --filter=blob:none --no-checkout "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_URL#https://}/${CI_PROJECT_NAMESPACE}/zeta-test-certificates.git" "${CERT_REPO_DIR}"
+    - CERT_REPO_URL="https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_URL#https://}/${CI_PROJECT_NAMESPACE}/zeta-test-certificates.git"
+    - mkdir -p "$(dirname "${CERT_REPO_GIT_CACHE_DIR}")"
+    - test -d "${CERT_REPO_GIT_CACHE_DIR}/objects" || git init --bare "${CERT_REPO_GIT_CACHE_DIR}"
+    - git -C "${CERT_REPO_GIT_CACHE_DIR}" fetch --depth 1 "${CERT_REPO_URL}" "${CERT_REPO_REF}"
+    - cert_repo_sha="$(git -C "${CERT_REPO_GIT_CACHE_DIR}" rev-parse FETCH_HEAD)"
+    - git -C "${CERT_REPO_GIT_CACHE_DIR}" update-ref refs/heads/cache "${cert_repo_sha}"
+    - git -C "${CERT_REPO_GIT_CACHE_DIR}" symbolic-ref HEAD refs/heads/cache
+    - rm -f "${CERT_REPO_GIT_CACHE_DIR}/FETCH_HEAD"
+    - rm -rf "${CERT_REPO_DIR}"
+    - git clone --reference-if-able "${CERT_REPO_GIT_CACHE_DIR}" --no-checkout "${CERT_REPO_GIT_CACHE_DIR}" "${CERT_REPO_DIR}"
     - git -C "${CERT_REPO_DIR}" sparse-checkout init --cone
     - git -C "${CERT_REPO_DIR}" sparse-checkout set keystores manifest
-    - git -C "${CERT_REPO_DIR}" checkout "${CERT_REPO_REF}"
-    - find "${CERT_REPO_DIR}/manifest" -maxdepth 1 -type f ! -name 'keystore-manifest.tsv' -delete
+    - git -C "${CERT_REPO_DIR}" -c advice.detachedHead=false checkout "${cert_repo_sha}"
+    - test -f "${CERT_REPO_DIR}/manifest/cert-manifest.tsv"
+    - test -f "${CERT_REPO_DIR}/manifest/truststore-manifest.tsv"
+    - test -f "${CERT_REPO_DIR}/manifest/keystore-manifest.tsv"
     - rm -rf "${CERT_REPO_DIR}/.git"
     - docker build -f docker/quality_gate/Dockerfile -t "${CI_REGISTRY_IMAGE}:quality_gate" .
 ```
@@ -252,9 +296,15 @@ Wichtig:
 
 - Der zusätzliche Inhalt wird vor dem Docker-Build per Sparse-Checkout nach `.cache/zeta-test-certificates` geholt und dann per `COPY` ins
   Image übernommen.
-- Vor dem Docker-Build wird das Manifest-Verzeichnis auf `manifest/keystore-manifest.tsv` reduziert.
+- Vor dem Docker-Build wird geprüft, dass `manifest/cert-manifest.tsv`,
+  `manifest/truststore-manifest.tsv` und `manifest/keystore-manifest.tsv` vorhanden sind.
+- SMC-B Deployment-Keymaterial muss zur Laufzeit als Datei verfügbar sein.
+  Die Dateipfade werden per `SMB_KEYSTORE_FILE_B64`/`SMB_KEYSTORE_PW_FILE` übergeben.
+  Der repo-nahe Default-Fallback ist im Zertifikats-Repository unter `smcb/smcb-certificates.p12.b64` und `smcb/smcb-pw` dokumentiert.
 - Vor dem Docker-Build wird `.git/` aus dem Zertifikats-Checkout entfernt, damit keine Remote-URL mit eingebettetem Job-Token ins Image
   gelangt.
+- Im Bare-Repository-Cache wird keine Remote-URL gespeichert.
+  `FETCH_HEAD` wird nach dem Auflösen des Commits entfernt, damit der Job-Token nicht im GitLab-Cache landet.
 - Für Mirrors auf derselben GitLab-Instanz reicht meist die Ableitung über `CI_PROJECT_NAMESPACE` zusammen mit `CI_JOB_TOKEN`.
 - Für andere Hosts oder Zugangsdaten kann stattdessen `CERT_REPO_URL` verwendet werden.
 

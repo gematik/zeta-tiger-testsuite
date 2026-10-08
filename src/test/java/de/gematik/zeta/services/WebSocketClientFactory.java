@@ -31,7 +31,7 @@ import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
 import org.glassfish.tyrus.client.SslEngineConfigurator;
 import org.springframework.messaging.converter.CompositeMessageConverter;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -92,7 +92,7 @@ public class WebSocketClientFactory {
     WebSocketStompClient stompClient = new WebSocketStompClient(wsClient);
     stompClient.setMessageConverter(new CompositeMessageConverter(List.of(
         new StringMessageConverter(),
-        new MappingJackson2MessageConverter()
+        new JacksonJsonMessageConverter()
     )));
 
     // Task Scheduler for Heartbeats

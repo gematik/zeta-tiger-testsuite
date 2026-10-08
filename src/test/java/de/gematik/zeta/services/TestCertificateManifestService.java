@@ -25,7 +25,6 @@
 package de.gematik.zeta.services;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.zeta.perf.FileUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -143,7 +142,7 @@ public class TestCertificateManifestService {
    */
   public Path resolveManifestPath(String explicitManifestPath) throws IOException {
     if (explicitManifestPath != null && !explicitManifestPath.isBlank()) {
-      return FileUtils.resolveExisting(explicitManifestPath);
+      return resolveExisting(explicitManifestPath);
     }
 
     var configuredRepoRoot = firstNonBlank(
@@ -151,9 +150,9 @@ public class TestCertificateManifestService {
         System.getProperty("testCertificates.dir"),
         System.getenv("ZETA_TEST_CERTIFICATES_DIR"));
     if (configuredRepoRoot != null) {
-      var repoRootPath = FileUtils.resolveExisting(configuredRepoRoot);
+      var repoRootPath = resolveExisting(configuredRepoRoot);
       var manifestPath = repoRootPath.resolve(DEFAULT_MANIFEST_RELATIVE_PATH);
-      FileUtils.requireFileExists(manifestPath);
+      requireFileExists(manifestPath);
       return manifestPath.toAbsolutePath().normalize();
     }
 
@@ -280,7 +279,7 @@ public class TestCertificateManifestService {
   }
 
   /**
-   * Export a one-based slice of manifest entries as a TSV file for perf tooling such as JMeter.
+   * Export a one-based slice of manifest entries as a TSV file for external tooling.
    *
    * @param manifestPath path to the source manifest
    * @param startOneBased one-based start index excluding the header
@@ -291,7 +290,7 @@ public class TestCertificateManifestService {
    */
   public Path exportTsvSlice(Path manifestPath, int startOneBased, int count, Path outputPath)
       throws IOException {
-    FileUtils.ensureParentDirectories(outputPath);
+    ensureParentDirectories(outputPath);
     var entries = findRange(manifestPath, startOneBased, count);
 
     try (var writer = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
@@ -466,6 +465,61 @@ public class TestCertificateManifestService {
         .allMatch(assetPath -> assetPath.isAbsolute()
             ? Files.exists(assetPath)
             : Files.exists(candidateRoot.resolve(assetPath).normalize()));
+  }
+
+  /**
+   * Resolves an existing absolute path or a path relative to any working-directory ancestor.
+   *
+   * @param pathValue absolute or relative path text
+   * @return absolute normalized path to the existing entry
+   * @throws IOException if the path cannot be found
+   * @throws IllegalArgumentException if the path text is absent or blank
+   */
+  private static Path resolveExisting(String pathValue) throws IOException {
+    if (pathValue == null || pathValue.isBlank()) {
+      throw new IllegalArgumentException("Path cannot be null or empty");
+    }
+
+    var path = Path.of(pathValue.trim().replace('\\', '/'));
+    if (Files.exists(path)) {
+      return path.toAbsolutePath().normalize();
+    }
+
+    for (var directory = Path.of("").toAbsolutePath();
+        directory != null;
+        directory = directory.getParent()) {
+      var candidate = directory.resolve(path);
+      if (Files.exists(candidate)) {
+        return candidate.toAbsolutePath().normalize();
+      }
+    }
+
+    throw new IOException("Path not found: " + pathValue);
+  }
+
+  /**
+   * Requires the path to reference a regular file.
+   *
+   * @param path path expected to reference a regular file
+   * @throws AssertionError if the file does not exist or is not regular
+   */
+  private static void requireFileExists(Path path) {
+    if (!Files.isRegularFile(path)) {
+      throw new AssertionError("Expected file not found: " + path.toAbsolutePath());
+    }
+  }
+
+  /**
+   * Creates the parent directory of an output file when necessary.
+   *
+   * @param filePath output file whose parent directories are required
+   * @throws IOException if the directories cannot be created
+   */
+  private static void ensureParentDirectories(Path filePath) throws IOException {
+    var parent = filePath.getParent();
+    if (parent != null) {
+      Files.createDirectories(parent);
+    }
   }
 
   /**

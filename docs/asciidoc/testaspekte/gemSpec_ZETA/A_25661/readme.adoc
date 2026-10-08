@@ -12,3 +12,6 @@ include::TA_A_25661_04.adoc[]
 
 include::TA_A_25661_05.adoc[]
 
+include::TA_A_25661_06.adoc[]
+
+include::TA_A_25661_07.adoc[]

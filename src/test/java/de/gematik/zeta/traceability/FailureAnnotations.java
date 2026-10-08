@@ -100,7 +100,7 @@ record FailureAnnotations(List<FailureAnnotation> annotations) {
     for (var annotation : annotations) {
       tickets.addAll(annotation.tickets());
       if (!annotation.owner().isBlank()) {
-        owners.add(annotation.owner());
+        owners.addAll(RuntimeCoverageCsvRepository.parseMultiValue(annotation.owner()));
       }
     }
     return new AnnotationSummary(

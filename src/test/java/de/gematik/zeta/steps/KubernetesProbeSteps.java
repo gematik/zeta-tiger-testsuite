@@ -24,17 +24,23 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.reports.SerenityReportUtils;
-import de.gematik.zeta.services.ZetaDeploymentConfigurationService;
-import de.gematik.zeta.services.ZetaDeploymentConfigurationServiceFactory;
+import de.gematik.zeta.services.KubernetesRateLimitConfigurationEvidence;
+import de.gematik.zeta.services.ZetaDeploymentConfiguration;
+import de.gematik.zeta.services.ZetaDeploymentModificationService;
+import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
+import io.cucumber.java.en.Given;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /**
  * Cucumber step definitions for Kubernetes probe verification.
@@ -43,8 +49,13 @@ public class KubernetesProbeSteps {
 
   private static final String ZETA_NAMESPACE_CONFIG_KEY = "zetaDeploymentConfig.namespace";
   private static final String OPENTELEMETRY_RELAY_JSONPATH = "jsonpath={.data.relay}";
+  private static final String ACTIVE_OPA_CONFIGMAP = "opa-config";
+  private static final String SIMULATION_OPA_CONFIGMAP = "opa-simulation-config";
+  private static final String RATE_LIMIT_CONFIG_RESOURCE_TYPES = "configmap,ingress";
   private static final String TELEMETRY_GATEWAY_CONFIGMAP_SELECTOR =
       "app.kubernetes.io/name=telemetry-gateway,app.kubernetes.io/component=standalone-collector";
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
   private static final Pattern TRACES_PIPELINE_USES_BATCH = Pattern.compile(
       "(?ms)^\\s*traces:\\s*$.*?^\\s*processors:\\s*$.*?^\\s*-\\s*batch\\s*(?:#.*)?$");
   private static final Pattern TRACES_PIPELINE_OTLP_EXPORTER = Pattern.compile(
@@ -52,8 +63,7 @@ public class KubernetesProbeSteps {
   private static final Pattern TRACES_PIPELINE_PATTERN = Pattern.compile(
       "(?ms)^\\s*traces:\\s*$.*?(?=^\\s{0,4}\\S|\\z)");
   private static final List<String> TELEMETRY_SIGNALS = List.of("logs", "metrics", "traces");
-
-  private final ZetaDeploymentConfigurationService service = ZetaDeploymentConfigurationServiceFactory.getInstance();
+  private final ZetaDeploymentModificationService service = ZetaDeploymentConfiguration.getServiceInstance();
 
   /**
    * Checks whether the traces pipeline uses a batch processor.
@@ -153,10 +163,37 @@ public class KubernetesProbeSteps {
    * @return true if the pipeline references one of the exporters
    */
   private static boolean pipelineUsesAnyExporter(String pipelinesBlock, String signal, List<String> exporterNames) {
-    var signalBlock = firstBlock(pipelinesBlock, signal, 4);
-    var exportersBlock = firstBlock(signalBlock, "exporters", 6);
-    var references = listItems(exportersBlock);
-    return references.stream().anyMatch(exporterNames::contains);
+    return pipelineNamesForSignal(pipelinesBlock, signal).stream()
+        .map(pipelineName -> firstBlock(pipelinesBlock, pipelineName, 4))
+        .map(pipelineBlock -> firstBlock(pipelineBlock, "exporters", 6))
+        .map(KubernetesProbeSteps::listItems)
+        .flatMap(List::stream)
+        .anyMatch(exporterNames::contains);
+  }
+
+  /**
+   * Extracts plain and named service pipeline keys for a telemetry signal.
+   *
+   * @param pipelinesBlock collector service pipelines block
+   * @param signal         pipeline signal name
+   * @return matching pipeline keys
+   */
+  private static List<String> pipelineNamesForSignal(String pipelinesBlock, String signal) {
+    var names = new ArrayList<String>();
+    for (var line : pipelinesBlock.split("\\R")) {
+      if (countLeadingSpaces(line) != 4) {
+        continue;
+      }
+      var trimmed = line.trim();
+      if (!trimmed.endsWith(":")) {
+        continue;
+      }
+      var pipelineName = trimmed.substring(0, trimmed.length() - 1);
+      if (pipelineName.equals(signal) || pipelineName.startsWith(signal + "/")) {
+        names.add(pipelineName);
+      }
+    }
+    return names;
   }
 
   /**
@@ -394,6 +431,177 @@ public class KubernetesProbeSteps {
   }
 
   /**
+   * Verifies that the current Kubernetes deployment contains the expected rate-limit configuration for one endpoint.
+   *
+   * @param endpoint      endpoint path
+   * @param configuration expected rate-limit configuration marker
+   */
+  @Gegebensei("im Kubernetes-Deployment eine Rate-Limit-Konfiguration {tigerResolvedString} für den Endpunkt {tigerResolvedString}")
+  @Given("the Kubernetes deployment has rate-limit configuration {tigerResolvedString} for endpoint {tigerResolvedString}")
+  public void verifyRateLimitConfiguredForEndpoint(String configuration, String endpoint) {
+    var namespace = getNamespace();
+    service.verifyRequirements(namespace);
+    var result = service.executeKubectlCommand(
+        "-n", namespace, "get", RATE_LIMIT_CONFIG_RESOURCE_TYPES, "-o", "json");
+
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Could not read Kubernetes resources for rate-limit configuration in namespace '"
+          + namespace + "': " + result.stderr());
+    }
+
+    var normalizedEndpoint = KubernetesRateLimitConfigurationEvidence.normalizeEndpointPath(endpoint);
+    var normalizedConfiguration = KubernetesRateLimitConfigurationEvidence.normalizeConfigMarker(configuration);
+    var evidence = KubernetesRateLimitConfigurationEvidence.findNormalized(
+        result.stdout(), normalizedEndpoint, normalizedConfiguration);
+
+    var reportLine = "NAMESPACE=" + namespace
+        + " | RESOURCE_TYPES=" + RATE_LIMIT_CONFIG_RESOURCE_TYPES
+        + "\nENDPOINT=" + normalizedEndpoint
+        + "\nCONFIG=" + normalizedConfiguration
+        + "\nEVIDENCE:\n" + evidence.orElse("<none>");
+
+    SerenityReportUtils.addCustomData(
+        "Kubernetes rate-limit configuration",
+        reportLine);
+
+    if (evidence.isEmpty()) {
+      throw new AssertionError("Rate-limit configuration '" + normalizedConfiguration
+          + "' is missing for endpoint '" + normalizedEndpoint + "'.");
+    }
+  }
+
+  /**
+   * Verifies that both deployed OPA configurations use the configured bundle polling interval.
+   *
+   * @param expectedSeconds expected polling interval in seconds
+   */
+  @Und("prüfe, dass die aktiven und simulierten OPA Bundle Polling Intervalle {tigerResolvedString} Sekunden "
+      + "betragen")
+  @And("verify that active and simulation OPA bundle polling intervals are {tigerResolvedString} seconds")
+  public void verifyActiveAndSimulationOpaBundlePollingIntervals(String expectedSeconds) {
+    var namespace = getNamespace();
+    var expectedPollingSeconds = parseExpectedPollingIntervalSeconds(expectedSeconds);
+    service.verifyRequirements(namespace);
+    var evidence = new ArrayList<String>();
+    var failures = new ArrayList<String>();
+
+    verifyOpaBundlePollingConfigMap(namespace, ACTIVE_OPA_CONFIGMAP, expectedPollingSeconds, evidence, failures);
+    verifyOpaBundlePollingConfigMap(namespace, SIMULATION_OPA_CONFIGMAP, expectedPollingSeconds, evidence, failures);
+
+    var reportLine = "NAMESPACE=" + namespace
+        + "\nEXPECTED_SECONDS=" + expectedPollingSeconds
+        + "\n" + String.join("\n", evidence);
+    SerenityReportUtils.addCustomData("OPA bundle polling configuration", reportLine);
+
+    if (!failures.isEmpty()) {
+      throw new AssertionError("OPA bundle polling configuration does not match the expected interval: "
+          + String.join(" | ", failures));
+    }
+  }
+
+  /**
+   * Reads and verifies one OPA ConfigMap while collecting evidence and failures.
+   *
+   * @param namespace              Kubernetes namespace
+   * @param configMapName          OPA ConfigMap name
+   * @param expectedPollingSeconds expected polling interval in seconds
+   * @param evidence               evidence lines for Serenity reporting
+   * @param failures               failure messages to raise after all ConfigMaps were inspected
+   */
+  private void verifyOpaBundlePollingConfigMap(String namespace, String configMapName, int expectedPollingSeconds,
+      List<String> evidence, List<String> failures) {
+    try {
+      var opaConfig = readOpaConfig(namespace, configMapName);
+      evidence.add(opaBundlePollingEvidence(configMapName, opaConfig, expectedPollingSeconds));
+    } catch (AssertionError error) {
+      var failure = "CONFIGMAP=" + configMapName + " | FAILURE=" + error.getMessage();
+      evidence.add(failure);
+      failures.add(failure);
+    }
+  }
+
+  /**
+   * Parses the expected OPA polling interval.
+   *
+   * @param expectedSeconds expected polling interval in seconds as resolved by Tiger
+   * @return expected polling interval in seconds
+   */
+  private static int parseExpectedPollingIntervalSeconds(String expectedSeconds) {
+    try {
+      return Integer.parseInt(expectedSeconds);
+    } catch (NumberFormatException e) {
+      throw new AssertionError("Configured OPA bundle polling interval must be an integer number of seconds but was '"
+          + expectedSeconds + "'.", e);
+    }
+  }
+
+  /**
+   * Builds an evidence line for the bundle polling configuration and asserts the required interval.
+   *
+   * @param configMapName  ConfigMap name used as evidence source
+   * @param opaConfigYaml  OPA YAML configuration
+   * @param expectedSecond required polling interval in seconds
+   * @return report line containing the observed polling values
+   */
+  static String opaBundlePollingEvidence(String configMapName, String opaConfigYaml, int expectedSecond) {
+    var root = parseOpaYaml(configMapName, opaConfigYaml);
+    var minDelay = requiredInteger(root, configMapName, "bundles.authz.polling.min_delay_seconds");
+    var maxDelay = requiredInteger(root, configMapName, "bundles.authz.polling.max_delay_seconds");
+
+    if (minDelay != expectedSecond || maxDelay != expectedSecond) {
+      throw new AssertionError("OPA ConfigMap '" + configMapName + "' has bundle polling min_delay_seconds="
+          + minDelay + " and max_delay_seconds=" + maxDelay + ", expected both to be " + expectedSecond + ".");
+    }
+
+    return "CONFIGMAP=" + configMapName
+        + " | bundles.authz.polling.min_delay_seconds=" + minDelay
+        + " | bundles.authz.polling.max_delay_seconds=" + maxDelay;
+  }
+
+  /**
+   * Parses OPA YAML configuration into a JSON tree.
+   *
+   * @param configMapName ConfigMap name used for error messages
+   * @param opaConfigYaml OPA YAML configuration
+   * @return parsed YAML root node
+   */
+  private static JsonNode parseOpaYaml(String configMapName, String opaConfigYaml) {
+    try {
+      var root = YAML.readTree(opaConfigYaml);
+      if (root == null || root.isMissingNode() || root.isNull()) {
+        throw new AssertionError("OPA ConfigMap '" + configMapName + "' contains an empty opa.yaml.");
+      }
+      return root;
+    } catch (JacksonException e) {
+      throw new AssertionError("Could not parse opa.yaml from OPA ConfigMap '" + configMapName + "'.", e);
+    }
+  }
+
+  /**
+   * Reads a required integer field from the parsed OPA configuration.
+   *
+   * @param root          parsed OPA configuration
+   * @param configMapName ConfigMap name used for error messages
+   * @param dottedPath    dot-separated YAML field path
+   * @return integer value at the requested path
+   */
+  private static int requiredInteger(JsonNode root, String configMapName, String dottedPath) {
+    var current = root;
+    for (var segment : dottedPath.split("\\.")) {
+      current = current.path(segment);
+      if (current.isMissingNode() || current.isNull()) {
+        throw new AssertionError("Missing required OPA config field '" + dottedPath
+            + "' in ConfigMap '" + configMapName + "'.");
+      }
+    }
+    if (!current.isIntegralNumber()) {
+      throw new AssertionError("OPA config field '" + dottedPath + "' in ConfigMap '" + configMapName
+          + "' must be an integer but was '" + current.asText() + "'.");
+    }
+    return current.intValue();
+  }
+
+  /**
    * Verifies that the telemetry gateway exports traces asynchronously through a batch processor and an OTLP exporter.
    */
   @Und("prüfe, dass die Telemetrie-Gateway Collector-Konfiguration Traces per Batch exportiert")
@@ -486,6 +694,46 @@ public class KubernetesProbeSteps {
           + "': " + String.join(", ", names));
     }
     return names.getFirst();
+  }
+
+  /**
+   * Reads the OPA YAML configuration from a ConfigMap.
+   *
+   * @param namespace     Kubernetes namespace
+   * @param configMapName name of the OPA ConfigMap
+   * @return OPA configuration from `data.opa.yaml`
+   */
+  private String readOpaConfig(String namespace, String configMapName) {
+    var result = service.executeKubectlCommand(
+        "-n", namespace, "get", "configmap", configMapName, "-o", "json");
+
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Could not read OPA ConfigMap '" + configMapName
+          + "' in namespace '" + namespace + "': " + result.stderr());
+    }
+
+    return extractOpaConfigYaml(configMapName, result.stdout());
+  }
+
+  /**
+   * Extracts the literal {@code opa.yaml} data entry from a ConfigMap JSON document.
+   *
+   * @param configMapName ConfigMap name used for error messages
+   * @param configMapJson JSON returned by {@code kubectl get configmap ... -o json}
+   * @return OPA configuration YAML
+   */
+  static String extractOpaConfigYaml(String configMapName, String configMapJson) {
+    try {
+      var root = JSON.readTree(configMapJson);
+      var opaConfig = root.path("data").path("opa.yaml");
+      if (opaConfig.isMissingNode() || opaConfig.isNull() || opaConfig.asText().isBlank()) {
+        throw new AssertionError("OPA ConfigMap '" + configMapName + "' contains no data key 'opa.yaml'.");
+      }
+      return opaConfig.asText();
+    } catch (JacksonException e) {
+      throw new AssertionError("OPA ConfigMap '" + configMapName
+          + "' could not be parsed as ConfigMap JSON.", e);
+    }
   }
 
   /**

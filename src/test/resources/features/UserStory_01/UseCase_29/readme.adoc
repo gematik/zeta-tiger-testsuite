@@ -1,0 +1,56 @@
+[#UC_01_29]
+== UseCase_01_29: Client ressource anfrage fachdienst SC 504
+
+.UseCase_01_29
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Client ressource anfrage fachdienst SC 504
+
+| Akteur: |
+*MA einer LEI*
+
+| weitere Akteure: |
+- *ZETA Client*
+- *PEP HTTP Proxy*
+- *Resource Server*
+
+| Auslöser: |
+Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
+
+| Kurzbeschreibung: |
+Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
+Der PEP HTTP Proxy erhält für die Anfrage keine rechtzeitige Antwort vom Resource Server und antwortet deshalb mit ``504 Gateway Timeout``.
+
+| Vorbedingung: |
+Der ZETA Client ist registriert, authentisiert und autorisiert.
+
+| Nebenbedingung: |
+Der Resource Server antwortet nicht innerhalb des erwarteten Zeitfensters.
+
+| Ablauf: |
+. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
+. Der ZETA Client erstellt einen *DPoP Nachweis*.
+. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf.
+. Der PEP HTTP Proxy prüft das *Access Token*.
+. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
+. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
+. Der Resource Server antwortet nicht rechtzeitig.
+. Der PEP HTTP Proxy antwortet mit ``504 Gateway Timeout``.
+
+| Nachbedingung: |
+Die Ressource wurde nicht geliefert.
+Der MA kann die Anfrage zu einem späteren Zeitpunkt erneut versuchen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_26661_24>>
+* <<TA_A_27007_24>>
+* <<TA_A_27725-01_38>>
+|===
+
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::client_ressource_anfrage_fachdienst_sc_504.feature[]
+----

@@ -43,7 +43,8 @@ public class TestDriverConfigurationServiceFactory {
   /**
    * Creates a preconfigured {@link TestDriverConfigurationService} from the given path prefix.
    *
-   * @param pathPrefix Tiger config prefix containing {@code reset} and {@code configure}
+   * @param pathPrefix Tiger config prefix containing {@code reset}, {@code configure}, and optionally
+   *                   {@code oidc.kvnrEmail}
    * @return configured testdriver client
    */
   public static TestDriverConfigurationService getInstanceForPathPrefix(final String pathPrefix) {
@@ -54,9 +55,12 @@ public class TestDriverConfigurationServiceFactory {
         .map(TigerGlobalConfiguration::resolvePlaceholders)
         .orElseThrow(() -> new AssertionError(
             "The testdriver configure URL is not configured at " + pathPrefix + ".configure."));
+    var kvnrEmailUrl = TigerGlobalConfiguration.readStringOptional(pathPrefix + ".oidc.kvnrEmail")
+        .map(TigerGlobalConfiguration::resolvePlaceholders)
+        .orElse(null);
 
     try {
-      return new TestDriverConfigurationService(resetUrl, configureUrl);
+      return new TestDriverConfigurationService(resetUrl, configureUrl, kvnrEmailUrl);
     } catch (IllegalArgumentException | NullPointerException e) {
       throw new AssertionError("The testdriver endpoint configuration is invalid.", e);
     }

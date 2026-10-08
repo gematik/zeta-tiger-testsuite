@@ -75,6 +75,7 @@ Der MA ist nicht authentisiert und nicht autorisiert.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25660_06>>
+* <<TA_A_27725-01_17>>
 
 |===
 

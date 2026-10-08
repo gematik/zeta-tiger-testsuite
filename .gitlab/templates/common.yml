@@ -1,0 +1,171 @@
+variables:
+  MAVEN_CLI_OPTS_COMMON: "-B -ntp -nsu -Djava.awt.headless=true -Dtraceability.skip=true -Dtraceability.sync.skip=true -Dserenity.readme.sync.skip=true"
+  MAVEN_OPTS_COMMON: "-Dmaven.repo.local=.m2/repository"
+  CERT_REPO_DIR: ".cache/zeta-test-certificates"
+  CERT_REPO_GIT_CACHE_DIR: ".cache/git/zeta-test-certificates.git"
+  CERT_REPO_REF: "main"
+
+.rules_gitlab_com_tests:
+  rules:
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_SERVER_HOST == "gitlab.com" && ($CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline")'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/templates/**/*
+        - .gitlab/scripts/**/*
+        - pom.xml
+        - serenity.properties
+        - tiger.yaml
+        - tiger/**/*
+        - config/**/*
+        - src/test/java/**/*
+        - src/test/resources/features/**/*.feature
+    - when: never
+
+.rules_testplan_changes:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/templates/**/*
+        - .gitlab/scripts/**/*
+        - docs/**/*
+        - src/test/resources/features/**/*
+    - when: never
+
+.rules_lint_changes:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/templates/**/*
+        - .gitlab/scripts/**/*
+        - pom.xml
+        - config/checkstyle/**/*
+        - src/main/java/**/*
+        - src/test/java/**/*
+    - when: never
+
+.rules_license_changes:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/templates/**/*
+        - .gitlab/scripts/**/*
+        - pom.xml
+        - config/license-header.txt
+        - src/main/java/**/*
+        - src/test/java/**/*
+        - src/test/resources/features/**/*.feature
+        - docs/scripts/src/**/*.py
+    - when: never
+
+.rules_schema_check:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline"'
+    - when: never
+
+.rules_third_party_license_changes:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "pipeline"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/templates/**/*
+        - .gitlab/scripts/**/*
+        - pom.xml
+        - src/license/**/*
+    - when: never
+
+.rules_default_branch_only:
+  rules:
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PROJECT_PATH == "achelos-zeta/testsuite"'
+    - when: never
+
+.rules_container_selfhosted_only:
+  rules:
+    - if: '$CI_SERVER_HOST == "tas-devtools-gitlab.spree.de" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_SERVER_HOST == "tas-devtools-gitlab.spree.de" && $CI_COMMIT_TAG'
+    - when: never
+
+.maven_job:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/maven:3.9.12-eclipse-temurin-21-alpine@sha256:8b2f036477a5bc9fbeb16cfb7301c484d7fff727b1c4907301ac665526bd7a8e
+  variables:
+    MAVEN_OPTS: "${MAVEN_OPTS_COMMON} ${MAVEN_OPTS_EXTRA}"
+    MAVEN_CLI_OPTS: "${MAVEN_CLI_OPTS_COMMON} ${MAVEN_CLI_OPTS_EXTRA}"
+    MAVEN_OPTS_EXTRA: ""
+    MAVEN_CLI_OPTS_EXTRA: ""
+  cache:
+    key:
+      prefix: "maven-testproxy-routing-v2-${CI_SERVER_HOST}-${TESTPROXY_PROJECT_ID}"
+      files:
+        - pom.xml
+        - .mvn/rrf/groupId-gitlab-testproxy.txt
+    paths:
+      - .m2/repository
+    policy: pull-push
+  before_script:
+    - rm -rf .m2/repository/de/gematik/test
+    - |
+      if [ -z "${TESTPROXY_PROJECT_ID:-}" ]; then
+        echo "TESTPROXY_PROJECT_ID is not set for CI_SERVER_HOST=${CI_SERVER_HOST}." >&2
+        echo "Set TESTPROXY_PROJECT_ID in the CI/CD variables of each GitLab instance." >&2
+        exit 1
+      fi
+      export MAVEN_ARGS="${MAVEN_ARGS:-} -Dgitlab.base.url=${CI_SERVER_URL} -Dtestproxy.project.id=${TESTPROXY_PROJECT_ID}"
+      export MAVEN_CLI_OPTS="${MAVEN_CLI_OPTS} -s .m2/settings.xml"
+
+.docker_job:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/docker:29-cli@sha256:51e23845f5caff1e688a2fae003b0c69d635c9200ad544731db1593731df1d3a
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/docker:29-dind@sha256:685b91dca8eab7de1dce1c303dbb7a763e4082d6a60db10968adf3295fbd2495
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: "tcp://docker:2375"
+    BUILDKIT_IMAGE: "${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/moby/buildkit:buildx-stable-1@sha256:e5d9d1763945ca186d48cbf5b0ff3e062eb917fb8a80da6da87144edb7320a90"
+    DOCKER_BUILD_CACHE_IMAGE: "${CI_REGISTRY_IMAGE}/build-cache"
+  before_script:
+    - |
+      echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      if [ -z "${CI_DEPENDENCY_PROXY_SERVER:-}" ] || [ -z "${CI_DEPENDENCY_PROXY_USER:-}" ] || [ -z "${CI_DEPENDENCY_PROXY_PASSWORD:-}" ]; then
+        echo "Dependency proxy credentials are required for Docker base image pulls." >&2
+        exit 1
+      fi
+      echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin "$CI_DEPENDENCY_PROXY_SERVER"
+
+      zeta_docker_create_builder() {
+        builder_name="$1"
+        docker buildx create \
+          --use \
+          --name "${builder_name}" \
+          --driver docker-container \
+          --driver-opt image="${BUILDKIT_IMAGE}"
+        docker buildx inspect --bootstrap
+      }
+
+      zeta_docker_buildx_build() {
+        cache_name="$1"
+        shift
+        cache_ref="${DOCKER_BUILD_CACHE_IMAGE}:${cache_name}"
+        docker buildx build \
+          --pull \
+          --output=type=registry,oci-mediatypes=false \
+          --platform linux/amd64,linux/arm64 \
+          --cache-from type=registry,ref="${cache_ref}" \
+          --cache-to type=registry,ref="${cache_ref}",mode=max \
+          --secret id=ci_job_token,env=CI_JOB_TOKEN \
+          --build-arg CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}" \
+          --build-arg GITLAB_BASE_URL="${CI_SERVER_URL}" \
+          --build-arg TESTPROXY_PROJECT_ID="${TESTPROXY_PROJECT_ID}" \
+          --build-arg CI_COMMIT_SHA="${CI_COMMIT_SHA}" \
+          "$@"
+      }

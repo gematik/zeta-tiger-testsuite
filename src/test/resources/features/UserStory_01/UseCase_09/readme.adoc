@@ -155,12 +155,14 @@ Es wurden keine Access- oder Refresh-Token ausgegeben. Der Zugriff auf den Resou
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25644-01_05>>
+* <<TA_A_25645-01_01>>
 * <<TA_A_25661_03>>
 * <<TA_A_26661_04>>
 * <<TA_A_26662_01>>
 * <<TA_A_26988_05>>
 * <<TA_A_26988_07>>
 * <<TA_A_27401_01>>
+* <<TA_A_27725-01_04>>
 * <<TA_A_27496_01>>
 * <<TA_A_27496_02>>
 * <<TA_A_27496_03>>

@@ -25,37 +25,27 @@
 package de.gematik.zeta;
 
 /**
- * Represents a statistical metric like pNN, max, min, avg.
+ * Represents a Prometheus histogram metric like pNN or avg.
  *
- * @param type       -- GETTER -- Returns the metric type.
- * @param percentile -- GETTER -- Returns the percentile value (only for PERCENTILE). only set if
- *                   type == PERCENTILE
+ * @param type metric type
+ * @param percentile percentile value, only set if type is {@link Type#PERCENTILE}
  */
 public record Metric(Type type, double percentile) {
 
   /**
    * Creates a percentile metric (e.g., 0.95 for p95).
+   *
+   * @param p percentile as a value in the range {@code 0..1}
+   * @return percentile metric
    */
   public static Metric percentile(double p) {
     return new Metric(Type.PERCENTILE, p);
   }
 
   /**
-   * Creates a max metric.
-   */
-  public static Metric max() {
-    return new Metric(Type.MAX, Double.NaN);
-  }
-
-  /**
-   * Creates a min metric.
-   */
-  public static Metric min() {
-    return new Metric(Type.MIN, Double.NaN);
-  }
-
-  /**
    * Creates an average (mean) metric.
+   *
+   * @return average metric
    */
   public static Metric avg() {
     return new Metric(Type.AVG, Double.NaN);
@@ -65,7 +55,7 @@ public record Metric(Type type, double percentile) {
    * Enumeration for describing specific metric types.
    */
   public enum Type {
-    PERCENTILE, MAX, MIN, AVG
+    PERCENTILE, AVG
   }
 
 }

@@ -1,0 +1,71 @@
+.achelos-2-target:
+  variables:
+    ZETA_BASE_URL: zeta-achelos-2.westeurope.cloudapp.azure.com
+    ZETA_K8S_NAMESPACE: zeta-achelos-2
+    ZETA_PROXY_URL: 127.0.0.1:9999
+    OPENSEARCH_URL: 127.0.0.1:9200
+    PROMETHEUS_URL: 127.0.0.1:9090
+    ZETA_TLS_TEST_TOOL_SERVICE_URL: 127.0.0.1:9012
+
+achelos-2-preflight:
+  stage: environment-check
+  extends:
+    - .achelos-2-target
+    - .rules_gitlab_com_tests
+  needs:
+    - job: utf8_posix_check
+      optional: true
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - ./.gitlab/scripts/check-achelos-2-preflight.sh
+
+achelos-2-image-inventory:
+  stage: deployment-info
+  extends:
+    - .achelos-2-target
+    - .rules_gitlab_com_tests
+  needs:
+    - job: achelos-2-preflight
+  environment:
+    name: zeta-achelos-2
+    action: verify
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/library/alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601
+  before_script:
+    - apk add --no-cache jq kubectl
+  script:
+    - ./.gitlab/scripts/capture-achelos-2-images.sh
+  artifacts:
+    paths:
+      - deployed-images.tsv
+    expire_in: 1 week
+
+# Blocking achelos-2 verification for testsuite changes.
+test:
+  stage: test
+  extends:
+    - .achelos-2-target
+    - .maven_job
+    - .rules_gitlab_com_tests
+  needs:
+    - job: achelos-2-image-inventory
+  environment:
+    name: zeta-achelos-2
+    action: verify
+  resource_group: testsuite-zeta-achelos-2
+  variables:
+    MAVEN_CLI_OPTS_EXTRA: "-T 1C -Dskip.unit.tests=true"
+  before_script:
+    - !reference [.maven_job, before_script]
+    - apk add --no-cache kubectl netcat-openbsd
+  script:
+    - ./.gitlab/scripts/run-achelos-2-quality-gate.sh
+  artifacts:
+    when: always
+    reports:
+      junit: target/failsafe-reports/TEST-*.xml
+    paths:
+      - target/site/serenity
+    expire_in: 1 week
+  allow_failure: false

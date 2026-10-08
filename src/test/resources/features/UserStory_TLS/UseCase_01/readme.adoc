@@ -33,11 +33,13 @@ NA
 Die TLS-Konformität des ZETA Guard Endpunkts ist verifiziert.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_26666-01_01>>
 * <<TA_A_18464_01>>
 * <<TA_GS-A_5542_01>>
 * <<TA_GS-A_5526_01>>
 * <<TA_A_21275-01_01>>
 * <<TA_A_21275-01_03>>
+* <<TA_A_26964-01_01>>
 * <<TA_A_28868_01>>
 * <<TA_A_28868_02>>
 * <<TA_A_28868_03>>
@@ -65,7 +67,7 @@ Es wird ein gemeinsamer Szenariogrundriss mit lesbaren Gruppenprofilen verwendet
 
 * `p256` -> Erwartung: Handshake erfolgreich, `Server-Key-Exchange` gesendet
 * `p384` -> Erwartung: Handshake erfolgreich, `Server-Key-Exchange` gesendet
-* `unsupported_mix` -> alle nach `TlsSupportedGroup.Tls12Policy` verbotenen Gruppen (`brainpoolP256r1tls13`, `brainpoolP384r1tls13`, `brainpoolP512r1tls13`, `secp192r1`, `secp224r1`, `secp521r1 (P-521)`, `secp256k1`, `x25519`, `x448`, `ffdhe2048`, `ffdhe3072`, `ffdhe4096`, `ffdhe6144`, `ffdhe8192`), Erwartung: Handshake nicht erfolgreich, `Server-Key-Exchange` nicht gesendet
+* `unsupported_mix` -> alle nach `TlsSupportedGroup.Tls12Policy` verbotenen Gruppen (`brainpoolP256r1tls13`, `brainpoolP384r1tls13`, `brainpoolP512r1tls13`, `secp521r1`, `x25519`, `x448`, `ffdhe2048`, `ffdhe3072`, `ffdhe4096`, `ffdhe6144`, `ffdhe8192`), Erwartung: Handshake nicht erfolgreich, `Server-Key-Exchange` nicht gesendet ( Hinweis: secp192r1/secp224r1/secp256k1 sind zwar verboten, aber in TLS 1.3 nicht anbietbar.)
 
 [.lead]
 Szenariohinweise zu Schlüssellängen und Domainparametern (`TA_A_28868_05`)
@@ -81,6 +83,13 @@ Für die Prüfung der verpflichtenden Ciphersuiten (`TA_A_28868_01`) wird ebenfa
 * `ecdhe_ecdsa_aes_256_gcm_sha384` -> `TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384` -> `(0xC0,0x2C)` -> Erwartung: Handshake erfolgreich
 
 [.lead]
+Szenariohinweise zu OCSP Stapling (`TA_A_26964-01_01`)
+
+Für die Prüfung von OCSP Stapling sendet die Testsuite im TLS-1.2-ClientHello die `status_request`-Extension nach RFC 6066.
+
+Der Test ist erfolgreich, wenn der ZETA Guard die Extension im `ServerHello` bestätigt und im Handshake eine `CertificateStatus`-Nachricht mit der gestapelten OCSP-Antwort sendet.
+
+[.lead]
 Hinweise zur Fehlersuche
 
 Bei TLS-Fehlschlägen enthalten die Assertions eine kompakte `Alert summary` aus den TLS-Test-Tool-Logs.
@@ -91,4 +100,3 @@ Diese Zusammenfassung enthält unter anderem:
 * ausgewählte Cipher-Suite
 * ausgewählten TLS-1.2 Hash-Algorithmus (`selected_hash`, Format z. B. `SHA256(4/0x04)`)
 * ausgewählten TLS-1.2 Signatur-Algorithmus (`selected_signature`, Format z. B. `ECDSA(3/0x03)`)
-

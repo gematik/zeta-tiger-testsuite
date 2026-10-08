@@ -1,10 +1,10 @@
 [#UC_01_05]
-== UseCase_01_05: Client registrierung stationaer SC 409
+== UseCase_01_05: Client-Registrierung stationär SC 409
 
 .UseCase_01_05
 [cols="1,1a",options="autowidth"]
 |===
-| *Titel:* | Client registrierung stationaer SC 409
+| *Titel:* | Client-Registrierung stationär SC 409
 
 | Akteur: |
 *MA einer LEI*

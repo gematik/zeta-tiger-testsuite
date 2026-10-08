@@ -1,0 +1,12 @@
+[#US_Generic]
+== UserStory_Generic: Generische Infrastrukturprüfungen
+
+Als Testsuite-Team möchte ich querschnittliche Infrastrukturmerkmale des ZETA-Guard-Deployments prüfen, damit Anforderungen ohne Zuordnung zu einem fachlichen Client-Ablauf nachvollziehbar verifiziert werden.
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+
+include::UseCase_01/readme.adoc[]
+
+:leveloffset: -2

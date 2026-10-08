@@ -45,6 +45,7 @@ Das Refresh Token kann nicht mit einem fremden DPoP Key verwendet werden.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25663_02>>
+* <<TA_A_27725-01_16>>
 
 |===
 

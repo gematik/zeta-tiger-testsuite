@@ -42,6 +42,24 @@ import lombok.extern.slf4j.Slf4j;
 public class TimestampValidationSteps {
 
   /**
+   * Stores the current epoch seconds timestamp in a Tiger variable.
+   *
+   * @param varName target Tiger variable name
+   */
+  @Und("speichere den aktuellen Unix-Zeitstempel in der Variable {tigerResolvedString}")
+  @And("store the current Unix timestamp in variable {tigerResolvedString}")
+  public void storeCurrentUnixTimestamp(String varName) {
+    var now = Instant.now();
+
+    TigerGlobalConfiguration.putValue(
+        varName,
+        String.valueOf(now.getEpochSecond()),
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    log.info("Gespeicherter aktueller Unix-Zeitstempel: {}", now);
+  }
+
+  /**
    * Cucumber step definition for validating a timestamp.
    *
    * @param timestamp the epoch seconds

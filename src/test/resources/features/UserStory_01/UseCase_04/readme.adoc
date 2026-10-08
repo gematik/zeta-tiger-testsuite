@@ -1,10 +1,10 @@
 [#UC_01_04]
-== UseCase_01_04: Client registrierung stationaer SC 403
+== UseCase_01_04: Client-Registrierung stationär SC 403
 
 .UseCase_01_04
 [cols="1,1a",options="autowidth"]
 |===
-| *Titel:* | Client registrierung stationaer SC 403
+| *Titel:* | Client-Registrierung stationär SC 403
 
 | Akteur: |
 *MA einer LEI*
@@ -206,8 +206,9 @@ Der stationäre ZETA Client besitzt kein gültiges Access- oder Refresh-Token.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25752_01>>
+* <<TA_A_25661_03>>
 * <<TA_A_26661_01>>
-* <<TA_A_26661_04>>
+* <<TA_A_26661_13>>
 * <<TA_A_26662_01>>
 * <<TA_A_27007_04>>
 * <<TA_A_27007_13>>

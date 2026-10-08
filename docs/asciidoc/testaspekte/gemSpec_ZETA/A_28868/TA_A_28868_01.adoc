@@ -1,4 +1,9 @@
 [#TA_A_28868_01]
 ===== TA_A_28868_01 - TLS-Verbindung zwischen Zeta-Client und Zeta-Guard - ZETA Guard TLS-1.2-Pflicht-Ciphersuiten
 
-"Bei Einsatz von TLS Version 1.2 MÜSSEN folgende Ciphersuiten unterstützt werden: `TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (0xC0, 0x2C)` und `TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xC0, 0x2B)`. **[<=]**"
+"bei Einsatz von TLS Version 1.2 MÜSSEN sie folgende Ciphersuiten unterstützen
+
+    * TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (0xC0, 0x2C),
+    * TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xC0, 0x2B).
+
+**[<=]**"

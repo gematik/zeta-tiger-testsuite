@@ -26,12 +26,10 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.services.StompSessionManager;
 import de.gematik.zeta.services.WebSocketClientFactory;
+import io.cucumber.java.After;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Wenn;
@@ -42,6 +40,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber Steps for WebSocket/STOMP tests. Delegates to services for WebSocket management.
@@ -169,7 +170,7 @@ public class WebSocketStompSteps {
           new TypeReference<>() {
           });
       sessionManager.sendJson(resolvedChannel, payloadMap);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       // For invalid JSON (negative testing), send the unparsed payload string as-is.
       log.info("JSON parsing failed (expected for negative tests), sending raw string");
       sessionManager.sendRaw(resolvedChannel, resolvedJson);
@@ -354,6 +355,15 @@ public class WebSocketStompSteps {
   @Dann("wird die WebSocket Verbindung geschlossen")
   @Then("WebSocket connection is closed")
   public void closeWebSocket() {
+    sessionManager.close();
+  }
+
+  /**
+   * Closes WebSocket/STOMP resources after each scenario, including failed scenarios where the
+   * explicit close step was skipped.
+   */
+  @After("@websocket or @stomp")
+  public void cleanupAfterScenario() {
     sessionManager.close();
   }
 

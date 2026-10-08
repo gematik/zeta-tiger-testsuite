@@ -53,9 +53,7 @@ Die Ressource wurde nicht geladen. Der MA kennt jedoch die neue Ziel-URL für ei
 * <<TA_A_26560_01>>
 * <<TA_A_26661_01>>
 * <<TA_A_26661_16>>
-* <<TA_A_26666-01_01>>
-* <<TA_A_27007_16>>
-* <<TA_A_27725-01_03>>
+* <<TA_A_27725-01_28>>
 |===
 
 [#usecase_01_13_sequence]
@@ -83,5 +81,5 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-// TODO: Feature-Datei wird ergänzt, sobald vorhanden
+include::client_ressource_anfrage_fachdienst_sc_301.feature[]
 ----

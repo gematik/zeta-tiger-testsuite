@@ -63,11 +63,6 @@ Jedes Element enthält die Begründung und – sofern vorhanden – die geplante
 |Der Testaspekt adressiert eine SOLL-Anforderung (HTTP/3) und wird in der aktuellen Iteration nicht umgesetzt.
 |Bei Priorisierung der SOLL-Validierungen
 
-|OCSP Stapling
-|<<TA_A_26964-01_01>>
-|Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.
-|Bei Priorisierung der SOLL-Validierungen
-
 |Session Management PDP Datenbank
 |<<TA_A_27867-01_02>>
 |Der Testaspekt adressiert eine SOLL-Anforderung und wird in der aktuellen Iteration nicht umgesetzt.

@@ -1,0 +1,22 @@
+[#US_02]
+== UserStory_02: Push-Benachrichtigungen von ZETA Clients verwalten
+
+Als Hersteller des ZETA Guard möchte ich Push-Konfigurationen und Benachrichtigungseinstellungen von ZETA Clients verwalten, damit Nutzer Push-Benachrichtigungen kontrollieren und der Notification Service ihre Push-Gateways adressieren kann.
+
+==== Akzeptanzkriterien:
+
+* Der Notification Service registriert die vom ZETA Client gesendete Push-Konfiguration und liefert ihre nicht geheimen Werte zurück.
+* Der Notification Service aktualisiert eine vorhandene Push-Konfiguration und liefert ihre geänderten Werte zurück.
+* Der Notification Service löscht die adressierte Push-Konfiguration.
+* Der ZETA Client übermittelt jede Konfigurationsänderung vollständig an den geschützten Notification-Service-Endpunkt.
+* Der ZETA Client aktiviert, ändert und deaktiviert den Benachrichtigungskanal nachvollziehbar.
+* Ereignisse über registrierte Clients werden nur bei aktiviertem Benachrichtigungskanal angenommen.
+* Ereignisse über Neuregistrierungen werden nur bei aktiviertem Benachrichtigungskanal angenommen.
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+
+include::UseCase_01/readme.adoc[]
+
+:leveloffset: -2

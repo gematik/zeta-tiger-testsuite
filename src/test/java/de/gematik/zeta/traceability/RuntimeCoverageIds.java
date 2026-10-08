@@ -47,6 +47,7 @@ final class RuntimeCoverageIds {
   private static final Pattern TEST_ASPECT_REQUIREMENT = Pattern.compile(
       "TA_((?:[A-Z0-9]+-)?A_\\d+(?:-\\d+)?)(?:_\\d+)?",
       Pattern.CASE_INSENSITIVE);
+  private static final Pattern SCENARIO_OUTLINE_PLACEHOLDER = Pattern.compile("<[^>]+>");
 
   private RuntimeCoverageIds() {
   }
@@ -132,6 +133,45 @@ final class RuntimeCoverageIds {
     return Objects.equals(normalizedExpected, normalizedActual)
         || normalizedActual.endsWith(normalizedExpected)
         || normalizedExpected.endsWith(normalizedActual);
+  }
+
+  /**
+   * Match scenario names, treating Cucumber scenario-outline placeholders as wildcard segments.
+   *
+   * @param expected configured or runtime scenario name
+   * @param actual   configured or runtime scenario name
+   * @return true if names are equal or one outline template matches the other name
+   */
+  static boolean scenarioNameMatches(String expected, String actual) {
+    var normalizedExpected = defaultString(expected).trim();
+    var normalizedActual = defaultString(actual).trim();
+    return Objects.equals(normalizedExpected, normalizedActual)
+        || scenarioTemplateMatches(normalizedExpected, normalizedActual)
+        || scenarioTemplateMatches(normalizedActual, normalizedExpected);
+  }
+
+  /**
+   * Match one scenario-outline template against one concrete scenario name.
+   *
+   * @param template scenario name that may contain placeholders such as {@code <client_name>}
+   * @param candidate concrete or partially concrete scenario name
+   * @return true if the template matches the candidate
+   */
+  private static boolean scenarioTemplateMatches(String template, String candidate) {
+    var matcher = SCENARIO_OUTLINE_PLACEHOLDER.matcher(template);
+    if (!matcher.find()) {
+      return false;
+    }
+    var pattern = new StringBuilder("^");
+    var previousEnd = 0;
+    do {
+      pattern.append(Pattern.quote(template.substring(previousEnd, matcher.start())));
+      pattern.append(".*");
+      previousEnd = matcher.end();
+    } while (matcher.find());
+    pattern.append(Pattern.quote(template.substring(previousEnd)));
+    pattern.append("$");
+    return Pattern.compile(pattern.toString()).matcher(candidate).matches();
   }
 
   /**

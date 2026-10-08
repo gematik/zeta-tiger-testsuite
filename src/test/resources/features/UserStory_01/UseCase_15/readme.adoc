@@ -50,6 +50,7 @@ Der Ressourcenzugriff wurde abgewiesen. Der MA muss die Anfrage mit PoPP-Header 
 * <<TA_A_26988_02>>
 * <<TA_A_26988_03>>
 * <<TA_A_27007_18>>
+* <<TA_A_27725-01_30>>
 
 |===
 

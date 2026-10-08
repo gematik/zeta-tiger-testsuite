@@ -253,7 +253,7 @@ def build_traceability(
   ]
 
   report = TraceabilityReport(
-      generated_at=_format_timestamp_iso(datetime.utcnow()),
+      generated_at=_format_timestamp_iso(datetime.now(timezone.utc)),
       requirements={
         req_id: _dataclass_to_payload(req, path_fields=("source",))
         for req_id, req in requirements.items()

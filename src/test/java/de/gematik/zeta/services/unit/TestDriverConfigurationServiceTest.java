@@ -29,11 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
+import de.gematik.zeta.services.KvnrGenerator;
 import de.gematik.zeta.services.TestDriverConfigurationService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -99,6 +102,110 @@ class TestDriverConfigurationServiceTest {
   }
 
   /**
+   * Verifies that the OIDC identity endpoint receives the expected JSON payload.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void setKvnrEmailCallsExpectedEndpoint() throws Exception {
+    var kvnrMethod = new AtomicReference<String>();
+    var kvnrContentType = new AtomicReference<String>();
+    var kvnrBody = new AtomicReference<String>();
+
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/oidc/kvnr-email", exchange -> {
+      kvnrMethod.set(exchange.getRequestMethod());
+      kvnrContentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
+      kvnrBody.set(readBody(exchange.getRequestBody()));
+      exchange.sendResponseHeaders(200, -1);
+      exchange.close();
+    });
+    server.start();
+
+    var service = new TestDriverConfigurationService(
+        baseUrl() + "/testdriver-api/reset",
+        baseUrl() + "/testdriver-api/configure",
+        baseUrl() + "/oidc/kvnr-email");
+
+    service.setKvnrEmail("X110411675", "X110411675@mailgun.com");
+
+    assertEquals("POST", kvnrMethod.get());
+    assertEquals("application/json", kvnrContentType.get());
+    assertTrue(kvnrBody.get().contains("\"kvnr\":\"X110411675\""));
+    assertTrue(kvnrBody.get().contains("\"email\":\"X110411675@mailgun.com\""));
+  }
+
+  /**
+   * Verifies that an empty or whitespace-only KVNR is rejected before sending a request.
+   */
+  @Test
+  void setKvnrEmailRejectsBlankKvnr() {
+    var service = new TestDriverConfigurationService(
+        "http://localhost/testdriver-api/reset",
+        "http://localhost/testdriver-api/configure",
+        "http://localhost/oidc/kvnr-email");
+
+    var emptyException = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.setKvnrEmail("", "X110411675@mailgun.com"));
+    var whitespaceException = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.setKvnrEmail(" \t", "X110411675@mailgun.com"));
+
+    assertEquals("kvnr must not be blank", emptyException.getMessage());
+    assertEquals("kvnr must not be blank", whitespaceException.getMessage());
+  }
+
+  /**
+   * Verifies that an empty or whitespace-only email is rejected before sending a request.
+   */
+  @Test
+  void setKvnrEmailRejectsBlankEmail() {
+    var service = new TestDriverConfigurationService(
+        "http://localhost/testdriver-api/reset",
+        "http://localhost/testdriver-api/configure",
+        "http://localhost/oidc/kvnr-email");
+
+    var emptyException = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.setKvnrEmail("X110411675", ""));
+    var whitespaceException = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.setKvnrEmail("X110411675", " \t"));
+
+    assertEquals("email must not be blank", emptyException.getMessage());
+    assertEquals("email must not be blank", whitespaceException.getMessage());
+  }
+
+  /**
+   * Verifies that the random KVNR helper sends a valid generated identity.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void setRandomKvnrEmailSendsValidGeneratedIdentity() throws Exception {
+    var kvnrBody = new AtomicReference<String>();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/oidc/kvnr-email", exchange -> {
+      kvnrBody.set(readBody(exchange.getRequestBody()));
+      exchange.sendResponseHeaders(200, -1);
+      exchange.close();
+    });
+    server.start();
+
+    var service = new TestDriverConfigurationService(
+        baseUrl() + "/testdriver-api/reset",
+        baseUrl() + "/testdriver-api/configure",
+        baseUrl() + "/oidc/kvnr-email");
+
+    var kvnr = service.setRandomKvnrEmail("mailgun.com");
+
+    assertTrue(KvnrGenerator.isValid(kvnr));
+    assertTrue(kvnrBody.get().contains("\"kvnr\":\"" + kvnr + "\""));
+    assertTrue(kvnrBody.get().contains("\"email\":\"" + kvnr + "@mailgun.com\""));
+  }
+
+  /**
    * Verifies that HTTP errors are surfaced as assertion failures.
    *
    * @throws Exception on embedded server setup failure
@@ -126,6 +233,68 @@ class TestDriverConfigurationServiceTest {
     assertTrue(exception.getMessage().contains("POST"));
     assertTrue(exception.getMessage().contains("/testdriver-api/configure"));
     assertTrue(exception.getMessage().contains("400"));
+  }
+
+  /**
+   * Verifies that transient gateway failures are retried until the configuration endpoint is ready.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void configureWhenReadyRetriesTransientGatewayFailures() throws Exception {
+    var attempts = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/testdriver-api/configure", exchange -> {
+      exchange.getRequestBody().readAllBytes();
+      var status = attempts.incrementAndGet() < 3 ? 502 : 200;
+      exchange.sendResponseHeaders(status, -1);
+      exchange.close();
+    });
+    server.start();
+    var service = new TestDriverConfigurationService(
+        baseUrl() + "/testdriver-api/reset",
+        baseUrl() + "/testdriver-api/configure");
+
+    service.configureWhenReady(
+        "https://tls-test-tool.example.local:8443",
+        "CERT",
+        false,
+        Duration.ofSeconds(1),
+        Duration.ofMillis(1));
+
+    assertEquals(3, attempts.get());
+  }
+
+  /**
+   * Verifies that non-transient configuration errors are not retried.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void configureWhenReadyDoesNotRetryClientErrors() throws Exception {
+    var attempts = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/testdriver-api/configure", exchange -> {
+      exchange.getRequestBody().readAllBytes();
+      attempts.incrementAndGet();
+      exchange.sendResponseHeaders(400, -1);
+      exchange.close();
+    });
+    server.start();
+    var service = new TestDriverConfigurationService(
+        baseUrl() + "/testdriver-api/reset",
+        baseUrl() + "/testdriver-api/configure");
+
+    assertThrows(
+        AssertionError.class,
+        () -> service.configureWhenReady(
+            "https://tls-test-tool.example.local:8443",
+            "CERT",
+            false,
+            Duration.ofSeconds(1),
+            Duration.ofMillis(1)));
+
+    assertEquals(1, attempts.get());
   }
 
   /**

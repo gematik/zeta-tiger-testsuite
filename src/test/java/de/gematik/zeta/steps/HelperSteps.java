@@ -191,6 +191,37 @@ public class HelperSteps {
   }
 
   /**
+   * Verifies that exactly the expected number of recorded requests has a path equal to or matching the given pattern.
+   *
+   * @param expectedCount the expected number of matching requests
+   * @param pathPattern   the request path or regular expression to count in the recorded request history
+   */
+  @Dann("prüfe, dass genau {int} aufgezeichnete Anfragen den Pfad {tigerResolvedString} haben")
+  @Then("verify exactly {int} recorded requests have path {tigerResolvedString}")
+  public void verifyRecordedRequestCountForPath(int expectedCount, String pathPattern) {
+    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    if (messages == null || messages.isEmpty()) {
+      Assertions
+          .assertThat(0)
+          .as("Recorded request path count for '%s'", pathPattern)
+          .isEqualTo(expectedCount);
+      return;
+    }
+
+    var matchingPaths = messages
+        .stream()
+        .filter(this::isRequestMessage)
+        .flatMap(message -> extractPathValues(message).stream())
+        .filter(path -> path.equals(pathPattern) || path.matches(pathPattern))
+        .toList();
+
+    Assertions
+        .assertThat(matchingPaths)
+        .as("Recorded request paths matching '%s'", pathPattern)
+        .hasSize(expectedCount);
+  }
+
+  /**
    * Checks an optional expected value against a request node.
    *
    * <p>If the expected value is blank (null/empty/"null"), the node must be absent.

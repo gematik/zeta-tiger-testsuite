@@ -1,0 +1,145 @@
+#
+# #%L
+# ZETA Testsuite
+# %%
+# (C) achelos GmbH, 2025, licensed for gematik GmbH
+# %%
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# *******
+#
+# For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
+# #L%
+#
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: OpenID Federation 1.0 Entity Statement (A_25656 profile)
+$comment: >-
+  Normative source: OpenID Federation 1.0, Section 3 (Entity Statement) and
+  Section 5.1.2 (OpenID Connect Relying Party metadata),
+  https://openid.net/specs/openid-federation-1_0.html#name-entity-statement.
+  The schema validates Tiger's decoded header/payload representation of the
+  compact JWT; the RFC wire format is the signed compact JWT itself.
+description: >-
+  OpenID Federation 1.0-based structural schema for the compact Entity
+  Statement JWT returned by the PDP Authorization Server. The official gematik
+  ZETA schema catalogue contains no Entity Statement schema, so this
+  test-specific schema is kept outside the vendored v_1_0 directory. The
+  redirect_uris values are intentionally strings because the local deployment
+  also emits relative paths and wildcard patterns. The expected KIND redirect
+  URLs are test data and are asserted separately from this schema.
+type: object
+properties:
+  header:
+    type: object
+    description: >-
+      JOSE header of the signed Entity Statement. OpenID Federation 1.0,
+      Section 3, requires the explicit Entity Statement type and a key ID.
+    properties:
+      alg:
+        type: string
+        minLength: 1
+        not:
+          const: "none"
+      typ:
+        const: "entity-statement+jwt"
+      kid:
+        type: string
+        minLength: 1
+    required:
+      - alg
+      - typ
+      - kid
+  payload:
+    type: object
+    properties:
+      iss:
+        type: string
+        format: uri
+        description: Issuer of the Entity Statement.
+      sub:
+        type: string
+        format: uri
+        description: Subject of the Entity Statement.
+      iat:
+        type: integer
+        description: >-
+          Unix timestamp at which the Entity Statement was issued, as required
+          by OpenID Federation 1.0, Section 3.1.1.
+      exp:
+        type: integer
+        description: >-
+          Unix timestamp after which the Entity Statement expires, as required
+          by OpenID Federation 1.0, Section 3.1.1.
+      jwks:
+        type: object
+        description: >-
+          Federation Entity signing keys from the required jwks claim defined
+          by OpenID Federation 1.0, Section 3.1.1.
+        properties:
+          keys:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              properties:
+                kty:
+                  type: string
+                kid:
+                  type: string
+                use:
+                  type: string
+                alg:
+                  type: string
+              required:
+                - kty
+                - kid
+        required:
+          - keys
+      authority_hints:
+        type: array
+        items:
+          type: string
+          format: uri
+      metadata:
+        type: object
+        description: >-
+          Entity metadata. The openid_relying_party metadata and its
+          redirect_uris member are defined by OpenID Federation 1.0,
+          Section 5.1.2, and are required here for A_25656.
+        properties:
+          openid_relying_party:
+            type: object
+            description: OpenID Connect Relying Party metadata.
+            properties:
+              redirect_uris:
+                type: array
+                description: Redirect-URLs allowed for the relying-party clients.
+                minItems: 1
+                items:
+                  type: string
+                  minLength: 1
+            required:
+              - redirect_uris
+        required:
+          - openid_relying_party
+    required:
+      - iss
+      - sub
+      - iat
+      - exp
+      - jwks
+      - metadata
+required:
+  - header
+  - payload

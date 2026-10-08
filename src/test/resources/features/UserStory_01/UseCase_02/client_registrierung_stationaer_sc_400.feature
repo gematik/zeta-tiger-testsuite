@@ -25,16 +25,21 @@
 #language:de
 
 @UseCase_01_02
-Funktionalität: client_registrierung_stationaer_sc_400
+Funktionalität: Client-Registrierung stationär SC 400
 
   @A_26661
+  @A_27725-01
   @TA_A_26661_11
-  @dev
+  @TA_A_27725-01_21
+  @normal
   @MASVS-AUTH
+  @MASVS-RESILIENCE
   Szenario: Client-Registrierung liefert 400 Bad Request
     Gegeben sei TGR setze lokale Variable "badRequestCondition" auf "isRequest && request.path =~ '.*${paths.guard.registerEndpointPath}'"
     Und Setze im TigerProxy für die Nachricht "${badRequestCondition}" die Manipulation auf Feld "$.body.jwks.keys.0.kty" und Wert "INVALID" und 4 Ausführungen
     Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "START"
+    Und TGR setze lokale Variable "START_MICROS" auf "!{${START} * 1000000}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.registerEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
@@ -44,3 +49,12 @@ Funktionalität: client_registrierung_stationaer_sc_400
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.client_id"
     Und Alle Manipulationen im TigerProxy werden gestoppt
+    Und warte "${testdata.telemetry_wait_seconds}" Sekunden
+    Und speichere den aktuellen Unix-Zeitstempel in der Variable "END"
+    Und TGR setze lokale Variable "END_MICROS" auf "!{${END} * 1000000}"
+    Wenn TGR sende eine GET Anfrage an "${paths.jaeger.baseUrl}${paths.jaeger.jaegerTracesSearchPath}" mit folgenden Daten:
+      | service                                  | operation                                                | start           | end           | limit | tags                                                                                 |
+      | ${telemetry.service.authorizationServer} | ${telemetry.span.authorizationServer.clientRegistration} | ${START_MICROS} | ${END_MICROS} | 1     | {"http.response.status_code":"400","url.path":"${paths.guard.registerEndpointPath}"} |
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.jaeger.jaegerTracesSearchPathPattern}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"

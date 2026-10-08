@@ -32,12 +32,12 @@
   <parent>
     <groupId>de.gematik.test</groupId>
     <artifactId>tiger-starter-parent</artifactId>
-    <version>4.2.5</version>
+    <version>4.4.0</version>
     <relativePath/>
   </parent>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>1.0.1</version>
+  <version>1.3.0</version>
 
   <!-- Projektlizenzinformationen -->
   <licenses>
@@ -172,6 +172,137 @@
       </properties>
     </profile>
 
+    <profile>
+      <id>distribution</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.mycila</groupId>
+            <artifactId>license-maven-plugin</artifactId>
+            <configuration>
+              <mapping>
+                <feature>SCRIPT_STYLE</feature>
+              </mapping>
+              <licenseSets>
+                <licenseSet>
+                  <header>${project.basedir}/config/license-header.txt</header>
+                  <includes>
+                    <include>src/main/java/**/*.java</include>
+                    <include>src/test/java/**/*.java</include>
+                    <include>src/test/resources/features/**/*.feature</include>
+                    <include>pom.xml</include>
+                    <include>docs/scripts/src/**/*.py</include>
+                  </includes>
+                </licenseSet>
+              </licenseSets>
+              <failIfMissing>true</failIfMissing>
+            </configuration>
+            <executions>
+              <execution>
+                <id>check-license-headers</id>
+                <phase>validate</phase>
+                <goals>
+                  <goal>check</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>license-maven-plugin</artifactId>
+            <configuration>
+              <outputDirectory>${project.build.directory}/generated-sources/license</outputDirectory>
+              <thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
+              <sortArtifactByName>true</sortArtifactByName>
+              <force>true</force>
+              <failOnMissing>true</failOnMissing>
+              <failOnBlacklist>true</failOnBlacklist>
+              <excludedLicenses>${license.denied.list}</excludedLicenses>
+            </configuration>
+            <executions>
+              <execution>
+                <id>dependency-license-inventory</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>add-third-party</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>test-jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>copy-test-deps</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy-dependencies</goal>
+                </goals>
+                <configuration>
+                  <includeScope>test</includeScope>
+                  <outputDirectory>${project.build.directory}/deps</outputDirectory>
+                  <useRepositoryLayout>false</useRepositoryLayout>
+                </configuration>
+              </execution>
+              <execution>
+                <id>copy-tiger-agent</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>de.gematik.test</groupId>
+                      <artifactId>tiger-java-agent</artifactId>
+                      <type>jar</type>
+                      <overWrite>true</overWrite>
+                      <outputDirectory>${project.build.directory}/agent</outputDirectory>
+                      <destFileName>tiger-java-agent.jar</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                  <silent>true</silent>
+                </configuration>
+              </execution>
+              <execution>
+                <id>copy-serenity-cli</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>net.serenity-bdd</groupId>
+                      <artifactId>serenity-cli</artifactId>
+                      <version>${version.serenity.cli}</version>
+                      <type>jar</type>
+                      <overWrite>true</overWrite>
+                      <outputDirectory>${project.build.directory}/tools</outputDirectory>
+                      <destFileName>serenity-cli.jar</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                  <silent>true</silent>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
   </profiles>
 
   <properties>
@@ -179,13 +310,11 @@
     <maven.compiler.release>21</maven.compiler.release>
     <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
     <skip.unit.tests>true</skip.unit.tests>
-
-    <version.maven.failsafe>3.5.5</version.maven.failsafe>
-    <version.maven.surefire>3.5.5</version.maven.surefire>
+    <!-- Tiger's published starter exposes Failsafe/Exec directly. These remaining build
+         versions mirror Tiger 4.4's BOM because imported-BOM properties are not inherited. -->
     <version.maven.jar>3.5.0</version.maven.jar>
     <version.maven.compiler>3.15.0</version.maven.compiler>
     <version.maven.enforcer>3.6.2</version.maven.enforcer>
-    <version.maven.exec>3.6.3</version.maven.exec>
     <version.mojo.license>2.7.1</version.mojo.license>
     <version.maven.checkstyle>3.6.0</version.maven.checkstyle>
     <version.license.maven.plugin>5.0.0</version.license.maven.plugin>
@@ -199,8 +328,11 @@
     <version.checkstyle>13.4.2</version.checkstyle>
     <version.allure>2.34.0</version.allure>
     <version.tyrus>2.2.2</version.tyrus>
-    <version.jmeter.dsl>2.2</version.jmeter.dsl>
     <version.commons.csv>1.14.1</version.commons.csv>
+    <version.serenity.cli>5.3.10</version.serenity.cli>
+    <!-- Forward the optional tag selector into the Failsafe fork. An empty
+         value keeps the default Cucumber behaviour (no tag filtering). -->
+    <cucumber.filter.tags></cucumber.filter.tags>
     <allure.results.directory>target/allure-results</allure.results.directory>
     <cucumber.plugin>
       io.cucumber.core.plugin.TigerSerenityReporterPlugin,json:target/cucumber-parallel/main.json,junit:target/cucumber-parallel/cucumber.xml,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,de.gematik.zeta.traceability.RuntimeCoveragePlugin
@@ -217,66 +349,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>us.abstracta.jmeter</groupId>
-      <artifactId>jmeter-java-dsl</artifactId>
-      <version>${version.jmeter.dsl}</version>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy-json</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy-jsr223</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy-xml</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-dateutil</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-datetime</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-jmx</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-json</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-jsr223</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-sql</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-templates</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-xml</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>io.qameta.allure</groupId>
       <artifactId>allure-cucumber7-jvm</artifactId>
       <version>${version.allure}</version>
@@ -286,11 +358,22 @@
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
       <version>${version.nimbus.jose.jwt}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>${version.commons.csv}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.serenity-bdd</groupId>
+      <artifactId>serenity-single-page-report</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.serenity-bdd</groupId>
+      <artifactId>serenity-json-summary-report</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -300,37 +383,65 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents.client5</groupId>
-      <artifactId>httpclient5</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-jdk18on</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>tools.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+      <scope>test</scope>
     </dependency>
 
     <!-- WebSocket Dependencies -->
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-websocket</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-messaging</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish.tyrus.bundles</groupId>
       <artifactId>tyrus-standalone-client</artifactId>
       <version>${version.tyrus}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+      <!-- Version is managed by tiger-starter-parent/tiger-bom; do not override it locally. -->
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -347,7 +458,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
-          <version>${version.maven.exec}</version>
+          <version>${version.exec-maven-plugin}</version>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
@@ -371,11 +482,6 @@
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-failsafe-plugin</artifactId>
-          <version>${version.maven.failsafe}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-checkstyle-plugin</artifactId>
           <version>${version.maven.checkstyle}</version>
         </plugin>
@@ -387,7 +493,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>${version.maven.surefire}</version>
+          <version>${version.maven.failsafe}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -423,63 +529,6 @@
                 </requireMavenVersion>
               </rules>
             </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- License headers in sources -->
-      <plugin>
-        <groupId>com.mycila</groupId>
-        <artifactId>license-maven-plugin</artifactId>
-        <configuration>
-          <mapping>
-            <feature>SCRIPT_STYLE</feature>
-          </mapping>
-          <licenseSets>
-            <licenseSet>
-              <header>${project.basedir}/config/license-header.txt</header>
-              <includes>
-                <include>src/main/java/**/*.java</include>
-                <include>src/test/java/**/*.java</include>
-                <include>src/test/resources/features/**/*.feature</include>
-                <include>pom.xml</include>
-                <include>docs/scripts/src/**/*.py</include>
-              </includes>
-            </licenseSet>
-          </licenseSets>
-          <failIfMissing>true</failIfMissing>
-        </configuration>
-        <executions>
-          <execution>
-            <id>check-license-headers</id>
-            <phase>validate</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- Third-party dependency license inventory -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>license-maven-plugin</artifactId>
-        <configuration>
-          <outputDirectory>${project.build.directory}/generated-sources/license</outputDirectory>
-          <thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
-          <sortArtifactByName>true</sortArtifactByName>
-          <force>true</force>
-          <failOnMissing>true</failOnMissing>
-          <failOnBlacklist>true</failOnBlacklist>
-          <excludedLicenses>${license.denied.list}</excludedLicenses>
-        </configuration>
-        <executions>
-          <execution>
-            <id>dependency-license-inventory</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>add-third-party</goal>
-            </goals>
           </execution>
         </executions>
       </plugin>
@@ -583,20 +632,14 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <dependencies>
-          <dependency>
-            <groupId>org.apache.maven.surefire</groupId>
-            <artifactId>surefire-junit-platform</artifactId>
-            <version>${version.maven.surefire}</version>
-          </dependency>
-        </dependencies>
         <configuration>
           <failIfNoTests>false</failIfNoTests>
-          <testFailureIgnore>true</testFailureIgnore>
+          <testFailureIgnore>false</testFailureIgnore>
           <argLine>${profile.argline}</argLine>
           <systemPropertyVariables>
             <allure.results.directory>${allure.results.directory}</allure.results.directory>
             <cucumber.plugin>${cucumber.plugin}</cucumber.plugin>
+            <cucumber.filter.tags>${cucumber.filter.tags}</cucumber.filter.tags>
             <java.net.preferIPv4Stack>true</java.net.preferIPv4Stack>
           </systemPropertyVariables>
           <includes>
@@ -637,21 +680,9 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <dependencies>
-          <dependency>
-            <groupId>org.apache.maven.surefire</groupId>
-            <artifactId>surefire-junit-platform</artifactId>
-            <version>${version.maven.surefire}</version>
-          </dependency>
-        </dependencies>
         <configuration>
           <skipTests>${skip.unit.tests}</skipTests>
           <argLine>${profile.argline}</argLine>
-          <systemPropertyVariables>
-            <allure.results.directory>${allure.results.directory}</allure.results.directory>
-            <cucumber.plugin>${cucumber.plugin}</cucumber.plugin>
-            <java.net.preferIPv4Stack>true</java.net.preferIPv4Stack>
-          </systemPropertyVariables>
         </configuration>
       </plugin>
 
@@ -667,55 +698,6 @@
             </path>
           </annotationProcessorPaths>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>copy-test-deps</id>
-            <phase>package</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-              <includeScope>test</includeScope>
-              <outputDirectory>${project.build.directory}/deps</outputDirectory>
-              <useRepositoryLayout>false</useRepositoryLayout>
-            </configuration>
-          </execution>
-          <execution>
-            <id>copy-tiger-agent</id>
-            <phase>package</phase>
-            <goals>
-              <goal>copy</goal>
-            </goals>
-            <configuration>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>de.gematik.test</groupId>
-                  <artifactId>tiger-java-agent</artifactId>
-                  <type>jar</type>
-                  <overWrite>true</overWrite>
-                  <outputDirectory>${project.build.directory}/agent</outputDirectory>
-                  <destFileName>tiger-java-agent.jar</destFileName>
-                </artifactItem>
-              </artifactItems>
-              <silent>true</silent>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

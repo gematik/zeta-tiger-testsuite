@@ -1,8 +1,8 @@
 [#TA_A_25432-01_05]
-===== TA_A_25432-01_05 - ZETA Client - Ablauf Client-Registrierung - Attestierung der Clientintegrität
+===== TA_A_25432-01_05 - ZETA Client - Ablauf Client-Registrierung - Zusätzliche Nutzerbestätigung mittels One-Time-Passwort
 
 Der mobile ZETA Client (oder ein stationärer Client) für Versicherte MUSS, sofern er an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, indem er 
 
-* die +++[...]+++ **Clientintegrität** **attestiert**
+* **eine zusätzliche Nutzerbestätigung mittels One-Time-Passwort** (gemäß [TR-03107-1]) **über einen zweiten Kommunikationsweg (E-Mailbestätigung) startet**. 
 
 **[<=]**

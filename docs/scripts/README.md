@@ -27,6 +27,8 @@ deklarierten Abhängigkeiten.
   generierte TGR/Cucumber-Step-Tabelle aus projektinternem Glue.
 - [masvs_tags.py](src/testsuite_docs/masvs_tags.py): ergänzt und prüft `@MASVS-*`-Tags in
   Feature-Szenarien anhand einer AFO/MASVS-CSV.
+- [zeta_schemas.py](src/testsuite_docs/zeta_schemas.py): prüft und aktualisiert die lokal vendorten
+  ZETA-Schemas aus `src/schemas` eines auswählbaren Upstream-Refs.
 - [gitlab_issue_sync.py](src/testsuite_docs/gitlab_issue_sync.py): erstellt/aktualisiert GitLab-Issues
   für AFOs/Testaspekte, schließt Testaspekte mit @TA_-Szenario-Tags und synchronisiert AFO-Issues
   (open/closed).
@@ -125,19 +127,16 @@ Die Datei ist in `.githubignore` eingetragen und soll nicht in öffentliche Arte
 Empfohlenes CSV-Format:
 
 ```csv
-Zuordnung,Anforderung,Testaspekt,Feature,Szenario,Tickets,Verantwortlich
-Szenario,A_25663,TA_A_25663_01,src/test/resources/features/UserStory_01/UseCase_22/client_ressource_anfrage_fachdienst_sc_200.feature,"DPoP Token Binding für Access und Refresh Token",https://jira.example/ZETA-1234,Team ZETA
-Testaspekt,A_28963,TA_A_28963_01,,,ZETA-2222,Team ZETA
-Anforderung,A_26493-01,,,,ZETA-3333,Team ZETA
+Zuordnung,Feature,Szenario,Tickets,Verantwortlich
+Szenario,src/test/resources/features/UserStory_01/UseCase_22/client_ressource_anfrage_fachdienst_sc_200.feature,"DPoP Token Binding für Access und Refresh Token",https://jira.example/ZETA-1234,Team ZETA
 ```
 
 Die CSV-Datei ist UTF-8; Umlaute wie `ä`, `ö`, `ü` und `ß` sind erlaubt.
 Für neue Dateien sollten die deutschen Spaltennamen oben verwendet werden.
 
-`Zuordnung` unterstützt `Szenario`, `Testaspekt` und `Anforderung`.
-Szenario-Zuordnungen werden über AFO, TA, Feature-Pfad und Szenarioname gegen die konkrete Fehlersituation gematcht.
-TA-Zuordnungen greifen für rote oder übersprungene Testaspekt-Zeilen und für AFO-Zeilen mit roten Szenarien dieses Testaspekts.
-AFO-Zuordnungen dienen als Fallback für rote oder übersprungene Anforderungszeilen.
+`Zuordnung` ist für die interne Laufzeitfehlerliste `Szenario`.
+Szenario-Zuordnungen werden über Feature-Pfad und Szenarioname gegen die konkrete Fehlersituation gematcht.
+Der Szenarioname ist die fachliche Zuordnung; AFO- und Testaspekt-Spalten werden für Szenario-Zuordnungen nicht benötigt.
 Die generierte `runtime_coverage.csv` enthält dafür zusätzlich `Tickets` und `Verantwortlich` sowie `Scenarios` mit den ausgeführten
 Szenarionamen pro AFO.
 Die generierte `runtime_coverage_testaspects.csv` enthält zusätzlich die Spalten `Fehler Testrun`, `Tickets`, `Verantwortlich` und
@@ -148,19 +147,12 @@ Wenn eine AFO- oder Testaspekt-Zeile mindestens ein bestandenes und mindestens e
 Spalten:
 
 - `Zuordnung`: Granularität der Zuordnung.
-  `Szenario` passt nur auf konkrete fehlgeschlagene Szenarien.
-  `Testaspekt` passt auf rote Zeilen eines Testaspekts und auf AFO-Zeilen mit roten Szenarien dieses Testaspekts.
-  `Anforderung` passt auf rote AFO-Zeilen und ist der gröbste Fallback.
-- `Anforderung`: AFO-ID, z. B. `A_25663`.
-  Für `Testaspekt` und `Szenario` sollte die zugehörige AFO gesetzt werden, damit die Zuordnung eindeutig bleibt.
-- `Testaspekt`: TA-ID, z. B. `TA_A_25663_01`.
-  Für `Szenario` und `Testaspekt` setzen.
-  Für reine AFO-Fallbacks leer lassen.
+  Für die interne Liste wird `Szenario` verwendet.
 - `Feature`: Feature-Pfad für `Szenario`-Zuordnungen.
   Relative Pfade wie `src/test/resources/features/.../example.feature` sind ausreichend.
-  Für `Testaspekt` und `Anforderung` leer lassen.
+  Der Pfad ist optional, sollte aber gesetzt werden, wenn gleiche Szenarionamen in mehreren Features vorkommen können.
 - `Szenario`: Exakter Szenarioname aus der `.feature`-Datei oder dem Cucumber-Report.
-  Nur für `Szenario`-Zuordnungen setzen.
+  Scenario-Outline-Platzhalter wie `<client_name>` werden als variable Segmente erkannt.
 - `Tickets`: Ticket-IDs oder URLs, mehrere Einträge mit Semikolon trennen, z. B. `ZETA-1234;ZETA-5678`.
 - `Verantwortlich`: Verantwortliche Partei für Nachverfolgung oder Klärung, z. B. Teamname, Hersteller, Komponente oder Ansprechpartner.
   Diese Spalte wird in die Laufzeit-CSV-Ausgabe übernommen.
@@ -209,6 +201,35 @@ Die Prüfung beweist die Postbedingung, dass jedes geparste Szenario oder Beispi
 trägt.
 Diese Prüfung läuft auch im GitLab-Job `traceability`, bevor die Testplan-Tabellen generiert werden.
 Die generierte MASVS-Abdeckung im Testplan wird anschließend durch das Skript `traceability` aus der CSV und den Feature-Tags abgeleitet.
+
+### Skript: ZETA-Schemas prüfen und aktualisieren
+
+Die Testsuite hält die ZETA-Schemas lokal unter `src/test/resources/schemas/v_1_0`.
+Die lokale Kopie bleibt bewusst versioniert, damit Szenarioausführungen nicht vom Netzwerk oder einem beweglichen Upstream-Branch abhängen.
+Der relevante Upstream-Ref kann per `--ref` oder `ZETA_SCHEMA_REF` gesetzt werden.
+Für den aktuellen Release-Stand ist `v1.3.1-2` voreingestellt.
+Alternativ kann die GitHub-Tree-URL direkt als `--repo-url` angegeben werden.
+
+Zur Prüfung auf Drift:
+
+```bash
+uv run --project docs/scripts check-zeta-schemas --ref v1.3.1-2
+uv run --project docs/scripts check-zeta-schemas --repo-url https://github.com/gematik/zeta/tree/v1.3.1-2/src/schemas
+```
+
+Das Skript lädt nur `src/schemas` aus dem Upstream-Archiv.
+Bei Abweichungen beendet es sich mit Exit-Code `1` und schreibt den Unified Diff nach `target/schema-drift.diff`.
+Lokale Mock-Schemas unter `src/test/resources/schemas/mock` werden nicht verglichen.
+
+Zur Aktualisierung der lokalen Kopie:
+
+```bash
+uv run --project docs/scripts update-zeta-schemas --ref v1.3.1-2
+uv run --project docs/scripts update-zeta-schemas --repo-url https://github.com/gematik/zeta/tree/v1.3.1-2/src/schemas
+```
+
+Das Update ersetzt `src/test/resources/schemas/v_1_0` durch die Dateien aus dem gewählten Upstream-Ref.
+Zusätzlich wird `src/test/resources/schemas/UPSTREAM.md` mit Repository, Ref, Upstream-Pfad und lokalem Zielpfad geschrieben.
 
 ### Skript: [fetch_youtrack_testaspects.py](src/testsuite_docs/fetch_youtrack_testaspects.py)
 

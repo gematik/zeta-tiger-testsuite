@@ -24,13 +24,13 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.ParameterType;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
 import java.nio.charset.StandardCharsets;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber step definitions for validating JSON/header content, child-node inclusion, and size
@@ -112,7 +112,7 @@ public class CheckMessageSteps {
       }
 
       try {
-        referenceParent.fieldNames().forEachRemaining(childName -> {
+        referenceParent.propertyNames().forEach(childName -> {
           String actualHeaderName = findHeaderNameIgnoreCase(node, childName);
           if (actualHeaderName == null) {
             if (!childName.equalsIgnoreCase("Connection")) {
@@ -208,7 +208,7 @@ public class CheckMessageSteps {
       }
 
       try {
-        referenceParent.fieldNames().forEachRemaining(childName -> {
+        referenceParent.propertyNames().forEach(childName -> {
           if (!node.has(childName)) {
             throw new AssertionError("Expected child node '" + childName + "' is missing.");
           }
@@ -300,9 +300,7 @@ public class CheckMessageSteps {
    * @return actual header key as present in {@code headers}, or {@code null} if none matches
    */
   private static String findHeaderNameIgnoreCase(JsonNode headers, String expectedHeaderName) {
-    var names = headers.fieldNames();
-    while (names.hasNext()) {
-      var candidate = names.next();
+    for (var candidate : headers.propertyNames()) {
       if (candidate.equalsIgnoreCase(expectedHeaderName)) {
         return candidate;
       }

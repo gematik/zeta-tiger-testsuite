@@ -46,6 +46,7 @@ Der Ressourcenzugriff wurde abgewiesen.
 | Abgedeckte Testaspekte: |
 * <<TA_A_26661_21>>
 * <<TA_A_27007_21>>
+* <<TA_A_27725-01_33>>
 * <<TA_A_28426_03>>
 |===
 

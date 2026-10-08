@@ -1,4 +1,9 @@
 [#TA_A_28868_04]
 ===== TA_A_28868_04 - TLS-Verbindung zwischen Zeta-Client und Zeta-Guard - ZETA Guard TLS-1.3-Pflicht-Ciphersuiten
 
-"Bei Einsatz von TLS Version 1.3 MÜSSEN folgende Ciphersuiten unterstützt werden: `TLS_AES_128_GCM_SHA256` und `TLS_AES_256_GCM_SHA384`. **[<=]**"
+"bei Einsatz von TLS Version 1.3 MÜSSEN sie folgende Ciphersuiten unterstützen
+
+* TLS_AES_128_GCM_SHA256,
+* TLS_AES_256_GCM_SHA384
+
+**[<=]**"

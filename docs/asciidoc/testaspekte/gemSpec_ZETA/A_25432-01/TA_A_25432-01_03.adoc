@@ -1,8 +1,8 @@
 [#TA_A_25432-01_03]
-===== TA_A_25432-01_03 - ZETA Client - Ablauf Client-Registrierung - Authentifizierung mittels OpenID Connect
+===== TA_A_25432-01_03 - ZETA Client - Ablauf Client-Registrierung - Attestierung generierter Credentials
 
 Der mobile ZETA Client (oder ein stationärer Client) für Versicherte MUSS, sofern er an Schnittstellen der Telematikinfrastruktur wegen einer ungültigen/fehlenden Client-Registrierung abgewiesen wird, eine Registrierung am Authorization Server durchführen, indem er 
 
-* **den/die Nutzer:in mittels OpenID Connect authentifiziert**
+* die **generierten Credentials** +++[...]+++ **attestiert**
 
 **[<=]**

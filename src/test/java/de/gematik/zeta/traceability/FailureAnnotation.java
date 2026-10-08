@@ -30,9 +30,9 @@ import java.util.Set;
 /**
  * One private ticket/owner annotation row.
  *
- * @param matchType     anforderung, testaspekt or scenario
- * @param requirementId optional requirement identifier
- * @param testAspectId  optional test aspect identifier
+ * @param matchType     anforderung, testaspekt or scenario; scenario rows are matched by name
+ * @param requirementId optional requirement identifier for non-scenario fallback rows
+ * @param testAspectId  optional test aspect identifier for non-scenario fallback rows
  * @param feature       optional feature path
  * @param scenario      optional scenario name
  * @param tickets       ticket identifiers or URLs
@@ -66,13 +66,13 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    */
   boolean matchesRequirement(String requirementId, Set<FailureRecord> failures,
       Set<String> scenarios) {
+    if ("scenario".equals(matchType)) {
+      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
+    }
     var normalizedRequirement = RuntimeCoverageIds.normalizeId(requirementId);
     if (!this.requirementId.isBlank()
         && !Objects.equals(this.requirementId, normalizedRequirement)) {
       return false;
-    }
-    if ("scenario".equals(matchType)) {
-      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
     }
     if ("testaspekt".equals(matchType)) {
       return !testAspectId.isBlank()
@@ -94,18 +94,14 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    */
   boolean matchesTestAspect(String testAspectId, String requirementId,
       Set<FailureRecord> failures, Set<String> scenarios) {
+    if ("scenario".equals(matchType)) {
+      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
+    }
     var normalizedTestAspect = RuntimeCoverageIds.normalizeId(testAspectId);
     var normalizedRequirement = RuntimeCoverageIds.normalizeId(requirementId);
     if (!this.requirementId.isBlank()
         && !Objects.equals(this.requirementId, normalizedRequirement)) {
       return false;
-    }
-    if ("scenario".equals(matchType)) {
-      if (!this.testAspectId.isBlank()
-          && !Objects.equals(this.testAspectId, normalizedTestAspect)) {
-        return false;
-      }
-      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
     }
     if ("testaspekt".equals(matchType)) {
       return Objects.equals(this.testAspectId, normalizedTestAspect);
@@ -120,8 +116,7 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    * @return true if there is at least one reportable value
    */
   boolean hasOutput() {
-    return !tickets.isEmpty()
-        || !owner.isBlank();
+    return !tickets.isEmpty() || !owner.isBlank();
   }
 
   /**
@@ -134,13 +129,10 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
     if (failure == null) {
       return false;
     }
-    if (!testAspectId.isBlank() && !failure.testAspectIds().contains(testAspectId)) {
-      return false;
-    }
     if (!feature.isBlank() && !RuntimeCoverageIds.pathMatches(feature, failure.feature())) {
       return false;
     }
-    return scenario.isBlank() || Objects.equals(scenario, failure.scenario());
+    return scenario.isBlank() || RuntimeCoverageIds.scenarioNameMatches(scenario, failure.scenario());
   }
 
   /**
@@ -163,7 +155,9 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
     if (scenario.isBlank() || scenarios == null || scenarios.isEmpty()) {
       return false;
     }
-    return scenarios.contains(scenario);
+    return scenarios
+        .stream()
+        .anyMatch(candidate -> RuntimeCoverageIds.scenarioNameMatches(scenario, candidate));
   }
 
   /**

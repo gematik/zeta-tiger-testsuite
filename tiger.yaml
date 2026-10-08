@@ -1,19 +1,26 @@
 lib:
-#  activateWorkflowUi: true                  # default is false – enables the Tiger Workflow UI
+# Every Tiger 4.4 lib key is listed here. Only the log-safety improvement is active.
+#  activateWorkflowUi: false                 # default – enables the Tiger Workflow UI when true
 #  addCurlCommandsForRaCallsToReport: true   # default is true – adds curl commands for RA calls to HTML report
 #  clearEnvironmentStartupTraffic: true      # default is true – clears startup traffic after environment init
+#  createIntermediateReports: false          # Tiger 4.4 default – generate Serenity reports after each feature
 #  createRbelHtmlReports: true               # default is true – generates RBel HTML reports after test run
+#  createRbelModificationReports: true       # default – includes RBel modification reports
 #  enableTestManagementRestApi: false        # default is false – exposes REST API for managing test runs
 #  defaultProfile: "proxy"                   # default is empty – loads tiger-<profile>.yaml when PROFILE is not set
+#  httpClientConfig:
+#    activateRbelWriter: false                # default – capture Tiger HTTP-client traffic in RBel
+#  intermediateReportSearchDepth: 3          # Tiger 4.4 default – report lookup depth
 #  javaHome: ""                              # default is system Java – overrides JVM for Tiger library
 #  pauseExecutionTimeoutSeconds: 18000       # default is 18000 (5h) – max pause timeout in Workflow UI
   rbelAnsiColors: false                      # default is true – enables ANSI color output in logs
 #  rbelLogoFilePath: ""                      # default is empty – optional path to custom logo in reports
 #  rbelPathDebugging: true                   # default is false – enables detailed RBelPath debug output
-#  runTestsOnStart: false                    # default is true – if false, discover tests only; start manually in UI
+#  runTestsOnStart: true                     # default – if false, discover tests only; start manually in UI
 #  startBrowser: true                        # default is true – opens Workflow UI in browser when started
 #  trafficVisualization: true                # default is false – enables sequence diagram in Workflow UI
 #  workflowUiPort: 8080                      # default is 8080 – port for the Workflow UI
+#  workflowUiStartTimeoutInSeconds: 120       # default – maximum wait for Workflow UI startup
 #  workflowUiStartTimeoutInSeconds: 120      # default is 120 – wait time for UI startup before timeout
 
 rbel:                                       # default is 5 – request wait timeout
@@ -30,20 +37,26 @@ servers:
   # Note that the zetaClient needs '/proxy/' as path before the correct path.
   zetaClient:
     type: externalUrl
+    startupTimeoutSec: 30
     source:
       - "https://${zeta_base_url}/"
     healthcheckUrl: "https://${zeta_base_url}/health"
 
   zetaGuard:
     type: externalUrl
+    startupTimeoutSec: 30
     source:
       - "https://${zeta_base_url}/"
     healthcheckUrl: "https://${zeta_base_url}/actuator/health"
 
 additionalConfigurationFiles:
   - filename: tiger/defaults.yaml
+  - filename: tiger/oauth_parameters.yaml
+    baseKey: oauth_parameters
   - filename: tiger/paths.yaml
     baseKey: paths
+  - filename: tiger/oidc_test_data.yaml
+    baseKey: oidcTestData
   - filename: tiger/body.yaml
     baseKey: body
   - filename: tiger/headers.yaml

@@ -17,10 +17,12 @@
 Der ZETA Client oder ZETA Native Client versucht, eine TLS-Verbindung zum TLS-Server (Testsuite) herzustellen.
 
 | Kurzbeschreibung: |
-Die Testsuite prüft, dass der ZETA Client und der ZETA Native Client nur zulässige TLS-Versionen, Signatur-Hash-Algorithmen, Ciphersuites und Kurven akzeptieren und unzulässige Kombinationen ablehnen.
+Die Testsuite prüft, dass der ZETA Client und der ZETA Native Client nur zulässige TLS-Versionen, Signatur-Hash-Algorithmen, Ciphersuites und Kurven akzeptieren, unzulässige Kombinationen ablehnen und den Widerrufsstatus des End-Entity- sowie der Sub-CA-Zertifikate berücksichtigen.
+Außerdem prüft sie OCSP Stapling, die Gültigkeit und Zuordnung von OCSP-Antworten sowie das Caching von OCSP-Antworten und CRLs.
 
 | Vorbedingung: |
 Der ZETA Client und der ZETA Native Client können das TLS-Testtool erreichen.
+Das TLS-Testtool, der Tiger Proxy und der Certificate Validation Mock können miteinander kommunizieren.
 
 | Nebenbedingung: |
 Die Domäne "tlsTestToolServer" muss zu der IP-Adresse aufgelöst werden, unter der die Tests ausgeführt werden.
@@ -28,6 +30,9 @@ Die Domäne "tlsTestToolServer" muss zu der IP-Adresse aufgelöst werden, unter 
 | Ablauf: |
 . Der TLS Test Server bietet gezielt Protokollversionen, Hashfunktionen, Ciphersuites und Kurven an.
 . Der ZETA Client oder ZETA Native Client akzeptiert zulässige Konfigurationen und lehnt unzulässige Konfigurationen mit TLS Alerts ab.
+. Der Certificate Validation Mock liefert eine deterministische gültige oder widerrufene OCSP-Antwort für das End-Entity-Zertifikat.
+. Die Testsuite korreliert OCSP-Anfrage und OCSP-Antwort mit dem angefragten Zertifikat und prüft das beobachtbare Ergebnis des TLS-Handshakes.
+. Bei der Cache-Prüfung führt die Testsuite einen zweiten TLS-Handshake mit demselben Zertifikat durch und prüft, dass keine weitere OCSP-Anfrage gesendet wird.
 
 | Nachbedingung: |
 Die TLS-Konformität des ZETA Client und des ZETA Native Client ist verifiziert.
@@ -41,6 +46,20 @@ Die TLS-Konformität des ZETA Client und des ZETA Native Client ist verifiziert.
 * <<TA_A_25340-01_02>>
 * <<TA_A_25340-01_03>>
 * <<TA_A_25340-01_04>>
+* <<TA_A_25340-01_05>>
+* <<TA_A_25340-01_06>>
+* <<TA_A_25766_03>>
+* <<TA_A_27379-01_01>>
+* <<TA_A_27379-01_02>>
+* <<TA_A_27379-01_03>>
+* <<TA_A_27379-01_04>>
+* <<TA_A_27379-01_05>>
+* <<TA_A_27379-01_06>>
+* <<TA_A_27379-01_07>>
+* <<TA_A_27379-01_10>>
+* <<TA_A_27379-01_11>>
+* <<TA_A_27379-01_12>>
+* <<TA_A_27379-01_13>>
 * <<TA_A_28868_06>>
 * <<TA_A_28868_07>>
 * <<TA_A_28868_08>>

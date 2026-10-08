@@ -5,24 +5,32 @@
 |Angabe | Wert
 
 |Dokument-Version
-|1.0.1 ({revdate})
+|1.2.0 ({revdate})
 
 |Referenziertes Testkonzept
 |Testkonzept 1.0.0
 
 |Zielrelease
-|1.0.1
+|1.2.0
 
 |Testobjekt(e)
 |ZETA Guard / ZETA Client
 
 |Releasestand
 a|
-* Testsuite: 1.0.1
-* Testproxy: 1.0.0
-* zeta-guard-helm: 1.0.1
-* testdriver: 1.0.1
-* authserver: 1.0.1
-* pepproxy: 1.0.1
+* authserver: 1.2.0
+* exauthsim: latest
+* hsm-sim: 1.2.0
+* nginx-ingress: 1.2.0
+* opa: 1.16.2-static
+* provisioning-processor: 1.2.0
+* pepproxy: 1.2.0
+* testdriver: v1.2.0
+* nativedriver: v1.2.0
+* testfachdienst: 1.2.0
+* tiger-proxy: 1.2.0
+* tiger-testsuite: 1.2.0
+* zeta-cert-validation-mock: 1.2.0
+* zeta-tls-test-tool-service: 1.2.0
 
 |===

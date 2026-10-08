@@ -26,39 +26,33 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSHeader.Builder;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.JwtVariant;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
 import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
+import java.io.StringReader;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
 import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.text.ParseException;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECPublicKeySpec;
 import java.util.Base64;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Cucumber step definitions for JWT (JSON Web Token) manipulation and variant generation.
@@ -70,280 +64,297 @@ public class JwtSteps {
       new SignatureVerificationSteps();
 
   /**
-   * Signs the provided JWT claim set with RS256 and returns the compact serialized token.
+   * Extracts the compact Access Token from a raw {@code Authorization} header and stores it in a Tiger variable.
    *
-   * @param privateKey RSA private key used for signing
-   * @param claimSet   JSON string representation of the claims
-   * @return serialized JWT string
+   * <p>RBEL can expose a decoded {@code DpopToken} child for well-formed Authorization values. For
+   * malformed compact-serialization variants, the raw header is the authoritative protocol evidence.</p>
+   *
+   * @param authorizationHeader raw Authorization header value
+   * @param varName             Tiger configuration variable receiving the compact token
    */
-  public static String signJwtWithRs256(RSAPrivateKey privateKey, String claimSet) {
-    // Header with RS256 algorithm
-    JWSHeader header = new Builder(JWSAlgorithm.RS256).type(JOSEObjectType.JWT).build();
-    // Try to parse provided claims
-    JWTClaimsSet claimsSet;
-    try {
-      claimsSet = JWTClaimsSet.parse(claimSet);
-    } catch (ParseException e) {
-      throw new AssertionError("Parsing of the provided claims failed for " + claimSet);
-    }
-    // Create signed JWT instance
-    SignedJWT signedJwt = new SignedJWT(header, claimsSet);
-    // Initialize signer with private RSA key
-    RSASSASigner signer = new RSASSASigner(privateKey);
-    // Sign token
-    try {
-      signedJwt.sign(signer);
-    } catch (JOSEException e) {
-      throw new AssertionError("Signing operation failed with " + e.getClass().getSimpleName());
-    }
-    // Serialize and return JWT
-    return signedJwt.serialize();
+  @Und("extrahiere DPoP Access Token aus Authorization Header {tigerResolvedString} und speichere in Variable {tigerResolvedString}")
+  @And("extract DPoP access token from Authorization header {tigerResolvedString} and store in variable {tigerResolvedString}")
+  public void extractDpopAccessTokenFromAuthorizationHeader(
+      String authorizationHeader, String varName) {
+    var token = extractCompactTokenFromAuthorizationHeader(authorizationHeader);
+    TigerGlobalConfiguration.putValue(varName, token, ConfigurationValuePrecedence.TEST_CONTEXT);
+    log.info("Extracted DPoP Access Token from Authorization header into variable '{}'", varName);
   }
 
   /**
-   * Loads an RSA private key from the classpath.
-   *
-   * @param filename classpath resource pointing to the PEM encoded key
-   * @return parsed RSA private key
-   */
-  public static RSAPrivateKey loadPrivateKey(String filename) {
-    String cp = filename.trim();
-    final String resource = cp.startsWith("/") ? cp.substring(1) : cp;
-    String alg = null;
-    try (InputStream in = JwtSteps.class.getClassLoader().getResourceAsStream(resource)) {
-      if (in == null) {
-        throw new IllegalArgumentException(
-            "Keyfile not found in the path under resources: " + resource);
-      }
-      String keyPem = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-
-      // Remove PEM header and footer markers
-      keyPem = keyPem.replace("-----BEGIN PRIVATE KEY-----", "")
-          .replace("-----END PRIVATE KEY-----", "")
-          .replaceAll("\\s", "");
-      // Decode Base64 encoded payload
-      byte[] encoded = Base64.getDecoder().decode(keyPem);
-      // Build PKCS8 key specification
-      PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-      // Create RSA key from spec
-      alg = "RSA";
-      KeyFactory kf = KeyFactory.getInstance(alg);
-      return (RSAPrivateKey) kf.generatePrivate(keySpec);
-    } catch (IOException | InvalidKeySpecException e) {
-      throw new AssertionError("Reading failed for file " + filename);
-    } catch (NoSuchAlgorithmException e) {
-      throw new AssertionError("Did not find " + alg + " algorithm in KeyFactory.");
-    }
-  }
-
-
-
-  /**
-   * Builds a predefined compact JWT/JWS test variant from an existing valid token and stores it in
-   * the Tiger configuration for later reuse in feature steps.
-   *
-   * <p>The variants are intentionally focused on RFC 7519 / RFC 7515 negative parsing and
-   * validation paths for Guard integration tests. Variants that need a still-valid outer signature
-   * are re-signed with the provided EC private key, while pure malformed compact-serialization
-   * cases are emitted without re-signing.</p>
-   *
-   * @param variant       symbolic variant name describing the malformed JWT/JWS case
-   * @param token         original valid compact JWT that serves as the template
-   * @param privateKeyPem PEM encoded EC private key used for variants that require re-signing
-   * @param varName       Tiger configuration variable receiving the generated compact token
-   */
-  @Und("erzeuge die JWT-Variante {tigerResolvedString} aus {tigerResolvedString} mit privatem Schlüssel {tigerResolvedString} und speichere in Variable {tigerResolvedString}")
-  @And("build JWT variant {tigerResolvedString} from {tigerResolvedString} using private key {tigerResolvedString} and store in variable {tigerResolvedString}")
-  public void buildJwtVariant(String variant, String token, String privateKeyPem, String varName) {
-    var result = buildJwtVariantInternal(variant, token, privateKeyPem);
-    TigerGlobalConfiguration.putValue(varName, result,
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-    log.info("Storing JWT variant '{}' in variable '{}'", variant, varName);
-  }
-
-  /**
-   * Verifies that a generated JWT variant has the expected local signature integrity before it is
-   * sent to the Guard.
+   * Verifies that a generated JWT variant has the expected local signature integrity before it is sent to the Guard.
    *
    * <p>This prevents false positives where a failed re-signature would accidentally still lead to
-   * the expected remote error response. Variants that are supposed to keep a valid outer signature
-   * are verified locally, while the dedicated {@code invalid_signature} variant must fail local
-   * signature verification. Pure parsing-malformation variants are intentionally ignored here.</p>
+   * the expected remote error response. Variants that are supposed to keep a valid outer signature are verified locally, while the
+   * dedicated {@code invalid_signature} variant must fail local signature verification. Pure parsing-malformation variants are
+   * intentionally ignored here.</p>
    *
-   * @param variant generated JWT variant name
+   * @param variant generated JWT variant
    * @param jwt     generated compact JWT/JWS variant
    */
-  @Und("prüfe die JWT-Variante {tigerResolvedString} in {tigerResolvedString} hat lokal die erwartete Signaturintegrität")
-  @And("check JWT variant {tigerResolvedString} in {tigerResolvedString} has the expected local signature integrity")
-  public void verifyJwtVariantHasExpectedLocalSignatureIntegrity(String variant, String jwt) {
-    var normalizedVariant = variant.trim().toLowerCase();
-    switch (normalizedVariant) {
-      case "unknown_header_parameter", "unsupported_crit", "unsupported_alg", "missing_alg",
-          "duplicate_alg_headers", "nested_cty_jwt_valid_inner",
-          "nested_cty_jwt_invalid_inner" -> assertThat(
-          signatureVerificationSteps.hasCryptographicallyValidEmbeddedEs256Signature(jwt))
-          .as("JWT variant '%s' must keep a locally valid cryptographic signature", variant)
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} hat lokal die erwartete Signaturintegrität")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} has the expected local signature integrity")
+  public void verifyJwtVariantHasExpectedLocalSignatureIntegrity(JwtVariant variant, String jwt) {
+    verifyJwtVariantLocalSignatureIntegrity(
+        variant,
+        jwt,
+        signatureVerificationSteps::hasCryptographicallyValidEmbeddedEs256Signature,
+        "");
+  }
+
+  /**
+   * Verifies that a generated JWT variant has the expected local signature integrity using the public key referenced by the token's
+   * {@code kid} header.
+   *
+   * <p>This is intended for Access Token and Refresh Token checks, where the verification key is
+   * published via JWKS instead of embedded into the JOSE header.</p>
+   *
+   * @param variant  generated JWT variant
+   * @param jwt      generated compact JWT/JWS variant
+   * @param keyStore JWKS JSON containing the public key for the token {@code kid}
+   */
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} hat lokal mit KeyStore {tigerResolvedString} die erwartete Signaturintegritaet")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} has the expected local signature integrity with keystore {tigerResolvedString}")
+  public void verifyJwtVariantHasExpectedLocalSignatureIntegrityWithKeyStore(
+      JwtVariant variant, String jwt, String keyStore) {
+    verifyJwtVariantLocalSignatureIntegrity(
+        variant,
+        jwt,
+        normalizedJwt -> signatureVerificationSteps.hasCryptographicallyValidEs256SignatureFromKid(
+            normalizedJwt, keyStore),
+        " with KeyStore");
+  }
+
+  /**
+   * Verifies that a generated JWT variant has the expected local signature integrity using the public key derived from the supplied EC
+   * private key.
+   *
+   * <p>This is intended for PoPP Token checks where the intercepted token carries a {@code kid}
+   * header and no embedded JWK. The helper proves that variants which should remain cryptographically valid were signed with the configured
+   * PoPP key, while {@code invalid_signature} is locally rejected.</p>
+   *
+   * @param variant       generated JWT variant
+   * @param jwt           generated compact JWT/JWS variant
+   * @param privateKeyPem PEM encoded EC private key whose public key verifies the token
+   */
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} hat lokal mit öffentlichem Schlüssel aus privatem Schlüssel {tigerResolvedString} die erwartete Signaturintegrität")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} has the expected local signature integrity with public key from private key {tigerResolvedString}")
+  public void verifyJwtVariantHasExpectedLocalSignatureIntegrityWithPublicKeyFromPrivateKey(
+      JwtVariant variant, String jwt, String privateKeyPem) {
+    var publicKey = deriveP256PublicKey(loadEcPrivateKey(privateKeyPem));
+    verifyJwtVariantLocalSignatureIntegrity(
+        variant,
+        jwt,
+        normalizedJwt -> signatureVerificationSteps
+            .hasCryptographicallyValidEs256SignatureWithPublicKey(normalizedJwt, publicKey),
+        " with public key derived from private key");
+  }
+
+  /**
+   * Verifies an ES256 JWT signature with the public key derived from the supplied EC private key.
+   *
+   * <p>This is intended for PoPP Token checks where the token references the PoPP server key by
+   * {@code kid}; the local proof must use the expected PoPP server key instead of embedded JOSE header key material.</p>
+   *
+   * @param jwt           compact JWT/JWS to verify
+   * @param privateKeyPem PEM encoded EC private key whose public key verifies the token
+   */
+  @Und("verifiziere die ES256 Signatur des JWT {tigerResolvedString} mit öffentlichem Schlüssel aus privatem Schlüssel {tigerResolvedString}")
+  @And("verify the ES256 signature of the JWT {tigerResolvedString} with public key from private key {tigerResolvedString}")
+  public void verifyJwtSignatureWithPublicKeyFromPrivateKey(String jwt, String privateKeyPem) {
+    var publicKey = deriveP256PublicKey(loadEcPrivateKey(privateKeyPem));
+    assertThat(signatureVerificationSteps.hasCryptographicallyValidEs256SignatureWithPublicKey(
+        normalizePossiblyFormEncodedJwt(jwt), publicKey))
+        .as("JWT signature must verify with public key derived from the configured private key")
+        .isTrue();
+  }
+
+  /**
+   * Verifies that a generated JWT variant has the expected local signature integrity using the X.509 certificate embedded in the token's
+   * {@code x5c} header.
+   *
+   * <p>This is intended for Subject Token checks where the exact signing certificate is carried by
+   * the Subject Token itself. The cryptographic check uses the raw JWS signing input, so it can still confirm re-signatures for variants
+   * whose JOSE header is intentionally not valid JSON.</p>
+   *
+   * @param variant generated JWT variant
+   * @param jwt     generated compact JWT/JWS variant
+   */
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} hat lokal mit eingebettetem Zertifikat die erwartete Signaturintegrität")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} has the expected local signature integrity with embedded certificate")
+  public void verifyJwtVariantHasExpectedLocalSignatureIntegrityWithEmbeddedCertificate(
+      JwtVariant variant, String jwt) {
+    verifyJwtVariantLocalSignatureIntegrity(
+        variant,
+        jwt,
+        signatureVerificationSteps::hasCryptographicallyValidEs256SignatureWithEmbeddedCertificate,
+        " with its embedded certificate");
+  }
+
+  /**
+   * Verifies local signature integrity for variants that either preserve or intentionally break the compact JWS signature.
+   *
+   * @param variant           generated JWT variant
+   * @param jwt               generated compact JWT/JWS variant
+   * @param signatureVerifier cryptographic verifier for the relevant public key source
+   * @param assertionSuffix   suffix naming the verification key source in assertion messages
+   */
+  private void verifyJwtVariantLocalSignatureIntegrity(
+      JwtVariant variant,
+      String jwt,
+      Predicate<String> signatureVerifier,
+      String assertionSuffix) {
+    var normalizedJwt = normalizePossiblyFormEncodedJwt(jwt);
+
+    if (variant.keepsSignature()) {
+      assertThat(signatureVerifier.test(normalizedJwt))
+          .as("JWT variant '%s' must keep a locally valid cryptographic signature%s",
+              variant.token(), assertionSuffix)
           .isTrue();
-      case "invalid_signature" -> assertThat(
-          signatureVerificationSteps.hasCryptographicallyValidEmbeddedEs256Signature(jwt))
-          .as("JWT variant '%s' must be locally cryptographically invalid", variant)
+      return;
+    }
+
+    if (JwtVariant.INVALID_SIGNATURE == variant) {
+      assertThat(signatureVerifier.test(normalizedJwt))
+          .as("JWT variant '%s' must be locally cryptographically invalid%s",
+              variant.token(), assertionSuffix)
           .isFalse();
-      default -> log.debug("Skipping local signature integrity check for JWT variant '{}'", variant);
+      return;
+    }
+
+    log.debug("Skipping local signature integrity check{} for JWT variant '{}'",
+        assertionSuffix, variant.token());
+  }
+
+  /**
+   * Verifies that the requested JWT variant is visibly present in the intercepted compact token.
+   *
+   * <p>Cryptographic checks alone cannot distinguish a correctly re-signed semantic variant from
+   * an unchanged valid token. This structural check makes sure the guarded endpoint actually received the requested malformed shape or JOSE
+   * header change.</p>
+   *
+   * @param variant expected generated JWT variant
+   * @param jwt     intercepted compact JWT/JWS variant
+   */
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} ist lokal strukturell angewendet")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} is structurally applied locally")
+  public void verifyJwtVariantIsStructurallyApplied(JwtVariant variant, String jwt) {
+    var normalizedJwt = normalizePossiblyFormEncodedJwt(jwt);
+    var parts = normalizedJwt.split("\\.", -1);
+
+    switch (variant) {
+      case TWO_SEGMENTS -> assertThat(parts).as("JWT variant '%s'", variant.token()).hasSize(2);
+      case ALG_NONE -> {
+        assertThat(parts).as("JWT variant '%s'", variant.token()).hasSize(3);
+        assertThat(parts[2]).as("JWT signature segment").isEmpty();
+        assertThat(parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header")
+            .path("alg").asText())
+            .as("JWT alg header")
+            .isEqualTo("none");
+      }
+      case JWE_LIKE_FIVE_SEGMENTS -> assertThat(parts).as("JWT variant '%s'", variant.token())
+          .hasSize(5);
+      case INVALID_HEADER_BASE64URL -> assertThat(parts[0]).as("JWT header segment")
+          .isEqualTo("###");
+      case INVALID_PAYLOAD_BASE64URL -> assertThat(parts[1]).as("JWT payload segment")
+          .isEqualTo("###");
+      case INVALID_SIGNATURE_BASE64URL -> assertThat(parts[2]).as("JWT signature segment")
+          .isEqualTo("###");
+      case INVALID_HEADER_JSON -> assertThat(decodeBase64UrlSegment(parts[0], "header"))
+          .as("JWT header JSON")
+          .isEqualTo("{");
+      case INVALID_PAYLOAD_JSON -> assertThat(decodeBase64UrlSegment(parts[1], "payload"))
+          .as("JWT payload JSON")
+          .isEqualTo("{");
+      case INVALID_HEADER_JSON_UNQUOTED_KEYS -> assertUnquotedJsonFieldNames(
+          decodeBase64UrlSegment(parts[0], "header"), "JWT header");
+      case INVALID_PAYLOAD_JSON_UNQUOTED_KEYS -> assertUnquotedJsonFieldNames(
+          decodeBase64UrlSegment(parts[1], "payload"), "JWT payload");
+      case UNKNOWN_HEADER_PARAMETER -> assertThat(
+          parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header")
+              .path("unknown_guard_parameter").asText())
+          .as("JWT header unknown_guard_parameter")
+          .isEqualTo("unsupported");
+      case UNSUPPORTED_CRIT -> {
+        var header = parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header");
+        assertThat(header.path("crit").toString())
+            .as("JWT crit header")
+            .contains("\"unsupported_guard_parameter\"");
+        assertThat(header.path("unsupported_guard_parameter").asText())
+            .as("JWT unsupported critical header value")
+            .isEqualTo("requested-by-crit");
+      }
+      case UNSUPPORTED_ALG -> assertThat(
+          parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header")
+              .path("alg").asText())
+          .as("JWT alg header")
+          .isEqualTo("RS999");
+      case MISSING_ALG -> assertThat(
+          parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header").has("alg"))
+          .as("JWT alg header must be absent")
+          .isFalse();
+      case DUPLICATE_ALG_HEADERS -> assertThat(
+          countRootObjectFieldNameOccurrences(
+              decodeBase64UrlSegment(parts[0], "header"), "alg", "JOSE header"))
+          .as("JWT root-level alg header occurrence count")
+          .isGreaterThanOrEqualTo(2);
+      case RESIGN_CORRECT_KEY -> {
+        assertThat(parts).as("JWT variant '%s'", variant.token()).hasSize(3);
+        assertThat(parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header")
+            .path("alg").asText())
+            .as("JWT alg header")
+            .isEqualTo("ES256");
+      }
+      case INVALID_SIGNATURE -> assertThat(
+          parseJsonObject(decodeBase64UrlSegment(parts[1], "payload"), "JWT payload")
+              .path("broken_signature_marker").asBoolean())
+          .as("JWT invalid signature marker")
+          .isTrue();
+      case NESTED_CTY_JWT_VALID_INNER, NESTED_CTY_JWT_INVALID_INNER -> {
+        var header = parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header");
+        assertThat(header.path("cty").asText()).as("JWT cty header").isEqualTo("JWT");
+        assertThat(decodeBase64UrlSegment(parts[1], "payload"))
+            .as("nested JWT payload")
+            .contains(".");
+      }
+      default -> throw new AssertionError("Unknown JWT variant " + variant.token());
     }
   }
 
   /**
-   * Builds a DPoP proof variant where one mandatory top-level payload claim is removed and stores
-   * the compact serialized result in a test variable.
+   * Decodes compact JWTs that were read from an x-www-form-urlencoded request body.
    *
-   * @param token original valid DPoP JWT
-   * @param claimName top-level payload claim to remove, for example {@code jti} or {@code ath}
-   * @param privateKeyPem EC private key used to re-sign the manipulated proof
-   * @param varName Tiger configuration variable receiving the manipulated compact token
+   * @param jwt compact JWT as seen by RBEL or a generated variable
+   * @return decoded JWT when URL decoding produces a compact token, otherwise the original value
    */
-  @Und("erzeuge aus {tigerResolvedString} ein DPoP JWT ohne Claim {string} mit privatem Schlüssel {tigerResolvedString} und speichere in Variable {tigerResolvedString}")
-  @And("build DPoP JWT from {tigerResolvedString} without claim {string} using private key {tigerResolvedString} and store in variable {tigerResolvedString}")
-  public void buildDpopJwtWithoutClaim(
-      String token, String claimName, String privateKeyPem, String varName) {
-    var result = buildDpopJwtWithoutClaimInternal(token, claimName, privateKeyPem);
-    TigerGlobalConfiguration.putValue(varName, result,
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-    log.info("Storing DPoP JWT without claim '{}' in variable '{}'", claimName, varName);
-  }
-
-  /**
-   * Builds an unsecured DPoP proof using {@code alg=none} and stores the compact serialized
-   * result in a test variable.
-   *
-   * @param token original valid DPoP JWT
-   * @param varName Tiger configuration variable receiving the manipulated compact token
-   */
-  @Und("erzeuge aus {tigerResolvedString} ein DPoP JWT mit Header-Algorithmus none und speichere in Variable {tigerResolvedString}")
-  @And("build DPoP JWT from {tigerResolvedString} with header algorithm none and store in variable {tigerResolvedString}")
-  public void buildDpopJwtWithHeaderAlgNone(String token, String varName) {
-    var result = buildDpopJwtWithHeaderAlgNoneInternal(token);
-    TigerGlobalConfiguration.putValue(varName, result,
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-    log.info("Storing unsecured DPoP JWT with alg=none in variable '{}'", varName);
-  }
-
-  /**
-   * Creates one of the supported compact JWT/JWS variants from an original valid token.
-   *
-   * @param variant       symbolic variant selector
-   * @param token         original valid compact JWT
-   * @param privateKeyPem PEM encoded EC private key used when a variant needs a fresh signature
-   * @return generated compact token variant
-   */
-  private String buildJwtVariantInternal(String variant, String token, String privateKeyPem) {
-    var parts = token.split("\\.", -1);
-    if (parts.length != 3) {
-      throw new AssertionError("Original JWT must be compact JWS with exactly 3 segments.");
+  private String normalizePossiblyFormEncodedJwt(String jwt) {
+    if (jwt == null || !jwt.contains("%")) {
+      return jwt;
     }
 
-    var rawHeaderJson = decodeBase64UrlSegment(parts[0], "header");
-    var rawPayload = decodeBase64UrlSegment(parts[1], "payload");
-    var normalizedVariant = variant.trim().toLowerCase();
-
-    return switch (normalizedVariant) {
-      case "two_segments" -> parts[0] + "." + parts[1];
-      case "invalid_header_base64url" -> "###." + parts[1] + "." + parts[2];
-      case "invalid_payload_base64url" -> parts[0] + ".###." + parts[2];
-      case "invalid_signature_base64url" -> parts[0] + "." + parts[1] + ".###";
-      case "invalid_header_json" -> encodeBase64Url("{") + "." + parts[1] + "." + parts[2];
-      case "invalid_header_json_unquoted_keys" -> signEs256CompactJwt(
-          removeJsonFieldNameQuotes(rawHeaderJson),
-          rawPayload,
-          privateKeyPem);
-      case "invalid_payload_json" -> parts[0] + "." + encodeBase64Url("{") + "." + parts[2];
-      case "invalid_payload_json_unquoted_keys" -> signEs256CompactJwt(
-          rawHeaderJson,
-          removeJsonFieldNameQuotes(rawPayload),
-          privateKeyPem);
-      case "unknown_header_parameter" -> signEs256CompactJwt(
-          addUnknownHeaderParameter(rawHeaderJson),
-          rawPayload,
-          privateKeyPem);
-      case "unsupported_crit" -> signEs256CompactJwt(
-          addUnsupportedCritHeader(rawHeaderJson),
-          rawPayload,
-          privateKeyPem);
-      case "unsupported_alg" -> signEs256CompactJwt(
-          replaceTopLevelHeaderParameter(rawHeaderJson, "alg", "RS999"),
-          rawPayload,
-          privateKeyPem);
-      case "missing_alg" -> signEs256CompactJwt(
-          removeTopLevelHeaderParameter(rawHeaderJson, "alg"),
-          rawPayload,
-          privateKeyPem);
-      case "duplicate_alg_headers" -> signEs256CompactJwt(
-          duplicateAlgHeader(rawHeaderJson),
-          rawPayload,
-          privateKeyPem);
-      case "invalid_signature" -> createInvalidSignatureVariant(rawHeaderJson, rawPayload, parts[2]);
-      case "jwe_like_five_segments" -> parts[0]
-          + ".ZW5jcnlwdGVkS2V5.aXY.Y2lwaGVydGV4dA.dGFn";
-      case "nested_cty_jwt_valid_inner" -> createNestedJwtVariantWithValidInner(
-          token,
-          rawHeaderJson,
-          privateKeyPem);
-      case "nested_cty_jwt_invalid_inner" -> signEs256CompactJwt(
-          addNestedJwtContentType(rawHeaderJson),
-          "###.eyJpc3MiOiJ6ZXRhLXRlc3QifQ.signature",
-          privateKeyPem);
-      default -> throw new AssertionError("Unknown JWT variant " + variant);
-    };
+    try {
+      var decoded = URLDecoder.decode(jwt, StandardCharsets.UTF_8);
+      return decoded.contains(".") ? decoded : jwt;
+    } catch (IllegalArgumentException e) {
+      return jwt;
+    }
   }
 
   /**
-   * Builds a compact DPoP JWT variant with one removed top-level payload claim.
+   * Extracts the compact token from an Authorization header value.
    *
-   * @param token original valid DPoP proof
-   * @param claimName top-level payload claim to remove
-   * @param privateKeyPem EC private key used to re-sign the manipulated proof
-   * @return compact ES256 DPoP proof without the requested claim
+   * @param authorizationHeader raw Authorization header
+   * @return compact token value without scheme
    */
-  private String buildDpopJwtWithoutClaimInternal(
-      String token, String claimName, String privateKeyPem) {
-    var parts = requireCompactJwtParts(token, "Original DPoP JWT");
-    var rawHeaderJson = decodeBase64UrlSegment(parts[0], "DPoP header");
-    var rawPayloadJson = decodeBase64UrlSegment(parts[1], "DPoP payload");
-    var payload = parseJsonObject(rawPayloadJson, "DPoP payload");
-    var removedClaim = payload.remove(claimName);
-
-    assertThat(removedClaim)
-        .as("Original DPoP payload must contain claim '%s'", claimName)
-        .isNotNull();
-
-    return signEs256CompactJwt(rawHeaderJson, payload.toString(), privateKeyPem);
-  }
-
-  /**
-   * Builds an unsecured compact DPoP JWT with {@code alg=none}.
-   *
-   * @param token original valid DPoP proof
-   * @return compact unsecured JWT with empty signature part
-   */
-  private String buildDpopJwtWithHeaderAlgNoneInternal(String token) {
-    var parts = requireCompactJwtParts(token, "Original DPoP JWT");
-    var header = parseJsonObject(decodeBase64UrlSegment(parts[0], "DPoP header"), "DPoP header");
-    header.put("alg", "none");
-    return encodeBase64Url(header.toString()) + "." + parts[1] + ".";
-  }
-
-  /**
-   * Splits a compact JWT and validates that it contains exactly three segments.
-   *
-   * @param token compact JWT string
-   * @param description human-readable token description for assertion messages
-   * @return the three compact JWT segments
-   */
-  private String[] requireCompactJwtParts(String token, String description) {
-    var parts = token.split("\\.", -1);
-    assertThat(parts)
-        .as("%s must be compact serialized with exactly 3 segments", description)
-        .hasSize(3);
-    return parts;
+  String extractCompactTokenFromAuthorizationHeader(String authorizationHeader) {
+    var trimmedHeader = authorizationHeader == null ? "" : authorizationHeader.trim();
+    var firstWhitespace = trimmedHeader.indexOf(' ');
+    var token = firstWhitespace >= 0 ? trimmedHeader.substring(firstWhitespace + 1).trim()
+        : trimmedHeader;
+    assertThat(token)
+        .as("Authorization header must contain a compact token")
+        .contains(".");
+    return token;
   }
 
   /**
@@ -362,168 +373,67 @@ public class JwtSteps {
   }
 
   /**
-   * Encodes raw UTF-8 text as Base64URL without padding.
+   * Asserts that a JWT segment contains intentionally unquoted JSON object field names.
    *
-   * @param value raw text to encode
-   * @return Base64URL-encoded string without padding
+   * @param rawJson     raw JSON-like segment text
+   * @param description human-readable segment description
    */
-  private String encodeBase64Url(String value) {
-    return Base64.getUrlEncoder().withoutPadding()
-        .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+  private void assertUnquotedJsonFieldNames(String rawJson, String description) {
+    assertThat(rawJson)
+        .as(description + " must contain unquoted JSON field names")
+        .containsPattern("[\\{,]\\s*[A-Za-z_][A-Za-z0-9_\\-]*\\s*:");
   }
 
   /**
-   * Adds a non-critical unsupported header parameter to the top-level JOSE header.
+   * Counts field-name occurrences directly on the root JSON object, ignoring nested objects and arrays.
    *
-   * @param rawHeaderJson original JOSE header JSON
-   * @return updated JOSE header JSON
+   * @param rawJson     raw JSON object text
+   * @param fieldName   field name to count on the root object
+   * @param description human-readable description for error messages
+   * @return number of root-object field-name occurrences
    */
-  private String addUnknownHeaderParameter(String rawHeaderJson) {
-    var header = parseJsonObject(rawHeaderJson, "JOSE header");
-    header.put("unknown_guard_parameter", "unsupported");
-    return header.toString();
-  }
+  private int countRootObjectFieldNameOccurrences(String rawJson, String fieldName,
+      String description) {
+    try (JsonParser parser = new ObjectMapper().createParser(rawJson)) {
+      var firstToken = parser.nextToken();
+      if (firstToken != JsonToken.START_OBJECT) {
+        throw new AssertionError(description + " must be a JSON object.");
+      }
 
-  /**
-   * Adds an unsupported critical header parameter to the top-level JOSE header.
-   *
-   * @param rawHeaderJson original JOSE header JSON
-   * @return updated JOSE header JSON
-   */
-  private String addUnsupportedCritHeader(String rawHeaderJson) {
-    var header = parseJsonObject(rawHeaderJson, "JOSE header");
-    ArrayNode crit = header.putArray("crit");
-    crit.add("unsupported_guard_parameter");
-    header.put("unsupported_guard_parameter", "requested-by-crit");
-    return header.toString();
-  }
-
-  /**
-   * Removes a single top-level JOSE header parameter.
-   *
-   * @param rawHeaderJson original JOSE header JSON
-   * @param parameter     parameter name to remove
-   * @return updated JOSE header JSON
-   */
-  private String removeTopLevelHeaderParameter(String rawHeaderJson, String parameter) {
-    var header = parseJsonObject(rawHeaderJson, "JOSE header");
-    header.remove(parameter);
-    return header.toString();
-  }
-
-  /**
-   * Replaces one top-level JOSE header parameter with a string value.
-   *
-   * @param rawHeaderJson original JOSE header JSON
-   * @param parameter     parameter name to replace
-   * @param value         replacement value
-   * @return updated JOSE header JSON
-   */
-  private String replaceTopLevelHeaderParameter(String rawHeaderJson, String parameter,
-      String value) {
-    var header = parseJsonObject(rawHeaderJson, "JOSE header");
-    header.put(parameter, value);
-    return header.toString();
-  }
-
-  /**
-   * Adds a duplicate top-level {@code alg} header parameter to exercise duplicate-header rejection.
-   *
-   * @param rawHeaderJson original JOSE header JSON
-   * @return raw JOSE header JSON containing two {@code alg} members
-   */
-  private String duplicateAlgHeader(String rawHeaderJson) {
-    var matcher = java.util.regex.Pattern.compile("\"alg\"\\s*:\\s*\"[^\"]+\"")
-        .matcher(rawHeaderJson);
-    if (!matcher.find()) {
-      throw new AssertionError("Original JOSE header must contain a top-level alg parameter.");
+      var objectDepth = 1;
+      var count = 0;
+      while (objectDepth > 0) {
+        var token = parser.nextToken();
+        if (token == null) {
+          throw new AssertionError(description + " JSON object ended unexpectedly.");
+        }
+        if (token == JsonToken.PROPERTY_NAME && objectDepth == 1
+            && fieldName.equals(parser.currentName())) {
+          count++;
+        } else if (token == JsonToken.START_OBJECT) {
+          objectDepth++;
+        } else if (token == JsonToken.END_OBJECT) {
+          objectDepth--;
+        }
+      }
+      return count;
+    } catch (JacksonException e) {
+      throw new AssertionError("Failed to parse " + description + " as JSON object.", e);
     }
-
-    return rawHeaderJson.substring(0, matcher.start())
-        + "\"alg\":\"ES384\","
-        + rawHeaderJson.substring(matcher.start());
   }
 
   /**
-   * Adds {@code cty=JWT} to the top-level JOSE header so the payload is treated as nested JWT.
+   * Parses a JSON object and raises a dedicated assertion error if parsing fails or the root node is not an object.
    *
-   * @param rawHeaderJson original JOSE header JSON
-   * @return updated JOSE header JSON
-   */
-  private String addNestedJwtContentType(String rawHeaderJson) {
-    var header = parseJsonObject(rawHeaderJson, "JOSE header");
-    header.put("cty", "JWT");
-    return header.toString();
-  }
-
-  /**
-   * Removes the quotes from JSON object field names while leaving values unchanged.
-   *
-   * <p>The returned text is intentionally no longer valid JSON, but it stays close to the original
-   * JOSE header shape. This is useful for compact JWT variants that should fail the
-   * well-formed-JWT check before semantic DPoP validation starts.</p>
-   *
-   * @param rawJson original JSON object text
-   * @return JSON-like text with unquoted field names
-   */
-  private String removeJsonFieldNameQuotes(String rawJson) {
-    var matcher = java.util.regex.Pattern.compile("([\\{,]\\s*)\"([^\"\\\\]+)\"\\s*:")
-        .matcher(rawJson);
-    var malformedJson = matcher.replaceAll("$1$2:");
-
-    assertThat(malformedJson)
-        .as("JSON field-name quote removal must alter the original JSON")
-        .isNotEqualTo(rawJson);
-
-    return malformedJson;
-  }
-
-  /**
-   * Wraps an existing compact JWT in a newly signed outer JWS marked as nested content.
-   *
-   * <p>The supplied original token becomes the unchanged payload of the outer JWS, while the outer
-   * JOSE header receives {@code cty=JWT}. This exercises positive recursive nested-JWT handling.</p>
-   *
-   * @param token original valid compact JWT that becomes the inner token
-   * @param rawHeaderJson original JOSE header JSON used as the outer header template
-   * @param privateKeyPem PEM encoded EC private key used to sign the outer JWS
-   * @return compact nested JWT with a valid inner token
-   */
-  private String createNestedJwtVariantWithValidInner(
-      String token, String rawHeaderJson, String privateKeyPem) {
-    return signEs256CompactJwt(addNestedJwtContentType(rawHeaderJson), token, privateKeyPem);
-  }
-
-  /**
-   * Creates a compact JWS variant whose signing input is modified but whose signature is left
-   * untouched, so signature verification must fail.
-   *
-   * @param rawHeaderJson original JOSE header JSON
-   * @param rawPayload    original JWS payload JSON
-   * @param signaturePart original signature segment
-   * @return compact token with invalid signature
-   */
-  private String createInvalidSignatureVariant(String rawHeaderJson, String rawPayload,
-      String signaturePart) {
-    var payload = parseJsonObject(rawPayload, "JWT payload");
-    payload.put("broken_signature_marker", true);
-    return encodeBase64Url(rawHeaderJson) + "." + encodeBase64Url(payload.toString()) + "."
-        + signaturePart;
-  }
-
-  /**
-   * Parses a JSON object and raises a dedicated assertion error if parsing fails or the root node
-   * is not an object.
-   *
-   * @param rawJson      JSON text to parse
-   * @param description  human-readable description for error messages
+   * @param rawJson     JSON text to parse
+   * @param description human-readable description for error messages
    * @return parsed JSON object
    */
   private ObjectNode parseJsonObject(String rawJson, String description) {
     ObjectMapper objectMapper = new ObjectMapper();
     try {
       return (ObjectNode) objectMapper.readTree(rawJson);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse " + description + " as JSON object.", e);
     } catch (ClassCastException e) {
       throw new AssertionError(description + " must be a JSON object.", e);
@@ -531,52 +441,56 @@ public class JwtSteps {
   }
 
   /**
-   * Signs an arbitrary compact JWS using ES256 and the supplied raw header / payload strings.
+   * Loads an EC private key from PEM text or raw PKCS#8 Base64 content.
    *
-   * <p>This helper intentionally signs the already-serialized JOSE header string so it can be used
-   * for edge cases such as missing or duplicate top-level header parameters.</p>
-   *
-   * @param rawHeaderJson raw JOSE header JSON
-   * @param rawPayload    raw payload text
-   * @param privateKeyPem PEM encoded EC private key
-   * @return compact ES256 JWS
-   */
-  private String signEs256CompactJwt(String rawHeaderJson, String rawPayload, String privateKeyPem) {
-    var signingInput = encodeBase64Url(rawHeaderJson) + "." + encodeBase64Url(rawPayload);
-    var privateKey = loadEcPrivateKey(privateKeyPem);
-
-    try {
-      Signature signature = Signature.getInstance("SHA256withECDSA");
-      signature.initSign(privateKey);
-      signature.update(signingInput.getBytes(StandardCharsets.US_ASCII));
-      var derSignature = signature.sign();
-      var joseSignature = derToJoseEcdsaSignature(derSignature, 64);
-      return signingInput + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(
-          joseSignature);
-    } catch (GeneralSecurityException e) {
-      throw new AssertionError("Failed to sign ES256 JWT variant: " + e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Loads a PKCS#8 EC private key from PEM text or raw Base64 content.
-   *
-   * @param privateKeyPem PEM encoded private key or raw Base64 key content
+   * @param privateKeyPem PKCS#8 or SEC1 PEM encoded private key, or raw PKCS#8 Base64 key content
    * @return parsed EC private key
    */
   private ECPrivateKey loadEcPrivateKey(String privateKeyPem) {
     var normalizedPem = normalizePrivateKeyPem(privateKeyPem);
-    var keyMaterial = normalizedPem
-        .replace("-----BEGIN PRIVATE KEY-----", "")
-        .replace("-----END PRIVATE KEY-----", "")
-        .replaceAll("\\s", "");
+
+    try (var pemParser = new PEMParser(new StringReader(normalizedPem))) {
+      var parsedObject = pemParser.readObject();
+      if (parsedObject == null) {
+        throw new AssertionError("No PEM object found in private key input for JWT verification.");
+      }
+      var keyConverter = new JcaPEMKeyConverter();
+      var privateKey = switch (parsedObject) {
+        case PEMKeyPair pemKeyPair -> keyConverter.getPrivateKey(pemKeyPair.getPrivateKeyInfo());
+        case PrivateKeyInfo privateKeyInfo -> keyConverter.getPrivateKey(privateKeyInfo);
+        default -> throw new AssertionError("Unsupported EC private key format for JWT verification.");
+      };
+      if (privateKey instanceof ECPrivateKey ecPrivateKey) {
+        return ecPrivateKey;
+      }
+      throw new AssertionError("Private key for JWT verification must be an EC private key.");
+    } catch (IOException | IllegalArgumentException e) {
+      throw new AssertionError("Failed to parse EC private key for JWT verification.", e);
+    }
+  }
+
+  /**
+   * Derives the P-256 public key corresponding to one EC private key.
+   *
+   * @param privateKey parsed EC private key
+   * @return EC public key on the same curve
+   */
+  private ECPublicKey deriveP256PublicKey(ECPrivateKey privateKey) {
+    var curveSpec = ECNamedCurveTable.getParameterSpec("secp256r1");
+    assertThat(curveSpec)
+        .as("P-256 curve parameters must be available")
+        .isNotNull();
+
+    var point = curveSpec.getG().multiply(privateKey.getS()).normalize();
+    var publicPoint = new java.security.spec.ECPoint(
+        point.getAffineXCoord().toBigInteger(),
+        point.getAffineYCoord().toBigInteger());
 
     try {
-      var encoded = Base64.getDecoder().decode(keyMaterial);
-      var keySpec = new PKCS8EncodedKeySpec(encoded);
-      return (ECPrivateKey) KeyFactory.getInstance("EC").generatePrivate(keySpec);
-    } catch (GeneralSecurityException | IllegalArgumentException e) {
-      throw new AssertionError("Failed to parse EC private key for JWT variant creation.", e);
+      return (ECPublicKey) KeyFactory.getInstance("EC")
+          .generatePublic(new ECPublicKeySpec(publicPoint, privateKey.getParams()));
+    } catch (GeneralSecurityException e) {
+      throw new AssertionError("Failed to derive EC public key for JWT verification.", e);
     }
   }
 
@@ -586,57 +500,16 @@ public class JwtSteps {
    * @param privateKeyPem raw private key content from the test context
    * @return canonical PEM representation
    */
-  private String normalizePrivateKeyPem(String privateKeyPem) {
+  String normalizePrivateKeyPem(String privateKeyPem) {
     var trimmed = privateKeyPem == null ? "" : privateKeyPem.trim();
     if (trimmed.isEmpty()) {
-      throw new AssertionError("Private key for JWT variant creation must not be empty.");
+      throw new AssertionError("Private key for JWT verification must not be empty.");
     }
-    if (trimmed.contains("-----BEGIN PRIVATE KEY-----")) {
+    if (trimmed.contains("-----BEGIN PRIVATE KEY-----")
+        || trimmed.contains("-----BEGIN EC PRIVATE KEY-----")) {
       return trimmed;
     }
     return "-----BEGIN PRIVATE KEY-----\n" + trimmed + "\n-----END PRIVATE KEY-----";
-  }
-
-  /**
-   * Converts a DER-encoded ECDSA signature into the raw JOSE {@code R || S} representation.
-   *
-   * @param derSignature DER-encoded ECDSA signature
-   * @param outputLength expected JOSE signature length in bytes
-   * @return raw JOSE signature bytes
-   */
-  private byte[] derToJoseEcdsaSignature(byte[] derSignature, int outputLength) {
-    try {
-      ASN1Sequence sequence = ASN1Sequence.getInstance(derSignature);
-      if (sequence.size() != 2) {
-        throw new AssertionError("Invalid DER ECDSA signature component count: "
-            + sequence.size());
-      }
-
-      var r = ASN1Integer.getInstance(sequence.getObjectAt(0)).getPositiveValue();
-      var s = ASN1Integer.getInstance(sequence.getObjectAt(1)).getPositiveValue();
-      int partLength = outputLength / 2;
-      var joseSignature = new byte[outputLength];
-      copyUnsignedBigInteger(r, joseSignature, 0, partLength);
-      copyUnsignedBigInteger(s, joseSignature, partLength, partLength);
-      return joseSignature;
-    } catch (IllegalArgumentException e) {
-      throw new AssertionError("Failed to convert DER ECDSA signature to JOSE format.", e);
-    }
-  }
-
-  /**
-   * Copies a positive big integer into a fixed-length unsigned byte slot.
-   *
-   * @param value      positive integer to serialize
-   * @param target     target byte array
-   * @param offset     target offset in bytes
-   * @param fieldSize  fixed field size in bytes
-   */
-  private void copyUnsignedBigInteger(BigInteger value, byte[] target, int offset, int fieldSize) {
-    var source = value.toByteArray();
-    int sourceOffset = source.length > fieldSize ? source.length - fieldSize : 0;
-    int length = source.length - sourceOffset;
-    System.arraycopy(source, sourceOffset, target, offset + fieldSize - length, length);
   }
 
 }

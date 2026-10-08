@@ -38,7 +38,7 @@ import com.sun.net.httpserver.HttpServer;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.services.TestDriverConfigurationService;
-import de.gematik.zeta.services.ZetaDeploymentConfigurationService;
+import de.gematik.zeta.services.ZetaDeploymentModificationService;
 import de.gematik.zeta.services.model.CommandResult;
 import de.gematik.zeta.steps.Hooks;
 import de.gematik.zeta.steps.SoftAssertionsContext;
@@ -47,16 +47,33 @@ import io.cucumber.java.Scenario;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.opentest4j.TestAbortedException;
 
-class HooksTest {
+/**
+ * Unit tests for {@link Hooks}.
+ */
+public class HooksTest {
+
+  private static final String OIDC_TESTDRIVER_DEPLOYMENT_JSON = """
+      {"spec":{"template":{"spec":{"containers":[{"name":"testdriver","env":[
+        {"name":"AUTH_MODE","value":"OIDC"}
+      ]}]}}}}
+      """;
+  private static final String SMB_TESTDRIVER_DEPLOYMENT_JSON = """
+      {"spec":{"template":{"spec":{"containers":[{"name":"testdriver","env":[
+        {"name":"AUTH_MODE","value":"SMB"}
+      ]}]}}}}
+      """;
 
   private HttpServer tlsTestToolServiceServer;
+  private HttpServer pushNotificationServiceServer;
 
   /**
    * Stops the embedded TLS test tool service after each test.
@@ -66,6 +83,10 @@ class HooksTest {
     if (tlsTestToolServiceServer != null) {
       tlsTestToolServiceServer.stop(0);
       tlsTestToolServiceServer = null;
+    }
+    if (pushNotificationServiceServer != null) {
+      pushNotificationServiceServer.stop(0);
+      pushNotificationServiceServer = null;
     }
     SoftAssertionsContext.reset();
     Hooks.clearScenarioAborted();
@@ -83,7 +104,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.image.versionUpdate", "main",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    FakeDeploymentConfigurationService service = new FakeDeploymentConfigurationService();
+    FakeDeploymentModificationService service = new FakeDeploymentModificationService();
     service.currentImageReferenceResult = new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep:0.3.0", "");
     Hooks hooks = new Hooks(service, new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
 
@@ -106,7 +127,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.image.versionUpdate", "main",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    FakeDeploymentConfigurationService service = new FakeDeploymentConfigurationService();
+    FakeDeploymentModificationService service = new FakeDeploymentModificationService();
     service.currentImageReferenceResult = new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep:0.3.0", "");
     service.cleanupResult = new CommandResult(List.of("kubectl"), 1, "", "cleanup failed");
     Hooks hooks = new Hooks(service, new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
@@ -130,7 +151,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.image.versionUpdate", "main",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    FakeDeploymentConfigurationService service = new FakeDeploymentConfigurationService();
+    FakeDeploymentModificationService service = new FakeDeploymentModificationService();
     service.currentImageReferenceResult = new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep:main", "");
     Hooks hooks = new Hooks(service, new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
 
@@ -158,7 +179,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("tlsTestTool.clientDisableTlsVerification", "true",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var deploymentService = new FakeDeploymentConfigurationService();
+    var deploymentService = new FakeDeploymentModificationService();
     var testDriverService = new FakeTestDriverConfigurationService();
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(), testDriverService);
     var scenario = mock(Scenario.class);
@@ -169,6 +190,7 @@ class HooksTest {
     hooks.rollbackTestdriverAfterTlsClientScenario(scenario);
 
     assertEquals(1, testDriverService.resetCount);
+    assertEquals(1, testDriverService.configureWhenReadyCount);
     assertEquals("https://zeta-tls-test-tool-server:4433", testDriverService.configuredResource);
     assertTrue(testDriverService.configuredCaCertificatePem.startsWith("-----BEGIN CERTIFICATE-----"));
     assertTrue(testDriverService.configuredDisableTlsVerification);
@@ -181,7 +203,7 @@ class HooksTest {
   void rollbackTestdriverAfterTlsClientScenarioLogsFailedResetWithoutThrowing() {
     var testDriverService = new FakeTestDriverConfigurationService();
     testDriverService.resetFailure = new AssertionError("reset unreachable");
-    var hooks = new Hooks(new FakeDeploymentConfigurationService(), new TigerProxyManipulationsSteps(),
+    var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
         testDriverService);
     var scenario = mock(Scenario.class);
     when(scenario.getSourceTagNames()).thenReturn(Set.of("@tls_client_fachdienst_hook"));
@@ -195,6 +217,113 @@ class HooksTest {
   }
 
   /**
+   * Verifies that the cache-reset hook cannot restart a TLS client deployment without explicit permission.
+   */
+  @Test
+  void resetTlsRevocationCacheAbortsWithoutDeploymentModificationPermission() {
+    TigerGlobalConfiguration.putValue("allow_deployment_modification", "false",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var deploymentService = new FakeDeploymentModificationService();
+    var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@tls_client_fachdienst_hook", "@reset_tls_revocation_cache"));
+
+    hooks.prepareSoftAssertions();
+
+    assertThrows(TestAbortedException.class, () -> hooks.resetTlsRevocationCache(scenario));
+    assertEquals(0, deploymentService.restartCount);
+    verify(scenario).log("Skipping: TLS revocation cache reset requires deployment modification permission");
+  }
+
+  /**
+   * Verifies that the OIDC testdriver guard accepts the deployed OIDC mode.
+   */
+  @Test
+  void oidcTestdriverGuardAcceptsOidcAuthMode() {
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-local",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    var deploymentService = new FakeDeploymentModificationService();
+    deploymentService.testdriverAuthModeResult =
+        new CommandResult(List.of("kubectl"), 0, OIDC_TESTDRIVER_DEPLOYMENT_JSON, "");
+    var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_oidc_testdriver"));
+
+    hooks.prepareSoftAssertions();
+
+    assertDoesNotThrow(() -> hooks.skipIfTestdriverIsNotConfiguredForOidc(scenario));
+    assertEquals(List.of("-n", "zeta-local", "get", "deployment", "testdriver", "-o", "json"),
+        deploymentService.testdriverAuthModeArguments);
+  }
+
+  /**
+   * Verifies that the OIDC testdriver guard skips a deployment left in SMB mode.
+   */
+  @Test
+  void oidcTestdriverGuardAbortsForSmbAuthMode() {
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-local",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    var deploymentService = new FakeDeploymentModificationService();
+    deploymentService.testdriverAuthModeResult =
+        new CommandResult(List.of("kubectl"), 0, SMB_TESTDRIVER_DEPLOYMENT_JSON, "");
+    var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_oidc_testdriver"));
+
+    hooks.prepareSoftAssertions();
+
+    assertThrows(TestAbortedException.class, () -> hooks.skipIfTestdriverIsNotConfiguredForOidc(scenario));
+    verify(scenario).log("Skipping: deployed testdriver AUTH_MODE is 'SMB' but OIDC scenarios require 'OIDC'");
+  }
+
+  /**
+   * Verifies that the OCSP mock cleanup endpoint resolves placeholders before constructing its URI.
+   */
+  @Test
+  void resolveOcspMockAdminUriResolvesConfiguredPlaceholders() {
+    TigerGlobalConfiguration.putValue("zeta_base_url", "zeta-kind.local",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zeta_cert_validation_mock_url", "${zeta_base_url}:9013",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+
+    var resolvedUri = assertDoesNotThrow(() -> {
+      var method = Hooks.class.getDeclaredMethod("resolveOcspMockAdminUri");
+      method.setAccessible(true);
+      return method.invoke(hooks);
+    });
+
+    assertEquals("http://zeta-kind.local:9013/admin/mode", resolvedUri.toString());
+  }
+
+  /**
+   * Verifies that the reset hook lists and deletes every registered pusher dynamically.
+   */
+  @Test
+  void resetNotificationPushersDeletesAllReturnedPushers() {
+    var receivedRequests = new CopyOnWriteArrayList<String>();
+    TigerGlobalConfiguration.putValue("paths.client.notifications.pushers",
+        startPushNotificationService(receivedRequests) + "/pushers",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+
+    assertDoesNotThrow(() -> hooks.resetNotificationPushers(scenario));
+
+    assertEquals(Set.of(
+            "GET null",
+            "DELETE pushkey=dynamic-pusher-one&appId=de.gematik.dynamic.one",
+            "DELETE pushkey=dynamic-pusher-two&appId=de.gematik.dynamic.two"),
+        Set.copyOf(receivedRequests));
+  }
+
+  /**
    * Verifies that after hooks do not execute cleanup work after a scenario was aborted in a before hook.
    */
   @Test
@@ -202,7 +331,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("allow_deployment_modification", "false",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var deploymentService = new FakeDeploymentConfigurationService();
+    var deploymentService = new FakeDeploymentModificationService();
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
         new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
@@ -219,6 +348,39 @@ class HooksTest {
   }
 
   /**
+   * Verifies that replica-only deployment scenarios do not patch the PEP image during cleanup.
+   */
+  @Test
+  void restoreDeploymentModificationsDoesNotTouchUnchangedPepImage() {
+    TigerGlobalConfiguration.putValue("allow_deployment_modification", "true",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-local",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.nginx.configMapName", "",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.podName", "pep-deployment",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.nginx.containerName", "nginx",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.pep.image.versionUpdate", "main",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.client.reset", startTlsTestToolService() + "/reset",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var deploymentService = new FakeDeploymentModificationService();
+    var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
+        new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@deployment_modification"));
+
+    hooks.prepareSoftAssertions();
+    hooks.restoreDeploymentModifications(scenario);
+
+    assertNull(deploymentService.cleanupExpectedImage);
+    assertNull(deploymentService.verifyExpectedImage);
+  }
+
+  /**
    * Verifies that deferred soft assertion verification does not fail an already skipped scenario.
    */
   @Test
@@ -226,7 +388,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("allow_deployment_modification", "false",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var hooks = new Hooks(new FakeDeploymentConfigurationService(),
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
     when(scenario.getSourceTagNames()).thenReturn(Set.of("@deployment_modification"));
@@ -241,11 +403,47 @@ class HooksTest {
   }
 
   /**
+   * Verifies that scenarios explicitly tagged as no-proxy scenarios do not require a configured TigerProxy.
+   */
+  @Test
+  void skipIfProxyMissingAllowsNoProxyScenario() {
+    TigerGlobalConfiguration.putValue("tiger.tigerProxy.proxyId", "",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
+        new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@no_proxy"));
+
+    hooks.prepareSoftAssertions();
+
+    assertDoesNotThrow(() -> hooks.skipIfProxyMissing(scenario));
+  }
+
+  /**
+   * Verifies that proxy-dependent scenarios continue when a TigerProxy is configured.
+   */
+  @Test
+  void skipIfProxyMissingAllowsProxyDependentScenarioWhenProxyConfigured() {
+    TigerGlobalConfiguration.putValue("tiger.tigerProxy.proxyId", "Cluster",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
+        new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of());
+
+    hooks.prepareSoftAssertions();
+
+    assertDoesNotThrow(() -> hooks.skipIfProxyMissing(scenario));
+  }
+
+  /**
    * Verifies that performance scenarios are skipped unless they are enabled explicitly.
    */
   @Test
   void skipPerformanceScenarioWhenNotEnabled() {
-    var hooks = new Hooks(new FakeDeploymentConfigurationService(),
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
     when(scenario.getSourceTagNames()).thenReturn(Set.of("@performance"));
@@ -261,7 +459,7 @@ class HooksTest {
    */
   @Test
   void skipLongRunningScenarioWhenNotEnabled() {
-    var hooks = new Hooks(new FakeDeploymentConfigurationService(),
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
     when(scenario.getSourceTagNames()).thenReturn(Set.of("@longrunning"));
@@ -282,7 +480,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("allow_longrunning_tests", "true",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var hooks = new Hooks(new FakeDeploymentConfigurationService(),
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
     when(scenario.getSourceTagNames()).thenReturn(Set.of("@performance", "@longrunning"));
@@ -293,6 +491,43 @@ class HooksTest {
   }
 
   /**
+   * Verifies that TPM scenarios are skipped unless the test object explicitly supports a TPM environment.
+   */
+  @Test
+  void skipTpmEnvironmentScenarioWhenTestObjectHasNoTpm() {
+    TigerGlobalConfiguration.putValue("tpm_environment", "false",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
+        new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@tpm_environment"));
+
+    hooks.prepareSoftAssertions();
+
+    assertThrows(TestAbortedException.class, () -> hooks.skipIfTpmEnvironmentMissing(scenario));
+    verify(scenario).log("Skipping: TPM scenarios require tpm_environment=true and scenario is tagged @tpm_environment");
+  }
+
+  /**
+   * Verifies that TPM scenarios continue when the test object explicitly supports a TPM environment.
+   */
+  @Test
+  void doNotSkipTpmEnvironmentScenarioWhenTestObjectHasTpm() {
+    TigerGlobalConfiguration.putValue("tpm_environment", "true",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+
+    var hooks = new Hooks(new FakeDeploymentModificationService(),
+        new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@tpm_environment"));
+
+    hooks.prepareSoftAssertions();
+
+    assertDoesNotThrow(() -> hooks.skipIfTpmEnvironmentMissing(scenario));
+  }
+
+  /**
    * Verifies that kubectl requirement failures abort the scenario as skipped instead of failing the before hook.
    */
   @Test
@@ -300,7 +535,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-staging",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var deploymentService = new FakeDeploymentConfigurationService();
+    var deploymentService = new FakeDeploymentModificationService();
     deploymentService.requirementsFailure =
         new AssertionError("Requirement check failed: cannot execute kubectl command.");
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
@@ -325,7 +560,7 @@ class HooksTest {
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-staging",
         ConfigurationValuePrecedence.TEST_CONTEXT);
 
-    var deploymentService = new FakeDeploymentConfigurationService();
+    var deploymentService = new FakeDeploymentModificationService();
     deploymentService.requirementsFailure =
         new AssertionError("Requirement check failed: cannot execute kubectl command.");
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
@@ -362,7 +597,40 @@ class HooksTest {
     }
   }
 
-  private static final class FakeDeploymentConfigurationService extends ZetaDeploymentConfigurationService {
+  /**
+   * Starts a minimal service stub that records pusher cleanup requests.
+   *
+   * @param receivedRequests thread-safe destination for received method and query values
+   * @return base URL of the embedded service
+   */
+  private String startPushNotificationService(final List<String> receivedRequests) {
+    try {
+      pushNotificationServiceServer = HttpServer.create(new InetSocketAddress(0), 0);
+      pushNotificationServiceServer.createContext("/pushers", exchange -> {
+        receivedRequests.add(exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawQuery());
+        if ("GET".equals(exchange.getRequestMethod())) {
+          var body = """
+              [
+                {"pushkey":"dynamic-pusher-one","app_id":"de.gematik.dynamic.one"},
+                {"pushkey":"dynamic-pusher-two","app_id":"de.gematik.dynamic.two"}
+              ]
+              """.getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+        } else {
+          exchange.sendResponseHeaders(200, -1);
+        }
+        exchange.close();
+      });
+      pushNotificationServiceServer.start();
+      return "http://localhost:" + pushNotificationServiceServer.getAddress().getPort();
+    } catch (IOException e) {
+      throw new AssertionError("Could not start push notification cleanup service stub", e);
+    }
+  }
+
+  private static class FakeDeploymentModificationService extends ZetaDeploymentModificationService {
 
     private final CommandResult imagePathResult =
         new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep", "");
@@ -372,14 +640,18 @@ class HooksTest {
         new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep:0.3.0", "");
     private CommandResult cleanupResult =
         new CommandResult(List.of("kubectl"), 0, "cleanup ok", "");
+    private CommandResult testdriverAuthModeResult =
+        new CommandResult(List.of("kubectl"), 0, OIDC_TESTDRIVER_DEPLOYMENT_JSON, "");
+    private List<String> testdriverAuthModeArguments = List.of();
     private String cleanupExpectedImage;
     private String verifyExpectedImage;
     private AssertionError requirementsFailure;
+    private int restartCount;
 
     /**
      * Creates a fake deployment configuration service with short timeout values for tests.
      */
-    private FakeDeploymentConfigurationService() {
+    private FakeDeploymentModificationService() {
       super(1, 1);
     }
 
@@ -393,6 +665,27 @@ class HooksTest {
       if (requirementsFailure != null) {
         throw requirementsFailure;
       }
+    }
+
+    /**
+     * Returns the configured testdriver AUTH_MODE result for the OIDC guard.
+     *
+     * @param verbose whether command output should be logged
+     * @param arguments kubectl arguments
+     * @return configured testdriver AUTH_MODE command result
+     */
+    @Override
+    public CommandResult executeKubectlCommand(boolean verbose, String... arguments) {
+      testdriverAuthModeArguments = List.of(arguments);
+      return testdriverAuthModeResult;
+    }
+
+    /**
+     * Records a requested pod restart without modifying a deployment.
+     */
+    @Override
+    public void restartPod(String namespace, String podName, boolean waitForPodReadiness, int readinessTimeout) {
+      restartCount++;
     }
 
     /**
@@ -432,18 +725,22 @@ class HooksTest {
     }
   }
 
-  private static final class FakeTestDriverConfigurationService extends TestDriverConfigurationService {
+  /**
+   * Mock implementation of the {@link TestDriverConfigurationService}TestDriverConfigurationService for unit testing.
+   */
+  public static final class FakeTestDriverConfigurationService extends TestDriverConfigurationService {
 
     private int resetCount;
     private String configuredResource;
     private String configuredCaCertificatePem;
     private boolean configuredDisableTlsVerification;
+    private int configureWhenReadyCount;
     private AssertionError resetFailure;
 
     /**
      * Creates a fake testdriver configuration service backed by placeholder URLs.
      */
-    private FakeTestDriverConfigurationService() {
+    public FakeTestDriverConfigurationService() {
       super("http://localhost/reset", "http://localhost/configure");
     }
 
@@ -467,6 +764,20 @@ class HooksTest {
       configuredResource = resource;
       configuredCaCertificatePem = caCertificatePem;
       configuredDisableTlsVerification = clientDisableTlsVerification;
+    }
+
+    /**
+     * Records readiness-aware configuration and delegates to the payload capture method.
+     */
+    @Override
+    public void configureWhenReady(
+        String resource,
+        String caCertificatePem,
+        boolean clientDisableTlsVerification,
+        Duration timeout,
+        Duration retryInterval) {
+      configureWhenReadyCount++;
+      configure(resource, caCertificatePem, clientDisableTlsVerification);
     }
   }
 }

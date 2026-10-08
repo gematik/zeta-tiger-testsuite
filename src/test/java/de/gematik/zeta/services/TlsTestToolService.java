@@ -24,8 +24,6 @@
 
 package de.gematik.zeta.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.zeta.services.model.TlsCaCertificateUploadPayload;
 import de.gematik.zeta.services.model.TlsCertificateUploadPayload;
 import de.gematik.zeta.services.model.TlsToolConfigResponse;
@@ -37,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.PrivateKey;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Objects;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -49,11 +48,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * HTTP client for the zeta-tls-test-tool-service admin API.
@@ -61,6 +64,8 @@ import org.springframework.web.client.RestTemplate;
 public class TlsTestToolService {
 
   private static final String CONFIG_MULTIPART_FILENAME = "config";
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
 
   private final String baseUrl;
   private final RestTemplate restTemplate;
@@ -72,7 +77,7 @@ public class TlsTestToolService {
    * @param baseUrl admin API base URL
    */
   public TlsTestToolService(String baseUrl) {
-    this(baseUrl, new RestTemplate(), new ObjectMapper().findAndRegisterModules());
+    this(baseUrl, createRestTemplate(), JsonMapper.builder().findAndAddModules().build());
   }
 
   /**
@@ -167,7 +172,7 @@ public class TlsTestToolService {
       exchange("/certificate", HttpMethod.PUT, new HttpEntity<>(objectMapper.writeValueAsString(request), headers), Void.class);
     } catch (IllegalArgumentException e) {
       throw new AssertionError("Invalid TLS test tool certificate input file.", e);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to serialize TLS test tool service request body.", e);
     } catch (IOException e) {
       throw new AssertionError("Failed to read TLS test tool certificate input file.", e);
@@ -195,11 +200,29 @@ public class TlsTestToolService {
       exchange("/caCertificate", HttpMethod.PUT, new HttpEntity<>(objectMapper.writeValueAsString(request), headers), Void.class);
     } catch (IllegalArgumentException e) {
       throw new AssertionError("Invalid TLS test tool CA certificate input file.", e);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to serialize TLS test tool service request body.", e);
     } catch (IOException e) {
       throw new AssertionError("Failed to read TLS test tool CA certificate input file.", e);
     }
+  }
+
+  /**
+   * Uploads a DER-encoded OCSP response for the next TLS server run.
+   *
+   * @param response DER-encoded OCSP response
+   */
+  public void updateOcspResponse(byte[] response) {
+    if (response == null || response.length == 0) {
+      throw new AssertionError("TLS test tool OCSP response must not be empty.");
+    }
+    var headers = new HttpHeaders();
+    headers.setContentType(MediaType.parseMediaType("application/ocsp-response"));
+    exchange(
+        "/ocspResponse",
+        HttpMethod.PUT,
+        new HttpEntity<>(response, headers),
+        Void.class);
   }
 
   /**
@@ -217,7 +240,7 @@ public class TlsTestToolService {
    * @return resulting process state
    */
   public TlsToolStateResponse startAsTlsServer() {
-    return exchangeForJson("/startAsTlsServer", HttpMethod.POST, HttpEntity.EMPTY, TlsToolStateResponse.class);
+    return startProcess("/startAsTlsServer");
   }
 
   /**
@@ -226,7 +249,37 @@ public class TlsTestToolService {
    * @return resulting process state
    */
   public TlsToolStateResponse startAsTlsClient() {
-    return exchangeForJson("/startAsTlsClient", HttpMethod.POST, HttpEntity.EMPTY, TlsToolStateResponse.class);
+    return startProcess("/startAsTlsClient");
+  }
+
+  /**
+   * Starts a process and tolerates a duplicated start request only when the service confirms that
+   * the process is already running.
+   *
+   * <p>The standalone Tiger proxy can retry a request after the first request has already reached
+   * the service. In that case the service returns {@code 409 Conflict} for the duplicate although
+   * the requested process was started successfully.</p>
+   *
+   * @param path start endpoint
+   * @return resulting process state
+   */
+  private TlsToolStateResponse startProcess(String path) {
+    try {
+      return exchangeForJson(path, HttpMethod.POST, HttpEntity.EMPTY, TlsToolStateResponse.class);
+    } catch (AssertionError error) {
+      if (error.getCause() instanceof HttpStatusCodeException statusException
+          && statusException.getStatusCode().value() == 409) {
+        try {
+          var state = getState();
+          if (state.running()) {
+            return state;
+          }
+        } catch (AssertionError stateError) {
+          error.addSuppressed(stateError);
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -272,7 +325,7 @@ public class TlsTestToolService {
     }
     try {
       return objectMapper.readValue(response.getBody(), responseType);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new AssertionError("Failed to parse TLS test tool service response for " + method + " " + path + ".", e);
     }
   }
@@ -367,6 +420,18 @@ public class TlsTestToolService {
       throw new AssertionError("The baseUrl must not be blank");
     }
     return normalized.endsWith("/") ? normalized.substring(0, normalized.length() - 1) : normalized;
+  }
+
+  /**
+   * Creates the default HTTP client with bounded connection and response waits.
+   *
+   * @return configured REST client
+   */
+  private static RestTemplate createRestTemplate() {
+    var requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
+    requestFactory.setReadTimeout(READ_TIMEOUT);
+    return new RestTemplate(requestFactory);
   }
 
 }

@@ -35,7 +35,7 @@ Funktionalität: WebSocket/STOMP - E-Rezept CRUD Lifecycle Test
     Und setze Timeout für WebSocket Nachrichten auf 10 Sekunden
 
   Szenariogrundriss: CRUD - Rezept anlegen lesen auflisten aktualisieren löschen
-    Gegeben sei TGR setze lokale Feature Variable "uniquePrescriptionId" auf "RX-WS-SMOKE-<lauf>-${free.port.50}"
+    Gegeben sei eine eindeutige Test-ID mit Präfix "RX-WS-SMOKE-<lauf>" in Variable "uniquePrescriptionId"
     Wenn eine WebSocket Verbindung zu "${paths.client.websocketBaseUrl}" geöffnet wird
     Und eine STOMP Verbindung basierend auf der zuvor geöffneten WebSocket Verbindung aufgebaut wird
     Und der Kanal "${paths.erezept.websocket.userQueue}" mit ID "sub-crud" abonniert wird

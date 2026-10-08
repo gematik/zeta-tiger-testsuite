@@ -1,0 +1,54 @@
+[#US_03]
+== UserStory_03: Authentisierung, Autorisierung und Ressourcenanfrage (mobiler Client, OIDC)
+
+Als Versicherter möchte ich mit einem mobilen Clientsystem auf einen geschützten Resource Server zugreifen, damit der Zugriff über den sektoralen IDP authentisiert und durch den ZETA Guard autorisiert wird.
+
+Die User Story bildet den für mobile ZETA Clients vorgesehenen OAuth Authorization Code Flow mit OpenID Connect ab. Die Authentisierung erfolgt über den sektoralen IDP; der PDP Authorization Server verarbeitet die Nutzer-Daten aus dem `id_token` und verwendet sie für die Policy-Entscheidung. Falls die Client-Registrierung eine zusätzliche Nutzerbestätigung benötigt, wird die Kontaktinformation über den Offband-TOFU-Prozess erfasst und per OTP bestätigt.
+
+Die User Story wird durch ein vollständiges OIDC-Szenario unter
+`@UseCase_03_01` abgedeckt.
+Das Szenario wird bei der Auswahl dieses UseCase-Tags vollständig ausgeführt.
+Es richtet die Offband-Bestätigung ein, prüft den Mailcatcher-/OTP-Nachweis und
+weist anschließend das `id_token`-Claim-Mapping im OPA-Request nach.
+Eine eindeutige Test-KVNR pro Lauf reduziert das Risiko von Bindungskollisionen.
+Die KVNR wird zugleich als E-Mail-Local-Part verwendet.
+
+=== Schritt 1: Nutzerauthentisierung und Autorisierung
+
+Der mobile ZETA Client startet beim Zugriff auf eine geschützte Ressource den OIDC Authorization Code Flow. Der Versicherte wird über den sektoralen IDP authentisiert. Der PDP Authorization Server liest die Pflicht-Claims aus dem `id_token`, mappt sie auf `zeta-user-info` und übergibt die Nutzer-Daten an die Policy Engine.
+
+==== Akzeptanzkriterien:
+
+* Der mobile ZETA Client kann den OIDC Authorization Code Flow starten.
+* Der sektorale IDP liefert ein erfolgreiches Token-Ergebnis mit `id_token`.
+* Die Pflicht-Claims werden als `zeta-user-info` an die Policy Engine übergeben.
+* Die Nutzer-Daten entsprechen dem erwarteten Schema und Mapping.
+* Der PDP Authorization Server trifft eine erfolgreiche Autorisierungsentscheidung.
+* Der Nutzer kann seine E-Mail-Adresse für die Offband-Bestätigung übermitteln.
+* Die OTP-Bestätigung über den zweiten Kommunikationsweg wird erfolgreich abgeschlossen.
+
+==== Abgebildet durch folgende Use Cases:
+
+- <<UC_02_01>>
+
+=== Schritt 2: Abfrage der geschützten Ressource
+
+Nach erfolgreicher Authentisierung und Autorisierung stellt der mobile ZETA Client die Ressourcenanfrage. Der Resource Server antwortet mit ``200 OK``.
+
+==== Akzeptanzkriterien:
+
+* Der mobile ZETA Client erhält eine erfolgreiche Autorisierungsantwort.
+* Die Ressourcenanfrage wird an den Resource Server weitergeleitet.
+* Der Resource Server liefert die Ressource mit ``200 OK`` zurück.
+
+==== Abgebildet durch folgende Use Cases:
+
+- <<UC_02_01>>
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+
+include::UseCase_01/readme.adoc[]
+
+:leveloffset: -2

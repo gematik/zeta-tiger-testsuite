@@ -30,7 +30,6 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
   @deployment_modification
   @internal
   @no_proxy
-  @require_kubectl
   Szenario: PEP Deployment Image aktualisieren
     Und ermittle den Image-Pfad für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}" und speichere in der Variable "pep_image_path"
     Und setze das Image "${pep_image_path}:${zetaDeploymentConfig.pep.image.versionDowngrade}" für den Container "${zetaDeploymentConfig.pep.nginx.containerName}" im Deployment "${zetaDeploymentConfig.pep.podName}"
@@ -57,12 +56,12 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
     Dann prüfe, dass die Telemetrie-Gateway Collector-Konfiguration Traces per Batch exportiert
 
   @A_27264
-  @dev
+  @normal
   @MASVS-RESILIENCE
-  Szenariogrundriss: OpenTelemetry Logs für ZETA Guard Komponenten (ohne Datenbanken)
+  Szenariogrundriss: OpenTelemetry Logs für ZETA Guard Komponenten (<serviceName>) (ohne Datenbanken)
     Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                              | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.service.name:<serviceName> | 1    |
+      | q                                   | size |
+      | resource.service.name:<serviceName> | 1    |
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für genau diesen Service gibt.
@@ -84,7 +83,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
       | ${telemetry.service.httpProxy} |
 
     Beispiele: HTTP Proxy helper for metrics
-      | serviceName                       |
+      | serviceName                        |
       | ${telemetry.service.helperMetrics} |
 
     @TA_A_27264_22
@@ -103,7 +102,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
     #   | serviceName                              |
     #   | ${telemetry.service.notificationService} |
 
-    # TODO: TA_A_27264_25, Management Service    <- Service wird wahrscheinlich nicht benötigt
+    # TA_A_27264_25, Management Service ist optional, wird nicht unterstützt und wird daher hier nicht geprüft.
     # @TA_A_27264_25
     # Beispiele: Management Service
     #   | serviceName                            |
@@ -114,19 +113,15 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
       | serviceName                               |
       | ${telemetry.service.telemetryDataService} |
 
-    Beispiele: Zulieferer für Telemetrie Daten Service, Log Collector
-      | serviceName                             |
-      | ${telemetry.service.helperLogCollector} |
-
     @TA_A_27264_27
     Beispiele: Resource Server
       | serviceName                         |
       | ${telemetry.service.resourceServer} |
 
   @A_27264
-  @dev
+  @normal
   @MASVS-RESILIENCE
-  Szenariogrundriss: OpenTelemetry Traces für ZETA Guard Komponenten (ohne Datenbanken)
+  Szenariogrundriss: OpenTelemetry Traces für ZETA Guard Komponenten (<service>) (ohne Datenbanken)
     Wenn TGR sende eine GET Anfrage an "${paths.jaeger.baseUrl}${paths.jaeger.jaegerTracesSearchPath}" mit folgenden Daten:
       | service   | lookback | limit |
       | <service> | 1h       | 1     |
@@ -167,7 +162,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
 #    #   | service                                  |
 #    #   | ${telemetry.service.notificationService} |
 #
-#    # TODO: TA_A_27264_07, Management Service    <- Container wird wahrscheinlich nicht benötigt
+#    # TA_A_27264_07, Management Service ist optional, wird nicht unterstützt und wird daher hier nicht geprüft.
 #    # @TA_A_27264_07
 #    # Beispiele: Management Service
 #    #   | service                                |
@@ -178,19 +173,15 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
 #      | service                                   |
 #      | ${telemetry.service.telemetryDataService} |
 #
-#    Beispiele: Zulieferer für Telemetrie Daten Service, Log Collector
-#      | service                                 |
-#      | ${telemetry.service.helperLogCollector} |
-#
 #    @TA_A_27264_09
 #    Beispiele: Resource Server
 #      | service                             |
 #      | ${telemetry.service.resourceServer} |
 
   @A_27264
-  @dev
+  @normal
   @MASVS-RESILIENCE
-  Szenariogrundriss: OpenTelemetry Metrics für ZETA Guard Komponenten (ohne Datenbanken)
+  Szenariogrundriss: OpenTelemetry Metrics für ZETA Guard Komponenten (<container>) (ohne Datenbanken)
     Wenn TGR sende eine GET Anfrage an "${paths.prometheus.baseUrl}${paths.prometheus.prometheusMetricsSearchPath}" mit folgenden Daten:
       | query                                                 |
       | container_start_time_seconds{container="<container>"} |
@@ -235,7 +226,7 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
     #   | container                                   |
     #   |  ${telemetry.container.notificationService} |
 
-    # TODO: TA_A_27264_16, Management Service   <- Container wird wahrscheinlich nicht benötigt
+    # TA_A_27264_16, Management Service ist optional, wird nicht unterstützt und wird daher hier nicht geprüft.
     # @TA_A_27264_16
     # Beispiele: Management Service
     #   | container                                 |
@@ -246,42 +237,59 @@ Funktionalität: Telemetrie-Tests ohne dedizierten Trigger
       | container                                    |
       |  ${telemetry.container.telemetryDataService} |
 
-    Beispiele: Zulieferer für Telemetrie Daten Service, Log Collector
-      | container                                  |
-      |  ${telemetry.container.helperLogCollector} |
-
     @TA_A_27264_18
     Beispiele: Resource Server
       | container                              |
       |  ${telemetry.container.resourceServer} |
 
   @A_27492-02
-  @dev
+  @normal
   @MASVS-RESILIENCE
   Szenariogrundriss: OpenTelemetry Unterstützung von HTTP Proxy, Authorization Server, Policy Engine und Notification Service
-    Wenn TGR sende eine GET Anfrage an "${paths.openSearch.baseUrl}${paths.openSearch.openTelemetryLogsSearchPath}" mit folgenden Daten:
-      | q                                                                                                                                                                   | size |
-      | resource.k8s.namespace.name:${zeta_k8s_namespace} AND resource.k8s.container.name:${telemetry.service.telemetryDataService} AND resource.service.name:<serviceName> | 1    |
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.openSearch.openTelemetryLogsSearchPathPattern}"
+
+    Wenn TGR sende eine GET Anfrage an "${paths.jaeger.baseUrl}${paths.jaeger.jaegerTracesSearchPath}" mit folgenden Daten:
+      | service       | operation   | lookback | limit | tags   |
+      | <serviceName> | <operation> | 1h       | 1     | <tags> |
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.jaeger.jaegerTracesSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    # Die Existenz von hits.hits.0 bedeutet, dass es mindestens einen Open Telemetry Log-Eintrag für genau diesen Container gibt.
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.hits.hits.0"
+    # Die Existenz von traceID bedeutet, dass es mindestens einen Open Telemetry Trace für genau diese Operations-Suchparameter gibt.
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"
+
+    @TA_A_27492-02_01
+    Beispiele: HTTP Proxy - oauth-protected-resource
+      | serviceName                    | operation                             | tags                                                                 |
+      | ${telemetry.service.httpProxy} | ${telemetry.span.httpProxy.wellKnown} | {"http.target":"${paths.guard.wellKnownOAuthProtectedResourcePath}"} |
 
     @TA_A_27492-02_02
-    Beispiele: HTTP Proxy
-      | serviceName                        |
-      | ${telemetry.service.httpProxy} |
+    Beispiele: HTTP Proxy - resource
+      | serviceName                    | operation                       | tags                                            |
+      | ${telemetry.service.httpProxy} | ${telemetry.span.httpProxy.pep} | {"http.target":"${paths.guard.helloZetaPath}"} |
 
     @TA_A_27492-02_03
-    Beispiele: Authorization Server
-      | serviceName                                  |
-      | ${telemetry.service.authorizationServer} |
+    Beispiele: Authorization Server - oauth-authorization-server
+      | serviceName                              | operation                               | tags                                                                              |
+      | ${telemetry.service.authorizationServer} | GET /realms/{realm}/.well-known/{alias} | {"url.path":"${paths.guard.wellKnownAuthServerPath}"} |
+
+    @TA_A_27492-02_04
+    Beispiele: Authorization Server - nonce
+      | serviceName                              | operation                                    | tags                                               |
+      | ${telemetry.service.authorizationServer} | ${telemetry.span.authorizationServer.nonce2} | {"url.path":"${paths.guard.nonceEndpointPath}"} |
+
+    @TA_A_27492-02_05
+    Beispiele: Authorization Server - register
+      | serviceName                              | operation                                                | tags                                                    |
+      | ${telemetry.service.authorizationServer} | ${telemetry.span.authorizationServer.clientRegistration} | {"url.path":"${paths.guard.registerEndpointPath}"} |
+
+    @TA_A_27492-02_06
+    Beispiele: Authorization Server - token
+      | serviceName                              | operation                                   | tags                                               |
+      | ${telemetry.service.authorizationServer} | ${telemetry.span.authorizationServer.token} | {"url.path":"${paths.guard.tokenEndpointPath}"} |
 
     @TA_A_27492-02_07
-    Beispiele: Policy Engine
-      | serviceName                           |
-      | ${telemetry.service.policyEngine} |
+    Beispiele: Policy Engine - /v1/data/authz
+      | serviceName                       | operation                             | tags                                             |
+      | ${telemetry.service.policyEngine} | ${telemetry.span.policyEngine.data}   | {"url.path":"${paths.opa.decisionPath}"} |
 
     # Beispiele: Notification Service # TODO: Container fehlt noch im Deployment
-    #   | serviceName                                  |
-    #   | ${telemetry.service.notificationService} |
+    #   | serviceName                              | operation | tags |
+    #   | ${telemetry.service.notificationService} |          |      |

@@ -24,11 +24,6 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
@@ -42,6 +37,11 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /**
  * Step definitions for validating JSON instances against JSON/YAML schemas using the networknt JSON Schema validator.
@@ -56,7 +56,7 @@ public class SchemaValidationSteps {
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
   /**
-   * Shared registry for loading schemas using the new networknt 2.x API with a Draft-7 default (used when a schema does not provide
+   * Shared registry for loading schemas using the networknt 3.x API with a Draft-7 default (used when a schema does not provide
    * $schema).
    */
   private static final SchemaRegistry SCHEMA_REGISTRY =
@@ -121,8 +121,8 @@ public class SchemaValidationSteps {
       return SCHEMA_REGISTRY.getSchema(location);
     }
 
-    try {
-      var strictSchemaNode = YAML.readTree(resource).deepCopy();
+    try (var schemaStream = resource.openStream()) {
+      var strictSchemaNode = YAML.readTree(schemaStream).deepCopy();
       disallowAdditionalProperties(strictSchemaNode);
       return STRICT_SCHEMA_REGISTRY.getSchema(location, strictSchemaNode);
     } catch (IOException e) {
@@ -157,12 +157,12 @@ public class SchemaValidationSteps {
    */
   private boolean isObjectSchema(ObjectNode objectNode) {
     var type = objectNode.get("type");
-    if (type != null && type.isTextual() && "object".equals(type.asText())) {
+    if (type != null && type.isString() && "object".equals(type.asString())) {
       return true;
     }
     if (type != null && type.isArray()) {
       for (JsonNode typeEntry : type) {
-        if (typeEntry.isTextual() && "object".equals(typeEntry.asText())) {
+        if (typeEntry.isString() && "object".equals(typeEntry.asString())) {
           return true;
         }
       }
@@ -270,7 +270,7 @@ public class SchemaValidationSteps {
 
       return jsNode;
 
-    } catch (ParseException | JsonProcessingException e) {
+    } catch (ParseException | JacksonException e) {
       throw new AssertionError("signed JWT could not be parsed.");
     }
   }
