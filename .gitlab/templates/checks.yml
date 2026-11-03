@@ -13,7 +13,7 @@ unit-tests:
   stage: static-checks
   extends:
     - .maven_job
-    - .rules_gitlab_com_tests
+    - .rules_gitlab_com_unit_tests
   variables:
     MAVEN_CLI_OPTS_EXTRA: "-q -T 1C -Dskip.unit.tests=false"
   script:
@@ -58,19 +58,15 @@ license_headers:
 schema_drift_check:
   stage: static-checks
   extends: .rules_schema_check
-  image: ghcr.io/astral-sh/uv:0.11.14-debian-slim@sha256:2702577da32d9c3d55c8073e07d4476cd7402c085efbf71921104548c851d96a
-  variables:
-    UV_LINK_MODE: "copy"
-    ZETA_SCHEMA_REF: "v1.3.1-2"
+  image: $UV_TOOLS_IMAGE
   script:
-    - uv sync --project docs/scripts
-    - uv run --project docs/scripts check-zeta-schemas --ref "${ZETA_SCHEMA_REF}"
+    - uv run --project docs/scripts --locked --no-dev check-zeta-schemas --all
   artifacts:
     when: always
     paths:
       - target/schema-drift.diff
     expire_in: 1 week
-  allow_failure: true
+  allow_failure: false
 
 third_party_licenses:
   stage: static-checks

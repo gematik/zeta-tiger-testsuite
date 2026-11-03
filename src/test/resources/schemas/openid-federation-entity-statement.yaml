@@ -32,9 +32,8 @@ $comment: >-
   compact JWT; the RFC wire format is the signed compact JWT itself.
 description: >-
   OpenID Federation 1.0-based structural schema for the compact Entity
-  Statement JWT returned by the PDP Authorization Server. The official gematik
-  ZETA schema catalogue contains no Entity Statement schema, so this
-  test-specific schema is kept outside the vendored v_1_0 directory. The
+  Statement JWT returned by the PDP Authorization Server. This test-specific
+  A_25656 profile is kept outside the vendored schema packages. The
   redirect_uris values are intentionally strings because the local deployment
   also emits relative paths and wildcard patterns. The expected KIND redirect
   URLs are test data and are asserted separately from this schema.

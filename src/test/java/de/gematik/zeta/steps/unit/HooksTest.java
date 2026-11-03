@@ -30,14 +30,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.AslProfile;
 import de.gematik.zeta.services.TestDriverConfigurationService;
+import de.gematik.zeta.services.ZetaDeploymentConfiguration;
 import de.gematik.zeta.services.ZetaDeploymentModificationService;
 import de.gematik.zeta.services.model.CommandResult;
 import de.gematik.zeta.steps.Hooks;
@@ -47,36 +55,31 @@ import io.cucumber.java.Scenario;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opentest4j.TestAbortedException;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * Unit tests for {@link Hooks}.
  */
 public class HooksTest {
 
-  private static final String OIDC_TESTDRIVER_DEPLOYMENT_JSON = """
-      {"spec":{"template":{"spec":{"containers":[{"name":"testdriver","env":[
-        {"name":"AUTH_MODE","value":"OIDC"}
-      ]}]}}}}
-      """;
-  private static final String SMB_TESTDRIVER_DEPLOYMENT_JSON = """
-      {"spec":{"template":{"spec":{"containers":[{"name":"testdriver","env":[
-        {"name":"AUTH_MODE","value":"SMB"}
-      ]}]}}}}
-      """;
-
   private HttpServer tlsTestToolServiceServer;
-  private HttpServer pushNotificationServiceServer;
 
   /**
-   * Stops the embedded TLS test tool service after each test.
+   * Stops embedded services and clears scenario state and configuration after each test.
    */
   @AfterEach
   void tearDown() {
@@ -84,12 +87,103 @@ public class HooksTest {
       tlsTestToolServiceServer.stop(0);
       tlsTestToolServiceServer = null;
     }
-    if (pushNotificationServiceServer != null) {
-      pushNotificationServiceServer.stop(0);
-      pushNotificationServiceServer = null;
-    }
     SoftAssertionsContext.reset();
     Hooks.clearScenarioAborted();
+    TigerGlobalConfiguration.clearTestVariables();
+  }
+
+  /**
+   * Verifies the authentication mode and Kubernetes driver identity declared by each client profile.
+   *
+   * @param profile client configuration suffix
+   * @param authMode expected authentication mode
+   * @param driverName expected deployment and container name
+   * @throws IOException if the client configuration cannot be read
+   */
+  @ParameterizedTest
+  @CsvSource({"smcb, SMB, testdriver-smcb", "oidc, OIDC, testdriver-oidc"})
+  void clientProfilesDeclareDriverIdentity(final String profile, final String authMode,
+      final String driverName) throws IOException {
+    Map<?, ?> yaml = new Yaml().load(
+        Files.readString(Path.of("tiger", "client-paths-" + profile + ".yaml")));
+    Map<?, ?> client = Assertions.assertInstanceOf(Map.class, yaml.get("client"));
+
+    assertEquals(authMode, client.get("authMode"));
+    assertEquals(driverName, client.get("deploymentName"));
+    assertEquals(driverName, client.get("containerName"));
+  }
+
+  /**
+   * Validates authentication tags without requiring Kubernetes access.
+   *
+   * @param expectedMode authentication mode required by the tag
+   * @param configuredMode authentication mode declared by the client configuration
+   */
+  @ParameterizedTest
+  @CsvSource({"SMB, SMB", "SMB, OIDC", "OIDC, OIDC", "OIDC, SMB"})
+  void profileHooksValidateConfigurationWithoutKubectl(final String expectedMode, final String configuredMode) {
+    var service = mock(ZetaDeploymentModificationService.class);
+    TigerGlobalConfiguration.putValue("paths.client.authMode", configuredMode, ConfigurationValuePrecedence.TEST_CONTEXT);
+    var hooks = new Hooks(service, new TigerProxyManipulationsSteps(), mock(TestDriverConfigurationService.class));
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@" + expectedMode.toLowerCase(java.util.Locale.ROOT)));
+    Executable checkProfile = expectedMode.equals("SMB") ? hooks::verifySmbProfile : hooks::verifyOidcProfile;
+
+    if (expectedMode.equals(configuredMode)) {
+      assertDoesNotThrow(checkProfile);
+    } else {
+      assertThrows(AssertionError.class, checkProfile);
+    }
+    hooks.skipIfKubectlMissing(scenario);
+    verifyNoInteractions(service);
+  }
+
+  /**
+   * Checks the selected driver's runtime mode after Kubernetes prerequisites have passed.
+   *
+   * @param requiredMode authentication mode required by the scenario
+   * @param actualMode selected container's runtime authentication mode
+   */
+  @ParameterizedTest
+  @CsvSource({"SMB, SMB", "SMB, OIDC", "OIDC, OIDC", "OIDC, SMB"})
+  void kubectlHookVerifiesSelectedDriverRuntime(final String requiredMode, final String actualMode) {
+    final var service = mock(ZetaDeploymentModificationService.class);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "test-namespace", ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.client.deploymentName", "selected-driver", ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.client.containerName", "selected-container", ConfigurationValuePrecedence.TEST_CONTEXT);
+    when(service.executeKubectlCommand(anyBoolean(), any(String[].class))).thenReturn(
+        new CommandResult(List.of(), 0,
+            "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"selected-container\","
+                + "\"env\":[{\"name\":\"AUTH_MODE\",\"value\":\"" + actualMode + "\"}]}]}}}}", ""));
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_kubectl", "@" + requiredMode.toLowerCase(java.util.Locale.ROOT)));
+    try (var configuration = mockStatic(ZetaDeploymentConfiguration.class)) {
+      configuration.when(ZetaDeploymentConfiguration::getNamespace).thenReturn("test-namespace");
+      var hooks = new Hooks(service, new TigerProxyManipulationsSteps(), mock(TestDriverConfigurationService.class));
+      if (requiredMode.equals(actualMode)) {
+        assertDoesNotThrow(() -> hooks.skipIfKubectlMissing(scenario));
+      } else {
+        assertThrows(AssertionError.class, () -> hooks.skipIfKubectlMissing(scenario));
+      }
+      var calls = inOrder(service);
+      calls.verify(service).verifyRequirements("test-namespace");
+      calls.verify(service).executeKubectlCommand(false, "-n", "test-namespace", "get", "deployment", "selected-driver", "-o", "json");
+    }
+  }
+
+  /** Checks shared Kubernetes prerequisites without inspecting an unrelated client deployment. */
+  @Test
+  void kubectlHookDoesNotInspectDriverForSharedScenarios() {
+    var service = mock(ZetaDeploymentModificationService.class);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "test-namespace", ConfigurationValuePrecedence.TEST_CONTEXT);
+    var scenario = mock(Scenario.class);
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_kubectl"));
+    var hooks = new Hooks(service, new TigerProxyManipulationsSteps(), mock(TestDriverConfigurationService.class));
+
+    hooks.skipIfKubectlMissing(scenario);
+
+    verify(service).verifyRequirements("test-namespace");
+    verifyNoMoreInteractions(service);
   }
 
   /**
@@ -238,46 +332,85 @@ public class HooksTest {
   }
 
   /**
-   * Verifies that the OIDC testdriver guard accepts the deployed OIDC mode.
+   * Verifies that revocation resets target the selected driver while preserving native-client selection.
+   *
+   * @param regularDriver deployment selected by the active regular-client profile
+   * @param hookTag scenario tag selecting the regular or native client
+   * @param expectedDriver only pod prefix that may be restarted
    */
-  @Test
-  void oidcTestdriverGuardAcceptsOidcAuthMode() {
+  @ParameterizedTest
+  @CsvSource({
+      "testdriver-smcb, @tls_client_fachdienst_hook, testdriver-smcb",
+      "testdriver-oidc, @tls_client_fachdienst_hook, testdriver-oidc",
+      "testdriver-smcb, @tls_native_client_fachdienst_hook, nativedriver"
+  })
+  void resetTlsRevocationCacheRestartsSelectedDriver(
+      final String regularDriver, final String hookTag, final String expectedDriver) {
+    TigerGlobalConfiguration.putValue("allow_deployment_modification", "true",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
     TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-local",
         ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.podReadyTimeout", "1",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.client.deploymentName", regularDriver,
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.nativeClient.deploymentName", "nativedriver",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
     var deploymentService = new FakeDeploymentModificationService();
-    deploymentService.testdriverAuthModeResult =
-        new CommandResult(List.of("kubectl"), 0, OIDC_TESTDRIVER_DEPLOYMENT_JSON, "");
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
         new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
-    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_oidc_testdriver"));
+    when(scenario.getSourceTagNames()).thenReturn(Set.of(hookTag, "@reset_tls_revocation_cache"));
 
-    hooks.prepareSoftAssertions();
+    hooks.resetTlsRevocationCache(scenario);
 
-    assertDoesNotThrow(() -> hooks.skipIfTestdriverIsNotConfiguredForOidc(scenario));
-    assertEquals(List.of("-n", "zeta-local", "get", "deployment", "testdriver", "-o", "json"),
-        deploymentService.testdriverAuthModeArguments);
+    assertEquals(1, deploymentService.restartCount);
+    assertEquals(expectedDriver, deploymentService.restartedPodPrefix);
   }
 
   /**
-   * Verifies that the OIDC testdriver guard skips a deployment left in SMB mode.
+   * Verifies that a missing driver identity cannot fall back to restarting an ambiguous testdriver pod.
    */
   @Test
-  void oidcTestdriverGuardAbortsForSmbAuthMode() {
-    TigerGlobalConfiguration.putValue("zetaDeploymentConfig.namespace", "zeta-local",
+  void resetTlsRevocationCacheRejectsBlankDriverIdentity() {
+    TigerGlobalConfiguration.putValue("allow_deployment_modification", "true",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+    TigerGlobalConfiguration.putValue("paths.client.deploymentName", " ",
         ConfigurationValuePrecedence.TEST_CONTEXT);
     var deploymentService = new FakeDeploymentModificationService();
-    deploymentService.testdriverAuthModeResult =
-        new CommandResult(List.of("kubectl"), 0, SMB_TESTDRIVER_DEPLOYMENT_JSON, "");
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
         new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
-    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_oidc_testdriver"));
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@tls_client_fachdienst_hook", "@reset_tls_revocation_cache"));
 
-    hooks.prepareSoftAssertions();
+    var error = assertThrows(AssertionError.class, () -> hooks.resetTlsRevocationCache(scenario));
 
-    assertThrows(TestAbortedException.class, () -> hooks.skipIfTestdriverIsNotConfiguredForOidc(scenario));
-    verify(scenario).log("Skipping: deployed testdriver AUTH_MODE is 'SMB' but OIDC scenarios require 'OIDC'");
+    assertEquals("Missing driver configuration paths.client.deploymentName.", error.getMessage());
+    assertEquals(0, deploymentService.restartCount);
+  }
+
+  /** Reserves the active OIDC driver for shared scenarios as well as tagged scenarios. */
+  @Test
+  void oidcProfileReservesDriverForEveryScenario() {
+    TigerGlobalConfiguration.putValue("profile", "oidc-proxy", ConfigurationValuePrecedence.TEST_CONTEXT);
+    try (var driver = mockStatic(de.gematik.zeta.steps.OidcScenarioContext.class)) {
+      var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
+          new FakeTestDriverConfigurationService());
+      hooks.reserveOidcDriver();
+      driver.verify(de.gematik.zeta.steps.OidcScenarioContext::acquireDriver);
+    }
+  }
+
+  /** Leaves the OIDC driver untouched in SMB runs. */
+  @Test
+  void smbProfileDoesNotReserveOidcDriver() {
+    TigerGlobalConfiguration.putValue("profile", "proxy", ConfigurationValuePrecedence.TEST_CONTEXT);
+    try (var driver = mockStatic(de.gematik.zeta.steps.OidcScenarioContext.class)) {
+      var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
+          new FakeTestDriverConfigurationService());
+      hooks.reserveOidcDriver();
+      driver.verifyNoInteractions();
+    }
   }
 
   /**
@@ -299,28 +432,6 @@ public class HooksTest {
     });
 
     assertEquals("http://zeta-kind.local:9013/admin/mode", resolvedUri.toString());
-  }
-
-  /**
-   * Verifies that the reset hook lists and deletes every registered pusher dynamically.
-   */
-  @Test
-  void resetNotificationPushersDeletesAllReturnedPushers() {
-    var receivedRequests = new CopyOnWriteArrayList<String>();
-    TigerGlobalConfiguration.putValue("paths.client.notifications.pushers",
-        startPushNotificationService(receivedRequests) + "/pushers",
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-    var hooks = new Hooks(new FakeDeploymentModificationService(), new TigerProxyManipulationsSteps(),
-        new FakeTestDriverConfigurationService());
-    var scenario = mock(Scenario.class);
-
-    assertDoesNotThrow(() -> hooks.resetNotificationPushers(scenario));
-
-    assertEquals(Set.of(
-            "GET null",
-            "DELETE pushkey=dynamic-pusher-one&appId=de.gematik.dynamic.one",
-            "DELETE pushkey=dynamic-pusher-two&appId=de.gematik.dynamic.two"),
-        Set.copyOf(receivedRequests));
   }
 
   /**
@@ -443,6 +554,8 @@ public class HooksTest {
    */
   @Test
   void skipPerformanceScenarioWhenNotEnabled() {
+    TigerGlobalConfiguration.putValue("allow_performance_tests", "false",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
     var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
@@ -459,6 +572,8 @@ public class HooksTest {
    */
   @Test
   void skipLongRunningScenarioWhenNotEnabled() {
+    TigerGlobalConfiguration.putValue("allow_longrunning_tests", "false",
+        ConfigurationValuePrecedence.TEST_CONTEXT);
     var hooks = new Hooks(new FakeDeploymentModificationService(),
         new TigerProxyManipulationsSteps(), new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
@@ -541,7 +656,7 @@ public class HooksTest {
     var hooks = new Hooks(deploymentService, new TigerProxyManipulationsSteps(),
         new FakeTestDriverConfigurationService());
     var scenario = mock(Scenario.class);
-    when(scenario.getSourceTagNames()).thenReturn(Set.of("@require_kubectl"));
+    when(scenario.getSourceTagNames()).thenReturn(Set.of("@smb", "@require_kubectl"));
     when(scenario.getName()).thenReturn("Client Authentisierung");
 
     hooks.prepareSoftAssertions();
@@ -597,39 +712,6 @@ public class HooksTest {
     }
   }
 
-  /**
-   * Starts a minimal service stub that records pusher cleanup requests.
-   *
-   * @param receivedRequests thread-safe destination for received method and query values
-   * @return base URL of the embedded service
-   */
-  private String startPushNotificationService(final List<String> receivedRequests) {
-    try {
-      pushNotificationServiceServer = HttpServer.create(new InetSocketAddress(0), 0);
-      pushNotificationServiceServer.createContext("/pushers", exchange -> {
-        receivedRequests.add(exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawQuery());
-        if ("GET".equals(exchange.getRequestMethod())) {
-          var body = """
-              [
-                {"pushkey":"dynamic-pusher-one","app_id":"de.gematik.dynamic.one"},
-                {"pushkey":"dynamic-pusher-two","app_id":"de.gematik.dynamic.two"}
-              ]
-              """.getBytes(StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().set("Content-Type", "application/json");
-          exchange.sendResponseHeaders(200, body.length);
-          exchange.getResponseBody().write(body);
-        } else {
-          exchange.sendResponseHeaders(200, -1);
-        }
-        exchange.close();
-      });
-      pushNotificationServiceServer.start();
-      return "http://localhost:" + pushNotificationServiceServer.getAddress().getPort();
-    } catch (IOException e) {
-      throw new AssertionError("Could not start push notification cleanup service stub", e);
-    }
-  }
-
   private static class FakeDeploymentModificationService extends ZetaDeploymentModificationService {
 
     private final CommandResult imagePathResult =
@@ -640,13 +722,11 @@ public class HooksTest {
         new CommandResult(List.of("kubectl"), 0, "registry.example.org/zeta/ngx_pep:0.3.0", "");
     private CommandResult cleanupResult =
         new CommandResult(List.of("kubectl"), 0, "cleanup ok", "");
-    private CommandResult testdriverAuthModeResult =
-        new CommandResult(List.of("kubectl"), 0, OIDC_TESTDRIVER_DEPLOYMENT_JSON, "");
-    private List<String> testdriverAuthModeArguments = List.of();
     private String cleanupExpectedImage;
     private String verifyExpectedImage;
     private AssertionError requirementsFailure;
     private int restartCount;
+    private String restartedPodPrefix;
 
     /**
      * Creates a fake deployment configuration service with short timeout values for tests.
@@ -668,24 +748,17 @@ public class HooksTest {
     }
 
     /**
-     * Returns the configured testdriver AUTH_MODE result for the OIDC guard.
+     * Records a requested pod restart and its target without modifying a deployment.
      *
-     * @param verbose whether command output should be logged
-     * @param arguments kubectl arguments
-     * @return configured testdriver AUTH_MODE command result
-     */
-    @Override
-    public CommandResult executeKubectlCommand(boolean verbose, String... arguments) {
-      testdriverAuthModeArguments = List.of(arguments);
-      return testdriverAuthModeResult;
-    }
-
-    /**
-     * Records a requested pod restart without modifying a deployment.
+     * @param namespace target namespace
+     * @param podName selected driver's pod prefix
+     * @param waitForPodReadiness whether readiness must be awaited
+     * @param readinessTimeout maximum readiness wait in seconds
      */
     @Override
     public void restartPod(String namespace, String podName, boolean waitForPodReadiness, int readinessTimeout) {
       restartCount++;
+      restartedPodPrefix = podName;
     }
 
     /**

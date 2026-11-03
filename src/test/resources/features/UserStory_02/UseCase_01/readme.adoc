@@ -12,56 +12,185 @@
 | weitere Akteure: |
 *ZETA Guard Notification Service*
 
-*achelos Testfachdienst*
+*Fachdienst*
+
+*ZETA Guard Authorization Server*
+
+*Push Gateway*
 
 | Auslöser: |
-Ein ZETA Client registriert, aktualisiert oder löscht seine Push-Konfiguration oder ändert die Einstellung für Push-Benachrichtigungen.
+Ein Nutzer verwaltet seine Push-Konfiguration und Benachrichtigungseinstellungen.
+Ein Ereignis über einen registrierten Client oder eine Neuregistrierung veranlasst den Fachdienst, die aktiven Nutzer-Channels abzufragen oder eine Notification zu übermitteln.
 
 | Kurzbeschreibung: |
-Der Client legt eine Push-Konfiguration an, aktualisiert sie und löscht sie wieder.
-Der Client aktiviert, ändert und deaktiviert außerdem den Benachrichtigungskanal.
-Der Notification Service bestätigt jede Operation und macht die Auswirkung der Kanaleinstellung auf Ereignisse beobachtbar.
+Der ZETA Client registriert, liest, aktualisiert und löscht die Push-Konfiguration des authentisierten Nutzers und verwaltet dessen geräteindividuelle Channels.
+Der Notification Service berücksichtigt die gespeicherten Einstellungen bei der Zustellung, erzwingt Nutzerbindung und Token-Berechtigungen und protokolliert die Verarbeitung ohne Klartext-Identifikatoren.
 
 | Vorbedingung: |
-. Der ZETA Client kann sich als Nutzer gegenüber dem ZETA Guard authentisieren.
-. Der Notification Service ist erreichbar.
-. Das Push Gateway der Testumgebung ist in der Allowlist des Notification Service enthalten.
-. Der achelos Testfachdienst kann Ereignisse über registrierte Clients und Neuregistrierungen an den Notification Service senden.
+. Der ZETA Client kann den Nutzer per OIDC gegenüber dem Authorization Server authentisieren.
+. Der Notification Service stellt seine Protected-Resource-Discovery mit Resource-Kennung, zuständigem Authorization Server, unterstützten Scopes und DPoP-Pflicht bereit.
+. Das Push Gateway ist für den Notification Service zulässig.
+. Der Fachdienst besitzt eine gültige technische Authentisierung und eine bekannte Zuordnung zulässiger Channels.
+. Für den Nutzerwechsel und Fremdzugriffe stehen zwei verschiedene authentisierte Nutzer mit eigenen Push-Konfigurationen zur Verfügung.
+. Der Aktivierungszustand der optionalen Nachrichten-Historie ist bekannt; History-Operationen und ihr Scope gelten nur bei aktiviertem Feature.
+
+| Nebenbedingung: |
+Alle Operationen sind an Nutzeridentität, Pushkey und App-ID gebunden.
+Bei erneuter Registrierung derselben Kombination durch einen anderen Nutzer gilt die `append`-Semantik des referenzierten Push-API-Schemas; ohne `append` gilt dessen Default `false`.
+Nicht autorisierte Schreiboperationen verändern keine Push- oder Channel-Konfiguration.
 
 | Ablauf: |
-. Der Client entfernt eine eventuell vorhandene Testkonfiguration.
-. Der Client registriert eine Push-Konfiguration.
-. Der Client liest die Konfiguration zurück und vergleicht alle fachlich vorgegebenen Werte.
-. Der Client aktualisiert die Konfiguration.
-. Der Client liest die geänderte Konfiguration zurück und vergleicht die geänderten Werte.
-. Der Client löscht die Push-Konfiguration.
-. Der Client weist nach, dass die Konfiguration nicht mehr vorhanden ist.
-. Der Client registriert einen eindeutig adressierten Test-Pusher.
-. Der Client aktiviert den Benachrichtigungskanal und liest den aktivierten Zustand zurück.
-. Der Client aktualisiert die bereits gespeicherte Channel-Konfiguration für den Pusher von `enabled` auf `disabled` und liest den neuen Zustand zurück.
-. Der Client aktiviert den Benachrichtigungskanal erneut, um die Vorbedingung für den getrennten Deaktivierungsnachweis herzustellen.
-. Der Testfachdienst sendet ein korreliertes Ereignis der geprüften Kategorie und der Notification Service nimmt es zur Zustellung an.
-. Der Client deaktiviert den Benachrichtigungskanal und liest den deaktivierten Zustand zurück.
-. Der Testfachdienst sendet erneut ein korreliertes Ereignis derselben Kategorie und der Notification Service weist das Fehlen eines aktiven Kanals aus.
-. Der Client löscht den Test-Pusher.
+. Der ZETA Client liest die Protected-Resource-Discovery und fordert beim Token Exchange ein Access Token gezielt für die Notification-Resource an.
+Der Authorization Server stellt ein signiertes, DPoP-gebundenes Token ausschließlich für diese Audience und mit zulässigen Scopes aus.
+. Der ZETA Client registriert eine Push-Konfiguration einschließlich Pushkey, App-ID, Anzeigenamen, Profil, Sprache, Zustelladresse, Format und Verschlüsselungsdaten.
+Der Notification Service ordnet sie dem authentisierten Nutzer zu und bestätigt die Registrierung.
+. Der ZETA Client liest die gespeicherte Konfiguration, aktualisiert ihre Metadaten und liest die geänderten Werte zurück.
+Pushkey und App-ID adressieren weiterhin dieselbe Registrierung.
+. Der ZETA Client aktiviert einen geräteindividuellen Channel und liest die Einstellung zurück.
+Der Fachdienst fragt die aktiven Channels des Nutzers ab und übermittelt ein korreliertes Ereignis; der Notification Service nimmt die Notification an und leitet sie entsprechend den Einstellungen weiter.
+. Der ZETA Client ändert und deaktiviert die Einstellung für Aktivitäten registrierter Clients und Neuregistrierungen.
+Weitere Ereignisse werden gemäß dem jeweils gespeicherten Zustand zugestellt oder unterdrückt.
+. Ein Fachdienst übermittelt zunächst eine zulässige Notification für einen registrierten Nutzer.
+Eine weitere, ansonsten gleiche Notification mit eigenständiger Korrelation für einen ihm nicht zugeordneten Channel wird mit HTTP 403 zurückgewiesen.
+. Für einen unbekannten Nutzer fragt der Fachdienst Channels ab und übermittelt eine Notification.
+Beide Operationen werden mit HTTP 404 und `USER_NOT_FOUND` abgelehnt; die Varianten verwenden eine KVNR beziehungsweise eine Telematik-ID mit passendem `id_type`.
+. Für den registrierten Nutzer liefern Channel-Abfrage und Notification-Verarbeitung das zugehörige Nutzerergebnis, den aktiven Channel und bei Annahme eine `notification_id` mit Status `accepted` oder `queued`.
+Die Protokolle der abgelehnten und erfolgreichen Verarbeitung sowie die übermittelten Telemetriedaten enthalten den tatsächlich verwendeten Identifikator nicht im Klartext.
+. Bei einem Nutzerwechsel registriert Nutzer 2 dieselbe Kombination aus Pushkey und App-ID ohne `append` mit geänderten Metadaten.
+Vorher besitzen beide Nutzer unabhängig lesbare Kontroll-Pusher.
+Danach besitzt Nutzer 2 genau den übertragenen Pusher mit neuen Werten und seinen unveränderten Kontroll-Pusher; bei Nutzer 1 verbleibt ausschließlich dessen unveränderter Kontroll-Pusher.
+. Bei Channel-Fremdzugriffen besitzt Nutzer 1 einen aktivierten und Nutzer 2 einen deaktivierten Channel am jeweils eigenen Pusher.
+Nutzer 2 versucht, die Channel-Konfiguration des Pushers von Nutzer 1 zu lesen und zu deaktivieren.
+Beide Zugriffe werden mit HTTP 403 abgelehnt; der Lesezugriff liefert keine fremden Channel-Daten.
+Die weiterhin getrennten Zustände bleiben anschließend ohne erneutes Schreiben oder Registrieren lesbar.
+. Ohne Zugriffstoken werden Lese- und Schreiboperationen mit HTTP 401 abgelehnt.
+Gültige Kontrolloperationen gelingen; wiederholte unautorisierte Versuche bleiben abgelehnt und Schreibversuche lassen den eigenen Bestand unverändert.
+. Tokens mit ungültiger Signatur, `exp`, `nbf`, `iat`, `iss`, `aud` oder fehlendem erforderlichen Operationsscope werden mit HTTP 401 oder 403 zurückgewiesen.
+Ein DPoP-Proof mit einem anderen als dem im Token gebundenen Schlüssel berechtigt ebenfalls nicht zum Zugriff; gültige Kontrollaufrufe bleiben erfolgreich.
+. Bei zusätzlicher Scope-Anforderung stellt der Authorization Server ausschließlich die zulässigen Notification-Scopes aus oder lehnt die Anforderung ohne Tokenausstellung ab.
+Ein ansonsten gültiges Token mit erforderlichem Lese-Scope und zusätzlich `profile`, `email` oder einem unbekannten Scope berechtigt nicht zum Pusher-Lesen; anschließend bleibt ein Aufruf ausschließlich mit zulässigem Scope erfolgreich.
+. Der ZETA Client deregistriert seine Pusher.
+Der Notification Service entfernt die Push-Konfiguration; ein anschließender Abruf enthält die deregistrierte Kombination nicht mehr.
+Die gesonderten Prüfentwürfe zum internen Schlüsselmaterial bleiben davon unabhängig.
 
 | Nachbedingung: |
-Die Testkonfiguration ist im Notification Service nicht mehr registriert und der Benachrichtigungskanal ist deaktiviert.
+Die eigenen Push-Konfigurationen sind nach Deregistrierung entfernt.
+Abgelehnte Fremd- und unautorisierte Zugriffe haben keine fremden Daten geliefert oder gespeicherte Zustände verändert.
+Die beobachteten Protokolle und Telemetriedaten enthalten keine Klartext-KVNR oder Klartext-Telematik-ID.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_29972_01>>
+* <<TA_A_29972_02>>
+* <<TA_A_29979_01>>
+* <<TA_A_29979_02>>
+* <<TA_A_29989_01>>
 * <<TA_A_25652_04>>
 * <<TA_A_25652_05>>
 * <<TA_A_25735-01_01>>
 * <<TA_A_25735-01_02>>
+* <<TA_A_29978_01>>
+* <<TA_A_29978_03>>
+* <<TA_A_29978_04>>
+* <<TA_A_29985_02>>
+* <<TA_A_29977_01>>
+* <<TA_A_29977_02>>
+* <<TA_A_29977_03>>
+* <<TA_A_29975_02>>
+* <<TA_A_29975_03>>
+* <<TA_A_29975_04>>
+* <<TA_A_29975_05>>
+* <<TA_A_29976_01>>
+* <<TA_A_29976_02>>
+* <<TA_A_29976_03>>
+* <<TA_A_29976_04>>
+* <<TA_A_29976_05>>
+* <<TA_A_29976_06>>
+* <<TA_A_29976_07>>
+* <<TA_A_29972_03>>
+* <<TA_A_29972_04>>
+* <<TA_A_29972_05>>
+* <<TA_A_29972_06>>
+* <<TA_A_29979_03>>
+* <<TA_A_29979_04>>
+* <<TA_A_29979_05>>
+* <<TA_A_29979_06>>
+* <<TA_A_29979_07>>
+* <<TA_A_29989_02>>
+* <<TA_A_29989_03>>
+* <<TA_A_29990_01>>
+* <<TA_A_29990_02>>
+* <<TA_A_29990_04>>
+* <<TA_A_29990_05>>
 
 |===
 
+[#use_case_02_01_sequence]
+[mermaid,use-case-02-01-sequence,svg]
+....
+sequenceDiagram
+    participant SDK as ZETA Client SDK
+    participant AuthS as Authorization Server
+    participant FD as Fachdienst
+    participant NS as Notification Service
+    participant PG as Push Gateway
+    SDK->>NS: Protected-Resource-Discovery
+    NS-->>SDK: Resource, Authserver, Scopes und DPoP-Pflicht
+    SDK->>AuthS: Token Exchange für Notification-Resource
+    AuthS-->>SDK: Dienstspezifisches Access Token
+    SDK->>NS: Pusher registrieren, lesen und aktualisieren
+    NS-->>SDK: Nutzergebundene Konfiguration
+    SDK->>NS: Geräteindividuelle Channels aktivieren oder deaktivieren
+    SDK->>FD: Nutzerbezogene Channel-Abfrage und Ereignis
+    FD->>NS: Nutzer-Channels abfragen
+    alt Registrierter Nutzer
+        NS-->>FD: Nutzer und aktive Channels
+        FD->>NS: Notification für zugeordneten Channel
+        NS-->>FD: notification_id und accepted oder queued
+        opt Aktiver Channel
+            NS->>PG: Verschlüsselte Benachrichtigung
+        end
+    else Unbekannter Nutzer
+        NS-->>FD: 404 USER_NOT_FOUND
+        FD->>NS: Notification mit KVNR oder Telematik-ID
+        NS-->>FD: 404 USER_NOT_FOUND
+    end
+    opt Nicht zugeordneter Channel
+        FD->>NS: Notification für unzulässigen Channel
+        NS-->>FD: 403
+    end
+    NS->>NS: Verarbeitung ohne Klartext-Identifikatoren protokollieren
+    opt Nutzerwechsel ohne append
+        SDK->>NS: Gleichen Pusher unter Nutzer 2 registrieren
+        NS-->>SDK: Übertragener Pusher, getrennte Kontroll-Pusher
+    end
+    opt Fremdzugriff oder ungültige Autorisierung
+        SDK->>NS: Fremde Channels oder unzulässiges Token
+        NS-->>SDK: 401 oder 403, keine geschützten Daten und keine Zustandsänderung
+        SDK->>NS: Gültiger Kontrollaufruf
+        NS-->>SDK: Unveränderte eigene Konfiguration
+    end
+    SDK->>NS: Pusher deregistrieren und verbleibende Pusher lesen
+    NS-->>SDK: Deregistrierter Pusher abwesend
+....
+
+.Weitere fachliche Abläufe als Prüfentwürfe
+* Der Client entfernt ausschließlich den je Operation erforderlichen Scope. Dieselbe Operation wird mit HTTP 403 abgelehnt; die History-Variante gilt nur bei aktiviertem Feature.
+* Ein eigener Pusher durchläuft `enabled`, `disabled` und `not_set`; `not_set` wirkt wie `disabled`. Unabhängige Ereignisse und erfolgreiche Kontrollzustellungen vor und nach den Negativvarianten grenzen die vollständigen Zustell- und Nichtzustellfenster ein.
+* Zwei Pusher desselben Nutzers besitzen verschiedene Channel-Zustände. Der Fachdienst erhält die daraus aggregierte Nutzer-Sicht auch nach Änderung und Löschung eines Geräts; ein von den Gerätezuständen unabhängiges Ergebnis genügt nicht.
+* Bei ausschließlich fremder Audience und sonst gültigem Token, Operationsscope, Zeitraum und DPoP-Bindung wird der Zugriff mit HTTP 401 oder 403 abgelehnt. Eine anschließende gültige Kontrolle gelingt.
+* Vor Deregistrierung sind Shared Secrets und AES/GCM-Schlüssel mindestens zweier Jahr-Monat-Perioden dem Pusher zugeordnet. Nach Deregistrierung sind sämtliche zugehörigen Einträge entfernt; die Einträge eines unabhängigen Kontroll-Pushers bleiben erhalten. Die Abwesenheit in der Pusher-API allein weist diese interne Löschung nicht nach.
+
 ifdef::render_features[]
 [.lead]
-Feature-Datei zu diesem Use Case
+Feature-Dateien zu diesem Use Case
 
 [source]
 ----
 include::push_benachrichtigungen_verwalten.feature[]
+----
+
+[source]
+----
+include::notification_token_resource_scopes.feature[]
 ----
 endif::[]

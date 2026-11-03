@@ -1,0 +1,6 @@
+[#TA_A_29997_02]
+===== TA_A_29997_02 - PDP Authorization Server - Client-Authentifizierung am Revocation-Endpunkt - Nur eigene Token widerrufen
+
+"Der Authorization Server MUSS Requests an POST /revoke in derselben Weise wie am Token-Endpunkt authentifizieren (private_key_jwt Client Assertion [RFC7523] mit DPoP [RFC9449]) und MUSS sicherstellen, dass **ein Client ausschließlich eigene Token widerrufen kann**. Schlägt die Client-Authentifizierung fehl, MUSS der Endpunkt mit 401 (Unauthorized) und error=invalid_client gemäß [zeta-error.yaml] antworten.
+
+**[<=]**"

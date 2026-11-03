@@ -26,6 +26,7 @@ package de.gematik.zeta.steps.unit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -656,6 +657,20 @@ class TlsTestToolStepsTest {
   }
 
   /**
+   * Verifies that a logged TLS Certificate message payload is accepted when the optional summary
+   * marker is absent.
+   */
+  @Test
+  void certificateWasTransmittedAcceptsCertificateListLogEntry() {
+    var tlsSteps = new TlsTestToolSteps();
+    setTlsLogs(tlsSteps, """
+        2026-09-03T18:14:21.163Z\tHIGH\tTLS(TlsMessageLogger.cpp:266)\tCertificate.certificate_list[0]=30 82 02 29
+        """);
+
+    tlsSteps.checkCertificateWasTransmitted();
+  }
+
+  /**
    * Verifies that missing Certificate messages are reported as a broken handshake precondition.
    */
   @Test
@@ -1188,4 +1203,145 @@ class TlsTestToolStepsTest {
 
     assertTrue(error.getMessage().contains("ServerHello renegotiation_info"));
   }
+
+  @Test
+  void rejectsLegacyVersionsInsideTheSupportedVersionsVector() {
+    var steps = new TlsTestToolSteps();
+    setTlsLogs(steps, "ClientHello.client_version=03 03\n"
+        + "ClientHello.extensions=00 2b 00 05 04 03 03 03 02\n");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+        () -> steps.checkAndStoreSupportedTlsVersions("testVersions"))
+        .isInstanceOf(AssertionError.class);
+  }
+
+  @Test
+  void rejectsMalformedSupportedVersionsVector() {
+    var steps = new TlsTestToolSteps();
+    setTlsLogs(steps, "ClientHello.client_version=03 03\n"
+        + "ClientHello.extensions=00 2b 00 04 03 03 03 03\n");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+        () -> steps.checkAndStoreSupportedTlsVersions("testVersions"))
+        .isInstanceOf(AssertionError.class);
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"00 00 00 00,false", "00 2b 00 03 02 03 03,false",
+      "00 2b 00 05 04 03 04 03 03,true"})
+  void storesSupportedVersionsIndependentlyOfTheLegacyVersion(String extensions, String expected) {
+    var steps = new TlsTestToolSteps();
+    setTlsLogs(steps, "ClientHello.extensions=" + extensions + "\n");
+    try (var configuration = org.mockito.Mockito.mockStatic(
+        de.gematik.test.tiger.common.config.TigerGlobalConfiguration.class)) {
+      steps.checkAndStoreSupportedTlsVersions("testVersions");
+      configuration.verify(() -> de.gematik.test.tiger.common.config.TigerGlobalConfiguration.putValue(
+          "testVersions", expected, de.gematik.test.tiger.common.config.ConfigurationValuePrecedence.TEST_CONTEXT));
+      assertThrows(AssertionError.class, steps::checkIfClientHelloTlsVersionIs1_2);
+    }
+    setTlsLogs(steps, "ClientHello.client_version=03 03\nClientHello.extensions=" + extensions + "\n");
+    steps.checkIfClientHelloTlsVersionIs1_2();
+  }
+
+  @Test
+  void bindsTheTlsPeerToTheCompletePodAddress() {
+    var steps = new TlsTestToolSteps();
+    setTlsLogs(steps, "TCP/IP connection from 10.244.0.93:57992 received.");
+    steps.checkTlsPeerAddress("10.244.0.93");
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> steps.checkTlsPeerAddress("10.244.0.9"))
+        .isInstanceOf(AssertionError.class);
+  }
+
+  @Test
+  void advertisedTls13CannotPassWithAFailedHandshake() {
+    var steps = new TlsTestToolSteps();
+    setTlsLogs(steps, "TLS handshake failed");
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> steps.checkOptionalTls13Handshake("true"))
+        .isInstanceOf(AssertionError.class);
+    steps.checkOptionalTls13Handshake("false");
+  }
+
+  /**
+   * Accepts explicit version rejection from a TLS-1.2 client without supported_versions.
+   *
+   * @param version transmitted ServerHello version
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"1.0", "1.1"})
+  void legacyServerHelloReceivesVersionRejectionWithoutSupportedVersions(String version) {
+    var steps = new TlsTestToolSteps();
+    var transcript = legacyVersionRejectionLog(version);
+    setTlsLogs(steps, transcript);
+    assertNull(TlsLogParser.findClientHelloExtensionData(transcript, 0x002b));
+    steps.checkIfClientHelloTlsVersionIs1_2();
+    steps.checkLegacyServerHelloVersionRejection(version);
+    steps.checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation.NICHT_ERFOLGREICH);
+    setTlsLogs(steps, transcript.replace("Alert message received.",
+        "Alert message received.\nAlert message received."));
+    steps.checkLegacyServerHelloVersionRejection(version);
+  }
+
+  /** Only a received fatal version alert after the specified ServerHello establishes rejection. */
+  @Test
+  void legacyVersionRejectionRequiresCorrelatedIncomingAlert() {
+    var steps = new TlsTestToolSteps();
+    var valid = legacyVersionRejectionLog("1.0");
+    var received = "Alert message received.\nAlert.level=02\nAlert.description=46\n";
+    for (var invalid : List.of("", "TLS handshake failed: timeout",
+        "TLS handshake failed: error:0A000102:SSL routines::unsupported protocol",
+        valid.replace(received, "TLS handshake failed: no shared cipher\n"),
+        valid.replace("Alert message received.", "Alert message transmitted."),
+        valid.replace("Alert.level=02", "Alert.level=01"),
+        valid.replace("Alert.description=46", "Alert.description=28"),
+        valid.replace("ServerHello.server_version=03 01", "ServerHello.server_version=03 02"),
+        valid.replace("ServerHello message transmitted.", "ServerHello message received."),
+        valid.replace(received, "Alert message received.\nAlert.level=02\nAlert.description=28\n"
+            + "Alert message transmitted.\nAlert.level=01\nAlert.description=46\n"),
+        received + valid.replace(received, ""),
+        valid.replace(received, "TCP/IP connection from 10.244.0.93:50001 received.\n" + received),
+        valid + "Handshake successful.\n",
+        valid + "Valid Finished message received.\n")) {
+      setTlsLogs(steps, invalid);
+      assertThrows(AssertionError.class, () -> steps.checkLegacyServerHelloVersionRejection("1.0"));
+    }
+    setTlsLogs(steps, valid);
+    assertThrows(AssertionError.class, () -> steps.checkLegacyServerHelloVersionRejection("1.2"));
+  }
+
+  /**
+   * Creates a single-connection transcript with TLS-1.2-only suites and a version alert.
+   *
+   * @param version transmitted ServerHello version
+   * @return server-side transcript
+   */
+  private static String legacyVersionRejectionLog(String version) {
+    return "TCP/IP connection from 10.244.0.93:50000 received.\n"
+        + "Valid ClientHello message received.\nClientHello.client_version=03 03\n"
+        + "ClientHello.cipher_suites=c0 2b c0 2c\nClientHello.extensions=00 0b 00 02 01 00\n"
+        + "ServerHello.server_version=03 " + ("1.0".equals(version) ? "01" : "02") + "\n"
+        + "ServerHello.cipher_suite=c0 2b\nServerHello message transmitted.\n"
+        + "Alert message received.\nAlert.level=02\nAlert.description=46\n"
+        + "TLS handshake failed: fatal alert received\n";
+  }
+
+  /**
+   * Keeps completion and route restoration ahead of TLS ownership release and state clearing.
+   *
+   * @throws Exception if hook metadata cannot be read
+   */
+  @Test
+  void tlsOwnershipOutlivesContainerCompletionAndDeploymentRestoration() throws Exception {
+    var completion = de.gematik.zeta.steps.DeploymentModificationSteps.class
+        .getMethod("awaitRegisteredContainerCompletions")
+        .getAnnotation(io.cucumber.java.After.class).order();
+    var restoration = de.gematik.zeta.steps.Hooks.class
+        .getMethod("restoreDeploymentModifications", io.cucumber.java.Scenario.class)
+        .getAnnotation(io.cucumber.java.After.class).order();
+    var release = TlsTestToolSteps.class.getMethod("closeTlsTestTool")
+        .getAnnotation(io.cucumber.java.After.class).order();
+    var clear = de.gematik.zeta.steps.Hooks.class.getMethod("clearScenarioLifecycleState")
+        .getAnnotation(io.cucumber.java.After.class).order();
+    assertTrue(completion > restoration);
+    assertTrue(restoration > release);
+    assertTrue(release > clear);
+  }
+
 }

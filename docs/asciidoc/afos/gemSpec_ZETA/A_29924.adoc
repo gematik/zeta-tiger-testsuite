@@ -1,0 +1,4 @@
+[#A_29924]
+==== A_29924 - Authorization Server – Overlap-Fenster: Ressourcenzugriff vs. Verwaltung
+
+Der Authorization Server MUSS nach erfolgreichem Rollover den bisherigen Schlüssel für einen begrenzten Übergangszeitraum ausschließlich für den Ressourcenzugriff weiter akzeptieren. Der bisherige Schlüssel DARF NICHT nach dem Rollover weitere Verwaltungsoperationen (insbesondere einen erneuten Rollover) autorisieren. [<=]

@@ -51,18 +51,6 @@ public class ParamTypes {
   }
 
   /**
-   * Defines a parameter type for supported Kubernetes probe fields in pod specs.
-   * Allowed values: {@code livenessProbe}, {@code readinessProbe}, {@code startupProbe}.
-   *
-   * @param probeName probe field name from the step text
-   * @return normalized probe field name as-is
-   */
-  @ParameterType("livenessProbe|readinessProbe|startupProbe")
-  public String kubeProbe(String probeName) {
-    return probeName;
-  }
-
-  /**
    * Defines a parameter type for supported JWT manipulation variants.
    *
    * @param variant JWT variant token from the step

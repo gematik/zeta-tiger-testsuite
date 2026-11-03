@@ -1,0 +1,8 @@
+[#TA_A_29376_17]
+===== TA_A_29376_17 - ZETA, Ablauf Token Exchange mit Attestation - OCSP-Sperrstatus der SMC-B prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 07 und 20: Der Authorization Server prüft den **OCSP-Sperrstatus der +++SM(C)-B+++**. Ein gesperrtes Zertifikat führt zu 400 mit error=invalid_grant ohne Policy-Aufruf oder Tokenausgabe.

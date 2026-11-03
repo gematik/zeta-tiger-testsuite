@@ -1,0 +1,4 @@
+[#A_29671]
+==== A_29671 - ZETA, Ablauf Nutzerauthentisierung am sektoralen IDP
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-OIDC-Nutzerauthentisierung unterstützen. [<=]

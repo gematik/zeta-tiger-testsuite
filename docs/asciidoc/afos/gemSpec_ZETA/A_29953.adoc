@@ -1,0 +1,4 @@
+[#A_29953]
+==== A_29953 - PDP Authorization Server, Abfrage der Policy Engine Decision vor der Token Ausstellung
+
+Der Authorization Server MUSS vor der Token Ausstellung die Decision der Policy Engine abfragen und den Request Body gemäß [policy-engine-input.yaml] erstellen. Wenn die Response der Policy Engine gemäß [pdp-decision.yaml] allow: true enthält, dann MUSS der Authorization Server die Token mit den Gültigkeitsdauern aus der Response erstellen. Wenn die Response allow: false enthält, dann MUSS der Authorization Server in der Token Response gemäß [token-response.yaml] die reasons aus der Response der Policy Engine übernehmen. [<=]

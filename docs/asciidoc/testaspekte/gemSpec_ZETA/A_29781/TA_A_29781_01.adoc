@@ -1,0 +1,4 @@
+[#TA_A_29781_01]
+===== TA_A_29781_01 - Android-Schlüsselgenerierung - Hardwarepfad ohne Play Integrity
+
+"Der ZETA Client MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Schlüsselgenerierung-Android** unterstützen. [<=]"

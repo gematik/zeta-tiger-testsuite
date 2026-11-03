@@ -11,15 +11,39 @@ tiger_ensure_kubectl() {
   fi
 }
 
+# The rollback scenarios require Helm 4's --rollback-on-failure option.
+tiger_ensure_helm() (
+  set -e
+  if command -v helm >/dev/null 2>&1; then
+    helm version --short
+  else
+    : "${HELM_VERSION:=4.0.5}"
+    : "${TARGETARCH:?Docker target architecture is required}"
+    helm_download_dir="$(mktemp -d)"
+    trap 'rm -rf "${helm_download_dir}"' EXIT
+    cd "${helm_download_dir}"
+    helm_archive="helm-v${HELM_VERSION}-linux-${TARGETARCH}.tar.gz"
+    wget -q "https://get.helm.sh/${helm_archive}"
+    wget -q "https://get.helm.sh/${helm_archive}.sha256sum"
+    sha256sum -c "${helm_archive}.sha256sum"
+    tar -xzf "${helm_archive}" "linux-${TARGETARCH}/helm"
+    mv "linux-${TARGETARCH}/helm" /usr/local/bin/helm
+    helm version --short
+  fi
+)
+
 tiger_set_defaults() {
   : "${ZETA_BASE_URL:=}"
+  : "${ZETA_PORT_FORWARD_HOST:=}"
   : "${ZETA_PROXY_URL:=}"
   : "${ZETA_K8S_NAMESPACE:=}"
   : "${ALLOW_DEPLOYMENT_MODIFICATION:=}"
   : "${OPENSEARCH_URL:=}"
   : "${PROMETHEUS_URL:=}"
+  : "${JAEGER_URL:=}"
   : "${ZETA_TLS_TEST_TOOL_SERVICE_URL:=}"
   : "${ZETA_CERT_VALIDATION_MOCK_URL:=}"
+  : "${LOAD_DISPENSER_URL:=}"
   : "${ZETA_TEST_CERTIFICATES_DIR:=}"
   : "${SMB_KEYSTORE_FILE_B64:=}"
   : "${SMB_KEYSTORE_PW_FILE:=}"
@@ -48,6 +72,7 @@ tiger_common_property_args() {
   args=""
   profile_arg="$(tiger_property_arg_from_env PROFILE PROFILE)"
   zeta_base_arg="$(tiger_property_arg_from_env ZETA_BASE_URL zeta_base_url)"
+  zeta_port_forward_host_arg="$(tiger_property_arg_from_env ZETA_PORT_FORWARD_HOST zeta_port_forward_host)"
   zeta_proxy_arg="$(tiger_property_arg_from_env ZETA_PROXY_URL zeta_proxy_url)"
   zeta_k8s_namespace_arg="$(tiger_property_arg_from_env ZETA_K8S_NAMESPACE zeta_k8s_namespace)"
   allow_deployment_modification_arg="$(tiger_property_arg_from_env ALLOW_DEPLOYMENT_MODIFICATION allow_deployment_modification)"
@@ -56,14 +81,17 @@ tiger_common_property_args() {
   tpm_environment_arg="$(tiger_property_arg_from_env TPM_ENVIRONMENT tpm_environment)"
   opensearch_arg="$(tiger_property_arg_from_env OPENSEARCH_URL opensearch_url)"
   prometheus_arg="$(tiger_property_arg_from_env PROMETHEUS_URL prometheus_url)"
+  jaeger_arg="$(tiger_property_arg_from_env JAEGER_URL jaeger_url)"
   zeta_tls_test_tool_service_url_arg="$(tiger_property_arg_from_env ZETA_TLS_TEST_TOOL_SERVICE_URL zeta_tls_test_tool_service_url)"
   zeta_cert_validation_mock_url_arg="$(tiger_property_arg_from_env ZETA_CERT_VALIDATION_MOCK_URL zeta_cert_validation_mock_url)"
+  load_dispenser_arg="$(tiger_property_arg_from_env LOAD_DISPENSER_URL load_dispenser_url)"
   test_certificates_dir_arg="$(tiger_property_arg_from_env ZETA_TEST_CERTIFICATES_DIR testCertificates.dir)"
   smcb_keystore_file_arg="$(tiger_property_arg_from_env SMB_KEYSTORE_FILE_B64 zeta_k8s_smb_keystore_file)"
   smcb_keystore_password_file_arg="$(tiger_property_arg_from_env SMB_KEYSTORE_PW_FILE zeta_k8s_smb_keystore_password_file)"
 
   [ -n "${profile_arg}" ] && args="${args} ${profile_arg}"
   [ -n "${zeta_base_arg}" ] && args="${args} ${zeta_base_arg}"
+  [ -n "${zeta_port_forward_host_arg}" ] && args="${args} ${zeta_port_forward_host_arg}"
   [ -n "${zeta_proxy_arg}" ] && args="${args} ${zeta_proxy_arg}"
   [ -n "${zeta_k8s_namespace_arg}" ] && args="${args} ${zeta_k8s_namespace_arg}"
   [ -n "${allow_deployment_modification_arg}" ] && args="${args} ${allow_deployment_modification_arg}"
@@ -72,8 +100,10 @@ tiger_common_property_args() {
   [ -n "${tpm_environment_arg}" ] && args="${args} ${tpm_environment_arg}"
   [ -n "${opensearch_arg}" ] && args="${args} ${opensearch_arg}"
   [ -n "${prometheus_arg}" ] && args="${args} ${prometheus_arg}"
+  [ -n "${jaeger_arg}" ] && args="${args} ${jaeger_arg}"
   [ -n "${zeta_tls_test_tool_service_url_arg}" ] && args="${args} ${zeta_tls_test_tool_service_url_arg}"
   [ -n "${zeta_cert_validation_mock_url_arg}" ] && args="${args} ${zeta_cert_validation_mock_url_arg}"
+  [ -n "${load_dispenser_arg}" ] && args="${args} ${load_dispenser_arg}"
   [ -n "${test_certificates_dir_arg}" ] && args="${args} ${test_certificates_dir_arg}"
   [ -n "${smcb_keystore_file_arg}" ] && args="${args} ${smcb_keystore_file_arg}"
   [ -n "${smcb_keystore_password_file_arg}" ] && args="${args} ${smcb_keystore_password_file_arg}"

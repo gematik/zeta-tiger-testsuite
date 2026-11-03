@@ -1,0 +1,4 @@
+[#A_29920]
+==== A_29920 - Authorization Server – Pflicht-Benachrichtigung bei Cross-Guard-Onboarding
+
+Der Authorization Server MUSS bei jeder erfolgreichen fachdienstübergreifenden Fast-Path-Registrierung (vgl. A_29913 und A_29915) die aus dem ZETA Attestation Token übernommene E‑Mail (F1) unverzüglich über den Notification Service benachrichtigen (vgl. A_25652, A_25735-01, A_25750). Die Benachrichtigung MUSS den neu registrierten Client erkennbar machen und auf die Widerrufsmöglichkeiten (Löschung nach A_29934, OOB-Löschung nach A_29940 ff.) hinweisen. [<=]

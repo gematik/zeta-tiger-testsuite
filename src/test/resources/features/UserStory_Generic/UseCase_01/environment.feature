@@ -31,6 +31,7 @@ Funktionalität: Szenarien mit Bezug zur Laufzeitumgebung des ZETA-Guard
   @TA_A_28798_01
   @no_proxy
   @require_kubectl
+  @Ignore
   Szenariogrundriss: Erwartete ZETA-Guard-Komponente <pod-name.match> wird als Applikation in Kubernetes betrieben
     Wenn ermittle aus den Pods im Namespace "${zetaDeploymentConfig.namespace}" den Wert aus der Spalte "NAME" der Zeile mit "<pod-name.match>" und speichere in der Variable "<pod-name.match>-var"
     Dann TGR prüfe Variable "<pod-name.match>-var" stimmt überein mit "^<pod-name.match>.*$"

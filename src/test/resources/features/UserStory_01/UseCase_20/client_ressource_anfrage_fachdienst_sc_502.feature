@@ -33,7 +33,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 502
   @TA_A_26661_23
   @TA_A_27007_23
   @TA_A_27725-01_37
-  @MASVS-RESILIENCE
   Szenario: PEP HTTP Proxy protokolliert 502 Bad Gateway
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "badGatewayCondition" auf "isResponse && request.path =~ '.*${paths.fachdienst.helloZetaPath}'"

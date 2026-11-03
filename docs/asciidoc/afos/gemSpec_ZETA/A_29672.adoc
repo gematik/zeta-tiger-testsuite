@@ -1,0 +1,4 @@
+[#A_29672]
+==== A_29672 - ZETA, Ablauf Token-Bezug und Ausstellung der ZETA Token
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-OIDC-Token-Bezug unterstützen. [<=]

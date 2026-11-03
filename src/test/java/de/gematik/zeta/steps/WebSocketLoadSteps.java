@@ -35,7 +35,7 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Cucumber steps for keeping many raw WebSocket connections open during performance scenarios.
+ * Cucumber steps for keeping connected WebSocket/STOMP pools during performance scenarios.
  */
 @Slf4j
 public class WebSocketLoadSteps {
@@ -59,16 +59,19 @@ public class WebSocketLoadSteps {
   }
 
   /**
-   * Opens the requested number of WebSocket connections against the target URL.
+   * Opens WebSocket/STOMP connections with bounded concurrency and transport retries.
    *
    * @param connectionCount the number of connections to open
    * @param url the target WebSocket URL
    */
-  @Wenn("{int} WebSocket Verbindungen zu {tigerResolvedString} aufgebaut werden")
-  @When("{int} WebSocket connections to {tigerResolvedString} are opened")
+  @Wenn("{int} WebSocket Verbindungen mit STOMP zu {tigerResolvedString} aufgebaut werden")
+  @When("{int} WebSocket connections with STOMP to {tigerResolvedString} are opened")
   public void openWebSocketConnections(int connectionCount, String url) {
-    webSocketLoadService.openConnections(url, connectionCount);
-    reportPoolState("WebSocket load setup", connectionCount);
+    try {
+      webSocketLoadService.openStompConnections(url, connectionCount);
+    } finally {
+      reportPoolState("WebSocket load setup", connectionCount);
+    }
   }
 
   /**

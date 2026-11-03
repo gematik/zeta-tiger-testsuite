@@ -1,44 +1,58 @@
-## Summary
-<!-- Which TA is implemented/extended and what is validated -->
+## Zusammenfassung
 
-## TA Mapping
-- TA ID: `TA_A_xxxxx_xx`
-- TA title/focus keyword(s): `...`
-- Source doc: `docs/asciidoc/testaspekte/...`
-- Linked spec/RFC section: `...`
+<!-- Welcher TA wird implementiert oder erweitert und was wird geprüft? -->
 
-## Test Design
-- UserStory/UseCase path: `src/test/resources/features/userstories/...`
-- Feature file(s): `...`
-- Preconditions respected per UseCase: `yes/no`
-- Existing TGR steps reused: `yes/no`
-- New step definitions added: `yes/no`
-- If new steps: why required beyond Tiger User Manual/cucumber methods table: `...`
+## TA-Zuordnung
 
-## Implemented Scenarios
+- TA-ID: `TA_A_xxxxx_xx`
+- TA-Titel / Fokus-Schlüsselwörter: `...`
+- Quelldokument: `docs/asciidoc/testaspekte/...`
+- Verknüpfter Spezifikations-/RFC-Abschnitt: `...`
+
+## Testentwurf
+
+- UserStory-/UseCase-Pfad: `src/test/resources/features/userstories/...`
+- Feature-Dateien: `...`
+- Voraussetzungen gemäß UseCase eingehalten: `ja/nein`
+- Vorhandene TGR-Schritte wiederverwendet: `ja/nein`
+- Neue Schrittdefinitionen ergänzt: `ja/nein`
+- Falls neue Schritte: warum die Schritte aus Tiger-Handbuch und Cucumber-Methodentabelle nicht ausreichen: `...`
+
+## Implementierte Szenarien
+
 - `...`
 - `...`
 
-## Documentation Updates
-- UseCase README `include::...feature[]` updated: `yes/no`
-- Additional docs updated: `...`
+## Aktualisierte Dokumentation
 
-## Validation
-Executed:
-- `PROFILE=proxy mvn -Dcucumber.filter.tags='@staging' clean verify`
-- Targeted TA run/filter: `...`
-- `uv run --project docs/scripts generate-cucumber-methods` (if step defs changed)
+- UseCase-README mit `include::...feature[]` aktualisiert: `ja/nein`
+- Weitere Dokumentation aktualisiert: `...`
 
-Result:
-- `pass/fail`
-- Relevant logs/artifacts: `...`
+## Verifikation
 
-## Risks & Open Points
-- Behavioral risk: `low/medium/high`
-- Follow-ups / out-of-scope checks: `...`
+<!-- <existing-tag-expression> durch Tags aus den betroffenen Feature-Dateien ersetzen.
+Nur tatsächlich ausgeführte Befehle stehen lassen. -->
 
-## Checklist
-- [ ] TA focus matches bold keyword intent
-- [ ] German Gherkin, 2-space indentation, snake_case filename(s)
-- [ ] Existing TGR steps preferred over custom code
-- [ ] No credentials/secrets added
+Ausgeführt:
+
+- `mvn verify -Pproxy "-Dcucumber.filter.tags=<existing-tag-expression>"`
+- Gezielter TA-Testlauf/Filter: `...`
+- `uv run --project docs/scripts generate-cucumber-methods` (bei geänderten Schrittdefinitionen)
+
+Ergebnis:
+
+- `bestanden/fehlgeschlagen`
+- Anzahl ausgeführter Szenarien/Beispiele (bestanden/fehlgeschlagen/übersprungen): `...` (null ausgeführte Szenarien sind kein bestandener Nachweis)
+- Relevante Logs/Artefakte: `...`
+
+## Risiken und offene Punkte
+
+- Risiko für das Verhalten: `gering/mittel/hoch`
+- Folgeaufgaben / Prüfungen außerhalb des Umfangs: `...`
+
+## Checkliste
+
+- [ ] TA-Fokus entspricht der Bedeutung der fett hervorgehobenen Schlüsselwörter
+- [ ] Deutsches Gherkin, Einrückung mit 2 Leerzeichen, Dateinamen in snake_case
+- [ ] Vorhandene TGR-Schritte wurden eigenem Code vorgezogen
+- [ ] Keine Zugangsdaten/Secrets hinzugefügt

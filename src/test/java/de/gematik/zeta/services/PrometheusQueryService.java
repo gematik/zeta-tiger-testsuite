@@ -166,9 +166,7 @@ public class PrometheusQueryService {
    */
   private HttpClient buildPrometheusHttpClient() {
     try {
-      var builder = HttpClient.newBuilder()
-          .connectTimeout(requestTimeout)
-          .version(HttpClient.Version.HTTP_1_1);
+      var builder = DirectHttpClients.httpClientBuilder();
       var endpoint = TigerGlobalConfiguration.resolvePlaceholders("${paths.prometheus.baseUrl}");
       if (endpoint.startsWith("https://")) {
         builder.sslContext(SslConfigurationService.getTrustAllSslContext());

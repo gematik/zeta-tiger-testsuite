@@ -1,0 +1,145 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<!-- Hauptstruktur für das Root-Element -->
+	<xs:element name="characteristics">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="documents"/>
+				<xs:element ref="requirements"/>
+				<xs:element ref="specificAttributes" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="furtherReferences" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="id" type="xs:string"/>
+	<xs:element name="denotation" type="xs:string"/>
+	<xs:element name="version" type="xs:string"/>
+	<xs:element name="document">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="id"/>
+				<xs:element ref="denotation"/>
+				<xs:element ref="version"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="title" type="xs:string"/>
+	<xs:element name="description" type="xs:string"/>
+	<xs:element name="description_html" type="xs:string"/>
+	<xs:element name="sourceDocumentId" type="xs:string"/>
+	<xs:element name="testProcedure" type="xs:string"/>
+	<xs:element name="fileName" type="xs:string"/>
+	<xs:element name="chapterNumber" type="xs:string"/>
+	<xs:element name="chapterName" type="xs:string"/>
+	<xs:element name="attachment">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element ref="fileName"/>
+			</xs:sequence>
+			<xs:attribute type="xs:string" name="encoding" use="required" fixed="base64"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="attachments">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="attachment" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="requirement">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="title"/>
+				<xs:element ref="description"/>
+				<xs:element ref="description_html"/>
+				<xs:element ref="sourceDocumentId"/>
+				<xs:element ref="testProcedure"/>
+				<xs:element ref="configElements" minOccurs="0"/>
+				<xs:element ref="chapterNumber" minOccurs="0"/>
+				<xs:element ref="chapterName" minOccurs="0"/>
+				<xs:element ref="iAmParent" minOccurs="0"/>
+				<xs:element ref="myParentIDs" minOccurs="0"/>
+				<xs:element ref="attachments" minOccurs="0"/>
+				<xs:element ref="explanation" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute type="xs:string" name="id" use="required"/>
+			<xs:attribute type="xs:string" name="type" use="required"/>
+			<xs:attribute type="SeverityType" name="severity" use="required"/>
+			<xs:attribute type="xs:date" name="lastUpdate" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="explanation" type="xs:string"/>
+	<xs:element name="documents">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="document" maxOccurs="unbounded" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="requirements">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="requirement" maxOccurs="unbounded" minOccurs="1"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="specificAttributes">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="requirement" maxOccurs="unbounded" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:simpleType name="SeverityType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="MUSS"/>
+			<xs:enumeration value="SOLL"/>
+			<xs:enumeration value="SOLL NICHT"/>
+			<xs:enumeration value="KANN"/>
+			<xs:enumeration value="DARF NICHT"/>
+			<xs:enumeration value="not defined"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:element name="configElements">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="configElement" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="configElement" type="xs:string"/>
+	<xs:element name="iAmParent" type="xs:string"/>
+	<xs:element name="myParentIDs">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="myParentID" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="myParentID" type="xs:string"/>
+	<xs:element name="headers">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="header" minOccurs ="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="header" type="xs:string"/>
+	<xs:element name="reference">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="entry" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="entry" type="xs:string"/>
+	
+	<xs:element name="furtherReferences">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="title" minOccurs="0"/>
+				<xs:element ref="headers" minOccurs="0" maxOccurs = "unbounded"/>
+				<xs:element ref="reference" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>	
+</xs:schema>

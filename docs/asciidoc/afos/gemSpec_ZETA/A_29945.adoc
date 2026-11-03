@@ -1,0 +1,4 @@
+[#A_29945]
+==== A_29945 - Authorization Server – Zweite, unabhängige OOB-Bestätigung für Wiederregistrierung
+
+Der Authorization Server MUSS nach einem Tombstone die Erstnutzung der betroffenen Identität sperren und diese Sperre erst mit dem Erfassen einer zweiten, unabhängigen OOB-Bestätigung aufheben. Diese Bestätigung MUSS durch einen anderen Operator erfolgen als die Ausführung der Löschung (Funktionstrennung). Diese Funktionstrennung ist ein zweiter, eigenständiger Vier-Augen-Schritt in einer späteren Lebenszyklus-Phase (Wiederregistrierung nach dem Tombstone) und NICHT identisch mit dem Vier-Augen-Prinzip bei der Auslösung der Löschung (A_29946). Die Sperre ist ereignisgesteuert: Sie endet ausschließlich mit dieser Bestätigung und DARF NICHT allein durch Zeitablauf aufgehoben werden (bleibt ohne Bestätigung unbegrenzt bestehen). [<=]

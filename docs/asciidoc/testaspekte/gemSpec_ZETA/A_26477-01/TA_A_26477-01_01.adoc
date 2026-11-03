@@ -1,0 +1,6 @@
+[#TA_A_26477-01_01]
+===== TA_A_26477-01_01 - PEP HTTP Proxy - PoPP-Header-Pflicht pro Endpunkt konfigurierbar
+
+"Die Komponente HTTP Proxy MUSS so **konfiguriert werden können**, dass **pro Endpunkt** des Resource Servers der Request Header **PoPP verlangt** und das PoPP Token validiert wird.
+
+[...]**[<=]"**

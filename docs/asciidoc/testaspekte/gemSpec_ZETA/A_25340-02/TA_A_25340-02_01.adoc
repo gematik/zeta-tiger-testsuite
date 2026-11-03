@@ -1,0 +1,8 @@
+[#TA_A_25340-02_01]
+===== TA_A_25340-02_01 - Zertifikatsprüfung - SAN dNSName und CN-Fallback
+
+"Die Zertifikatsprüfung MUSS folgende Prüfungen enthalten:
+
+* Der ZETA Client MUSS den Subject Alternative Name (SAN, Extension dNSName) des Zertifikats (oder falls nicht vorhanden den Common Name (CN)) mit dem erwarteten Hostnamen vergleichen.
+
+[...]"

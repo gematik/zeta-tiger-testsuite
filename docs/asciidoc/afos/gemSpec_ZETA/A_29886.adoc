@@ -1,0 +1,4 @@
+[#A_29886]
+==== A_29886 - ZG Client, Erreichbarkeit
+
+Der ZG Client MUSS für die ihm zugeordnete(n) Fachkomponente(n) als lokal erreichbarer Egress-Endpunkt bereitgestellt werden. [<=]

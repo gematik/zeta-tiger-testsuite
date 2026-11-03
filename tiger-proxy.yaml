@@ -1,11 +1,16 @@
 tigerProxy:
   proxyId: Cluster
+  # Subscribe to live traffic without importing history from earlier test runs.
   downloadInitialTrafficFromEndpoints: false
   skipTrafficEndpointsSubscription: false
-#  maxSocketTimeoutInMillis: null            # Tiger 4.4 default – no explicit socket-timeout ceiling
-#  clockSyncSamples: 3                       # Tiger 4.4 default – compensate remote-proxy clock skew
-#  honorHostHeaderRouting: false             # Tiger 4.4 default – route by configured target, not Host
-#  redactedConfigurationPaths: []            # Tiger 4.4 default – redact additional /configuration paths
+  #  maxSocketTimeoutInMillis: null                       # Tiger 4.4 default – no explicit socket-timeout ceiling
+  #  clockSyncSamples: 3                                  # Tiger 4.4 default – compensate remote-proxy clock skew
+  #  honorHostHeaderRouting: false                        # Tiger 4.4 default – route by configured target, not Host
+  #  redactedConfigurationPaths: []                       # Tiger 4.4 default – redact additional /configuration paths
+  #  maximumPartialMessageAgeInSeconds: 30                # Tiger 4.4.3 default (previously 300) – expiry of incomplete remote messages
+  #  stompHeartbeatInSeconds: 10                          # Tiger 4.4.3 default – tracing connection heartbeats
+  #  stompServerSendBufferSizeInMb: 16                    # Tiger 4.4.3 default – local tracing server send buffer per session
+  #  stompServerSendTimeLimitInSeconds: 20                # Tiger 4.4.3 default – local tracing server send timeout
   activateRbelParsingFor:
     - asl
     - OCSP

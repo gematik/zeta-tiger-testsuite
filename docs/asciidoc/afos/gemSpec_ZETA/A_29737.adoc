@@ -1,0 +1,4 @@
+[#A_29737]
+==== A_29737 - ZETA Guard, Verwendung der  Daten aus den Unterverzeichnissen des Provisioning Images
+
+ZETA Guard Komponenten MÜSSEN die in den Unterverzeichnissen des Provisioning Images strukturierten Dateien verwenden. [<=]

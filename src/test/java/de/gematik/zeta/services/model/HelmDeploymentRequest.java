@@ -71,6 +71,27 @@ public record HelmDeploymentRequest(String helmDeploymentDirectory,
         valuesOverride,
         environmentVariables,
         "zeta-testenv-" + targetStage,
-        "local-test/values." + targetStage + ".yaml");
+        "private/values." + targetStage + ".yaml");
+  }
+
+  /**
+   * Requires recovery to target the release selected by the ZETA chart's Makefile.
+   *
+   * <p>Make overrides RELEASE from the stage, defaulting an empty stage to local and mapping
+   * k3s to local. Passing RELEASE on the command line cannot change that selection.</p>
+   *
+   * @throws IllegalArgumentException when the configured release differs from Make's release
+   */
+  public void validateMakeReleaseName() {
+    var stage = targetStage.strip();
+    if (stage.isEmpty() || "k3s".equals(stage)) {
+      stage = "local";
+    }
+    var expectedRelease = "zeta-testenv-" + stage;
+    if (!expectedRelease.equals(helmReleaseName)) {
+      throw new IllegalArgumentException("Helm release '" + helmReleaseName
+          + "' does not match Make's release '" + expectedRelease + "' for stage '" + targetStage
+          + "'; configure helmReleaseName to match before starting a recoverable deployment.");
+    }
   }
 }

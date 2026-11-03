@@ -27,7 +27,6 @@ package de.gematik.zeta.steps.unit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.steps.TimestampValidationSteps;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,6 +36,16 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link TimestampValidationSteps}.
  */
 class TimestampValidationStepsTest {
+
+  @Test
+  void ccNegativeTimestampStaysOutsideQuarterGraceAtYearAndQuarterBoundaries() {
+    org.junit.jupiter.api.Assertions.assertEquals(Instant.parse("2025-09-30T23:59:59Z"),
+        TimestampValidationSteps.timestampOutsideQuarterGrace(Instant.parse("2026-01-01T00:00:01Z")));
+    org.junit.jupiter.api.Assertions.assertEquals(Instant.parse("2025-12-31T23:59:59Z"),
+        TimestampValidationSteps.timestampOutsideQuarterGrace(Instant.parse("2026-04-01T00:04:59Z")));
+    org.junit.jupiter.api.Assertions.assertEquals(Instant.parse("2025-12-31T23:59:59Z"),
+        TimestampValidationSteps.timestampOutsideQuarterGrace(Instant.parse("2026-04-01T00:05:01Z")));
+  }
 
 
   private final TimestampValidationSteps validator = new TimestampValidationSteps();
@@ -128,35 +137,17 @@ class TimestampValidationStepsTest {
   }
 
   /**
-   * Verifies that two timestamps in the same quarter are accepted.
+   * Verifies that the quarter-grace helper produces an expired timestamp outside the current quarter.
    */
   @Test
-  void validateTimestampsAreInSameQuarterAcceptsSameQuarter() {
-    Instant first = Instant.parse("2026-04-24T10:00:00Z");
-    Instant second = Instant.parse("2026-06-30T10:00:00Z");
-
-    assertDoesNotThrow(
-        () -> validator.validateTimestampsAreInSameQuarter(
-            String.valueOf(first.getEpochSecond()),
-            String.valueOf(second.getEpochSecond())),
-        "Timestamps in the same quarter should be accepted");
-  }
-
-  /**
-   * Verifies that the previous-quarter helper stores a timestamp outside the current quarter.
-   */
-  @Test
-  void storeTimestampFromPreviousQuarterStoresDifferentQuarter() {
-    String varName = "timestampValidationStepsTestPreviousQuarter";
-
-    validator.storeTimestampFromPreviousQuarter(varName);
-
-    String storedTimestamp = TigerGlobalConfiguration.readStringOptional(varName).orElseThrow();
+  void timestampOutsideQuarterGraceIsExpiredAndOutsideCurrentQuarter() {
+    String storedTimestamp = String.valueOf(
+        TimestampValidationSteps.timestampOutsideQuarterGrace(Instant.now()).getEpochSecond());
     assertThrows(AssertionError.class,
         () -> validator.validateTimestampIsInCurrentQuarter(storedTimestamp),
-        "Previous-quarter timestamp should not be accepted as current quarter");
+        "Timestamp outside quarter grace should not be accepted as current quarter");
     assertDoesNotThrow(
         () -> validator.validateTimestampIsExpired(storedTimestamp),
-        "Previous-quarter timestamp should be in the past");
+        "Timestamp outside quarter grace should be in the past");
   }
 }

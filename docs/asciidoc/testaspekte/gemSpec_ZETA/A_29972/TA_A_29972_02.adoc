@@ -1,0 +1,8 @@
+[#TA_A_29972_02]
+===== TA_A_29972_02 - Notification Service - Pusher-Konfiguration aktualisieren
+
+"Der Notification Service MUSS für das ZETA Client Modul / SDK (Schritt (0)) die Fachdienst-seitigen Schnittstellen aus [gemF_PushNotification] realisieren – mindestens die Endpunkte zur **Pusher-Registrierung/-Verwaltung** (GET /pushers, POST /pushers/set, A_27104) und zur Channel-Konfiguration (GET /channels, GET/POST /channels/{pushkey}, A_27190) . Die Channel-Konfiguration wird dabei – gemäß Push-Spezifikation – geräteindividuell je pushkey gehalten (GET /channels/{pushkey} liefert die Konfiguration für das Gerät mit diesem pushkey, POST /channels/{pushkey} aktualisiert sie); der Status je Channel ist enabled, disabled oder not_set, wobei not_set wie disabled behandelt wird. Eine nutzerbezogene Sicht (z. B. GET /users/{userId}/channels der RS-Schnittstelle) MUSS der Notification Service als Aggregation über alle pushkey-Konfigurationen des Nutzers ableiten (siehe A_29966) und DARF NICHT als eigenständige, von der geräteindividuellen Konfiguration abweichende Channel-Haltung implementiert werden.
+
+**[<=]**"
+
+Hinweis: Aktualisierung einer bereits vorhandenen Konfiguration.

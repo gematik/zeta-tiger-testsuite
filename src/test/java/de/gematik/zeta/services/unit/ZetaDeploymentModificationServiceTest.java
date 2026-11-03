@@ -29,6 +29,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.services.ZetaDeploymentModificationService;
@@ -49,11 +50,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Unit tests for ZetaDeploymentConfigurationService.
@@ -74,6 +78,7 @@ public class ZetaDeploymentModificationServiceTest {
 
   private final ZetaDeploymentModificationService service = new ZetaDeploymentModificationService(240, 120);
 
+  /** Exercises Kubernetes access validation against a configured live namespace. */
   @Test
   @Ignore
   public void verifyRequirements() {
@@ -82,6 +87,7 @@ public class ZetaDeploymentModificationServiceTest {
     Assert.assertThrows(AssertionError.class, () -> service.verifyRequirements("this-namespace-very-probably-does-not-exist"));
   }
 
+  /** Reads a live ConfigMap and checks the expected deployment metadata. */
   @Test
   @Ignore
   public void testConfigQuery() {
@@ -92,6 +98,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertTrue(result.stderr().isBlank());
   }
 
+  /** Checks the error returned when a requested ConfigMap does not exist. */
   @Test
   @Ignore
   public void testConfigNonExistent() {
@@ -101,6 +108,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertFalse(result.stderr().isBlank());
   }
 
+  /** Exercises a live pod restart and waits for readiness. */
   @Test
   @Ignore
   public void restartPod() throws TimeoutException, InterruptedException {
@@ -108,6 +116,7 @@ public class ZetaDeploymentModificationServiceTest {
     service.restartPod("zeta-local", "pep-deployment", true, 120);
   }
 
+  /** Exercises enabling and disabling ASL through the configured Helm deployment. */
   @Test
   @Ignore
   public void toggleAsl() {
@@ -145,6 +154,7 @@ public class ZetaDeploymentModificationServiceTest {
     List<String> capturedArgs = new ArrayList<>();
     Map<String, String> capturedEnv = new HashMap<>();
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute make command for deployment-service regression checks. */
       @Override
       public CommandResult executeMakeCommand(String workDir, List<String> args, Map<String, String> environmentVariables)
           throws AssertionError {
@@ -168,8 +178,8 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(List.of(
         "deploy",
         "stage=local",
-        "HELM_EXTRA_VALUES_PARAMS='--set zeta-guard.pepproxy.image.tag=invalid "
-            + "--set zeta-guard.pepproxy.asl_enabled=true'"
+        "HELM_EXTRA_VALUES_PARAMS=--set zeta-guard.pepproxy.image.tag=invalid "
+            + "--set zeta-guard.pepproxy.asl_enabled=true"
     ), capturedArgs);
     assertEquals("/secret/keystore", capturedEnv.get("SMB_KEYSTORE_FILE_B64"));
   }
@@ -183,6 +193,7 @@ public class ZetaDeploymentModificationServiceTest {
     Map<String, String> capturedEnv = new HashMap<>();
     List<Integer> capturedTimeouts = new ArrayList<>();
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -256,6 +267,7 @@ public class ZetaDeploymentModificationServiceTest {
     List<String> verifiedDeployments = new ArrayList<>();
     String stableImage = "registry.example.test:443/zeta/zeta-guard/ngx_pep:main";
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -318,6 +330,7 @@ public class ZetaDeploymentModificationServiceTest {
   public void verifyIsolatedPepHelmRollbackOnFailureRejectsSuccessfulFaultyUpgrade() {
     String stableImage = "registry.example.test:443/zeta/zeta-guard/ngx_pep:main";
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -360,6 +373,7 @@ public class ZetaDeploymentModificationServiceTest {
   public void deployZetaGuardWithHelmRollbackOnFailureParsesQuotedHelmArgs() {
     List<String> capturedArgs = new ArrayList<>();
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -542,6 +556,7 @@ public class ZetaDeploymentModificationServiceTest {
   @Test
   public void deployZetaGuardWithHelmRollbackOnFailureRejectsNullReleaseName() {
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -574,6 +589,7 @@ public class ZetaDeploymentModificationServiceTest {
   @Test
   public void deployZetaGuardWithHelmRollbackOnFailureRejectsNullValuesFile() {
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -606,6 +622,7 @@ public class ZetaDeploymentModificationServiceTest {
   @Test
   public void deployZetaGuardWithHelmRollbackOnFailureRejectsEmptyQuotedHelmArg() {
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -638,6 +655,7 @@ public class ZetaDeploymentModificationServiceTest {
   public void deployZetaGuardWithHelmRollbackOnFailureKeepsBackslashInsideSingleQuotedHelmArgs() {
     List<String> capturedArgs = new ArrayList<>();
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -679,6 +697,7 @@ public class ZetaDeploymentModificationServiceTest {
   @Test
   public void deployZetaGuardWithHelmRollbackOnFailureRejectsUnterminatedQuotedHelmArg() {
     ZetaDeploymentModificationService capturingService = new ZetaDeploymentModificationService(240, 120) {
+      /** Provides execute helm command for deployment-service regression checks. */
       @Override
       public CommandResult executeHelmCommand(String workDir, List<String> args, Map<String, String> environmentVariables,
           int commandTimeoutSeconds)
@@ -703,6 +722,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals("Configured Helm arguments contain an unterminated quoted value.", exception.getMessage());
   }
 
+  /** Exercises PoPP verification changes in a live deployment. */
   @Test
   @Ignore
   public void togglePoppVerification() throws IOException, InterruptedException, TimeoutException {
@@ -745,25 +765,7 @@ public class ZetaDeploymentModificationServiceTest {
             pep_require_popp      on;
         }
         """;
-    String originalConfigMapYaml = """
-        apiVersion: v1
-        metadata:
-          name: pep-test-nginx-conf
-        data:
-          nginx.conf: |
-            pep_popp_validity "quarter";
-        """;
-    FakeZetaDeploymentModificationService fakeService = new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 0, nginxConfig, ""),
-        new CommandResult(List.of("kubectl"), 1, "", "Error from server (NotFound)"),
-        new CommandResult(List.of("kubectl"), 0, originalConfigMapYaml, ""),
-        new CommandResult(List.of("kubectl"), 0, "configmap/pep-test-nginx-conf-tiger-original-backup created", ""),
-        new CommandResult(List.of("kubectl"), 0, "configmap/pep-test-nginx-conf patched", ""),
-        new CommandResult(List.of("kubectl"), 0, "pep-deployment-old 1/1 Running", ""),
-        new CommandResult(List.of("kubectl"), 0, "pod/pep-deployment-old deleted", ""),
-        new CommandResult(List.of("kubectl"), 0, "pep-deployment-new 1/1 Running", ""),
-        new CommandResult(List.of("kubectl"), 0, "true", "")
-    );
+    var fakeService = newPepNginxPatchFake(nginxConfig);
     var request = new ZetaPoppTokenValidityRequest(
         "pep_popp_validity\\s+\"[^\"]+\"\\s*;",
         "pep_popp_issuer\\s+[^;]+;",
@@ -774,9 +776,93 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(0, result.commandResult().exitCode());
     assertEquals(9, fakeService.commands.size());
     assertEquals(Arrays.asList("-n", "zeta-local", "get", "configmap",
-        "pep-test-nginx-conf", "-o=jsonpath='{.data.nginx\\.conf}'"), fakeService.commands.getFirst());
-    assertTrue(fakeService.patchFileContents.stream()
-        .anyMatch(content -> content.contains("pep_popp_validity \\\"300s\\\";")));
+        "pep-test-nginx-conf", "-o", "json"), fakeService.commands.getFirst());
+    assertTrue(patchedDataContents(fakeService).stream()
+        .anyMatch(content -> content.contains("pep_popp_validity \"300s\";")));
+  }
+
+  /** Route duration overrides must leave the default and the other endpoint unchanged. */
+  @Test
+  public void routePoppValidityPreservesOtherDurations() throws Exception {
+    var fake = newPepNginxPatchFake("pep_popp_validity \"300s\";\n"
+        + "location /pep/one { pep_require_popp on; pep_popp_validity \"120s\"; }\n"
+        + "location /pep/two { pep_require_popp on; pep_popp_validity \"90s\"; }\n");
+    var request = new ZetaPoppTokenValidityRequest(
+        "pep_popp_validity\\s+\"[^\"]+\"\\s*;", "pep_popp_issuer\\s+[^;]+;",
+        "pep_popp_validity \"%s\";");
+    fake.setPoppTokenValidityForRoute(details, request, "/pep/one", "30s", 0);
+    assertTrue(patchedDataContents(fake).stream().anyMatch(content -> content.equals(
+        "pep_popp_validity \"300s\";\n"
+            + "location /pep/one { pep_require_popp on; pep_popp_validity \"30s\"; \n"
+            + "    pep_leeway 0;\n}\n"
+            + "location /pep/two { pep_require_popp on; pep_popp_validity \"90s\"; }\n")));
+  }
+
+  /** A successful patch cannot conceal stale validity or clock tolerance after rollout. */
+  @Test
+  public void routePoppValidityRejectsStaleDeployedSettings() {
+    var request = new ZetaPoppTokenValidityRequest(
+        "pep_popp_validity\\s+\"[^\"]+\"\\s*;", "pep_popp_issuer\\s+[^;]+;",
+        "pep_popp_validity \"%s\";");
+    for (var deployed : List.of("pep_popp_validity \"120s\"; pep_leeway 0;",
+        "pep_popp_validity \"30s\"; pep_leeway 5;")) {
+      var fake = newPepNginxPatchFake("location /pep/one { pep_popp_validity \"120s\"; }");
+      fake.nginxDumpOverride = "# configuration file /etc/nginx/nginx.conf:\n"
+          + "location /pep/one { " + deployed + " }";
+      var error = Assert.assertThrows(AssertionError.class,
+          () -> fake.setPoppTokenValidityForRoute(details, request, "/pep/one", "30s", 0));
+      assertTrue(error.getMessage().contains("not effective"));
+      assertTrue(fake.commands.stream().anyMatch(command -> command.contains("restart")));
+    }
+  }
+
+  /** A missing or ambiguous target must fail before a configuration patch is applied. */
+  @Test
+  public void routePoppValidityRejectsUncertainLocation() {
+    var request = new ZetaPoppTokenValidityRequest(
+        "pep_popp_validity\\s+\"[^\"]+\"\\s*;", "pep_popp_issuer\\s+[^;]+;",
+        "pep_popp_validity \"%s\";");
+    for (var config : List.of("events { worker_connections 1024; }\n",
+        "location /one { pep_popp_validity \"90s\"; }\n"
+            + "location /one { pep_popp_validity \"60s\"; }\n")) {
+      var fake = newPepNginxPatchFake(config);
+      Assert.assertThrows(AssertionError.class,
+          () -> fake.setPoppTokenValidityForRoute(details, request, "/one", "30s", 0));
+      assertTrue(fake.commands.stream().noneMatch(command -> command.contains("patch")));
+    }
+  }
+
+  /** Invalid tolerance cannot cause any deployment change. */
+  @Test
+  public void routePoppValidityRejectsInvalidClockTolerance() {
+    var fake = new FakeZetaDeploymentModificationService();
+    var request = new ZetaPoppTokenValidityRequest("validity", "issuer", "pep_popp_validity \"%s\";");
+    Assert.assertThrows(IllegalArgumentException.class,
+        () -> fake.setPoppTokenValidityForRoute(details, request, "/one", "30s", -1));
+    assertTrue(fake.commands.isEmpty());
+  }
+
+  /** The single-cache fixture preserves every unrelated directive and inline comment. */
+  @Test
+  public void singleWorkerFixturePreservesRemainingNginxConfiguration() throws Exception {
+    var fake = newPepNginxPatchFake("worker_processes auto; # keep comment\n"
+        + "events { worker_connections 1024; }\n"
+        + "http { pep_popp_issuer http://popp-statics; }\n");
+    assertEquals(0, fake.useSinglePepWorker(details).commandResult().exitCode());
+    assertTrue(patchedDataContents(fake).stream().anyMatch(content -> content.equals(
+        "worker_processes 1; # keep comment\nevents { worker_connections 1024; }\n"
+            + "http { pep_popp_issuer http://popp-statics; }\n")));
+  }
+
+  /** Missing or competing worker configurations cannot silently leave multiple startup caches. */
+  @Test
+  public void singleWorkerFixtureRejectsUncertainWorkerConfiguration() {
+    for (var config : List.of("events { worker_connections 1024; }\n",
+        "worker_processes auto;\nworker_processes 8;\n")) {
+      var fake = newPepNginxPatchFake(config);
+      Assert.assertThrows(AssertionError.class, () -> fake.useSinglePepWorker(details));
+      assertTrue(fake.commands.stream().noneMatch(command -> command.contains("patch")));
+    }
   }
 
   /**
@@ -820,7 +906,7 @@ public class ZetaDeploymentModificationServiceTest {
 
     assertEquals(0, result.commandResult().exitCode());
     assertEquals(9, fakeService.commands.size());
-    assertTrue(fakeService.patchFileContents.stream()
+    assertTrue(patchedDataContents(fakeService).stream()
         .anyMatch(content -> content.contains("pep_forward_client_data on;")));
   }
 
@@ -850,7 +936,7 @@ public class ZetaDeploymentModificationServiceTest {
 
     assertEquals(0, result.commandResult().exitCode());
     assertEquals(9, fakeService.commands.size());
-    assertTrue(fakeService.patchFileContents.stream()
+    assertTrue(patchedDataContents(fakeService).stream()
         .anyMatch(content -> content.contains("pep_forward_client_data off;")));
   }
 
@@ -884,9 +970,9 @@ public class ZetaDeploymentModificationServiceTest {
 
     assertEquals(0, result.commandResult().exitCode());
     assertEquals(9, fakeService.commands.size());
-    assertTrue(fakeService.patchFileContents.stream()
-        .anyMatch(content -> content.contains("location \\/pep\\/achelos_testfachdienst\\/hellozeta")
-            && content.contains("proxy_pass https:\\/\\/tiger-proxy:80\\/testfachdienst\\/achelos_testfachdienst\\/hellozeta;")
+    assertTrue(patchedDataContents(fakeService).stream()
+        .anyMatch(content -> content.contains("location = /pep/achelos_testfachdienst/hellozeta")
+            && content.contains("proxy_pass https://tiger-proxy:80/testfachdienst/achelos_testfachdienst/hellozeta;")
             && content.contains("pep_require_popp      on;")));
   }
 
@@ -919,9 +1005,9 @@ public class ZetaDeploymentModificationServiceTest {
 
     assertEquals(0, result.commandResult().exitCode());
     assertEquals(9, fakeService.commands.size());
-    assertTrue(fakeService.patchFileContents.stream()
-        .anyMatch(content -> content.contains("location \\/pep\\/achelos_testfachdienst\\/hellozeta")
-            && content.contains("pep_require_scope \\\"email zero:audience\\\";")));
+    assertTrue(patchedDataContents(fakeService).stream()
+        .anyMatch(content -> content.contains("location = /pep/achelos_testfachdienst/hellozeta")
+            && content.contains("pep_require_scope \"email zero:audience\";")));
   }
 
   /**
@@ -941,6 +1027,180 @@ public class ZetaDeploymentModificationServiceTest {
     assertTrue(fakeService.commands.isEmpty());
   }
 
+  /** Verifies that audience configuration targets the requested route and preserves other routes. */
+  @Test
+  public void setRequiredAudienceScopesChangeToTargetRoute() throws Exception {
+    var fakeService = newPepNginxPatchFake("""
+        server {
+          location /other/ {
+            pep_require_aud "other";
+          }
+          location /pep/ {
+            pep_require_aud "old";
+          }
+        }
+        """);
+    var result = fakeService.setRequiredAudience(details, "/pep/", "expected");
+    assertEquals(0, result.commandResult().exitCode());
+    assertTrue(patchedDataContents(fakeService).stream().anyMatch(content ->
+        content.contains("pep_require_aud \"expected\";")
+            && content.contains("pep_require_aud \"other\";")
+            && !content.contains("pep_require_aud \"old\";")));
+  }
+
+  /** A matching directive on another route cannot make a failed configuration pass. */
+  @Test
+  public void setRequiredAudienceRejectsMissingTarget() {
+    var fakeService = newPepNginxPatchFake("server { location /other/ { pep_require_aud \"expected\"; } }");
+    Assert.assertThrows(AssertionError.class,
+        () -> fakeService.setRequiredAudience(details, "/unavailable/", "expected"));
+    assertTrue(fakeService.patchFileContents.isEmpty());
+  }
+
+  /** Unsupported syntax must fail before changing the ConfigMap or restarting the deployment. */
+  @Test
+  public void unsupportedNginxConfigurationsStopBeforeMutation() {
+    for (var config : List.of("include conf.d/*.conf; server { location /pep/ {} }",
+        "server { location /pep/ { location /pep/child {} } }",
+        "server { location /pep/ {} location ~ ^/pep/ {} }")) {
+      var fake = newPepNginxPatchFake(config);
+      var error = Assert.assertThrows(AssertionError.class, () -> fake.setRequiredAudience(details, "/pep/", "expected"));
+      assertTrue(error.getMessage().contains("Unsupported nginx") || error.getMessage().contains("Unsupported nested nginx"));
+      assertTrue(fake.patchFileContents.isEmpty());
+      assertFalse(fake.commands.stream().anyMatch(command -> command.contains("patch") || command.contains("restart")));
+    }
+  }
+
+  /** A failed API patch must stop preparation and must not restart the PEP. */
+  @Test
+  public void failedNginxPatchStopsPreparationWithoutRestart() {
+    var fakeService = newPepNginxPatchFake("server { location /pep/ { pep_require_aud \"old\"; } }");
+    fakeService.failTargetPatch = true;
+    Assert.assertThrows(IllegalStateException.class,
+        () -> fakeService.setRequiredAudience(details, "/pep/", "expected"));
+    assertEquals(5, fakeService.commands.size());
+    assertFalse(fakeService.commands.stream().anyMatch(command -> command.contains("pods") || command.contains("pod")));
+  }
+
+  /** Configuration values cannot introduce additional nginx directives or an OR-list. */
+  @Test
+  public void setRequiredAudienceRejectsUnsafeValue() {
+    var fakeService = new FakeZetaDeploymentModificationService();
+    for (var value : List.of("a|b", "a\"; pep off;", "$variable", "a b", "")) {
+      Assert.assertThrows(IllegalArgumentException.class,
+          () -> fakeService.setRequiredAudience(details, "/pep/", value));
+    }
+    assertTrue(fakeService.commands.isEmpty());
+  }
+
+  /** A successful ConfigMap patch and rollout cannot conceal a stale mounted configuration. */
+  @Test
+  public void routePreparationRejectsWrongDeployedDirective() {
+    var fake = newPepNginxPatchFake("server { location /pep/ { pep_require_popp off; } }");
+    fake.nginxDumpOverride = "# configuration file /etc/nginx/nginx.conf:\n"
+        + "server { location /pep/ { pep_require_popp off; } }";
+    var request = new ZetaPoppTokenToggleRequest("pep_require_popp\\s+(on|off)\\s*;", "pep_require_popp on;", "pep_require_popp off;");
+    var error = Assert.assertThrows(AssertionError.class, () -> fake.setPoppVerification(details, request, "/pep/", true));
+    assertTrue(error.getMessage().contains("not effective"));
+    assertTrue(fake.commands.stream().anyMatch(command -> command.contains("restart")));
+    assertFalse(fake.logStderrFlags.getLast());
+  }
+
+  /** A conflicting directive in an include cannot make the deployed configuration pass. */
+  @Test
+  public void routePreparationRejectsConflictingDeployedInclude() {
+    var fake = newPepNginxPatchFake("server { location /pep/ {} }");
+    fake.nginxDumpOverride = """
+        # configuration file /etc/nginx/nginx.conf:
+        server { location /pep/ { include settings.conf; pep_require_aud "expected"; } }
+        # configuration file /etc/nginx/settings.conf:
+        pep_require_aud_any "other";
+        """;
+    var error = Assert.assertThrows(AssertionError.class, () -> fake.setRequiredAudience(details, "/pep/", "expected"));
+    assertTrue(error.getMessage().contains("not effective"));
+    assertTrue(error.getMessage().contains("pep-deployment-new"));
+    assertTrue(fake.commands.stream().anyMatch(command -> command.contains("restart")));
+  }
+
+  /** Standard PEP includes are accepted when verification reads them after the rollout. */
+  @Test
+  public void routePreparationAcceptsStandardPepIncludes() throws Exception {
+    var dump = Files.readString(Path.of("src/test/resources/nginx/pep-standard.dump"));
+    int start = dump.indexOf('\n') + 1;
+    int end = dump.indexOf("# configuration file", start);
+    var fake = newPepNginxPatchFake(dump.substring(start, end));
+    fake.nginxIncludedFiles = dump.substring(end);
+    var request = new ZetaPoppTokenToggleRequest("pep_require_popp\\s+(on|off)\\s*;", "pep_require_popp on;", "pep_require_popp off;");
+    fake.setPoppVerification(details, request, "/pep/", true);
+    assertTrue(fake.commands.stream().anyMatch(command -> command.contains("restart")));
+    assertEquals(List.of("-n", "zeta-local", "exec", "pep-deployment-new", "-c", "nginx", "--", "nginx", "-T"), fake.commands.getLast());
+    assertTrue(patchedDataContents(fake).getLast().contains("pep_require_popp on;"));
+  }
+
+  /** Verification executes nginx in the configured container, including non-default names. */
+  @Test
+  public void routePreparationUsesConfiguredContainerName() throws Exception {
+    try (var configuration = mockStatic(TigerGlobalConfiguration.class)) {
+      configuration.when(() -> TigerGlobalConfiguration
+          .readStringOptional("zetaDeploymentConfig.pep.nginx.containerName"))
+          .thenReturn(Optional.of("pep-http"));
+      var fake = newPepNginxPatchFake("server { location /pep/ { pep_require_popp on; } }");
+      var request = new ZetaPoppTokenToggleRequest("pep_require_popp\\s+(on|off)\\s*;",
+          "pep_require_popp on;", "pep_require_popp off;");
+      fake.setPoppVerification(details, request, "/pep/", true);
+      assertEquals(List.of("-n", "zeta-local", "exec", "pep-deployment-new", "-c", "pep-http",
+          "--", "nginx", "-T"), fake.commands.getLast());
+    }
+  }
+
+  /** Verification rejects commented directives, missing locations and invalid nginx configurations. */
+  @Test
+  public void routePreparationRejectsAbsentOrInvalidDeployedConfiguration() {
+    var request = new ZetaClientDataForwardingToggleRequest("pep_forward_client_data\\s+(on|off)\\s*;",
+        "pep_forward_client_data on;", "pep_forward_client_data off;");
+    for (var deployed : List.of("server { location /pep/ { # pep_forward_client_data on;\n } }",
+        "server { location /else/ { pep_forward_client_data on; } }", "")) {
+      var fake = newPepNginxPatchFake("server { location /pep/ {} }");
+      fake.nginxDumpOverride = "# configuration file /etc/nginx/nginx.conf:\n" + deployed;
+      Assert.assertThrows(AssertionError.class, () -> fake.setClientDataForwarding(details, request, "/pep/", true));
+    }
+    var fake = newPepNginxPatchFake("server { location /pep/ {} }");
+    fake.nginxDumpExitCode = 1;
+    Assert.assertThrows(AssertionError.class, () -> fake.setClientDataForwarding(details, request, "/pep/", true));
+  }
+
+  /** An already correct directive is accepted and independently verified after rollout. */
+  @Test
+  public void routePreparationAcceptsAlreadyCorrectDirective() throws Exception {
+    var original = "server { location /pep/ { pep_forward_client_data on; } }";
+    var fake = newPepNginxPatchFake(original);
+    var request = new ZetaClientDataForwardingToggleRequest("pep_forward_client_data\\s+(on|off)\\s*;",
+        "pep_forward_client_data on;", "pep_forward_client_data off;");
+    fake.setClientDataForwarding(details, request, "/pep/", true);
+    assertEquals(List.of(original), patchedDataContents(fake));
+    assertEquals(List.of("-n", "zeta-local", "exec", "pep-deployment-new", "-c", "nginx", "--", "nginx", "-T"), fake.commands.getLast());
+  }
+
+  /** Every ready replica is checked; a stale second replica must stop preparation. */
+  @Test
+  public void routePreparationChecksEveryReadyReplica() throws Exception {
+    var fake = newPepNginxPatchFake("server { location /pep/ { pep_require_popp on; } }");
+    fake.nginxPodsOverride = """
+        {"items":[
+          {"metadata":{"name":"pep-deployment-new"},"status":{"phase":"Running",
+            "conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"nginx","ready":true}]}},
+          {"metadata":{"name":"pep-deployment-second"},"status":{"phase":"Running",
+            "conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"nginx","ready":true}]}}]}
+        """;
+    fake.nginxDumpsByPod.put("pep-deployment-second", "# configuration file /etc/nginx/nginx.conf:\n"
+        + "server { location /pep/ { pep_require_popp off; } }");
+    var request = new ZetaPoppTokenToggleRequest("pep_require_popp\\s+(on|off)\\s*;", "pep_require_popp on;", "pep_require_popp off;");
+    var error = Assert.assertThrows(AssertionError.class, () -> fake.setPoppVerification(details, request, "/pep/", true));
+    assertTrue(error.getMessage().contains("pep-deployment-second"));
+    assertEquals(2, fake.commands.stream().filter(command -> command.contains("exec")).count());
+  }
+
+  /** Exercises saving and restoring a live ConfigMap backup. */
   @Test
   @Ignore
   public void configMapBackup() throws IOException {
@@ -957,106 +1217,60 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(0, deleteResult.exitCode());
   }
 
-  /**
-   * Verifies that ConfigMap restoration uses a sanitized server-side manifest and returns field
-   * ownership to Helm without replacing the resource.
-   *
-   * @throws IOException if temporary restore manifest handling fails unexpectedly
-   */
+  /** A legacy or foreign backup cannot be applied over the active ConfigMap. */
   @Test
-  public void restoreConfigMapBackupUsesHelmServerSideApply() throws IOException {
-    String backupConfigMapJson = """
-        {
-          "apiVersion": "v1",
-          "kind": "ConfigMap",
-          "metadata": {
-            "annotations": {
-              "kubectl.kubernetes.io/last-applied-configuration": "stale-client-side-state",
-              "meta.helm.sh/release-name": "zeta-testenv"
-            },
-            "creationTimestamp": "2026-07-28T00:15:15Z",
-            "labels": {
-              "app.kubernetes.io/managed-by": "Helm"
-            },
-            "name": "pep-test-nginx-conf-tiger-original-backup",
-            "namespace": "zeta-local",
-            "resourceVersion": "74644393",
-            "uid": "6c24063d-ca7d-42fd-92d7-eca69948d8bd"
-          },
-          "data": {
-            "nginx.conf": "pep_popp_validity \\"quarter\\";"
-          }
-        }
-        """;
-    FakeZetaDeploymentModificationService fakeService = new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 0, backupConfigMapJson, ""),
-        new CommandResult(List.of("kubectl"), 0, "configmap/pep-test-nginx-conf serverside-applied", "")
-    );
-
-    CommandResult restoreResult = fakeService.restoreConfigMapBackup("zeta-local", "pep-test-nginx-conf");
-
-    assertEquals(0, restoreResult.exitCode());
+  public void restoreConfigMapBackupRejectsUnownedBackupWithoutWriting() {
+    var fakeService = new FakeZetaDeploymentModificationService(
+        new CommandResult(List.of(), 0, configMapJson("backup"), ""),
+        new CommandResult(List.of(), 0, configMapJson("current"), ""));
+    Assert.assertThrows(IllegalStateException.class,
+        () -> fakeService.restoreConfigMapBackup("zeta-local", "pep-test-nginx-conf"));
     assertEquals(2, fakeService.commands.size());
-    assertEquals(Arrays.asList(
-        "-n", "zeta-local", "apply", "--server-side", "--force-conflicts", "--field-manager=helm",
-        "-f", fakeService.commands.get(1).getLast()), fakeService.commands.get(1));
-    assertFalse(fakeService.commands.get(1).contains("--force"));
-    assertEquals(1, fakeService.patchFileContents.size());
-    String restoreManifest = fakeService.patchFileContents.getFirst();
-    assertTrue(restoreManifest.contains("\"name\":\"pep-test-nginx-conf\""));
-    assertTrue(restoreManifest.contains("\"namespace\":\"zeta-local\""));
-    assertTrue(restoreManifest.contains("pep_popp_validity"));
-    assertTrue(restoreManifest.contains("meta.helm.sh/release-name"));
-    assertFalse(restoreManifest.contains("last-applied-configuration"));
-    assertFalse(restoreManifest.contains("resourceVersion"));
-    assertFalse(restoreManifest.contains("creationTimestamp"));
-    assertFalse(restoreManifest.contains("\"uid\""));
+    assertTrue(fakeService.patchFileContents.isEmpty());
   }
 
   /**
-   * Verifies that restoring a missing backup returns a no-op result without surfacing stderr noise.
+   * A missing backup cannot prove restoration, including disappearance after an existence check.
    *
    * @throws IOException if temporary file handling inside the restore flow fails unexpectedly
    */
   @Test
-  public void restoreConfigMapBackupReturnsNoOpWhenBackupIsMissing() throws IOException {
+  public void restoreConfigMapBackupRejectsMissingBackup() throws IOException {
     FakeZetaDeploymentModificationService fakeService = new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 1, "", "Error from server (NotFound)")
+        new CommandResult(List.of("kubectl"), 0, "", "")
     );
 
-    CommandResult restoreResult = fakeService.restoreConfigMapBackup("zeta-local", "pep-well-known");
-
-    assertEquals(0, restoreResult.exitCode());
-    assertEquals("Not found", restoreResult.stdout());
-    assertTrue(restoreResult.stderr().isBlank());
+    Assert.assertThrows(IllegalStateException.class,
+        () -> fakeService.restoreConfigMapBackup("zeta-local", "pep-well-known"));
     assertEquals(1, fakeService.commands.size());
     assertEquals(Arrays.asList("-n", "zeta-local", "get", "configmap",
-        "pep-well-known-tiger-original-backup", "-o", "json"), fakeService.commands.getFirst());
+        "pep-well-known-tiger-original-backup", "--ignore-not-found", "-o", "json"), fakeService.commands.getFirst());
     assertFalse(fakeService.logStderrFlags.getFirst());
   }
 
-  /**
-   * Verifies that backup creation is skipped when a backup ConfigMap already exists.
-   *
-   * @throws IOException if temporary file handling inside the backup flow fails unexpectedly
-   */
+  /** A pre-existing unowned backup is not reused or overwritten. */
   @Test
-  public void createConfigMapBackupSkipsCreationWhenBackupAlreadyExists() throws IOException {
-    FakeZetaDeploymentModificationService fakeService = new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 0, "apiVersion: v1", "")
-    );
-
-    CommandResult backupResult = fakeService.createConfigMapBackup("zeta-local", "pep-test-nginx-conf");
-
-    assertEquals(0, backupResult.exitCode());
-    assertEquals("Unchanged", backupResult.stdout());
-    assertTrue(backupResult.stderr().isBlank());
-    assertEquals(1, fakeService.commands.size());
-    assertEquals(Arrays.asList("-n", "zeta-local", "get", "configmap",
-        "pep-test-nginx-conf-tiger-original-backup", "-o", "json"), fakeService.commands.getFirst());
-    assertFalse(fakeService.logStderrFlags.getFirst());
+  public void createConfigMapBackupRejectsUnownedBackup() {
+    var fakeService = new FakeZetaDeploymentModificationService(
+        new CommandResult(List.of(), 0, configMapJson("current"), ""),
+        new CommandResult(List.of(), 0, configMapJson("backup"), ""));
+    Assert.assertThrows(IllegalStateException.class,
+        () -> fakeService.createConfigMapBackup("zeta-local", "pep-test-nginx-conf"));
+    assertEquals(2, fakeService.commands.size());
+    assertTrue(fakeService.patchFileContents.isEmpty());
   }
 
+  /** API failures must not be treated as an absent backup. */
+  @Test
+  public void hasConfigMapBackupDoesNotHideReadFailures() {
+    var fakeService = new FakeZetaDeploymentModificationService(
+        new CommandResult(List.of(), 1, "", "Forbidden"));
+    Assert.assertThrows(IllegalStateException.class,
+        () -> fakeService.hasConfigMapBackup("zeta-local", "pep-test-nginx-conf"));
+    assertEquals(1, fakeService.commands.size());
+  }
+
+  /** Provides get container image reference for deployment returns full image for deployment-service regression checks. */
   @Test
   public void getContainerImageReferenceForDeploymentReturnsFullImage() {
     FakeZetaDeploymentModificationService fakeService = new FakeZetaDeploymentModificationService(
@@ -1075,6 +1289,7 @@ public class ZetaDeploymentModificationServiceTest {
         "-o", "jsonpath='{.spec.containers[?(@.name==\"nginx\")].image}'"), fakeService.commands.get(1));
   }
 
+  /** Provides get single ready pod name for deployment returns matching ready pod for deployment-service regression checks. */
   @Test
   public void getSingleReadyPodNameForDeploymentReturnsMatchingReadyPod() {
     String podsJson = """
@@ -1102,6 +1317,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(1, fakeService.commands.size());
   }
 
+  /** Provides verify pod image pull occurred returns success when matching event exists for deployment-service regression checks. */
   @Test
   public void verifyPodImagePullOccurredReturnsSuccessWhenMatchingEventExists() {
     String image = "registry.example.org/zeta/ngx_pep:1.2.3";
@@ -1141,6 +1357,7 @@ public class ZetaDeploymentModificationServiceTest {
         "-o", "json"), fakeService.commands.get(1));
   }
 
+  /** Provides verify pod image pull occurred fails when no matching event exists for deployment-service regression checks. */
   @Test
   public void verifyPodImagePullOccurredFailsWhenNoMatchingEventExists() {
     String image = "registry.example.org/zeta/ngx_pep:1.2.3";
@@ -1169,6 +1386,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertTrue(result.stderr().contains("No image pull event found"));
   }
 
+  /** Provides verify failed update does not become active and automatically returns to image within seconds succeeds for deployment-service regression checks. */
   @Test
   public void verifyFailedUpdateDoesNotBecomeActiveAndAutomaticallyReturnsToImageWithinSecondsSucceeds() {
     String failedImage = "registry.example.org/zeta/ngx_pep:6.6.6";
@@ -1237,6 +1455,7 @@ public class ZetaDeploymentModificationServiceTest {
         fakeService.commands.get(2));
   }
 
+  /** Provides verify failed update does not become active and automatically returns to image within seconds fails while failed pod remains pending for deployment-service regression checks. */
   @Test
   public void verifyFailedUpdateDoesNotBecomeActiveAndAutomaticallyReturnsToImageWithinSecondsFailsWhileFailedPodRemainsPending() {
     String failedImage = "registry.example.org/zeta/ngx_pep:6.6.6";
@@ -1284,6 +1503,7 @@ public class ZetaDeploymentModificationServiceTest {
         || result.stderr().contains("No failed rollout evidence observed"));
   }
 
+  /** Provides verify failed update does not become active and automatically returns to image within seconds fails when bad image becomes ready for deployment-service regression checks. */
   @Test
   public void verifyFailedUpdateDoesNotBecomeActiveAndAutomaticallyReturnsToImageWithinSecondsFailsWhenBadImageBecomesReady() {
     String failedImage = "registry.example.org/zeta/ngx_pep:6.6.6";
@@ -1321,6 +1541,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(1, fakeService.commands.size());
   }
 
+  /** Provides cleanup failed rollout pods scales replica set and deletes unexpected image pod for deployment-service regression checks. */
   @Test
   public void cleanupFailedRolloutPodsScalesReplicaSetAndDeletesUnexpectedImagePod() {
     String podsJson = """
@@ -1383,6 +1604,7 @@ public class ZetaDeploymentModificationServiceTest {
         "--ignore-not-found=true"), fakeService.commands.get(3));
   }
 
+  /** Provides cleanup failed rollout pods returns no op when only stable image pods remain for deployment-service regression checks. */
   @Test
   public void cleanupFailedRolloutPodsReturnsNoOpWhenOnlyStableImagePodsRemain() {
     String podsJson = """
@@ -1420,6 +1642,7 @@ public class ZetaDeploymentModificationServiceTest {
     assertEquals(1, fakeService.commands.size());
   }
 
+  /** Provides verify deployment shows pod with image within seconds succeeds when expected image appears for deployment-service regression checks. */
   @Test
   public void verifyDeploymentShowsPodWithImageWithinSecondsSucceedsWhenExpectedImageAppears() {
     String podsJson = """
@@ -1473,7 +1696,7 @@ public class ZetaDeploymentModificationServiceTest {
         new CommandResult(List.of("kubectl"), 0, "apiVersion: v1", "")
     );
     FakeZetaDeploymentModificationService missingBackupService = new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 1, "", "Error from server (NotFound)")
+        new CommandResult(List.of("kubectl"), 0, "", "")
     );
 
     assertTrue(presentBackupService.hasConfigMapBackup("zeta-local", "pep-test-nginx-conf"));
@@ -1643,27 +1866,38 @@ public class ZetaDeploymentModificationServiceTest {
    * @return fake service that records kubectl calls and patch file contents
    */
   private static FakeZetaDeploymentModificationService newPepNginxPatchFake(String nginxConfig) {
-    String originalConfigMapYaml = """
-        apiVersion: v1
-        metadata:
-          name: pep-test-nginx-conf
-        data:
-          nginx.conf: |
-            location /pep/ {
-              proxy_pass http://fachdienst/;
-            }
-        """;
-    return new FakeZetaDeploymentModificationService(
-        new CommandResult(List.of("kubectl"), 0, nginxConfig, ""),
-        new CommandResult(List.of("kubectl"), 1, "", "Error from server (NotFound)"),
-        new CommandResult(List.of("kubectl"), 0, originalConfigMapYaml, ""),
-        new CommandResult(List.of("kubectl"), 0, "configmap/pep-test-nginx-conf-tiger-original-backup created", ""),
+    var fake = new FakeZetaDeploymentModificationService(
+        new CommandResult(List.of("kubectl"), 0, configMapJson(nginxConfig), ""),
+        new CommandResult(List.of("kubectl"), 0, "", ""),
+        new CommandResult(List.of("kubectl"), 0, "CREATED_CONFIG_MAP", ""),
+        new CommandResult(List.of("kubectl"), 0, "backup patched", ""),
         new CommandResult(List.of("kubectl"), 0, "configmap/pep-test-nginx-conf patched", ""),
         new CommandResult(List.of("kubectl"), 0, "pep-deployment-old 1/1 Running", ""),
         new CommandResult(List.of("kubectl"), 0, "pod/pep-deployment-old deleted", ""),
         new CommandResult(List.of("kubectl"), 0, "pep-deployment-new 1/1 Running", ""),
         new CommandResult(List.of("kubectl"), 0, "true", "")
     );
+    fake.nginxPatchMode = true;
+    return fake;
+  }
+
+  private static List<String> patchedDataContents(FakeZetaDeploymentModificationService service) {
+    var json = new ObjectMapper();
+    return service.patchFileContents.stream().map(json::readTree).filter(node -> node.isArray())
+        .flatMap(node -> node.valueStream())
+        .filter(op -> "replace".equals(op.path("op").asString()) && "/data".equals(op.path("path").asString()))
+        .map(op -> op.path("value").path("nginx.conf").asString()).toList();
+  }
+
+  private static String configMapJson(String nginxConfig) {
+    var json = new ObjectMapper();
+    var cm = json.createObjectNode();
+    cm.put("apiVersion", "v1");
+    cm.put("kind", "ConfigMap");
+    cm.putObject("metadata").put("name", "pep-test-nginx-conf").put("namespace", "zeta-local")
+        .put("uid", "original-uid").put("resourceVersion", "original-version");
+    cm.putObject("data").put("nginx.conf", nginxConfig);
+    return json.writeValueAsString(cm);
   }
 
   private static class FakeZetaDeploymentModificationService extends ZetaDeploymentModificationService {
@@ -1672,6 +1906,13 @@ public class ZetaDeploymentModificationServiceTest {
     private final List<List<String>> commands = new ArrayList<>();
     private final List<Boolean> logStderrFlags = new ArrayList<>();
     private final List<String> patchFileContents = new ArrayList<>();
+    private boolean failTargetPatch;
+    private boolean nginxPatchMode;
+    private String nginxDumpOverride;
+    private String nginxIncludedFiles = "# configuration file /etc/nginx/proxy_headers.conf:\nproxy_set_header Authorization \"\";\n";
+    private int nginxDumpExitCode;
+    private String nginxPodsOverride;
+    private final Map<String, String> nginxDumpsByPod = new HashMap<>();
 
     /**
      * Creates a fake deployment configuration service with pre-seeded command results.
@@ -1681,6 +1922,13 @@ public class ZetaDeploymentModificationServiceTest {
     FakeZetaDeploymentModificationService(CommandResult... responses) {
       super(60, 120);
       this.responses.addAll(List.of(responses));
+    }
+
+    /** Simulates a completed rollout only for configuration-patching fixtures. */
+    @Override
+    public CommandResult waitForDeploymentRollout(String namespace, String deploymentName, int timeoutSeconds) {
+      return nginxPatchMode ? recordCommand(List.of("-n", namespace, "rollout", "status", "deployment/" + deploymentName), false)
+          : super.waitForDeploymentRollout(namespace, deploymentName, timeoutSeconds);
     }
 
     /**
@@ -1719,9 +1967,35 @@ public class ZetaDeploymentModificationServiceTest {
       commands.add(List.copyOf(arguments));
       logStderrFlags.add(logStderr);
       capturePatchFileContent(arguments);
+      if (nginxPatchMode && arguments.contains("rollout")) {
+        return new CommandResult(arguments, 0, "rollout complete", "");
+      }
+      if (nginxPatchMode && arguments.contains("pods") && arguments.contains("json")) {
+        return new CommandResult(arguments, 0, nginxPodsOverride == null ? """
+            {"items":[{"metadata":{"name":"pep-deployment-new"},
+              "status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],
+                "containerStatuses":[{"name":"nginx","ready":true}]}}]}
+            """ : nginxPodsOverride, "");
+      }
+      if (nginxPatchMode && arguments.contains("exec")) {
+        var override = nginxDumpsByPod.getOrDefault(arguments.get(arguments.indexOf("exec") + 1), nginxDumpOverride);
+        return new CommandResult(arguments, nginxDumpExitCode, override == null
+            ? "# configuration file /etc/nginx/nginx.conf:\n" + patchedDataContents(this).getLast()
+                + "\n" + nginxIncludedFiles
+            : override, "nginx validation result");
+      }
       CommandResult next = responses.poll();
       if (next == null) {
         throw new AssertionError("No fake command result configured for arguments: " + arguments);
+      }
+      if (failTargetPatch && arguments.contains("patch") && arguments.contains("pep-test-nginx-conf")) {
+        return new CommandResult(arguments, 1, "", "resourceVersion conflict");
+      }
+      if ("CREATED_CONFIG_MAP".equals(next.stdout())) {
+        var json = new ObjectMapper();
+        var created = json.readTree(patchFileContents.getLast());
+        ((ObjectNode) created.path("metadata")).put("uid", "backup-uid").put("resourceVersion", "backup-version");
+        return new CommandResult(arguments, 0, json.writeValueAsString(created), "");
       }
       return next;
     }

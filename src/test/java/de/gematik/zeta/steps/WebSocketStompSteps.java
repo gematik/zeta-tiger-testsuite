@@ -75,7 +75,7 @@ public class WebSocketStompSteps {
   @Gegebensei("setze Anfrage Timeout für WebSocket Verbindungen auf {int} Sekunden")
   @Given("set connection timeout for websocket connections to {int} seconds")
   public void setConnectionTimeout(int seconds) {
-    StompSessionManager.setConnectionTimeout(seconds);
+    sessionManager.setConnectionTimeout(seconds);
     log.info("Connection timeout for websocket connections set to {} seconds.", seconds);
   }
 
@@ -87,7 +87,7 @@ public class WebSocketStompSteps {
   @Gegebensei("setze Timeout für WebSocket Nachrichten auf {int} Sekunden")
   @Given("set message timeout for websocket messages to {int} seconds")
   public void setMessageTimeout(int seconds) {
-    StompSessionManager.setMessageTimeout(seconds);
+    sessionManager.setMessageTimeout(seconds);
     log.info("Message timeout for websocket connections set to {} seconds.", seconds);
   }
 
@@ -144,9 +144,7 @@ public class WebSocketStompSteps {
    * @param channel     The STOMP channel to send to
    * @param requestData The request data from DataTable
    */
-  @Wenn("eine Anfrage mit folgenden mehrzeiligen Daten an Kanal {tigerResolvedString} gesendet wird:")
-  @When("a request with following multi-line data is sent to channel {tigerResolvedString}:")
-  public void sendRequestWithData(String channel, Map<String, String> requestData) {
+  private void sendRequestWithData(String channel, Map<String, String> requestData) {
     var resolvedChannel = TigerGlobalConfiguration.resolvePlaceholders(channel);
     // Allow tables to carry unresolved placeholders; the manager resolves each entry on send.
     sessionManager.send(resolvedChannel, requestData);
@@ -191,18 +189,6 @@ public class WebSocketStompSteps {
   public void awaitMessage(String expectedChannel) {
     // Delegate blocking wait to the session manager which handles queueing and assertions.
     sessionManager.awaitMessage(expectedChannel);
-  }
-
-  /**
-   * Saves the received ID to a Tiger variable (legacy step - kept for backwards compatibility).
-   *
-   * @param variableName The Tiger variable name to store the ID
-   */
-  @Dann("wird die empfangene ID in der Variable {string} gespeichert")
-  @Then("received ID is stored in variable {string}")
-  @SuppressWarnings("Unused")
-  public void saveReceivedId(String variableName) {
-    saveReceivedValue("$.id", variableName);
   }
 
   /**

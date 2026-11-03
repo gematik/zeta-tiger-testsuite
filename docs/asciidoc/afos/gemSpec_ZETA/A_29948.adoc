@@ -1,0 +1,4 @@
+[#A_29948]
+==== A_29948 - Authorization Server – Revisionssichere Protokollierung
+
+Der Authorization Server MUSS alle sicherheitsrelevanten Lebenszyklus-Ereignisse (Erst-/Folgeregistrierung, Bindung/Verifikation von Faktoren, Rollover, Recovery, Client-Löschung, OOB-Planung/Veto/Ausführung, Wiederregistrierungs-Bestätigung) revisionssicher protokollieren, jeweils mit Zeitstempel und — bei operatorgetriebenen Aktionen — der Operatoridentität und Begründung (erweitert A_25738, A_25749). [<=]

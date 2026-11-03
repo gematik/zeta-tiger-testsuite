@@ -1,0 +1,6 @@
+[#TA_A_29937_01]
+===== TA_A_29937_01 - Authorization Server – Fachdienstbezogener Geltungsbereich der Löschung - Löschung auf den eigenen Fachdienst begrenzen
+
+"In Anwendung des Per-Guard-Prinzips (vgl. A_29898) MUSS der Authorization Server Client-Löschungen **ausschließlich auf den eigenen Fachdienst beziehen; eine fachdienstübergreifende Löschung DARF NICHT serverseitig erfolgen**.
+
+**[<=]**"

@@ -1,0 +1,98 @@
+[#UC_TELEMETRIE_03]
+== UseCase_Telemetrie_03: HTTP-Proxy-Traces mit der ausgeführten Operation abgleichen
+
+.UseCase_Telemetrie_03
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | HTTP-Proxy-Traces mit der ausgeführten Operation abgleichen
+
+| Akteur: | ZETA Client (SDK)
+
+| weitere Akteure: | Authorization Server, PEP HTTP Proxy, Resource Server, Telemetriedaten-Service, SMC-B
+
+| Auslöser: | Der ZETA Client ruft über den PEP eine Ressource auf.
+
+| Kurzbeschreibung: |
+Der PEP HTTP Proxy liefert für ausgeführte HTTP-Operationen korrelierte Traces an den Telemetriedaten-Service. Die Parameter beschreiben die tatsächliche Operation einschließlich ihres Ergebnisses, des verfügbaren Clientkontexts und der bedingten Profession-OID.
+Der Ablauf umfasst erfolgreiche GET- und POST-Operationen, eine reguläre Fehlerantwort des Resource Servers, eine PEP-Abweisung sowie die Lieferung bei vorübergehend nicht erreichbarem Telemetriedaten-Service.
+
+| Vorbedingung: |
+. Der ZETA Client kann die vorgesehenen Ressourcen über den PEP aufrufen. Für zugelassene Operationen besitzt er gültige Authentisierungsnachweise sowie erforderliche Berechtigungen und gegebenenfalls einen zur Nutzeridentität passenden PoPP-Nachweis. Die Abweisungsvariante enthält keinen nutzbaren Autorisierungsnachweis.
+. Der Authorization Server hat das Self-Assessment des jeweiligen Clients verarbeitet. Für die SMC-B-Variante besitzt das verwendete Zertifikat eine verfügbare Profession-OID; die OIDC-Variante verwendet keine SM-B.
+. In der Asynchronitätsvariante ist der Telemetriedaten-Service vorübergehend nicht erreichbar; der Resource Server bleibt verfügbar. Die Exportwarteschlange besitzt ausreichend Kapazität für die betreffenden Operationen.
+
+| Nebenbedingung: |
+Produktattribute setzen einen verfügbaren Clientkontext voraus. Die Profession-OID wird ausschließlich bei Anwendung einer SM-B übertragen. Der asynchrone Export ist eine SOLL-Vorgabe.
+
+| Ablauf: |
+. Der ZETA Client authentisiert sich mit seiner SMC-B oder über OIDC beim Authorization Server und erhält einen Access Token für den Ressourcenzugriff.
+. Der ZETA Client ruft die vorgesehene Ressource auf. Der PEP leitet zugelassene GET- und POST-Operationen an den Resource Server weiter und gibt dessen Antwort zurück. Dazu gehören erfolgreiche Antworten und eine reguläre 404-Antwort für eine nicht vorhandene Ressource.
+. In der Abweisungsvariante erreicht die Anfrage den PEP ohne nutzbaren Autorisierungsnachweis. Der PEP antwortet mit 401, ohne den Resource Server aufzurufen.
+. Der PEP liefert für jede ausgeführte Operation einen korrelierten HTTP-Trace an den Telemetriedaten-Service. Dessen Resource-Attribut `service.name` besitzt exakt den festen Wert `ZETA Guard PEP HTTP proxy`; HTTP-Methode, `http.route`, `server.address` und `http.response.status_code` beschreiben die tatsächliche Operation. Bei einer PEP-Abweisung beschreibt der Status die PEP-Antwort.
+. Für den authentisierten Clientkontext enthält der Trace `product_id` und `product_version` aus dem Self-Assessment genau dieses Clients.
+. Im anwendbaren SMC-B-Fall enthält `profession_oid` die Profession-OID des verwendeten Zertifikats, sofern sie verfügbar ist. Im OIDC-Fall ohne Anwendung einer SM-B wird `profession_oid` nicht übertragen.
+. `startTimeUnixNano` und `endTimeUnixNano` des ursprünglichen HTTP-Spans geben Beginn und Ende der Operation in Unix-Nanosekunden wieder. Der Startzeitpunkt liegt nicht nach dem Endzeitpunkt.
+. Bei vorübergehend nicht erreichbarem Telemetriedaten-Service beantwortet der PEP die fachliche Operation, während der Telemetriedaten-Service noch nicht erreichbar ist.
+. Nach dessen Wiedererreichbarkeit liefert der PEP den korrelierten Trace nach. Die fachliche Antwort hängt beim asynchronen Export nicht vom Abschluss der Telemetriedatenlieferung ab.
+
+| Nachbedingung: |
+Der Telemetriedaten-Service hat zu jeder ausgeführten HTTP-Operation einen korrelierten Trace mit passenden Operationsattributen, Start- und Endzeitpunkten sowie dem verfügbaren Produkt- und zulässigen Profession-Kontext erhalten.
+In der Asynchronitätsvariante liegt die fachliche Antwort bereits vor Wiedererreichbarkeit des Telemetriedaten-Service vor; der Trace wird anschließend geliefert.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29020_01>>
+* <<TA_A_29020_02>>
+* <<TA_A_29020_03>>
+* <<TA_A_29020_04>>
+* <<TA_A_29020_05>>
+* <<TA_A_29020_06>>
+* <<TA_A_29020_07>>
+* <<TA_A_29020_08>>
+* <<TA_A_29020_09>>
+* <<TA_A_29020_10>>
+* <<TA_A_29020_11>>
+* <<TA_A_29020_12>>
+* <<TA_A_29020_13>>
+
+|===
+
+[mermaid,uc-telemetrie-03-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant T as ZETA Client / SDK
+    participant A as Authorization Server
+    participant P as PEP HTTP Proxy
+    participant R as Resource Server
+    participant E as Telemetriedaten-Service
+    opt Authentisierter Ressourcenzugriff
+        T->>A: Authentisierung mit SMC-B oder OIDC und Self-Assessment
+        A-->>T: Access Token
+    end
+    T->>P: HTTP-Operation
+    alt Zulässiger Ressourcenzugriff
+        P->>R: Ressource aufrufen
+        R-->>P: Erfolgsantwort oder reguläre 404-Antwort
+    else Fehlender Autorisierungsnachweis
+        Note over P: Anfrage mit 401 ablehnen, keinen RS aufrufen
+    end
+    P-->>T: Operationsantwort
+    alt Telemetriedaten-Service erreichbar
+        P-)E: Korrelierter Trace mit Operations- und Clientparametern
+    else Telemetriedaten-Service vorübergehend nicht erreichbar
+        Note over P,E: Operationsantwort liegt trotz ausstehender Telemetriedatenlieferung vor
+        P-)E: Korrelierter Trace nach Wiedererreichbarkeit
+    end
+....
+
+Die Variante zum asynchronen Export ist weiterhin ein fachlicher Entwurf; ein ausführbares Szenario ist dafür noch nicht implementiert.
+
+ifdef::render_features[]
+[.lead]
+Feature-Dateien zu diesem Use Case:
+
+[source]
+----
+include::http_proxy_service_name.feature[]
+----
+endif::[]

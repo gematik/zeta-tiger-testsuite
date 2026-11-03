@@ -1,8 +1,0 @@
-[#TA_A_26477_05]
-===== TA_A_26477_05 - PEP HTTP Proxy - PoPP Token Validierung - Signatur mathematisch gültig
-
-"[...]
-Insbesondere MUSS die **Signatur des PoPP Servers** gültig sein. Die Signatur des PoPP Token ist gültig, wenn sie **mathematisch gültig** ist und die Signatur vom PoPP Server erstellt wurde.
-
-+++[...]+++
-**[<=]"**

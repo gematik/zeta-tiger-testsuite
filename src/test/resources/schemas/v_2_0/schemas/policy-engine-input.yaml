@@ -1,0 +1,124 @@
+# Policy Engine Input Schema for ZETA Guard
+# This schema combines authorization_request data, client-statement.yaml and user-info.yaml.
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.1.0"
+title: Policy Engine Input Schema for ZETA Guard
+type: object
+description: >
+  Schema for OPA policy decisions based on client registration data, client
+  assertion, user info and authorization request. This schema is used as input
+  for the OPA policy engine.
+properties:
+  version:
+    description: >-
+      The version of the schema. `1.0` corresponds to the legacy contract where
+      the access token `aud` is taken verbatim from the `audience` parameter.
+      `1.1` corresponds to the contract where the client supplies a `resource`
+      indicator (RFC 8707) and the Policy Engine determines the `aud` claim
+      (returned in the decision).
+    type: string
+    enum:
+      - "1.0"
+      - "1.1"
+  client_registration_data:
+    description: The client registration data stored at the authorization server.
+    "$ref": "./policy-engine-client-data.yaml"
+  user_info:
+    description: The user information data
+    "$ref": "./zeta-user-info.yaml"
+  authorization_request:
+    description: The authorization request data
+    type: object
+    properties:
+      scopes:
+        type: array
+        description: The purpose of use for the authorization
+        items:
+          type: string
+      audience:
+        type: array
+        description: >-
+          LEGACY (contract v1 / schema version 1.0). The logical,
+          deployment-independent audience identifier(s) taken verbatim from the
+          client-supplied `audience` parameter and written verbatim into the
+          access token `aud` claim. Present only for legacy requests; for
+          contract v2 the client sends `resource` instead and the Policy Engine
+          determines the `aud` (returned in the decision). MUST NOT be the
+          environment-specific resource URL.
+        items:
+          type: string
+      resource:
+        type: string
+        format: uri
+        description: >-
+          Resource indicator (RFC 8707), contract v2 / schema version 1.1: the
+          single absolute endpoint URL at the resource server for which the
+          access token is requested. The Policy Engine uses it to determine the
+          logical `aud` returned in the decision. Does NOT itself become the
+          `aud`. Exactly one endpoint per access token.
+      country_code:
+        type: string
+        description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by
+          AuthS via GeoIP."
+        pattern: "^[A-Z]{2}$"
+      http_method:
+        type: string
+        description: The HTTP method of the request.
+        enum:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - HEAD
+          - OPTIONS
+      ip_address:
+        type: string
+        description: The source IP address of the request.
+      previous_ip_address:
+        type: string
+        description: The previously used source IP address; for impossible travel detection
+      grant_type:
+        type: string
+        description: The OAuth 2.0 grant type being used.
+        enum:
+          - authorization_code
+          - urn:ietf:params:oauth:grant-type:token-exchange
+          - client_credentials
+          - refresh_token
+          - urn:ietf:params:oauth:grant-type:jwt-bearer
+      amr:
+        type: array
+        description: Methods used for user authentication (Authentication Methods
+          References).
+        items:
+          type: string
+      acr:
+        type: string
+        description: Authentication Context Class Reference (e.g. 'loa2').
+    required:
+      - scopes
+      - ip_address
+      - previous_ip_address
+      - grant_type
+      - acr
+  delegation_context:
+    description: The delegation context if the client is acting on behalf of a user.
+    type: [ "object", "null" ]
+    properties:
+      principal_user_info:
+        $ref: "./user-info.yaml"
+      allowed_scopes:
+        type: array
+        items:
+          type: string
+      valid_until:
+        type: integer
+    required:
+      - principal_user_info
+      - allowed_scopes
+      - valid_until
+required:
+  - version
+  - client_registration_data
+  - authorization_request

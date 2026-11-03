@@ -1,0 +1,6 @@
+[#TA_A_29994_02]
+===== TA_A_29994_02 - Authorization Server, Attribute amr und acr bei OIDC Authentifizierung mit  Sek IDP - acr aus dem ID Token übernehmen
+
+"Der Authorization Server MUSS bei der OIDC Authentifizierung mit Sek IDP die Attribute amr und **acr** aus dem ID Token übernehmen und im Request an die Policy Engine gemäß [policy-engine-input.yaml] verwenden.
+
+**[<=]**"

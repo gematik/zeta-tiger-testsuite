@@ -1,0 +1,34 @@
+[#TA_A_28988_06]
+===== TA_A_28988_06 - Performance - Telemetriedatenlieferung - Konfiguration Datenlieferung ZETA Guard - Sampling - expected_new_traces_per_sec konfigurieren
+
+"Wenn für die Telemetriedatenlieferung des Produktes an die gematik Telemetriedatencloud die Option Sampling aktiviert wurde, MÜSSEN nachfolgende, konfigurierbare Parameter berücksichtigt werden:
+
+tail_sampling:
+
+decision_wait: 10s
+
+num_traces: 50000
+
+**expected_new_traces_per_sec: 200**
+
+policies:
+
+- name: errors-always
+
+type: status_code
+
+status_code:
+
+status_codes: [ERROR]
+
+- name: success-sampled
+
+type: probabilistic
+
+probabilistic:
+
+sampling_percentage: 5
+
+Hinweis: Sampling SOLL im Standard deaktiviert sein und kann über die oben genannten Parameter aktiviert werden. Durch die Policy "error-always" wird sichergestellt, dass Fehlermeldungen immer gesendet werden.
+
+**[<=]**"

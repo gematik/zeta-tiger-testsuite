@@ -1,0 +1,4 @@
+[#A_29869]
+==== A_29869 - ZETA Guard - Dual-Stack in Egress- und Zielauflösung
+
+Die Egress-Funktion MUSS Verbindungen zu erlaubten Zielen über IPv4 und IPv6 unterstützen. Bei FQDN-basierten Zielen MÜSSEN A- und AAAA-Auflösungen verarbeitet werden können [<=]

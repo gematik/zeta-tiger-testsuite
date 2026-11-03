@@ -1,0 +1,8 @@
+[#TA_A_29951_02]
+===== TA_A_29951_02 - PDP Authorization Server, Token Ausstellung - Schemakonforme Ablehnungsantwort
+
+"Der Authorization Server MUSS **die Token Response nach dem Schema [token-response.yaml] erstellen.**
+
+[<=]"
+
+Bei negativer Policy-Entscheidung entspricht der JSON-Antwortkörper dem Zweig **denyResponse** einschließlich des referenzierten Fehlerobjekts nach zeta-error.yaml. Das Pflichtfeld reasons entspricht den formal validierenden Regeln des referenzierten reasons-Schemas.

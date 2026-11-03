@@ -1,0 +1,6 @@
+[#TA_A_30002_03]
+===== TA_A_30002_03 - ZETA Client - Serverseitiger Token-Widerruf bei Logout - Access Token anschließend lokal löschen
+
+"Der ZETA Client MUSS bei einer nutzerinitiierten Abmeldung bzw. Beendigung der Session sein Refresh Token über POST /revoke [RFC7009] am Authorization Server widerrufen, damit die clientseitige Abmeldung zu einer echten serverseitigen Grant-Terminierung wird, und MUSS lokal gespeicherte **Access-**/Refresh Token sowie DPoP-Schlüssel anschließend löschen.
+
+**[<=]**"

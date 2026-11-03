@@ -1,0 +1,4 @@
+[#TA_A_29659_01]
+===== TA_A_29659_01 - Mobile OIDC-Authentifizierung - Orchestrierung vom fachlichen Request bis zur Ergebnisanzeige
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients** unterstützen. [<=]"

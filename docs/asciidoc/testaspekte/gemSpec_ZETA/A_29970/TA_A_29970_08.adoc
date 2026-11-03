@@ -1,0 +1,18 @@
+[#TA_A_29970_08]
+===== TA_A_29970_08 - Notification Service – Übernahme der Schlüsselableitungs-/Verschlüsselungspflichten - UTF-8-Kodierung
+
+"Der Notification Service MUSS, soweit er gemäß Konfiguration verschlüsselt versendet, die Verschlüsselungs- und Schlüsselableitungspflichten aus [gemF_PushNotification] übernehmen, insbesondere:
+
+initiale und fortlaufende Schlüsselableitung mittels HKDF-SHA256 auf Basis shared-secret-Jahr-Monat mit Ableitungsvektor yyyy-MM (A_27157, A_27158-01, A_27160),
+
+AES/GCM-Verschlüsselung des Nachrichteninhalts und Kodierung als Base64(IV || Ciphertext || Authentication Code) (A_27161),
+
+1024-Byte-Padding zur Größenverschleierung (A_27610),
+
+Einbetten von time_message_encrypted im Format yyyy-MM (A_27162),
+
+Löschen überholten Schlüsselmaterials nach jeder Ableitung (A_27405),
+
+**UTF-8-Kodierung des Nachrichteninhalts** (A_27680.
+
+**[<=]**"

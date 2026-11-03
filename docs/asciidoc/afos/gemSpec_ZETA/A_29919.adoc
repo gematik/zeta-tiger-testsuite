@@ -1,0 +1,4 @@
+[#A_29919]
+==== A_29919 - ZETA Guard – Keine persistente fachdienstübergreifende Korrelation
+
+Der ZETA Guard MUSS die die im ZETA Attestation Token offengelegte Herkunft (Quell-Guard) ausschließlich transient zur Prüfung verwenden und DARF NICHT eine fachdienstübergreifende Korrelation über das nach A_29899 zulässige Maß hinaus persistieren; insbesondere DARF NICHT die Identität des Quell-Guards als verknüpfbares Attribut der neuen Registrierung gespeichert werden. [<=]

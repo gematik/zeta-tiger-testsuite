@@ -1,0 +1,4 @@
+[#A_29658]
+==== A_29658 - ZETA, Ablauf Client Registrierung für mobile Clients
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-DCR-für-mobile-Clients unterstützen. [<=]

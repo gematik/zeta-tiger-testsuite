@@ -4,36 +4,37 @@ traceability:
   needs:
     - job: utf8_posix_check
       optional: true
-  image: ghcr.io/astral-sh/uv:0.11.14-debian-slim@sha256:2702577da32d9c3d55c8073e07d4476cd7402c085efbf71921104548c851d96a
-  variables:
-    UV_LINK_MODE: "copy"
+  image: $UV_TOOLS_IMAGE
   script:
-    - uv sync --project docs/scripts
-    - uv run --project docs/scripts python -m unittest discover -s docs/scripts/tests
-    - uv run --project docs/scripts tag-masvs-scenarios --mapping-csv docs/masvs_mapping.csv --check
-    - uv run --project docs/scripts traceability --project-root .
-    - uv run --project docs/scripts generate-cucumber-methods
+    - uv sync --project docs/scripts --locked
+    - uv run --project docs/scripts --no-sync generate-doc-includes
+    - uv run --project docs/scripts --no-sync tag-masvs-scenarios --mapping-csv docs/masvs_mapping.csv --check
+    - uv run --project docs/scripts --no-sync traceability --project-root .
+    - uv run --project docs/scripts --no-sync generate-cucumber-methods
+    - uv run --project docs/scripts --no-sync pytest docs/scripts/tests
+    - uv run --project docs/scripts --no-sync check-zeta-design
   artifacts:
+    when: always
     paths:
       - docs/asciidoc/diagrams
       - docs/asciidoc/tables
-      - target/generated-docs/traceability.json
+      - target/design-verification.json
+      - docs/asciidoc/afos/*/readme.adoc
+      - docs/asciidoc/testaspekte/**/readme.adoc
+      - docs/asciidoc/testaspekte/readme.adoc
     expire_in: 1 week
 
 gitlab_issue_sync:
   stage: issue-sync
-  image: ghcr.io/astral-sh/uv:0.11.14-debian-slim@sha256:2702577da32d9c3d55c8073e07d4476cd7402c085efbf71921104548c851d96a
+  image: $UV_TOOLS_IMAGE
   extends: .rules_default_branch_only
   needs:
     - job: test
   allow_failure: true
   variables:
-    UV_LINK_MODE: "copy"
     SSL_CERT_FILE: "/etc/ssl/certs/ca-certificates.crt"
   script:
-    - apt-get update && apt-get install -y --no-install-recommends ca-certificates
-    - uv sync --project docs/scripts
-    - uv run --project docs/scripts gitlab-issue-sync --process-mrs --include-mr-ta --apply --sleep 0 --report-changes
+    - uv run --project docs/scripts --locked --no-dev gitlab-issue-sync --process-mrs --include-mr-ta --apply --sleep 0 --report-changes
 
 docs:
   stage: docs
@@ -43,13 +44,22 @@ docs:
     - job: traceability
       artifacts: true
   script:
-    - mkdir -p docs
+    - apk add --no-cache npm
     - |
+      PNPM_VERSION="$(python3 -c 'import xml.etree.ElementTree as ET; print(ET.parse("pom.xml").findtext("{*}properties/{*}version.pnpm"))')"
+      npx --yes "pnpm@$PNPM_VERSION" install \
+        --frozen-lockfile --ignore-scripts --dir docs \
+        --modules-dir ../target/node_modules --store-dir ../target/pnpm-store
+    - |
+      DOCS_VERSION="$(python3 -c 'import xml.etree.ElementTree as ET; print(ET.parse("pom.xml").findtext("{*}version"))')"
       asciidoctor \
+        --failure-level ERROR \
         -r asciidoctor-diagram \
         -a data-uri \
         -a docinfo=shared \
-        -a puppeteer-config=docs/puppeteer-config.json \
+        -a revnumber="$DOCS_VERSION" \
+        -a mmdc="$CI_PROJECT_DIR/target/node_modules/.bin/mmdc" \
+        -a mermaid-puppeteer-config="$CI_PROJECT_DIR/docs/puppeteer-config.json" \
         -D docs \
         docs/asciidoc/Testplan_ZETA.adoc
   artifacts:

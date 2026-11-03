@@ -1,0 +1,79 @@
+[#UC_04_13]
+== UseCase_04_13: Android-Client-Statement mit frischer Nonce erstellen
+
+.UseCase_04_13
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* |
+Android-Client-Statement mit frischer Nonce erstellen
+
+| Akteur: |
+ZETA Client auf Android
+
+| weitere Akteure: |
+Android OS, TEE oder StrongBox, PDP Authorization Server
+
+| Auslöser: |
+Der Client benötigt ein aktuelles client-statement.
+
+| Kurzbeschreibung: |
+Der Client bezieht eine Nonce und erstellt das Statement entweder mit Hardware-Evidence und Klartext-Posture oder im Software-Fallback.
+
+| Vorbedingung: |
+Der Client besitzt sein Instanzschlüsselpaar. Im Hardwarepfad steht der bereits erzeugte Attestierungsschlüssel zur Verfügung; Betriebssystem und Sicherheitskomponente sind erreichbar. Die Hardwarevarianten unterscheiden sich durch die aktivierte beziehungsweise nicht verwendete Play-Integrity-Integration.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der Client sendet GET /nonce an den PDP Authorization Server und erhält die Nonce.
+. Im Hardwarepfad wurde die Android-Attestierungszertifikatskette bereits bei der Registrierung übermittelt; der Ablauf verwendet den bestehenden Attestierungsschlüssel.
+. Im Hardwarepfad ermittelt der Client über das Betriebssystem die Posture-Daten (OS-Version, Security Patch Level, Hersteller, Modell, Verified Boot und App-Signaturinformationen) und erhält sie im Klartext zurück.
+. Er berechnet clientDataHash = SHA-256(Nonce || Posture-Daten || PuK.Client.Sig) und ruft Signature.sign(KeyStore.getKey(Alias_AK), clientDataHash) auf. Das Betriebssystem veranlasst die Signatur in der Sicherheitskomponente und gibt die ECDSA-Signatur als signed_client_data_hash an den Client zurück.
+. In der optionalen Hardwarevariante ruft der Client IntegrityTokenProvider.request(requestHash = clientDataHash) auf und erhält integrityToken mit deviceIntegrity, appIntegrity und accountDetails. Das Token kommt zur Evidence hinzu.
+. Der Client erstellt das client-statement mit signed_client_data_hash und android_key_attestation_certificate_chain sowie den Posture-Daten im Klartext.
+. Im alternativen Software-Fallback erstellt der Client nach dem Nonce-Bezug das client-statement mit ungesicherten OS- und Primärsystemdaten.
+
+| Nachbedingung: |
+Das Statement wird im aktuellen Vorgang nach dem Nonce-Bezug erstellt. Im Hardwarepfad ist die Evidence an Nonce, Posture und Client-Schlüssel gebunden; im Softwarepfad enthält das Statement die ungesicherten OS-/PS-Daten.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29809_01>>
+* <<TA_A_29809_02>>
+* <<TA_A_29809_03>>
+
+|===
+
+[mermaid,uc-04-13-ablauf,svg]
+....
+sequenceDiagram
+participant C as ZETA Client
+    participant O as Android OS
+    participant H as TEE / StrongBox
+    participant A as Authorization Server
+    C->>A: GET /nonce
+    A-->>C: Nonce
+    alt Hardwareattestierung
+        C->>O: Posture ermitteln
+        O-->>C: Posture-Daten im Klartext
+        C->>C: clientDataHash aus Nonce, Posture und Client-Public-Key
+        C->>O: Signature.sign(KeyStore.getKey(Alias_AK), clientDataHash)
+        O->>H: clientDataHash mit AK signieren
+        H-->>O: ECDSA-Signatur
+        O-->>C: ECDSA-Signatur als signed_client_data_hash
+        opt Play Integrity aktiviert
+            C->>O: IntegrityTokenProvider.request(requestHash = clientDataHash)
+            O-->>C: integrityToken
+        end
+        C->>C: client-statement mit Evidence und Klartext-Posture
+    else Software-Fallback
+        C->>C: client-statement mit ungesicherten OS- und PS-Daten
+    end
+....
+
+ifdef::render_features[]
+[source]
+----
+include::software_fallback.feature[]
+----
+endif::[]

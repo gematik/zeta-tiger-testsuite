@@ -35,6 +35,8 @@ RUN --mount=type=secret,id=ci_job_token,required=false \
 
 # Bring in the rest of the workspace (features, configs, docs, etc.).
 COPY . .
+ARG REQUIRE_TEST_PLAN=false
+RUN if [ "${REQUIRE_TEST_PLAN}" = "true" ]; then test -s docs/Testplan_ZETA.html; fi
 
 # Run a dependency-only build (tests off) to prime the target directory & plugins.
 # Skip source-style checks here because CI already runs them separately and they
@@ -66,19 +68,30 @@ COPY --from=build /app/docker/run-tests-common.sh /app/run-tests-common.sh
 COPY docker/frontend/run-tests.sh /app/run-tests.sh
 RUN chmod +x /app/run-tests.sh
 
-# Install kubectl only when the base image does not already provide it.
+# Install cluster tools only when the base image does not already provide them.
+ARG HELM_VERSION
+ARG TARGETARCH
 RUN . /app/run-tests-common.sh && \
-    tiger_ensure_kubectl
+    tiger_ensure_kubectl && \
+    tiger_ensure_helm
 
 RUN . /app/run-tests-common.sh && \
     tiger_prepare_nonroot_runtime "zeta" "zeta" "${ZETA_UID}" "${ZETA_GID}" /app /tmp/.m2 /app/target
 
 # Default runtime toggles; can be overridden via `docker run -e ...`.
 ENV ZETA_BASE_URL="" \
+    ZETA_PORT_FORWARD_HOST="" \
     ZETA_PROXY_URL="" \
+    ZETA_K8S_NAMESPACE="" \
     ALLOW_DEPLOYMENT_MODIFICATION="" \
+    ALLOW_PERFORMANCE_TESTS="" \
+    ALLOW_LONGRUNNING_TESTS="" \
     OPENSEARCH_URL="" \
     PROMETHEUS_URL="" \
+    JAEGER_URL="" \
+    ZETA_TLS_TEST_TOOL_SERVICE_URL="" \
+    ZETA_CERT_VALIDATION_MOCK_URL="" \
+    LOAD_DISPENSER_URL="" \
     ZETA_TEST_CERTIFICATES_DIR="" \
     PROFILE="" \
     CUCUMBER_TAGS="" \

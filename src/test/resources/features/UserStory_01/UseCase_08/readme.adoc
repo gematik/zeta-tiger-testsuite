@@ -20,7 +20,8 @@ Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafü
 Um auf einen Resource Server zugreifen zu können, benötigt der
 Client ein Access Token vom PDP Authorization Server.
 Stationäre ZETA Clients verwenden dafür den Token Exchange Flow mittels Software-Attestierung.
-Der erste Token-Request wird aufgrund eines ungültigen DPoP Proofs mit ``401 Unauthorized`` beantwortet.
+Bei fehlgeschlagener Client-Authentifizierung antwortet der AS mit ``401/invalid_client``. Der vorhandene Challenge-Fall setzt ein Softwareprofil voraus, das die übertragene Attestierungs-Challenge tatsächlich zur Authentisierung validiert; das fixierte Schema kennzeichnet dieses Feld inzwischen als veraltet und verweist auf `nonce`. DPoP-Fehler gehören gemäß A_25661-01 zu HTTP 400 in UseCase_01_07.
+Eine separate Client-Variante simuliert gezielt eine 401-Antwort, um die erneute Authentifizierung zu prüfen; sie belegt keine serverseitige Fehlerklassifikation.
 Der ZETA Client befolgt die Anweisung zur erneuten Authentifizierung, führt den Token Exchange erneut aus und erhält anschließend gültige Access Tokens.
 
 | Vorbedingung: |
@@ -31,12 +32,21 @@ Es liegt kein gültiges Access Token vor.
 Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
+
+*Serverseitiger Antwortvertrag bei fehlerhafter Client-Authentifizierung*
+
+. Für die fehlgeschlagene Client-Authentifizierung löst der Testdriver im genannten Challenge-Profil nach erfolgreicher frischer SDK-Kontrolle einen weiteren Token Exchange aus. Tiger verändert ausschließlich die Attestierungs-Challenge der Client-Assertion und signiert sie mit dem registrierten Client-Schlüssel neu. Die falsche Challenge wird gegen den unabhängig berechneten Hash aus JWK-Thumbprint des registrierten Client-Schlüssels und tatsächlicher AS-Nonce gemäß `posture-software.yaml` geprüft; Subject-/DPoP-Nachweise, Schlüsselbindungen, Ziele und Zeiten müssen ansonsten gültig sein. Ohne belegte aktive Challenge-Validierung ist dieser Negativentwurf blockiert; eine ignorierte veraltete Eigenschaft beweist für sich allein keine fehlgeschlagene Client-Authentifizierung.
+. Die Testsuite korreliert den veränderten Request mit der ursprünglichen AS-Antwort und prüft HTTP 401/invalid_client, das Fehlerschema und das Ausbleiben neuer Tokens. Eine vom Proxy auf 401 gesetzte Antwort zählt hierfür nicht.
+. Das vorhandene Challenge-Szenario prüft Manipulationsmarker, Grant-Typ, Status, Fehlercode und Schema. Die vollständige unabhängige Fehlerisolierung, ein eigener positiver Kontrolllauf und Tokenfreiheit sind darin bislang nicht vollständig umgesetzt. Diese Abdeckungslücke wird nicht als bestandener Nachweis gewertet. Die Bereinigung von Titel und Hervorhebung ändert das bisherige Prüfziel dieses unveränderten Ausgangstests nicht und begründet keine zusätzliche Implementierung.
+
+*Separate Client-Wiederholung bei simulierter 401-Antwort*
+
 1. MA startet den *Authentisierung-/Autorisierungs-Prozess* im ZETA Client.
 2. Der ZETA Client fordert beim PDP Authorization Server eine Nonce an (``GET /nonce``).
 3. Der PDP Authorization Server antwortet mit ``200 OK`` und Nonce.
-4. Der ZETA Client erstellt Client Assertion und ungültigen (z.B. abgelaufenen)  DPoP Proof für den Token-Austausch (Software-Attestierung).
+4. Der ZETA Client erstellt Client Assertion und DPoP Proof für den Token-Austausch (Software-Attestierung).
 5. Der ZETA Client sendet den Token-Request an den PDP Authorization Server (``POST /token``).
-6. Der PDP Authorization Server antwortet mit ``401 Unauthorized``.
+6. Tiger setzt ausschließlich den Status der ersten Token-Antwort auf ``401 Unauthorized``. Diese Client-Variante prüft keinen serverseitigen Fehlervertrag.
 7. Der ZETA Client fordert erneut eine Nonce an (``GET /nonce``).
 8. Der PDP Authorization Server antwortet mit ``200 OK`` und Nonce.
 9. Der ZETA Client erstellt Client Assertion und DPoP Proof erneut.
@@ -45,14 +55,16 @@ Keine zusätzlichen Nebenbedingungen.
 12. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
 
 | Nachbedingung: |
-Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. dieser ist authentisiert und autorisiert.
+Bei fehlgeschlagener Client-Authentifizierung stellt der AS keine Tokens aus. In der separaten Wiederholungsvariante kann der Client nach erfolgreicher erneuter Authentifizierung zugreifen.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_25644-01_05>>
+* <<TA_A_25661-01_10>>
 * <<TA_A_25783-01_02>>
 * <<TA_A_27007_03>>
 * <<TA_A_26661_03>>
-* <<TA_A_27802-02_01>>
-* <<TA_A_27802-02_02>>
+* <<TA_A_27802-03_01>>
+* <<TA_A_27802-03_02>>
 
 |===
 
@@ -68,9 +80,9 @@ sequenceDiagram
     MA->>+ZC: Start Authentisierung/Autorisierung
     ZC->>+PDP-AS: GET /nonce
     PDP-AS-->>-ZC: 200 OK (nonce)
-    ZC->>ZC: Erstelle Client Assertion + ungültigen DPoP Proof
+    ZC->>ZC: Erstelle Client Assertion + DPoP Proof
     ZC->>+PDP-AS: POST /token
-    PDP-AS-->>-ZC: 401 Unauthorized
+    PDP-AS-->>-ZC: Token-Antwort (Tiger setzt Status auf 401)
 
     ZC->>+PDP-AS: GET /nonce (erneut)
     PDP-AS-->>-ZC: 200 OK (nonce)
@@ -87,6 +99,6 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_authentisierung_und_autorisierung_software_attest_SC_401.feature[]
+include::client_authentisierung_und_autorisierung_software_attest_sc_401.feature[]
 ----
 endif::[]

@@ -1,15 +1,16 @@
 [#UC_01_12]
-== UseCase_01_12: Client ressource anfrage fachdienst SC 200
+== UseCase_01_12: Client-Ressourcenanfrage an den Fachdienst (SC 200)
 
 .UseCase_01_12
 [cols="1,1a",options="autowidth"]
 |===
-| *Titel:* | Client ressource anfrage fachdienst SC 200
+| *Titel:* | Client-Ressourcenanfrage an den Fachdienst (SC 200)
 
 | Akteur: |
 *MA einer LEI*
 
 | weitere Akteure: |
+- *Fach-Client*
 - *ZETA Client*
 - *PEP HTTP Proxy*
 - *Resource Server*
@@ -21,47 +22,63 @@ Ein MA einer LEI möchte über den ZETA Client eine geschützte Ressource abrufe
 Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
 Dieser überprüft die Gültigkeit des Tokens und leitet die Anfrage bei erfolgreicher Prüfung an den Resource Server
 weiter.
+Auch ein unbekannter nicht kritischer JOSE-Header-Parameter im ansonsten gültigen DPoP Proof verhindert den Ressourcenzugriff nicht.
 
 Der Client erhält daraufhin die angeforderte Ressource.
 
 | Vorbedingung: |
 Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert eine
 ``client_id`` inkl. zugehörigem Schlüsselpaar.
-Der ZETA Client verfügt über eine bestehende Session mit zugehörigem Access- und Refresh-Token.
+Der ZETA Client verfügt über eine bestehende Session mit einem gültigen Access Token für den Resource Server und
+zugehörigem Refresh-Token.
+Der PDP Authorization Server hat beim erfolgreichen Token-Austausch ``product_id`` und ``product_version`` aus der Selbstauskunft sowie ``professionOID`` aus dem SMC-B-Zertifikat verarbeitet und protokolliert.
 
 | Nebenbedingung: |
-- Keine Bereitstellung von *PoPP-Token* für Ressourcenanfrage notwendig. <<A_26477>>
+- Keine Bereitstellung von *PoPP-Token* für Ressourcenanfrage notwendig. <<A_26477-01>>
 - Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492-02>>
-- Es wird *HTTP/3* verwendet. (<<TA_A_26640_03>>)
-- Es werden Websocket-Verbindungen für die Ressourcenanfragen seitens ZETA Client & PEP HTTP Proxy verwendet. <<A_26639>> <<A_26195>>
+- Der dargestellte Basisablauf erfolgt ohne Verwendung von *ZETA/ASL*. <<A_29381>> Die JOSE-Headervariante legt keinen ASL-Modus fest.
+- In der WebSocket-Variante werden WebSocket-Verbindungen für die Ressourcenanfragen seitens ZETA Client und PEP HTTP Proxy verwendet. <<A_26639>> <<A_26195>>
 
 | Ablauf: |
-1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
-2. Der ZETA Client erstellt einen *DPoP Nachweis*.
-3. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
+1. MA startet den Abruf einer geschützten Ressource über den Fach-Client.
+2. Der Fach-Client ruft den ZETA Client auf:
+- ``GET /resource``
+3. Der ZETA Client erstellt einen an die Ziel-URL des Resource Servers gebundenen *DPoP Nachweis*.
+4. Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
 - ``GET /resource``
 - ``Authorization: DPoP ... (Access Token)``
 - ``DPoP: ... (DPoP Token)``
-4. Der PEP HTTP Proxy prüft das *Access Token*.
-5. Der PEP HTTP Proxy prüft den *DPoP Nachweis*.
-6. Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
+5. Der PEP HTTP Proxy prüft das *Access Token*.
+6. Der PEP HTTP Proxy prüft den *DPoP Nachweis*. In der JOSE-Variante enthält der Proof einen zusätzlichen unbekannten Header-Parameter ohne `crit`. Signatur, Ziel, Methode, Zeitwerte, der Access-Token-Hash `ath` und die Bindung des Proof-Schlüssels an `access_token.cnf.jkt` bleiben gültig. Der PEP ignoriert den unbekannten Parameter und setzt den erfolgreichen Ablauf fort.
+7. Der PEP HTTP Proxy verarbeitet und protokolliert für den Ressourcenaufruf die Produktkennung ``product_id``, die Produktversion ``product_version`` und die Berufsgruppe ``professionOID``.
+8. Der PEP HTTP Proxy erzeugt zusätzliche HTTP-Header:
 
 * *zeta-user-info*:
 ** Format: ``Base64-URL kodierte JSON Struktur des User-Info Inhalts``
 ** Schema: link:https://raw.githubusercontent.com/gematik/zeta/refs/heads/main/src/schemas/zeta-user-info.yaml[zeta-user-info.yaml]
 
-7. Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter:
+9. Der PEP HTTP Proxy leitet die Anfrage mit den vorgesehenen ZETA-Kontextheadern an den Resource Server weiter:
 * ``GET /resource``-Anfrage
 ** mit vorhandenen HTTP header
 ** zusätzlich erstellte PEP HTTP Header als JSON
-8. Der Resource Server antwortet mit ``200 OK`` und der angeforderten Ressource.
-9. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
-10. Der ZETA Client liefert die Ressource an den MA.
+10. Der Resource Server antwortet dem PEP HTTP Proxy mit ``200 OK`` und der angeforderten Ressource.
+11. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
+12. Der ZETA Client gibt die Antwort ``200 OK`` und Ressource zurück an den Fach-Client.
+13. Der Fach-Client stellt die Ressource dem MA bereit.
 
 | Nachbedingung: |
-Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
+Der MA hat über den Fach-Client und den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
+Für jeden Ressourcenaufruf liegen die drei Clientdaten im PEP-Protokoll vor und sind mit den zugehörigen PDP-Protokolldaten verknüpfbar.
+Die protokollierten Werte stammen vom jeweils aufrufenden Client und dessen Session.
+Der Ressourcenzugriff ist auch mit dem unbekannten nicht kritischen DPoP-Header erfolgreich; PEP, Resource Server und ZETA Client antworten mit HTTP 200.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_27496_01>>
+* <<TA_A_27496_02>>
+* <<TA_A_27496_03>>
+* <<TA_A_27496_04>>
+* <<TA_A_27496_05>>
+* <<TA_A_27496_06>>
 * <<TA_A_25660_01>>
 * <<TA_A_25660_04>>
 * <<TA_A_25669-01_08>>
@@ -71,13 +88,18 @@ Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen
 * <<TA_A_25767_02>>
 * <<TA_A_26195_01>>
 * <<TA_A_26492-02_02>>
-* <<TA_A_26561_01>>
 * <<TA_A_26639_01>>
+* <<TA_A_26640_03>>
 * <<TA_A_26662_01>>
 * <<TA_A_27265_01>>
 * <<TA_A_27725-01_27>>
 * <<TA_A_28808_05>>
+* <<TA_A_29381_01>>
+* <<TA_A_27802-03_01>>
+* <<TA_A_27802-03_02>>
 * <<TA_A_28963_01>>
+* <<TA_A_29852_01>>
+* <<TA_A_29852_02>>
 
 
 |===
@@ -89,23 +111,29 @@ sequenceDiagram
     autonumber
 
     actor MA as MA einer LEI
+    participant FC as Fach-Client
     participant ZC as ZETA Client
     participant PEP-HP as PEP HTTP Proxy
     participant RS as Resource Server
 
-    MA->>+ZC: Abruf geschützter Ressource
-    ZC->>ZC: Erstellen von DPoP Nachweis
-    ZC->>+PEP-HP: HTTP/3 GET /resource
+    MA->>+FC: Abruf geschützter Ressource
+    FC->>+ZC: GET /resource
+    ZC->>ZC: Erstellen von DPoP Nachweis für die Ziel-URL des Resource Servers
+    ZC->>+PEP-HP: GET /resource<br/>Authorization: DPoP #lt;Access Token#gt;<br/>DPoP: #lt;DPoP Proof#gt;
 
 
     PEP-HP->>PEP-HP: Verifiziere Access Token
     PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
+    Note over ZC,PEP-HP: Unbekannte nicht kritische JOSE-Header werden ignoriert
+    PEP-HP->>PEP-HP: Clientdaten je Ressourcenaufruf protokollieren
     PEP-HP->>PEP-HP: Erzeugen zusätzlicher Header
-    PEP-HP->>+RS: Weiterleiten GET /Ressource
+    PEP-HP->>+RS: Weiterleiten GET /resource<br/>mit vorhandenen Headern und vorgesehenen ZETA-Kontextheadern
     RS-->>-PEP-HP: 200 OK, Ressource
     PEP-HP-->>-ZC: 200 OK, Ressource
-    ZC-->>-MA: Ressource
+    ZC-->>-FC: 200 OK, Ressource
+    FC-->>-MA: Ressource bereitstellen
 ....
+
 
 ifdef::render_features[]
 [.lead]
@@ -113,6 +141,6 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_fachdienst_SC_200.feature[]
+include::client_ressource_anfrage_fachdienst_sc_200.feature[]
 ----
 endif::[]

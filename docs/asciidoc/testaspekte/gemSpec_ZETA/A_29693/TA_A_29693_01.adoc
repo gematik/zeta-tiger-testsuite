@@ -1,0 +1,4 @@
+[#TA_A_29693_01]
+===== TA_A_29693_01 - Resource-Vertrag: Audience aus der Policy-Entscheidung
+
+Der ZETA Guard MUSS **bei einem Token Request mit resource den aud-Claim aus der Policy Engine Decision ableiten** und das Access Token mit ver: 2 ausstellen. Bei einem Token Request mit audience MUSS der ZETA Guard den aud-Claim verbatim übernehmen und das Access Token mit ver: 1 ausstellen.

@@ -9,4 +9,6 @@ Als Testsuite-Team möchte ich querschnittliche Infrastrukturmerkmale des ZETA-G
 
 include::UseCase_01/readme.adoc[]
 
+include::UseCase_02/readme.adoc[]
+
 :leveloffset: -2

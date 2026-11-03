@@ -1,8 +1,7 @@
 == Testumgebungen
 
-Die Testsuite wird in drei Ausprägungen betrieben.
-Für einen vollständigen Nachweis werden die Tests daher in drei unterschiedlichen Umgebungen ausgeführt.
-Diese Umgebungen unterscheiden sich durch den Einsatz des Tiger Proxy und durch die verfügbaren Rechte während des Testlaufs.
+Die Testsuite wird mit einem einheitlichen Deployment einschließlich Tiger Proxy betrieben.
+Die Zielumgebungen unterscheiden sich durch die verfügbaren Rechte während des Testlaufs.
 
 === Erforderliche Testausführungen
 
@@ -12,15 +11,18 @@ Die folgende Matrix zeigt die vorgesehenen Ausführungen der Testsuite:
 |===
 |  | Rechte zur Änderung des Deployments | Keine Rechte zur Änderung des Deployments
 
-| Tiger Proxy vorhanden | KIND | Staging-Cluster
-| Kein Tiger Proxy vorhanden | Performance-Cluster |  
+| Tiger Proxy vorhanden | KIND oder Performance-Namespace | Staging-Cluster
 |===
 
-Die drei Ausführungen decken unterschiedliche Prüfziele ab:
+Die Ausführungen decken unterschiedliche Prüfziele ab:
 
 * Die Staging-Umgebung ist die produktionsnahe Umgebung mit Tiger Proxy und ohne Rechte zur Änderung des Deployments.
 * Die KIND- oder vergleichbare Namespace-/Cluster-Umgebung erlaubt identisches Deployment sowie `kubectl`-Eingriffe und Deployment-Anpassungen während der Laufzeit.
-* Die Performance-Umgebung ohne Tiger Proxy dient der Ausführung der Performance-Tests.
+* Für ein mit `@performance_direct_routing` markiertes Performance-Szenario sichert die Testsuite die gemeinsam verwendeten Routen, umgeht den Tiger Proxy temporär und stellt den ursprünglichen Zustand anschließend wieder her.
+
+Performance-Szenarien benötigen `allow_performance_tests=true`, `allow_deployment_modification=true` und die erforderlichen Kubernetes-Rechte.
+Sie können in derselben Umgebung wie funktionale Tests nacheinander ausgeführt werden.
+Parallele Performance- und Funktionstestläufe im selben Namespace sind wegen der namespaceweiten Umschaltung nicht zulässig.
 
 Damit wird sichergestellt, dass funktionale Prüfungen, Laufzeitmanipulationen und Performance-Nachweise unter den jeweils passenden betrieblichen Rahmenbedingungen erfolgen.
 

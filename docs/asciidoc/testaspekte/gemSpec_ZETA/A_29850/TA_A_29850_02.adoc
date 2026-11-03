@@ -1,0 +1,9 @@
+[#TA_A_29850_02]
+===== TA_A_29850_02 - PEP HTTP Proxy - Kennzeichnung eines PEP-Fehlers mit HTTP 403
+
+"Tritt im PEP HTTP Proxy ein Fehler auf, der zu dem HTTP-Statuscode **403** führt, MUSS der HTTP Proxy der HTTP-Antwort an den ZETA-Client den folgenden HTTP-Header hinzufügen:
+
+* Header-Name: **``zeta-error-origin``**
+* Header-Wert: **``pep``**
+
+**[<=]**"

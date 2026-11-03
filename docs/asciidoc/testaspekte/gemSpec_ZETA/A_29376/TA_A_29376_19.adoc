@@ -1,0 +1,8 @@
+[#TA_A_29376_19]
+===== TA_A_29376_19 - ZETA, Ablauf Token Exchange mit Attestation - TPM-Quote-Nonce prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 08: Im Windows-/Linux-TPM-Profil muss die **Nonce der Quote mit der extrahierten Nonce des Vorgangs übereinstimmen**. Eine Abweichung verhindert Policy-Aufruf und Tokenausgabe.

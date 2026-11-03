@@ -1,0 +1,6 @@
+[#TA_A_29380_02]
+===== TA_A_29380_02 - ASL-Terminierung am Resource Server
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL** unterstützen. **[<=]**"
+
+Prüffokus: **ASL-Terminierung am Resource Server** im Ablauf der Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL.

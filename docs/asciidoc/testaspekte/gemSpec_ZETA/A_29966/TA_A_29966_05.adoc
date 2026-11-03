@@ -1,0 +1,4 @@
+[#TA_A_29966_05]
+===== TA_A_29966_05 - Notification Service – Aggregation aktiver Channels über mehrere Geräte
+
+"Die RS-seitige Schnittstelle GET /users/{userId}/channels bzw. die Vorprüfung beim Versand arbeitet auf Nutzerebene: Der Notification Service MUSS den Channel als für den Nutzer aktiv behandeln, **wenn der Channel für mindestens ein registriertes Gerät (pushkey) des Nutzers den Status enabled hat**. **[<=]**"

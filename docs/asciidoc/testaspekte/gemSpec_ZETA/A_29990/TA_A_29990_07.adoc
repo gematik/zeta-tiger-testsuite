@@ -1,0 +1,4 @@
+[#TA_A_29990_07]
+===== TA_A_29990_07 - Notification Service - Ausschließlich pseudonymisierte Protokollierung von Identifikatoren
+
+Der Notification Service MUSS sicherheitsrelevante Ereignisse sowie Betriebs-/Telemetriedaten protokollieren, dabei aber keine Klartext-Identifikatoren (KVNR, Telematik-ID) und keine entschlüsselten Nachrichteninhalte protokollieren; **Identifikatoren sind ausschließlich pseudonymisiert zu protokollieren.** Eine etwaige Übermittlung an einen Telemetrie-/Monitoring-Dienst MUSS ebenfalls frei von Klartext-PII erfolgen. **[<=]**

@@ -1,0 +1,6 @@
+[#TA_A_29897_01]
+===== TA_A_29897_01 - Authorization Server – Keine Faktoränderung allein aus IDP - Änderung eines Faktors
+
+"Der Authorization Server DARF NICHT eine **Änderung** oder Neubindung eines Faktors allein auf Basis einer IDP-Authentisierung zulassen.
+
+**[<=]**"

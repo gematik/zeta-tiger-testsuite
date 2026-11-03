@@ -1,0 +1,251 @@
+[#UC_04_09]
+== UseCase_04_09: Tokenausstellung und Ablehnung nach Authentisierungs- und Betriebsvariante
+
+.UseCase_04_09
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Tokenausstellung und Ablehnung nach Authentisierungs- und Betriebsvariante
+
+| Akteur: | ZETA Client
+
+| weitere Akteure: |
+PDP Authorization Server, PDP Policy Engine, Konnektor / TI-Gateway, SM(C)-B sowie die plattformspezifische Sicherheitskomponente (TPM oder Secure Enclave).
+Bei der OIDC-Variante ist zusätzlich der vertrauenswürdige Identity Provider beteiligt.
+
+| Auslöser: |
+Der ZETA Client benötigt für eine geschützte Ressource ein Access Token und sendet die zu seiner Authentisierungs- und Betriebsvariante passende Tokenanfrage.
+
+| Kurzbeschreibung: |
+Der Authorization Server verarbeitet Tokenanfragen, übernimmt das nachgewiesene Authentifizierungsniveau und setzt die Policy-Entscheidung um.
+Der Ablauf umfasst den SMC-B-Token-Exchange mit Software- oder Hardwareattestierung, die Tokenantwort nach OIDC-Authentisierung, eingeschränkte Scopes sowie getrennte technische und fachliche Ablehnungen.
+Die zusätzliche Tokenausstellung und der äußere Berechtigungsnachweis bei ASL-Passthrough sind in <<UC_01_32>> beschrieben.
+
+| Vorbedingung: |
+Der Client ist mit einer eigenen Client-ID und seinem Instanzschlüssel beim Authorization Server registriert.
+Er besitzt kein für den angeforderten Zugriff nutzbares Token; Zielressource und angeforderte Scopes sind bekannt.
+Die positiven Varianten besitzen gültige Signaturen, Nonces, Schlüsselbindungen und zeitlich gültige Nachweise.
+Für die Ablehnungsvarianten liegt jeweils die benannte Abweichung bei ansonsten gültigen Voraussetzungen vor.
+
+Die folgenden Ausgangszustände werden getrennt betrachtet:
+
+* S: Stationärer SMC-B-Token-Exchange mit Softwareattestierung wie in <<UC_01_06>>, Nutzer-Niveau `gematik-ehealth-loa-substantial` und vollständig gewährtem angefordertem Scope.
+* H: SMC-B-Token-Exchange mit erfolgreicher Hardwareattestierung unter Windows/Linux mit TPM oder unter macOS mit Secure Enclave. Nutzeridentität und Berechtigungen entsprechen der jeweiligen Softwarevariante; die Geräteattestierung allein erhöht das Nutzerniveau nicht.
+* O: Authorization Code Flow wie in <<UC_03_01>> mit einem vom vertrauenswürdigen Identity Provider nachgewiesenen Niveau `gematik-ehealth-loa-substantial` beziehungsweise `gematik-ehealth-loa-high`.
+* G: Variante S fordert zwei an der Ressource unterstützte Scopes S1 und S2 an; die Policy gewährt nur S1.
+* L: Registrierung ohne Nutzeridentität und JWT-Bearer-Grant gemäß Abschnitt 5.3.3 der CC-Spezifikation. Für diese Variante besteht die unten genannte Einschränkung des Antwortvertrags.
+
+| Nebenbedingung: |
+Die Nachrichten und die Policy-Entscheidung gehören zur selben Clientinstanz, Nutzeridentität und Tokenanfrage.
+Im Token-Exchange sind Client- und DPoP-Schlüssel bereits an das Subject Token gebunden; die Nonces stammen aus dem zugehörigen Authorization-Server-Kontext.
+Die Hardwarevariante setzt die jeweilige Sicherheitskomponente und deren gültige Evidence voraus; die Softwarevariante setzt einen zulässigen Software-Fallback voraus.
+Für den OIDC-Ablauf ist das nachgewiesene Niveau des signierten ID Tokens maßgeblich.
+
+Für die Tokenantwort gelten die referenzierten Schemas aus `src/test/resources/schemas/v_2_0`; ihre Herkunft und Revision sind in der zugehörigen `UPSTREAM.md` festgehalten.
+Bei widersprechenden Spezifikationsangaben sind die festgeschriebenen Schemadefinitionen maßgeblich.
+Die CC-Spezifikation nennt für Clients ohne Nutzeridentität `gematik-ehealth-loa-low`; das festgeschriebene Access-Token-Schema erlaubt ausschließlich `gematik-ehealth-loa-substantial` und `gematik-ehealth-loa-high`.
+Für Variante L ist damit kein widerspruchsfreier positiver Antwortvertrag festgelegt.
+
+| Ablauf: |
+. Der ZETA Client beginnt den zur Variante passenden Authentisierungsablauf. In O durchläuft er den Authorization Code Flow und legt den Authorization Code samt zugehörigem PKCE-Nachweis am Token-Endpunkt vor. Die Nutzer-Authentisierung erfolgt beim vertrauenswürdigen Identity Provider.
+. In S, H und G bezieht der Client eine frische Nonce vom Authorization Server und verwendet ein sitzungsbezogenes DPoP-Schlüsselpaar. Innerhalb derselben Sitzung bleibt dieses Schlüsselpaar erhalten.
+. Der Client erstellt sein Client Statement mit Produktkennung, Produktversion, Plattform und Posture. In S und G enthält es Software-Posture; in H gehören die Hardware-Nachweise zur gewählten Plattform und zum aktuellen Attestierungsvorgang.
+. Für den Token-Exchange erstellt der Client ein Subject Token mit Client-ID als `iss`, der Telematik-ID der SM(C)-B als `sub`, dem Authorization Server als `aud`, Nonce, `jti`, `iat`, `exp` sowie den Thumbprints `client_key.jkt` und `dpop_key.jkt`. Der erste bindet den registrierten Client-Schlüssel, der zweite den verwendeten DPoP-Schlüssel.
+. Der Client übergibt den zu signierenden Nachweis an den Konnektor beziehungsweise das TI-Gateway. Die SM(C)-B signiert ihn; der Client erhält die Signatur mit dem zugehörigen Zertifikatsbezug zurück und vervollständigt das Subject Token.
+. Der Client erstellt eine mit seinem registrierten Instanzschlüssel signierte Client Assertion mit `typ=JWT`, `alg=ES256`, öffentlichem P-256-JWK, `iss`, `sub`, `aud`, `exp`, `jti` und Client Statement. Sein DPoP-Proof ist mit dem sitzungsbezogenen DPoP-Schlüssel signiert und an die Server-Nonce und den Token-Endpunkt gebunden.
+. Der Client sendet `POST /token` an den veröffentlichten Token-Endpunkt mit dem Content-Type `application/x-www-form-urlencoded`, DPoP-Header, `client_assertion_type`, `client_assertion`, `subject_token`, `subject_token_type=urn:ietf:params:oauth:token-type:jwt`, `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`, `scope` und `resource` beziehungsweise der zulässigen Legacy-Alternative `audience`. Die Evidence entspricht dem Attestierungsprofil.
+. In L sendet der Client nach Discovery, Registrierung und Nonce-Bezug `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` mit einer eigenen signierten `assertion`, `client_id`, Scope, Zielparameter und frischem nonce-gebundenem DPoP-Proof. Die Assertion verwendet die Client-ID als `iss` und `sub` sowie den Token-Endpunkt als `aud`. Die offene Festlegung des positiven Antwortvertrags bleibt bestehen.
+. Der Authorization Server validiert die Client-Authentisierung und die technischen Nachweise vor der Policy-Anfrage. Eine ungültige Client-Assertion-Signatur, ein fehlender Pflichtclaim `iss`, `sub`, `aud`, `exp` oder `jti` sowie ein falscher Typ, Aussteller, Subjekt, Zielwert oder eine abgelaufene Assertion führen zu HTTP 401 mit `error=invalid_client`, ohne Policy-Aufruf oder Tokenausgabe.
+. Ein ungültiger DPoP-Proof führt zu HTTP 400 mit `error=invalid_dpop_proof`, ohne Policy-Aufruf oder Tokenausgabe. Eine erforderliche DPoP-Nonce-Challenge bleibt ein eigener Antwortfall.
+. Beim SMC-B-Token-Exchange prüft der Authorization Server Subject Token, SMC-B-Signatur, zeitliche Gültigkeit, Server-Nonce, Schlüsselbindungen und OCSP-Sperrstatus. Eine falsche `client_key.jkt`-Bindung bei korrekter DPoP-Bindung und eine falsche `dpop_key.jkt`-Bindung bei korrekter Client-Bindung werden getrennt behandelt; auch gültige Signaturen dürfen keine dieser Fehlbindungen übergehen. Bei ungültigem oder abgelaufenem Subject-Grant, ungültiger Subject-Signatur, unbekannter oder leerer Subject-Nonce beziehungsweise gesperrter SM(C)-B folgt HTTP 400 mit `error=invalid_grant`, ohne Policy-Aufruf oder Tokenausgabe.
+. Im TPM-Profil validiert der Authorization Server Quote-Signatur, Bindung an die Nonce und die PCR-Zustände anhand des Event Logs. Im Secure-Enclave-Profil validiert er Signaturen und Counter gegen Replay. Bei jeweils isoliert ungültiger Evidence bricht er ohne Policy-Aufruf und Tokenausgabe ab; ein Software-Fallback darf den Fehler nicht umgehen.
+. Ein fehlender oder leerer Pflichtparameter, insbesondere `subject_token_type`, führt zu HTTP 400 mit `error=invalid_request`. Ein syntaktisch unzulässiger Scope, insbesondere mit Anführungszeichen oder Rückwärts-Schrägstrich, führt zu HTTP 400 mit `error=invalid_scope`. Ein unzulässiges Ressourcenziel, insbesondere ein `resource`-Wert mit Fragment, führt zu HTTP 400 mit `error=invalid_target`. Diese Antworten enthalten keine Tokens. Für den fehlerhaften Pflichtparameter erfolgt kein Policy-Aufruf; aus dem Scope- oder Ziel-Fehlervertrag wird keine interne Reihenfolge der Policy-Auswertung abgeleitet.
+. Erkennt der Authorization Server bei gültigen technischen Credentials einen durch erneute stärkere Authentisierung behebbaren Step-up-Bedarf, antwortet er am Token-Endpunkt mit HTTP 401 und `error=insufficient_user_authentication`, ohne Tokens auszugeben. Der entsprechende erfolgreiche Authentisierungsablauf erreicht das erforderliche höhere Niveau.
+. Nach erfolgreicher technischer Validierung erstellt der Authorization Server den Policy-Input und sendet `POST /v1/data/authz` an die Policy Engine. Clientregistrierung, Produktversion, Plattform, Nutzeridentität, angeforderte Scope-Menge, Grant und Zielparameter entsprechen dem aktuellen Vorgang. Vorhandene Registrierungs- und Attestierungszeitpunkte bleiben den jeweiligen Produktdaten zugeordnet. Der Input entspricht `policy-engine-input.yaml`; `user_info` enthält `commonName`, `professionOID` und gegebenenfalls `organizationName` der authentisierten Identität. Unterschiedliche gültige Produktversionen und angeforderte Scope-Mengen werden entsprechend übernommen.
+. Die Policy Engine liefert die zum Request gehörende Entscheidung vor der Tokenantwort. Bei `allow=false` antwortet der Authorization Server mit HTTP 403, `error=access_denied` und der unverändert übernommenen `reasons`-Map gemäß Fehlerschema. Dies gilt sowohl für einen einzelnen als auch für mehrere Ablehnungsgründe; es werden keine Tokens ausgegeben.
+. Bei positiver Policy-Entscheidung stellt der Authorization Server Access- und Refresh-Token aus und antwortet mit HTTP 200. Beide Tokens sind signiert, demselben Grant und Client zugeordnet und an dessen DPoP-Schlüssel gebunden. Die Access-Token-Claims entsprechen der Entscheidung; die Nutzerfelder werden auf `common_name`, `profession_oid` und gegebenenfalls `organization_name` abgebildet.
+. Im `resource`-Vertrag übernimmt `aud` des Access Tokens die Audience der Policy-Entscheidung und `ver` den Integer-Wert 2. Die Audience kann ein String oder eine Liste sein. Im zulässigen Legacy-Vertrag übernimmt `aud` den angefragten `audience`-Wert unverändert, ohne zusätzliche Audiences, und `ver` den Integer-Wert 1. Die zulässige Darstellung einer einzelnen Audience als String oder einelementiges String-Array ändert deren Wert nicht.
+. Der Authorization Server übernimmt das tatsächlich nachgewiesene Nutzerniveau als `acr` in das Access Token. Ein Wechsel von Software- zu Hardwareattestierung allein verändert dieses Niveau nicht. Für O entsprechen die substantial- beziehungsweise high-Werte dem signierten ID Token; es gelten die Werte des festgeschriebenen Access-Token-Schemas.
+. Die Erfolgsantwort entspricht `successResponse` aus `token-response.yaml`: `access_token` ist ein String mit dem signierten JWT, `token_type` ist `DPoP` und `expires_in` ist eine ganzzahlige Lebensdauer in Sekunden. Das ausgegebene `refresh_token` ist ebenfalls ein String; ein vorhandenes `refresh_expires_in` ist ganzzahlig und beschreibt dessen Lebensdauer. Die Lebensdauern stimmen unter Berücksichtigung der Uhrabweichung und Sekundenauflösung mit den signierten Ablaufzeiten überein. Ein vorhandenes `issued_token_type` hat einen der im Schema zugelassenen String-Werte.
+. Nach erfolgreicher Hardwareattestierung enthält die Antwort zusätzlich ein signiertes, dem Attestierungsvorgang zugeordnetes `zeta_attestation_token` gemäß dem gleichnamigen Schema. Im zulässigen Software-Fallback fehlt dieses Feld.
+. In G enthält die Antwort den tatsächlich gewährten Scope S1 als leerzeichengetrennten String. Er entspricht derselben Policy-Entscheidung und dem Scope des Access Tokens; S2 wird nicht als gewährt ausgegeben.
+. Der Client kann das erhaltene Access Token für den autorisierten Ressourcenaufruf verwenden. Weitere Anfragen innerhalb derselben noch gültigen Sitzung verwenden das vorhandene Access Token und denselben DPoP-Schlüssel. Nach Ablauf beider Tokens beginnt die Clientinstanz einen neuen Token-Exchange für eine neue Sitzung mit einem neuen DPoP-Schlüsselpaar; Client-ID und registrierter Instanzschlüssel bleiben erhalten.
+
+| Nachbedingung: |
+Bei positiver Policy-Entscheidung besitzt der Client gültige, an seine Identität, Sitzung und seinen DPoP-Schlüssel gebundene Tokens für die gewährten Scopes.
+Audience, Vertragsversion, Authentifizierungsniveau, Lebensdauern und bedingte Antwortfelder entsprechen der ausgeführten Variante.
+Bei technischer Ablehnung, Step-up-Bedarf oder negativer Policy-Entscheidung erhält der Client die zugehörige Fehlerantwort nach `zeta-error.yaml` und keine Tokens; bei Policy-Ablehnung enthält sie die zugehörigen Gründe.
+Die vor der Policy-Auswertung abgebrochenen Validierungsfälle lösen keinen Policy-Aufruf aus.
+Für Variante L bleibt die widersprüchliche Festlegung des positiven Antwortvertrags offen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25661-01_08>>
+* <<TA_A_25661-01_18>>
+* <<TA_A_25661-01_09>>
+* <<TA_A_25661-01_10>>
+* <<TA_A_25661-01_12>>
+* <<TA_A_25661-01_13>>
+* <<TA_A_25661-01_14>>
+* <<TA_A_25661-01_17>>
+* <<TA_A_29376_01>>
+* <<TA_A_29376_02>>
+* <<TA_A_29376_03>>
+* <<TA_A_29376_04>>
+* <<TA_A_29376_05>>
+* <<TA_A_29376_06>>
+* <<TA_A_29376_07>>
+* <<TA_A_29376_08>>
+* <<TA_A_29376_09>>
+* <<TA_A_29376_10>>
+* <<TA_A_29376_11>>
+* <<TA_A_29951_01>>
+* <<TA_A_29993_01>>
+* <<TA_A_29993_02>>
+* <<TA_A_29376_12>>
+* <<TA_A_29376_13>>
+* <<TA_A_29376_15>>
+* <<TA_A_29376_16>>
+* <<TA_A_29376_17>>
+* <<TA_A_29376_19>>
+* <<TA_A_29376_20>>
+* <<TA_A_29376_21>>
+* <<TA_A_29376_22>>
+* <<TA_A_29376_23>>
+* <<TA_A_29376_24>>
+* <<TA_A_29376_25>>
+* <<TA_A_29376_26>>
+* <<TA_A_29693_01>>
+* <<TA_A_29693_02>>
+* <<TA_A_29693_03>>
+* <<TA_A_29693_04>>
+* <<TA_A_29376_18>>
+
+|===
+
+[mermaid,uc-04-09-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as ZETA Client
+    participant K as Konnektor / TI-Gateway
+    participant S as SM(C)-B
+    participant H as TPM / Secure Enclave
+    participant A as Authorization Server
+    participant P as Policy Engine
+    participant I as Identity Provider
+    alt SMC-B-Token-Exchange (S / H / G)
+        C->>A: GET /nonce
+        A-->>C: Frische Server-Nonce
+        C->>C: Sitzungsbezogenen DPoP-Schlüssel verwenden
+        opt Hardwareattestierung (H)
+            C->>H: Attestierungsnachweis für den Vorgang anfordern
+            H-->>C: Hardware-Evidence
+        end
+        C->>K: Subject Token signieren lassen
+        K->>S: Signatur anfordern
+        S-->>K: Signatur
+        K-->>C: SMC-B-Signatur
+        C->>C: Client Assertion und nonce-gebundenen DPoP-Proof erstellen
+        C->>A: POST /token mit Credentials, Scope und resource oder audience
+    else OIDC-Authentisierung (O)
+        C->>A: Authorization Code Flow starten
+        A->>I: Nutzer-Authentisierung anfordern
+        I-->>A: Signiertes ID Token mit nachgewiesenem acr
+        A-->>C: Authorization Code
+        C->>A: POST /token mit Authorization Code und PKCE-Nachweis
+    else Client ohne Nutzeridentität (L)
+        C->>A: JWT-Bearer-Grant mit Instanzschlüssel und DPoP
+        Note over C,A: Positiver Antwortvertrag wegen Low-acr / Schema-Widerspruch offen
+    end
+    A->>A: Technische Nachweise und bedingte Hardware-Evidence validieren
+    alt Client-Authentisierung fehlgeschlagen
+        A-->>C: 401 invalid_client ohne Tokens
+    else DPoP-Proof ungültig
+        A-->>C: 400 invalid_dpop_proof ohne Tokens
+    else Subject, Nonce, Grant, Schlüsselbindung oder Attestierung ungültig
+        A-->>C: Technische Ablehnung ohne Policy-Aufruf oder Tokens
+        Note over C,A: Bei ungültigem Subject / Grant: 400 invalid_grant
+    else Pflichtparameter fehlerhaft
+        A-->>C: 400 invalid_request ohne Policy-Aufruf oder Tokens
+    else Scope oder Ressourcenziel unzulässig
+        A-->>C: 400 invalid_scope / invalid_target ohne Tokens
+    else Stärkere Nutzer-Authentisierung erforderlich
+        A-->>C: 401 insufficient_user_authentication ohne Tokens
+    else Technische Validierung erfolgreich und Antwortvertrag geklärt
+        A->>P: POST /v1/data/authz mit validierten Daten
+        P-->>A: Zugehörige Policy-Entscheidung
+        alt Policy verweigert
+            A-->>C: 403 access_denied mit unveränderten reasons, ohne Tokens
+        else Policy erlaubt
+            A->>A: aud und ver nach resource- oder audience-Vertrag setzen
+            A->>A: Nachgewiesenes acr und gewährte Scopes übernehmen
+            alt Hardwareattestierung erfolgreich
+                A-->>C: 200 Access Token, Refresh Token und zeta_attestation_token
+            else Zulässiger Software-Fallback
+                A-->>C: 200 Access Token und Refresh Token ohne Attestierungstoken
+            else OIDC-Variante
+                A-->>C: 200 Tokens gemäß Authentisierungsablauf
+            end
+            opt Nur ein Teil der Scopes gewährt (G)
+                Note over C,A: Antwort-scope und Access Token enthalten nur gewährte Scopes
+            end
+            opt Weitere Anfragen derselben gültigen Sitzung
+                C->>C: Vorhandenes Access Token und denselben DPoP-Schlüssel verwenden
+            end
+            opt Neue Sitzung nach Ablauf beider Tokens
+                C->>A: Neuer Token-Exchange mit neuem DPoP-Schlüssel
+                Note over C,A: Client-ID und registrierter Instanzschlüssel bleiben erhalten
+            end
+        end
+    end
+    Note over A,P: Technische Validierungsfehler vor Policy-Auswertung beenden den Ablauf
+....
+
+[.lead]
+Feature-Dateien zu diesem Use Case:
+
+[source,gherkin]
+----
+include::token_exchange_ungueltige_client_assertion.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_isolierte_nachweise.feature[]
+----
+
+[source,gherkin]
+----
+include::sdk_sitzungsschluessel.feature[]
+----
+
+[source,gherkin]
+----
+include::sdk_token_exchange_request.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_subject_nonce.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_policy_deny.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_policy_input.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_grant.feature[]
+
+include::token_exchange_resource_audience.feature[]
+----
+
+[source,gherkin]
+----
+include::token_exchange_resource_fragment_controlled.feature[]
+----

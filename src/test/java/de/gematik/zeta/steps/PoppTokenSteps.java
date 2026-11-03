@@ -28,19 +28,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.test.tiger.lib.TigerHttpClient;
+import de.gematik.zeta.services.DirectHttpClients;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
-import io.restassured.http.ContentType;
-import io.restassured.http.Method;
-import io.restassured.response.Response;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -57,6 +62,22 @@ public class PoppTokenSteps {
   private static final String POPP_PATIENT_ID_CONFIG_KEY = "testdata.popp.patientId";
   private static final String POPP_INSURER_ID_CONFIG_KEY = "testdata.popp.insurerId";
   private static final String POPP_ACTOR_PROFESSION_OID_CONFIG_KEY = "testdata.popp.actorProfessionOid";
+
+  private final SSLContext backendSslContext;
+
+  /** Creates Cucumber steps with the default backend TLS context resolved at request time. */
+  public PoppTokenSteps() {
+    this(null);
+  }
+
+  /**
+   * Creates steps with an isolated backend TLS context for transport tests.
+   *
+   * @param backendSslContext explicit context, or null to resolve the default at request time
+   */
+  PoppTokenSteps(SSLContext backendSslContext) {
+    this.backendSslContext = backendSslContext;
+  }
 
   /**
    * Generates a fresh PoPP token for the given actor data and stores it in a Tiger variable.
@@ -94,28 +115,31 @@ public class PoppTokenSteps {
         : requireNonBlank(professionId, "SMC-B profession OID"));
 
     var requestBody = writeJson(Map.of("tokenParamsList", List.of(tokenParams)));
-    var response = TigerHttpClient.givenDefaultSpec()
-        .accept("*/*")
-        .contentType(ContentType.JSON)
-        .body(requestBody)
-        .request(Method.POST, uri(tokenGeneratorUrl));
+    var headers = new HttpHeaders();
+    headers.setAccept(List.of(MediaType.ALL));
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    var requestFactory = backendSslContext == null
+        ? DirectHttpClients.testBackendRequestFactory(Duration.ofSeconds(10))
+        : DirectHttpClients.testBackendRequestFactory(Duration.ofSeconds(10), backendSslContext);
+    var response = new RestTemplate(requestFactory).exchange(uri(tokenGeneratorUrl), HttpMethod.POST,
+        new HttpEntity<>(requestBody, headers), byte[].class);
 
     assertSuccessful(response, "PoPP token generator");
     var root = readJson(response, "PoPP token generator");
-    var token = root.path("tokenResults").path(0).asText(null);
+    var token = root.path("tokenResults").path(0).asString(null);
     return requireNonBlank(token, "PoPP token generator response tokenResults[0]");
   }
 
   /**
-   * Parses a RestAssured response body as JSON.
+   * Parses an HTTP response body as JSON.
    *
    * @param response HTTP response
    * @param label label for assertion messages
    * @return parsed response JSON
    */
-  private JsonNode readJson(Response response, String label) {
+  private JsonNode readJson(ResponseEntity<byte[]> response, String label) {
     try {
-      return JSON.readTree(new String(response.body().asByteArray(), StandardCharsets.UTF_8));
+      return JSON.readTree(new String(response.getBody(), StandardCharsets.UTF_8));
     } catch (JacksonException e) {
       throw new AssertionError(label + " did not return valid JSON: " + e.getMessage(), e);
     }
@@ -127,8 +151,8 @@ public class PoppTokenSteps {
    * @param response HTTP response
    * @param label label for assertion messages
    */
-  private void assertSuccessful(Response response, String label) {
-    assertThat(response.statusCode())
+  private void assertSuccessful(ResponseEntity<byte[]> response, String label) {
+    assertThat(response.getStatusCode().value())
         .as(label + " HTTP status")
         .isBetween(200, 299);
   }

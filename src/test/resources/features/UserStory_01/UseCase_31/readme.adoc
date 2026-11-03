@@ -1,0 +1,117 @@
+[#UC_01_31]
+== UseCase_01_31: Ressourcenzugriff mit ASL an PEP und Resource Server prüfen
+
+.UseCase_01_31
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Ressourcenzugriff mit ASL an PEP und Resource Server prüfen
+
+| Akteur: | Fach-Client und ZETA Client
+
+| weitere Akteure: | Nutzer, PEP, Resource Server, Authorization Server
+
+| Auslöser: | Der Fach-Client fordert eine geschützte Ressource über eine ASL-Verbindung an.
+
+| Kurzbeschreibung: |
+Der Fach-Client ruft eine geschützte Ressource über den ZETA Client ab.
+Das OAuth Protected Resource Well-known Dokument bestimmt, ob ASL am PEP oder am Resource Server terminiert.
+Innere Ressourcen-Nachweise und gegebenenfalls äußere ASL-Nachweise gehören zu ihren jeweiligen Zielen.
+Die fachliche Antwort erreicht den Nutzer unverändert.
+
+| Vorbedingung: |
+. Der Client besitzt einen gültigen Ressourcen-Access-Token und dessen DPoP-Schlüssel.
+. Das OAuth Protected Resource Well-known Dokument beschreibt die angeforderte Ressource und verlangt ASL mit `required` oder `required_passthrough`.
+. Bei Terminierung am RS besitzt der Client zusätzlich den ASL-Access-Token und den zugehörigen DPoP-Schlüssel.
+. Der ausgewählte Terminierungspunkt unterstützt den ASL-Verbindungsaufbau und die Ressource.
+. Für die isolierten Ablehnungsvarianten ist jeweils nur der geprüfte Nachweis ungültig; alle übrigen Nachweise und der ASL-Transport bleiben gültig.
+
+| Nebenbedingung: |
+Im PEP-Profil schützt TLS die Weiterleitung zum RS.
+Im RS-Profil bleibt der innere Request bis zum RS ASL-verschlüsselt.
+
+| Ablauf: |
+*Gemeinsamer Aufruf*
+
+. Der Nutzer löst den Fachaufruf aus; der Testdriver lässt das SDK den inneren Request mit Ressourcen-Token und zum inneren HTTP-Ziel/-Verfahren passendem DPoP-Proof bilden.
+
+*ASL terminiert am PEP*
+
+. Das SDK führt den Handshake mit dem PEP aus und sendet den inneren Request verschlüsselt an den ASL-Endpunkt. Der PEP terminiert den Tunnel und entschlüsselt den Body. Handshake und verschlüsselter Ressourcenrequest gehören zu derselben ASL-Verbindung.
+. Der PEP prüft den inneren Berechtigungsnachweis und leitet die Fachanfrage über TLS weiter. Der RS verarbeitet sie; der PEP verschlüsselt die Antwort. Die weitergeleitete Fachanfrage enthält die ursprüngliche Methode, Ressource und Nutzdaten.
+
+*ASL terminiert am RS*
+
+. In einem frischen Vorgang bildet das SDK zusätzlich den äußeren Proof zum ASL-Endpunkt und führt den logischen Handshake mit dem RS aus. Der äußere POST trägt ASL-Token/Proof, sein verschlüsselter Inhalt den eigenständigen inneren Ressourcen-Token/Proof. Der PEP prüft ausschließlich die äußere Berechtigung und leitet das verschlüsselte Paket weiter.
+. Erst der RS entschlüsselt und prüft den inneren Request; er verarbeitet ihn und liefert die verschlüsselte Antwort über den PEP zurück.
+. In beiden Profilen entschlüsselt das SDK die Antwort und gibt die unveränderte fachliche Antwort mit 200 OK über den Fach-Client an den Nutzer zurück.
+
+*Isolierte Ablehnungen an den drei Prüfgrenzen*
+
+. Bei ASL-Terminierung am PEP verwendet ein eigener SDK-Aufruf einen abgelaufenen inneren Ressourcen-Access-Token mit gültigem zugehörigem Proof. Ein zweiter verwendet einen gültigen Token mit ungültiger innerer DPoP-Signatur. Der PEP entschlüsselt erfolgreich, lehnt den jeweiligen Nachweis ab und leitet den inneren Ressourcenrequest nicht an den RS weiter. Es findet keine Ressourcenverarbeitung statt.
+. Bei ASL-Terminierung am RS bleiben beide inneren Nachweise gültig. Je ein eigener Lauf verwendet nur einen abgelaufenen äußeren ASL-Access-Token mit gültigem zugehörigem Proof beziehungsweise nur eine ungültige äußere DPoP-Signatur. Der PEP lehnt vor Weiterleitung des betreffenden äußeren Ressourcenrequests ab; der RS führt keine Ressourcenoperation aus. Vorangehende Handshake-Nachrichten werden separat korreliert.
+. Ebenfalls bei ASL-Terminierung am RS bleiben beide äußeren Nachweise gültig. Getrennte SDK-Aufrufe verwenden einen abgelaufenen inneren Ressourcen-Access-Token mit gültigem zugehörigem Proof beziehungsweise einen gültigen inneren Token mit ungültiger innerer DPoP-Signatur. Der PEP autorisiert und leitet den äußeren Request weiter; erst der RS lehnt nach erfolgreicher Entschlüsselung den inneren Nachweis ab. Seine Ressourcenoperation wird nicht ausgeführt. Eine vorgelagerte PEP- oder ASL-Transportablehnung erfüllt diese Prüfung nicht.
+. Für jede der drei Prüfgrenzen gelingt eine getrennte frische Kontrolle mit beiden gültigen Nachweisen. Die Ablehnung verhindert die Weiterleitung beziehungsweise Ressourcenverarbeitung des betroffenen Requests.
+
+| Nachbedingung: |
+Beide Terminierungsvarianten sind getrennt belegt; innere und äußere Nachweise gehören jeweils zum richtigen Ziel. In den positiven Kontrollen ist die fachliche Antwort vollständig beim Fach-Client angekommen. Alle sechs Negativvarianten werden an der vorgesehenen Prüfgrenze abgelehnt, ohne Ressourcenverarbeitung; insbesondere kann eine erfolgreiche äußere PEP-Autorisierung die innere RS-Prüfung nicht ersetzen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29380_01>>
+* <<TA_A_29380_02>>
+
+|===
+
+[mermaid,uc-01-31,svg]
+....
+sequenceDiagram
+    participant U as User
+    participant F as Fach-Client
+    participant C as ZETA Client
+    participant P as PEP
+    participant R as Resource Server
+    U->>F: 01 Ressourcenzugriff anfordern
+    F->>C: 02 GET /resource
+    C->>C: 03 Ressourcen-DPoP-Proof erstellen
+    alt ASL-Terminierung am PEP
+        C->>P: 04 ASL-Verbindungsaufbau
+        P-->>C: 05 Rückmeldung
+        C->>P: 06 POST /ASL, verschlüsselter GET mit RS-Token und RS-Proof
+        P->>P: 07 ASL terminieren
+        P->>P: 08 RS-Token und RS-Proof prüfen
+        P->>R: 09 GET /resource über TLS weiterleiten
+        R->>R: 10 Ressource bereitstellen
+        R-->>P: 11 HTTP 200 und Fachantwort
+        P->>P: 12 ASL-Antwort verschlüsseln
+    else ASL-Terminierung am RS
+        C->>C: 13 Äußeren ASL-DPoP-Proof erstellen
+        C->>P: 14 ASL-Verbindungsaufbau zum RS
+        P-->>C: 15 Rückmeldung
+        C->>P: 16 POST /ASL mit ASL-Token und ASL-Proof, verschlüsselter GET mit RS-Nachweisen
+        P->>P: 17 ASL-Token und ASL-Proof prüfen
+        P->>R: 18 POST /ASL verschlüsselt weiterleiten
+        R->>R: 19 ASL terminieren
+        R->>R: 20 RS-Token und RS-Proof prüfen
+        R->>R: 21 Ressource bereitstellen und Antwort ASL-verschlüsseln
+        R-->>P: 22 HTTP 200 und ASL-Antwort
+    end
+    P-->>C: 23 HTTP 200 und ASL-Antwort
+    C->>C: 24 Antwort entschlüsseln
+    C-->>F: 25 HTTP 200 und Ressource
+    F-->>U: 26 Ressource bereitstellen
+    Note over P,R: Ungültiger Nachweis verhindert Weiterleitung oder Ressourcenverarbeitung an der zuständigen Prüfgrenze
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Dateien zu diesem Use Case:
+
+[source]
+----
+include::asl_pep_ablauf.feature[]
+----
+
+[source]
+----
+include::asl_rs_ablauf.feature[]
+----
+endif::[]

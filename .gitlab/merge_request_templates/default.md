@@ -1,46 +1,70 @@
-## Summary
-<!-- What problem is solved and why now? -->
+## Zusammenfassung
 
-## Scope
+<!-- Welches Problem wird gelöst und warum jetzt? -->
+
+## Umfang
+
 - UserStory/UseCase: `...`
-- TA / Requirement / Spec reference: `...` (e.g. `TA_A_xxxxx_xx`, RFC, gemSpec section)
+- TA / Anforderung / Spezifikationsverweis: `...` (z. B. `TA_A_xxxxx_xx`, RFC, gemSpec-Abschnitt)
 
+## Gherkin / Testentwurf (falls zutreffend)
 
-## Gherkin / Test Design (if applicable)
-- Feature files: `src/test/resources/features/...`
-- Language/format check: German Gherkin, 2-space indentation, snake_case filenames
-- Reused existing TGR steps: `yes/no`
-- New step definitions added: `yes/no`
-- If yes, why existing steps were insufficient: `...`
+- Feature-Dateien: `src/test/resources/features/...`
+- Sprach-/Formatprüfung: deutsches Gherkin, Einrückung mit 2 Leerzeichen, Dateinamen in snake_case
+- Vorhandene TGR-Schritte wiederverwendet: `ja/nein`
+- Neue Schrittdefinitionen ergänzt: `ja/nein`
+- Falls ja, warum vorhandene Schritte nicht ausreichten: `...`
 
-## Config Impact
-- `tiger.yaml` / overlay changes (`tiger-proxy.yaml`, etc.): `none/...`
-- Test data changes (`tiger/*.yaml`): `none/...`
-- Secrets affected: `no` (confirm no credentials committed)
+## Auswirkungen auf die Konfiguration
 
-## Validation
-Executed:
-- `PROFILE=proxy mvn -Dcucumber.filter.tags='@staging' clean verify`
-- `mvn test` (if run)
-- `mvn -Pgenerate-documentation generate-resources` (if docs/steps changed)
-- `uv run --project docs/scripts generate-cucumber-methods` (if step definitions changed)
+- Änderungen an `tiger.yaml` / Overlays (`tiger-proxy.yaml` usw.): `keine/...`
+- Änderungen an Testdaten (`tiger/*.yaml`): `keine/...`
+- Secrets betroffen: `nein` (bestätigen, dass keine Zugangsdaten committet wurden)
 
-Result:
-- `pass/fail`
-- Relevant logs/screenshots/artifacts: `...`
+## Verifikation
 
-## Documentation Updates
-- UseCase README `include::...feature[]` updated: `yes/no/n.a.`
-- Other docs updated (`docs/...`): `...`
+<!-- <existing-tag-expression> durch Tags aus den betroffenen Feature-Dateien ersetzen.
+Nur tatsächlich ausgeführte Befehle stehen lassen. -->
 
-## Risks & Open Points
-- Functional risk: `low/medium/high` + why
-- Compatibility impact: `...`
-- Follow-ups (if any): `...`
+Ausgeführt:
 
-## Checklist
-- [ ] Changes are limited to intended scope
-- [ ] Existing TGR steps preferred over custom code
-- [ ] Feature paths and naming follow project conventions
-- [ ] No credentials/secrets added
-- [ ] Tests/docs updated where required
+- `mvn verify -Pproxy "-Dcucumber.filter.tags=<existing-tag-expression>"`
+- `mvn test -Dskip.unit.tests=false` (falls ausgeführt)
+- `mvn -Pgenerate-documentation generate-resources` (bei geänderter Dokumentation oder geänderten Schritten)
+- `uv run --project docs/scripts generate-cucumber-methods` (bei geänderten Schrittdefinitionen)
+
+Ergebnis:
+
+- `bestanden/fehlgeschlagen`
+- Anzahl ausgeführter Szenarien/Beispiele (bestanden/fehlgeschlagen/übersprungen): `...` (null ausgeführte Szenarien sind kein bestandener Nachweis)
+- Relevante Logs/Screenshots/Artefakte: `...`
+
+## Bekannte Produkt- oder Konformitätsfehler
+
+<!-- Alle bekannten Produkt- oder Konformitätsfehler auflisten, die Szenarien fehlschlagen lassen, einschließlich der zugehörigen Tickets.
+Pro Fehler eine Zeile ergänzen und alle betroffenen Szenarien nennen.
+-->
+
+| Betroffene Szenarien / Feature-Dateien | TA / Anforderung | Beobachteter Produkt- oder Konformitätsfehler | Ticket-Link |
+| --- | --- | --- | --- |
+| Nicht zutreffend | Nicht zutreffend | Nicht zutreffend | Nicht zutreffend |
+
+## Aktualisierte Dokumentation
+
+- UseCase-README mit `include::...feature[]` aktualisiert: `ja/nein/nicht zutreffend`
+- Weitere Dokumentation aktualisiert (`docs/...`): `...`
+
+## Risiken und offene Punkte
+
+- Funktionales Risiko: `gering/mittel/hoch` mit Begründung
+- Auswirkungen auf die Kompatibilität: `...`
+- Folgeaufgaben (falls vorhanden): `...`
+
+## Checkliste
+
+- [ ] Änderungen sind auf den beabsichtigten Umfang begrenzt
+- [ ] Vorhandene TGR-Schritte wurden eigenem Code vorgezogen
+- [ ] Feature-Pfade und Benennung entsprechen den Projektkonventionen
+- [ ] Keine Zugangsdaten/Secrets hinzugefügt
+- [ ] Tests und Dokumentation bei Bedarf aktualisiert
+- [ ] Alle oben genannten betroffenen Szenarien sind in `runtime_failure_annotations.internal.csv` ihren zugehörigen Tickets zugeordnet (falls zutreffend)

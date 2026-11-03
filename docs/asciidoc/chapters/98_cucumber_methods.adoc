@@ -16,7 +16,22 @@ Die dokumentierten *Cucumber*-Steps werden durch Runner und Glue bereitgestellt 
 
 Die projektspezifischen Glue-Schritte (Deutsch/Englisch) werden aus den Cucumber-Annotationen unter `src/test/java` ausgelesen.
 
+ifdef::backend-html5[]
+++++
+<style>
+table.cucumber-methods { table-layout: fixed; }
+table.cucumber-methods td { overflow-wrap: anywhere; }
+</style>
+++++
+endif::[]
+
 include::../tables/generated/cucumber_methods_table.adoc[]
+
+=== TLS-Schritte: Kurvenprofile für TLS 1.3
+
+Für die Prüfung der TLS-1.3-Kurven in `tls_client.feature` wird das `supported_groups`-Profil aus `TlsSupportedGroup.Tls13Policy` abgeleitet.
+Das reguläre Profil enthält `secp256r1`, `secp384r1`, `brainpoolP256r1`, `brainpoolP384r1` und `brainpoolP512r1`.
+Die separaten NamedGroup-Einträge `brainpoolP256r1tls13`, `brainpoolP384r1tls13` und `brainpoolP512r1tls13` sind in diesem Profil verboten und werden nur in negativen Kurvenprüfungen verwendet.
 
 *Schlussbemerkung*
 

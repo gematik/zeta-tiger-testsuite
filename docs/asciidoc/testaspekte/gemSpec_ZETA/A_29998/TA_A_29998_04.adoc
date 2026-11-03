@@ -1,0 +1,6 @@
+[#TA_A_29998_04]
+===== TA_A_29998_04 - PDP Authorization Server - Wirkung des Widerrufs - Rotierte Refresh Token einschließen
+
+"Bei erfolgreicher Client-Authentifizierung MUSS der Authorization Server das im Parameter token übergebene Refresh Token sowie alle der zugehörigen Session zugeordneten – **auch rotierten** – Refresh Token unverzüglich ungültig machen (analog A_29855) und die Session terminieren. Nachfolgende Refresh-Requests MÜSSEN mit refresh_token_revoked abgelehnt werden. Der Widerruf MUSS gemäß A_29857 revisionssicher protokolliert werden.
+
+**[<=]**"

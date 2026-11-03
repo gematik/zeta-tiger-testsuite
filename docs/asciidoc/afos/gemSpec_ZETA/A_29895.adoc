@@ -1,0 +1,4 @@
+[#A_29895]
+==== A_29895 - Authorization Server – Identitätslose Clients: Schlüssel-Rollover anwendbar
+
+Der Authorization Server MUSS den Schlüssel-Rollover (A_29921 ff.) auch für identitätslose Clients zulassen, da er nur den Besitz des bisherigen Instanzschlüssels voraussetzt. Bei Verlust des Instanzschlüssels eines identitätslosen Clients existiert kein Recovery-Pfad; der Client MUSS sich neu registrieren. [<=]

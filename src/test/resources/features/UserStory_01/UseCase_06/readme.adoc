@@ -1,10 +1,10 @@
 [#UC_01_06]
-== UseCase_01_06: Client authentisierung und autorisierung software attest SC 200
+== UseCase_01_06: Client-Authentisierung und -Autorisierung mit Software-Attestierung (SC 200)
 
 .UseCase_01_06
 [cols="1,1a",options="autowidth"]
 |===
-| *Titel:* | Client authentisierung und autorisierung software attest SC 200
+| *Titel:* | Client-Authentisierung und -Autorisierung mit Software-Attestierung (SC 200)
 
 | Akteur: |
 *MA einer LEI*
@@ -25,16 +25,26 @@ Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafü
 Um auf einen Resource Server zugreifen zu können, benötigt der
 Client ein Access Token vom PDP Authorization Server.
 Stationäre ZETA Clients verwenden dafür den Token Exchange Flow mittels Software-Attestierung. +
+Ein unbekannter, nicht in `crit` aufgeführter JOSE-Header-Parameter in der Client Assertion verhindert bei ansonsten gültigen Voraussetzungen die Tokenausgabe nicht. Der Vergleich nicht kritischer und kritischer DPoP-Erweiterungen ist in <<UC_01_07>> beschrieben.
 
 | Vorbedingung: |
 Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert bereits eine
 ``client_id`` inklusive zugehörigem Schlüsselpaar.
 Der Client hat keine bestehende Session (kein gültiges Refresh Token).
+Die SMC-B liefert ein gültiges signiertes Subject-Token; die Policy Engine erlaubt den angefragten Zugriff.
+Authentisierungsnachweis, Policy-Anfrage und direkte Tokenantwort sind derselben Transaktion zuordenbar.
+Die freigebende Policy erlaubt sämtliche im Token-Exchange-Request angeforderten Scopes.
+Das nachgewiesene SMC-B-Niveau ist gematik-ehealth-loa-substantial.
+Die Speicherung der SMC-B-Nutzerdaten ist in <<UC_01_11>> beschrieben.
+Die gespeicherten Client- und SMC-B-Nutzerdaten gehören zur Online-Session des ausgegebenen Access Tokens und zur registrierten Client-Instanz. Die SMC-B-Nutzerdaten entsprechen `zeta-user-info.yaml`: `commonName`, `professionOID` und das optionale `organizationName` stimmen mit den Zertifikatsattributen überein. Ohne Zertifikatsorganisation ist auch keine Organisation gespeichert. Dieselben Daten werden der Policy Engine übermittelt.
+Für Token- und Policy-Daten gelten die referenzierten CC-Schemas einschließlich ihrer Feldnamen und Wertebereiche. Die Tokenlaufzeiten werden aus der freigebenden Policy-Entscheidung übernommen.
 
 | Nebenbedingung: |
-Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
+Es wird *HTTP/2* verwendet.
 
 | Ablauf: |
+Die folgenden JWT-Darstellungen sind verkürzte Beispiele des CC-Profils. `exp` und `iat` sind ganzzahlige NumericDate-Werte in Sekunden; `aud` ist ein String-Array. Header, Pflichtclaims, frische AS-Nonces und Schlüsselbindungen sind in der jeweiligen Variante gültig, soweit nicht ausdrücklich ein Fehlerfall beschrieben wird.
+
 . MA startet *Authentisierung/Autorisierung-Prozess (Token-Austausch)* über den ZETA Client.
 . Der ZETA Client fordert beim PDP Authorization Server eine Nonce an:
 - ``GET /nonce`` (HTTP/2)
@@ -66,7 +76,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 {
 "iss": "<client_id>",
 "sub": "<client_id>",
-"aud": "<AS_Token_Endpoint_URL>",
+"aud": ["<AS_Token_Endpoint_URL>"],
 "exp": "...",
 "jti": "...",
 "client_statement": {}
@@ -75,15 +85,15 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 ----
 +
 
-. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
+. Der ZETA Client erstellt ein *SMC-B Subject Token* (JWT).
 +
-.SMC-B Access Token Claims:
+.SMC-B Subject Token Claims (Auszug):
 [source,json]
 ----
 {
 "iss": "<client_id>",// Issuer is the client
 "sub": "<Telematik-ID from SMC-B>",// Subject is the institution
-"aud": "[<Resource_Server_Endpoint_URL>]",// Audience is the Resource Server
+"aud": ["<AS_Token_Endpoint_URL>"],// Audience is the Authorization Server
 "exp": "...",// Short-lived
 "iat": "...",
 "jti": "...",
@@ -97,7 +107,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 . Der KTG reicht den Hash an die SMC-B weiter.
 . Die SMC-B antwortet mit signiertem Hash.
 . Der KTG liefert die *JWT-Signatur* zurück an den ZETA Client.
-. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Subject Token* ein.
 . Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
 - Enthält Claims für den Token Request.
 +
@@ -124,7 +134,7 @@ Es wird *HTTP/2* verwendet. (<<TA_A_26640_02>>)
 [source,txt]
 ----
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-&subject_token=<SMC-B_Access_Token>
+&subject_token=<SMC-B_Subject_Token>
 &subject_token_type=urn:ietf:params:oauth:token-type:jwt
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<Client_Assertion_JWT>...
@@ -136,46 +146,76 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 - Attestation
 - DPoP Proof
 - Subject Token
+. Der PDP Authorization Server ignoriert unbekannte JOSE-Header-Parameter der Client Assertion, die nicht als kritisch in `crit` aufgeführt sind. Signatur, registrierter Client-Schlüssel, Claims und Attestierung bleiben gültig; bei freigebender Policy folgt die normale Tokenausgabe.
+. Bei Linux-Software-Attestierung enthält das signierte Client Statement die Plattform `linux`, den Posture-Typ `software` und die erforderlichen Betriebssystem- und Anwendungsdaten. Der öffentliche Signaturschlüssel gehört zur registrierten Client-Instanz. Das optionale `platform_product_id` wird nur bei Vorhandensein gegen das Linux-Produktschema validiert.
+. Fehlt das erforderliche `os_version`, weist der PDP Authorization Server den Request mit HTTP 400 und einer Fehlerantwort gemäß `zeta-error.yaml` zurück, ohne eine Policy-Entscheidung anzufordern oder Tokens auszugeben.
 . Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
-- ``POST /v1/data/authz`` mit Input-Parametern.
-. Der PDP-PE antwortet mit ``200 OK``, z. B.
+- ``POST /v1/data/authz`` mit Client-, User- und Request-Daten gemäß ``policy-engine-input.yaml``.
+. Die Policy-Anfrage enthält die validierten Linux-Software-Daten derselben Client-Instanz: Plattform, Posture-Typ, Produkt-ID, Produktversion, Betriebssystem und Betriebssystemversion.
+. Der Policy-Engine-Request enthält `authorization_request.amr` als schemakonformes Array mit `urn:telematik:auth:sc`.
+. Derselbe Request enthält `authorization_request.acr=gematik-ehealth-loa-substantial`.
+. Für `acr` im Access Token gilt der Wertebereich des referenzierten Access-Token-Schemas mit `gematik-ehealth-loa-substantial` und `gematik-ehealth-loa-high`; `gematik-ehealth-loa-low` ist darin nicht zulässig.
+. Der PDP-PE antwortet mit ``200 OK``, beispielsweise mit folgender Freigabe und Token-Laufzeiten in Sekunden:
 +
-[source,txt]
-----
-{
-status: 200 OK,
-    body {
-    "allow": true,
-    "access_token_ttl": "360",
-    "refresh_token_ttl": "43200",
-    "scope": "RS specific scopes"
-    }
-}
-----
-+
-
-. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*.
-. Der PDP Authorization Server aktualisiert die Client-, Session- und Nutzerdaten in der PDP Datenbank.
-. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
-. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
-+
-.Token Response Body:
 [source,json]
 ----
 {
-"access_token": "<AS_Access_Token>",
-"token_type": "DPoP", // Indicate DPoP is required
-"expires_in": 300,
-"refresh_token": "<AS_Refresh_Token>"
-// ... other parameters
+  "result": {
+    "allow": true,
+    "ttl": {
+      "access_token": 360,
+      "refresh_token": 43200
+    }
+  }
 }
 ----
 +
 
+. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*. Er übernimmt die Laufzeiten aus der Policy Decision. Die Gültigkeit des Access Tokens beträgt höchstens 3600 Sekunden, auch wenn die Policy eine längere Laufzeit gewährt.
+. Die Claims im Access Token müssen zur Entscheidung der Policy Engine passen. Der PDP Authorization Server übernimmt die im Token-Exchange-Request angeforderten und vollständig freigegebenen Scopes in den ``scope``-Claim. Bei resource-basierten Requests kommt aud aus result.aud der Policy-Entscheidung (Token ver=2); beim Legacy-Vertrag aus authorization_request.audience.
+. Der PDP Authorization Server aktualisiert die Client-Daten und speichert nach der vollständigen und erfolgreichen Authentifizierung die Session-Daten einschließlich der Client-, User- und Request-Daten gemäß ``policy-engine-input.yaml`` in der PDP Datenbank.
+. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
+. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
++
+.Token Response Body (Auszug):
+[source,json]
+----
+{
+  "access_token": "<AS_Access_Token>",
+  "token_type": "DPoP",
+  "expires_in": 360,
+  "refresh_token": "<AS_Refresh_Token>",
+  "refresh_expires_in": 43200,
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
+}
+----
++
+
+. Das signaturgeprüfte Access Token aus diesem SMC-B Token Exchange enthält acr=gematik-ehealth-loa-substantial; Token und Authentisierungsnachweis gehören zu derselben Transaktion.
+. Der ausgegebene `acr`-Wert liegt im festgelegten gematik-LoA-Wertebereich und entspricht dem durch die Authentisierung belegten Niveau.
+. Die direkte Erfolgsantwort enthält die folgenden zusammengehörigen Token-Daten:
+* Bei positiver Policy-Entscheidung ist die Erfolgsantwort ein JSON-Objekt; das erforderliche `access_token` ist ein signiertes, DPoP-gebundenes JWT gemäß `access-token.yaml` und gehört zu dieser Transaktion.
+* Das erforderliche String-Feld token_type der Erfolgsantwort hat genau den erlaubten Wert DPoP.
+* Das erforderliche Integer-Feld `expires_in` gibt die Lebensdauer des Access Tokens in Sekunden an und stimmt mit dessen signiertem Ablaufzeitpunkt überein.
+* Ein vorhandenes `refresh_token` ist ein String mit einem signierten JWT zum selben Authorization Grant. Das Schema definiert das Feld optional; strengere Anforderungen des konkreten Flows bleiben anwendbar.
+* Ein vorhandenes `refresh_expires_in` ist ein Integer und gibt die Lebensdauer des zugehörigen Refresh Tokens in Sekunden an.
+* Bei Token Exchange mit Softwareattestierung muss zeta_attestation_token fehlen.
+* Ein vorhandenes `issued_token_type` ist ein String mit `urn:ietf:params:oauth:token-type:access_token` oder `urn:ietf:params:oauth:token-type:jwt`.
+
+. Der registrierte Client bleibt an die aus dem SMC-B-Zertifikat abgeleitete Telematik-ID gebunden. Beim Einlösen des Refresh Tokens ohne erneutes Subject Token führt der Authorization Server dieselbe Client-Session mit dieser Identität fort. Auch ein anschließend eingereichtes, gültig signiertes Refresh Token mit vollständig ausgetauschter TI-Identität bei unveränderter Client-, Session- und Schlüsselbindung darf diese Bindung nicht ändern: Der Authorization Server lehnt es ohne Tokenausgabe ab oder stellt weiterhin ausschließlich Tokens für die ursprüngliche Identität und Client-Session aus.
 . Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
+
+Die Erfolgsantwort des Token Exchange entspricht dem vollständigen Zweig successResponse von token-response.yaml: access_token, token_type=DPoP und expires_in sind Pflichtfelder; vorhandene optionale Felder haben die dort definierten Typen und Werte. Ein vorhandenes issued_token_type ist bei beiden angeforderten Tokentypen ein String mit urn:ietf:params:oauth:token-type:access_token oder urn:ietf:params:oauth:token-type:jwt. Auch bei requested_token_type=urn:ietf:params:oauth:token-type:refresh_token gilt dieser Antwortvertrag ohne zusätzliche Enum-Ausnahme.
 
 | Nachbedingung: |
 Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. dieser ist authentisiert und autorisiert.
+Die Policy-Anfrage enthält die SMC-B-spezifischen amr-/acr-Werte; das Access Token trägt das nachgewiesene Authentifizierungsniveau.
+Der ``scope``-Claim des Access Tokens enthält alle in der Token-Exchange-Anforderung angeforderten und von der Policy Engine vollständig freigegebenen Scopes; zusätzliche Scopes sind zulässig.
+Die Session-Daten einschließlich der Client-, User- und Request-Daten sind gespeichert und wurden der Policy Engine im Request übergeben.
+Die TI-Identitätsbindung bleibt beim Refresh erhalten; ein Identitätsaustausch im Refresh Token führt zu keiner Tokenausgabe für die fremde Identität.
+Die Tokenlaufzeiten entsprechen der Policy Decision unter Einhaltung der Access-Token-Höchstgrenze von 3600 Sekunden.
+Die Tokenantwort entspricht dem Erfolgszweig von token-response.yaml für den Software-/SMC-B-Token-Exchange. Auch mit einem unbekannten nicht kritischen JOSE-Header in der Client Assertion erhält der Client bei gültiger Authentisierung und freigebender Policy HTTP 200 mit Access Token.
+Bei gültiger Linux-Software-Attestierung und freigebender Policy erhält der Client Access Token und Refresh Token, aber kein `zeta_attestation_token`. Bei fehlender erforderlicher Betriebssystemversion erhält er ausschließlich die Fehlerantwort; eine Policy-Anfrage und Tokenausgabe bleiben aus.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_21275-01_03>>
@@ -191,10 +231,9 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_25660_02>>
 * <<TA_A_25660_04>>
 * <<TA_A_25660_05>>
-* <<TA_A_25661_01>>
-* <<TA_A_25661_02>>
-* <<TA_A_25661_04>>
-* <<TA_A_25661_05>>
+* <<TA_A_25661-01_01>>
+* <<TA_A_25661-01_02>>
+* <<TA_A_25661-01_04>>
 * <<TA_A_25662_01>>
 * <<TA_A_25662_03>>
 * <<TA_A_25663_01>>
@@ -212,38 +251,36 @@ Der stationäre ZETA Client kann auf einen Resource Server zugreifen, d.h. diese
 * <<TA_A_25767_01>>
 * <<TA_A_25767_02>>
 * <<TA_A_26281-01_01>>
-* <<TA_A_26585-01_02>>
-* <<TA_A_26586_01>>
-* <<TA_A_26586_03>>
+* <<TA_A_26586-01_01>>
+* <<TA_A_26586-01_03>>
+* <<TA_A_26586-01_04>>
+* <<TA_A_26585-02_02>>
 * <<TA_A_26639_01>>
 * <<TA_A_26640_02>>
 * <<TA_A_26661_01>>
 * <<TA_A_27725-01_01>>
 * <<TA_A_26944_01>>
-* <<TA_A_26972-02_01>>
-* <<TA_A_26972-02_02>>
-* <<TA_A_26972-02_03>>
-* <<TA_A_26972-02_04>>
 * <<TA_A_27007_01>>
 * <<TA_A_27401_01>>
-* <<TA_A_27802-02_01>>
-* <<TA_A_27802-02_02>>
+* <<TA_A_27802-03_01>>
+* <<TA_A_27802-03_02>>
 * <<TA_A_28808_05>>
-* <<TA_A_28963_01>>
-* <<TA_A_27867-01_01>>
-* <<TA_A_27867-01_02>>
-* <<TA_A_27867-01_03>>
-* <<TA_A_27867-01_04>>
 * <<TA_A_28144_01>>
 * <<TA_A_28144_02>>
 * <<TA_A_28144_03>>
 * <<TA_A_28144_04>>
 * <<TA_A_28432_01>>
 * <<TA_A_28440_01>>
-* <<TA_A_28527_01>>
-* <<TA_A_28527_02>>
+* <<TA_A_28527-01_01>>
+* <<TA_A_28527-01_02>>
+* <<TA_A_28527-01_03>>
 * <<TA_A_28837_01>>
 * <<TA_GS-A_5542_03>>
+* <<TA_A_29820_01>>
+* <<TA_A_29820_02>>
+* <<TA_A_29951_01>>
+* <<TA_A_29993_01>>
+* <<TA_A_29993_02>>
 
 |===
 
@@ -276,7 +313,7 @@ sequenceDiagram
     end
 
     critical 3. SMC-B Signatur holen
-        ZC->>ZC: Erstellen von SMC-B Access Token (JWT)
+        ZC->>ZC: Erstellen von SMC-B Subject Token (JWT)
         ZC->>+KTG: External Authenticate<br>(JWT-Hash)
         KTG->>+SMC: Signiere (Hash)
         SMC-->>-KTG: Signatur
@@ -284,20 +321,38 @@ sequenceDiagram
     end
 
     critical 4. DPoP Proof erstellen
-        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Access Token
+        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Subject Token
         ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
     end
 
     critical 5. Validierung & Token-Ausgabe
         ZC->>PDP-AS: HTTP/2 POST /token (RFC 8693) DPoP: signed_dpop_jwt
+        Note over ZC,PDP-AS: Unbekannte nicht kritische Client-Assertion-Header werden ignoriert
         PDP-AS-->>PDP-AS: Validiere Request
-        PDP-AS->>+PDP-PE: POST /v1/data/authz
+        break Erforderliche Software-Betriebssystemversion fehlt
+            PDP-AS-->>ZC: 400 Fehlerantwort gemäß zeta-error.yaml ohne Tokens
+        end
+        PDP-AS->>+PDP-PE: POST /v1/data/authz<br>Client-, User- und Request-Daten<br>amr urn:telematik:auth:sc, acr substantial
         PDP-PE-->>-PDP-AS: 200 OK
-        PDP-AS->>PDP-AS: Erzeuge AS Access Token (AT)<br>und Refresh Token (RT)
-        PDP-AS->>+PDP-DB: Aktualisiere Client, Session & Nutzer-Daten
+        PDP-AS->>PDP-AS: Erzeuge AS Access Token (AT)<br>und Refresh Token (RT)<br>Policy-Laufzeiten, AT maximal 3600 s
+        PDP-AS->>+PDP-DB: Speichere Session-Daten<br>Client-, User- und Request-Daten
         PDP-DB->>-PDP-AS: OK
-        PDP-AS-->>-ZC: 200 OK
+        PDP-AS-->>-ZC: 200 OK mit schemakonformen Tokens<br>Access Token mit acr substantial
         ZC-->>-MA: "Zugriff gestattet"
+    end
+
+    opt Refresh derselben Client-Session
+        ZC->>PDP-AS: POST /token mit Refresh Token und DPoP, ohne Subject Token
+        PDP-AS->>PDP-AS: Prüfe gespeicherte Client- und TI-Identitätsbindung
+        alt Unveränderte TI-Identität
+            PDP-AS->>PDP-PE: Policy-Anfrage mit gebundener Identität
+            PDP-PE-->>PDP-AS: Freigabe
+            PDP-AS-->>ZC: Neue Tokens für dieselbe Identität und Client-Session
+        else Ausgetauschte TI-Identität wird abgelehnt
+            PDP-AS-->>ZC: Fehlerantwort ohne Tokens
+        else Ausgetauschte TI-Identität wird ignoriert
+            PDP-AS-->>ZC: Neue Tokens ausschließlich für ursprüngliche Identität und Client-Session
+        end
     end
 ....
 
@@ -309,6 +364,6 @@ Feature-Datei zu diesem Use Case:
 ifdef::render_features[]
 [source]
 ----
-include::Client_authentisierung_und_autorisierung_software_attest_SC_200.feature[]
+include::client_authentisierung_und_autorisierung_software_attest_sc_200.feature[]
 ----
 endif::[]

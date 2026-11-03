@@ -1,0 +1,4 @@
+[#A_29975]
+==== A_29975 - Notification Service – Authentisierung des Client-Moduls über ZETA-Zugriffstoken
+
+Der Notification Service MUSS Aufrufe des ZETA Client Moduls / SDK (Registrierung/Verwaltung von Pushern, Schlüsselverwaltung, Channel-Konfiguration) über ein vom ZETA Guard (AuthS) ausgestelltes ZETA-Zugriffstoken (OAuth 2.0 Access Token, at+jwt gemäß [RFC9068], DPoP-gebunden gemäß [gemAPI_ZETA]) authentisieren. Das Token MUSS spezifisch für den Notification Service ausgestellt sein (siehe A_29979). Aufrufe ohne gültiges Token MUSS er mit 401 ablehnen. [<=]

@@ -1,6 +1,0 @@
-[#TA_A_25661_01]
-===== TA_A_25661_01 -PDP Authorization Server - Umsetzung der Policy Decision - Access-Token
-
-"Die Komponente Authorization Server MUSS die Zugriffs-Entscheidung eines PDP mittels
-
-der **Ausgabe eines** **Access** und eines Refresh **Token** umsetzen [...]"

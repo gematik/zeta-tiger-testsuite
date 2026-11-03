@@ -1,0 +1,8 @@
+[#TA_A_29376_15]
+===== TA_A_29376_15 - ZETA, Ablauf Token Exchange mit Attestation - DPoP-Schlüssel an Proof binden
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 07: Der Authorization Server prüft die **Übereinstimmung von dpop_key im Subject Token mit dem Signaturschlüssel des DPoP-Proofs**. Bei einer Abweichung erfolgt weder Policy-Aufruf noch Tokenausgabe.

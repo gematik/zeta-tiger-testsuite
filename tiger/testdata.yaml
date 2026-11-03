@@ -3,10 +3,127 @@ semVer: '0.5.0'
 # The telemetry gateway/Prometheus path can lag the end of a cloud load run
 # by more than one scrape interval; keep performance assertions deterministic.
 telemetry_wait_seconds: 70
+# Maximum elapsed seconds from the OPA response to searchable decision-log availability.
+telemetry_policy_decision_timeout_seconds: 660
 # Keep a small pre-load margin in Prometheus windows for setup/export timing.
 prometheus_window_buffer_seconds: 60
 
-invalidEtag: "\"invalid-etag\""
+# Base64URL without padding of the 16 ASCII bytes "invalid-nonce-01".
+# Correct nonce format (128 bits), but synthetic and not issued by the Authorization Server.
+invalide_nonce: "aW52YWxpZC1ub25jZS0wMQ"
+
+notificationService:
+  fdvDeployment: "notification-service-fdv"
+  container: "notification-service"
+  # Must be syntactically valid and outside the calling Fachdienst's allowed channels.
+  # Local reference configuration allows only zeta; adapt this fixture for other deployments.
+  notAllowedChannel: "zeta.testsuite.not_assigned"
+  notificationIdType: "kvnr"
+  pusher:
+    pushkey: "zeta-testsuite-pusher"
+    appId: "de.gematik.zeta.testsuite.pusher"
+    appDisplayName: "ZETA Testsuite"
+    deviceDisplayName: "ZETA Testgerät"
+    profileTag: "testsuite"
+    lang: "de"
+    url: "https://${zeta_base_url}/push-gateway/push/v1/"
+    format: "event_id_only"
+  notificationChannel:
+    id: "zeta"
+    status: "enabled"
+
+androidPush:
+  driverAppId: "zeta-android-testdriver.zeta.firebase"
+
+# Installed OIDC JVM testdriver used by the isolated real-SDK logout adapter.
+ccSdkLogout:
+  deployment: "testdriver-oidc"
+  container: "testdriver-oidc"
+
+# Public SDK fixture with explicit OTP control for original-factor authorization tests.
+ccIdpOnly:
+  deployment: "testdriver"
+  container: "testdriver"
+  mailBaseUrl: "http://mailcatcher:1080/mailcatcher"
+
+ccPoppJwks:
+  configMap: "popp-jwks-file"
+  signedJwksKey: "signed_jwks"
+
+ccOcsp:
+  pathPattern: "(?:/ecc-ocsp|/ocsp)(?:/.*)?"
+  certificatePattern: ".*-C_SMCB91_AUT_E256_X509"
+  issuerCertificate: "${testCertificates.dir}/ehca_OCSP_Signer_SMCB_91_ecc/GEM.SMCB-CA91-TEST-ONLY.pem"
+
+ccIdentityRetention:
+  deployment: "authserver"
+  container: "keycloak"
+
+# MailCatcher text adapter, not normative wording or a CC delivery deadline.
+# Review/override the expression for a different deployment's actual notification template.
+# {clientId} is replaced with the regex-quoted ID of the single deleted client.
+ccDeletionNotification:
+  waitSeconds: 60
+  completedNoticePattern: '(?is)\s*(?:Your client(?: "{clientId}")? (?:was|has been) (?:deleted|removed|deregistered)|Ihr Client(?: „{clientId}“)? wurde (?:gelöscht|entfernt|deregistriert))\.\s*.*'
+
+# Public load-driver API: a second isolated SDK context with the local OIDC test profile.
+ccSdkInstances:
+  fachdienstUrl: "https://${zeta_base_url}/pep/"
+  oidcBaseUri: "http://localhost:8090/cb/demo"
+  oidcIdpIss: "https://${zeta_base_url}/sekidp"
+  oidcIdpAlias: "zeta-sekidp-oidc"
+  # Matches the installed local kind testdriver; override for a profile with trusted test CAs.
+  disableTlsVerification: "true"
+
+# Explicit isolated NS deployment for the reversible one-worker/one-slot queue profile.
+ccNotification:
+  rsDeployment: "notification-service-rs"
+  databasePodSelector: "cnpg.io/cluster=notification-db,role=primary"
+  databaseName: "notification"
+  pushGatewayDeployment: "push-gateway"
+  kindCluster: "zeta-local"
+
+# TLS scenarios reconfigure the existing RS deployment and restore it through the normal hooks.
+# Fixture Secrets and the role ConfigMap must exist before setup; no NS clones are created.
+notificationTls:
+  rs:
+    deployment: "${testdata.ccNotification.rsDeployment}"
+    host: "notification-service-rs"
+    port: "8443"
+    principal: "CN=technical-rs"
+    serverSecret: "ns-tls-rs-server"
+    clientCaSecret: "ns-tls-client-ca"
+    authConfigMap: "ns-tls-rs-auth"
+    materialSource: "kubernetes"
+    materialDirectory: "target/notification-tls/rs"
+  gateway:
+    # Standard Kind release supplies the PKI; the suite fetches peer material without Helm calls.
+    materialSource: "kubernetes"
+    materialDirectory: "target/notification-tls/gateway"
+    # One idle TCP 443 -> 4433 Service and distinct DNS host per variant, annotated
+    # testsuite.gematik.de/tls-peer: "true"; all URLs must be allowlisted by the installed NS.
+    targets:
+      baseline:
+        url: "https://ns-tls-baseline/push/v1/"
+        service: "ns-tls-baseline"
+      missing:
+        url: "https://ns-tls-missing/push/v1/"
+        service: "ns-tls-missing"
+      foreign:
+        url: "https://ns-tls-foreign/push/v1/"
+        service: "ns-tls-foreign"
+      untrusted:
+        url: "https://ns-tls-untrusted/push/v1/"
+        service: "ns-tls-untrusted"
+      wrong-host:
+        url: "https://ns-tls-wrong-host/push/v1/"
+        service: "ns-tls-wrong-host"
+      control:
+        url: "https://ns-tls-control/push/v1/"
+        service: "ns-tls-control"
+    clientSecrets:
+      good: "ns-tls-client-good"
+      foreign: "ns-tls-client-foreign"
 
 popp:
   entityStatementSub: "https://popp.example.com"
@@ -14,3 +131,61 @@ popp:
   patientId: "X110639491"
   insurerId: "109500969"
   actorProfessionOid: "1.2.276.0.76.4.32"
+
+# Independent policy-fixture expectation; override to match the deployed CC test policy.
+# Never derive this value from the observed access token.
+ccPolicy:
+  grantedScopes: "zero:audience"
+  # Stationary profile: requested scope plus token-visible defaults from client scope assignments.
+  # Confirm include.in.token.scope and default_scope independently before using another deployment.
+  smcbGrantedScopes: "zero:audience profile email"
+  # OIDC profile: requested resource scope plus the realm's token-visible default scopes.
+  # Confirm defaults independently from realm configuration before using another deployment.
+  oidcGrantedScopes: "zero:audience profile email"
+
+# Trusted local sectoral IDP and its published federation/signing metadata.
+ccOidcAcr:
+  issuer: "https://${zeta_base_url}/sekidp"
+  entityStatementUrl: "${testdata.ccOidcAcr.issuer}/.well-known/openid-federation"
+  signedJwksUrl: "${testdata.ccOidcAcr.issuer}/jws.json"
+
+# Paths of the existing local OIDC/Federation profile.
+ccParFederation:
+  masterIssuer: "https://${zeta_base_url}/sekidp-fedmaster"
+  fetchPath: "/federation_fetch_endpoint"
+
+# Recorded endpoint paths of the local SDK/Guard and sectoral-IDP PAR profiles.
+ccPar:
+  outerPath: "/auth/realms/zeta-guard/protocol/openid-connect/ext/par/request"
+  innerPath: "/PAR_Auth"
+  authorizePath: "/auth/realms/zeta-guard/protocol/openid-connect/auth"
+
+# Both scopes must be registered in the realm and permitted by the installed policy for R1.
+ccRefresh:
+  resource: "https://${zeta_base_url}/pep/"
+  initialScope: "zero:audience"
+  additionalScope: "notification.pusher.read"
+  changedScope: "${testdata.ccRefresh.initialScope} ${testdata.ccRefresh.additionalScope}"
+  oidcChangedScopes: "${testdata.ccRefresh.changedScope} profile email"
+
+ccTelemetry:
+  noPoppRoute: "${paths.guard.helloZetaPath}"
+  postRoute: "/pep/"
+  noOpPostPath: "/td-oidc/proxy/achelos_testfachdienst/push/v1/pushers/set"
+  noOpPostPepPath: "/pep/achelos_testfachdienst/push/v1/pushers/set"
+  notFoundPath: "${paths.client.helloZetaPath}/telemetry-not-found"
+  noOpPusherJson: >-
+    {"app_id":"cc-telemetry","pushkey":"${CC_TELEMETRY_PUSHKEY}","kind":null}
+
+oidc:
+  kvnrPool:
+    - W750254243
+    - K045961799
+    - P726848050
+    - B511369585
+    - R136058546
+    - W772111185
+    - Y218685223
+    - G577923338
+    - Q897167282
+    - X319526974

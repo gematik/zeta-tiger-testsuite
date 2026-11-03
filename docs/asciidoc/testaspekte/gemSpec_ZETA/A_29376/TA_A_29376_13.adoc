@@ -1,0 +1,8 @@
+[#TA_A_29376_13]
+===== TA_A_29376_13 - ZETA, Ablauf Token Exchange mit Attestation - DPoP-Proof mit Server-Nonce erzeugen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 05: Der Client erstellt einen **mit dem DPoP-Schlüssel signierten Proof mit der Nonce des Authorization Servers**.

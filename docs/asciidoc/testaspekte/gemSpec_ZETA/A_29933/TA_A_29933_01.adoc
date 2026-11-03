@@ -1,0 +1,6 @@
+[#TA_A_29933_01]
+===== TA_A_29933_01 - ZETA Client – Ersatzgerät bei E-Mail-Verlust - Nutzer zur richtigen Reihenfolge anleiten
+
+"Der ZETA Client SOLL einen Nutzer, der den Zugriff auf die gebundene E-Mail verloren hat und über ein weiteres registriertes Gerät verfügt, anleiten, **zunächst von diesem Gerät die E-Mail zu ändern (A_29911) und erst danach das Ersatzgerät zu registrieren** (vgl. Nutzerunterstützung A_25732).
+
+**[<=]**"

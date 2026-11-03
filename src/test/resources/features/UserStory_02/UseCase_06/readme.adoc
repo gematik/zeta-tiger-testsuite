@@ -1,0 +1,99 @@
+[#UC_02_06]
+== UseCase_02_06: Überlast- und Größenbegrenzungen des Notification Service
+
+.UseCase_02_06
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Überlast- und Größenbegrenzungen des Notification Service
+
+| Akteur: | Resource Server / Testsuite
+
+| weitere Akteure: | Notification Service, Push Gateway
+
+| Auslöser: | Eine Last-/Größengrenze wird überschritten oder der NS ist vorübergehend nicht verfügbar.
+
+| Kurzbeschreibung: |
+Getrennte Varianten prüfen Rate-Limit, Notification-Payload, Stapelgrenze und temporäre Nichtverfügbarkeit bei sonst gültigen Zustellvoraussetzungen.
+Das Szenario `notification_temporar_nicht_verfuegbar.feature` konkretisiert die HTTP-503-Variante bei voller interner Versandwarteschlange.
+Die übrigen Varianten bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Ein autorisierter RS verwendet gültiges mTLS und POST /notifications am NS; Testnutzer, aktiver Channel und mindestens ein registrierter Pusher entsprechen der erfolgreichen Kontrolle aus UseCase_02_02. Die direkte NS-Antwort ist über eine eindeutige Korrelations-ID beobachtbar.
+. Das Prüfprofil benennt Rate-Limit L, Zeitfenster W, Zählerschlüssel und Rücksetzverfahren, Payloadlimit P samt Größeneinheit/Serialisierung sowie Stapellimit B. Die dazugehörigen Konfigurationsschlüssel und tatsächlich wirksamen Werte werden vor dem Lauf festgehalten.
+. Für Stapel wird die vom Produkt angebotene Eingangs- oder interne Verarbeitungsgrenze samt Aufruf, Zähleinheit und beobachtbarer Ablehnung angegeben. Die lokale Einzel-Notification-OpenAPI definiert keinen automatisch anzunehmenden Batch-Endpunkt; gegebenenfalls wird der reale Stapelprozessor über einen Komponentenadapter angesprochen.
+. Eine isolierte NS-Fehlerinjektion blockiert vorübergehend die Annahme/Verarbeitung im NS, lässt aber seinen HTTP-Antwortpfad erreichbar. Der Prüfadapter und die NS-Logs weisen den Zustand nach; eine vom Proxy ersetzte Antwort erfüllt diese Servervariante nicht.
+. Jeder Grenzfall nutzt einen eigenen zurückgesetzten Zähler/Zustand. Andere Last, zu große Einzelpayloads im Stapeltest und abgelaufene Berechtigungen sind ausgeschlossen. Zulässige Recovery-Zeit und Sammlungsfrist sind vorab im Prüfprofil festgelegt.
+
+| Nebenbedingung: |
+Der Stapeladapter und die NS-interne Fehlerinjektion sind vor Ausführung zu konkretisieren; fehlende Zugänge führen zu einer nicht ausführbaren Variante, nicht zu einem bestandenen Nachweis.
+Rate-Limit, Größe und Verfügbarkeit werden getrennt geprüft, damit eine frühere Ablehnung nicht die untersuchte Grenze verdeckt.
+
+Das lokale 503-Prüfprofil verwendet einen isolierten Pod mit dem unveränderlichen Image-Digest der laufenden RS-Deployment-Instanz `testdata.ccNotification.rsDeployment`. Deren ursprünglicher Pod und Deployment bleiben unverändert. Für den Test zeigt ausschließlich der Selector des gleichnamigen RS-Service auf den eigenen Pod; vor dem ersten Request wird die eindeutige Endpoint-Zuordnung geprüft. Das SDK registriert einen Pusher für eine frische KVNR, aktiviert dessen Channel `zeta` und liest den aktiven Zustand zurück. Der separate RS-Akteur sendet über die vorhandene NS-mTLS-Route: Die Testdriver-API bietet keine RS-Annahmeprüfung mit kontrollierter Parallelität und einer bis zum NS-Zugriffslog durchgereichten Requestmarkierung.
+
+Der Adapter setzt vorübergehend `notification.dispatch.concurrency=1` und `notification.dispatch.queue-capacity=1`. Nach einem erfolgreichen einzelnen Kontrollrequest hält er ausschließlich den über Pod, Container-ID und kind-Node eindeutig zugeordneten Container des isolierten Test-Push-Gateways `testdata.ccNotification.pushGatewayDeployment` kurz an. Der konfigurierte lokale kind-Cluster muss über Docker/containerd erreichbar sein. Ein separater Prozess auf dessen Node außerhalb des pausierten Containers stößt nach zwölf Sekunden automatisch den Wiederanlauf an; die Testsuite setzt ihn zusätzlich explizit unmittelbar nach der Last fort, auch bei Fehlern. Ein bereits pausierter Gateway-Container oder ein Node eines anderen kind-Clusters wird nicht übernommen. Der Gateway-Liveness-Zeitraum muss diese kurze Pause erlauben; Containerwechsel oder Neustarts machen den Nachweis ungültig. Der NS selbst bleibt mit unverändertem HTTP-Antwortpfad verfügbar. Eine begrenzte Gruppe mit 16 gleichzeitig gestarteten gültigen Requests füllt seine Warteschlange, während der Worker auf die Gateway-Antwort wartet. Jeder Request besitzt eine eigene Markierung, verwendet denselben aktiven Empfänger und dieselbe zulässige Payloadstruktur. Die Antworten müssen entweder die tatsächliche Annahme mit `202/accepted` oder die Warteschlangenüberfüllung mit `503/SERVICE_UNAVAILABLE` und dem profilspezifischen Fehlerdetail ausweisen. Kann die begrenzte Last keine Überfüllung nachweisen, schlägt die Vorbedingung fehl; der Test gilt dann nicht als bestanden.
+
+Ein zweiter Einzelrequest muss nach Ende der Last innerhalb der festgelegten 20-Sekunden-Erholungsfrist wieder angenommen werden. Vorübergehend aktivierte NS-Zugriffslogs enthalten ausschließlich Methode, Pfad, Status und synthetische Requestmarkierung. Für jeden gesendeten Request verlangt der Adapter genau einen passenden NS-Logeintrag; Proxy-Antworten und unkorrelierte 503-Fehler genügen nicht. Er prüft unveränderte Konfiguration, Image, Pod und vollständig erhaltene Logs. Die Testsuite liest den ausgewählten Fehler und die Erholungsantwort zusätzlich direkt aus den korrelierten Tiger-Nachrichten. Das Cleanup setzt das Gateway fort, stellt den ursprünglichen Service-Selector wieder her und entfernt den eigenen NS-Pod auch bei Fehlern. UID- und Zustandsvergleiche verhindern das Überschreiben zwischenzeitlicher fremder Änderungen. Dieser ausgewählte TestAspect prüft HTTP 503. `Retry-After` bleibt die separate Variante.
+
+| Ablauf: |
+*Kontrolle und Rate-Limit*
+
+. Der RS sendet eine zulässige Notification; die Testsuite bestätigt die erfolgreiche direkte Annahme für den aktiven Nutzer/Channel.
+. Nach Zählerrücksetzung sendet er gültige Requests bis zur wirksamen Grenze L im Fenster W und darüber. Unterhalb der Grenze gelingen Kontrollrequests, die begrenzten Requests liefern HTTP 429.
+. Die Testsuite liest Retry-After derselben 429-Antwort als HTTP-Datum oder Sekundenwert, bestimmt daraus den angekündigten Wiederholungszeitpunkt und führt nach diesem Zeitpunkt unter wieder zulässiger Last die erfolgreiche Kontrolle aus.
+
+*Payload und Stapel*
+
+. Der RS sendet getrennt ansonsten gültige Notifications mit den gemessenen Größen P-1, P und P+1. Bis einschließlich P gelingt die Größenprüfung; oberhalb antwortet der NS mit 413 und PAYLOAD_TOO_LARGE gemäß der referenzierten OpenAPI.
+. Die Testsuite ruft die festgelegte Stapelgrenze mit B-1, B und B+1 einzeln gültigen Elementen auf. Bis B wird verarbeitet; oberhalb wird die Überschreitung an der beobachteten Grenze abgefangen. Eingangs-/Verarbeitungszählung belegen die Begrenzung. Der konkrete zulässige Ablehnungsmechanismus folgt dem dokumentierten Produktvertrag, ohne einen zusätzlichen AFO-Fehlercode vorzugeben.
+
+*Temporäre Nichtverfügbarkeit*
+
+. Die Testsuite aktiviert die NS-Fehlerinjektion. Der RS sendet dieselbe ansonsten gültige Notification; der erreichbare NS antwortet selbst mit 503 und Retry-After.
+. Sie wertet Retry-After aus, hebt die Störung kontrolliert auf und bestätigt nach dem angekündigten Zeitpunkt und Wiederherstellung der Annahmebereitschaft eine erfolgreiche Kontrollanfrage. Danach stellt sie Konfiguration und Testdaten wieder her.
+
+| Nachbedingung: |
+429/Retry-After, 413/PAYLOAD_TOO_LARGE und 503/Retry-After sind an der direkten NS-Grenze korreliert geprüft. Die reale Stapelgrenze ist wirksam; Grenzwerte und Kontrollfälle sind dokumentiert.
+Nach Aufhebung der Testbedingungen funktionieren zulässige Requests wieder.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29987_01>>
+* <<TA_A_29987_02>>
+* <<TA_A_29987_03>>
+* <<TA_A_29987_04>>
+* <<TA_A_29987_05>>
+* <<TA_A_29987_06>>
+* <<TA_A_29987_07>>
+
+|===
+
+[mermaid,uc-02-06-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant T as Resource Server / Testsuite
+    participant N as Notification Service
+    T->>N: Gültige Kontrollanfrage
+    N-->>T: Reguläre Antwort
+    alt Rate-Limit überschritten
+    T->>N: Weitere zulässige Notification
+    N-->>T: 429 und Retry-After
+    else Payload zu groß
+    T->>N: Notification über Payloadgrenze
+    N-->>T: 413 PAYLOAD_TOO_LARGE
+    else Stapel zu groß
+    T->>N: Reale Stapelgrenze mit B plus 1 Elementen
+    N-->>T: Überschreitung gemäß Produktvertrag abgefangen
+    else Temporär nicht verfügbar
+    T->>N: Gültige Notification
+    N-->>T: 503 und Retry-After
+    end
+    Note over T,N: Stapelgrenze separat am zutreffenden Stapelpfad prüfen
+....
+
+[.lead]
+Feature-Datei zur HTTP-503-Variante:
+
+[source]
+----
+include::notification_temporar_nicht_verfuegbar.feature[]
+----

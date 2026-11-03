@@ -1,7 +1,7 @@
 [#TA_A_26668-02_07]
 ===== TA_A_26668-02_07 - ZETA Guard - Rate Limit - Header x-rate-limit-remaining - PEP HTTP Proxy - GET /.well-known/oauth-protected-resource
 
-"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann muss der Client über folgende Response Header informiert werden: (+++[...]+++, **x-rate-limit-remaining** (verbleibende Anfragen) und +++[...]+++). **[<=]**"
+"+++[...]+++ Wenn ein Rate Limit konfiguriert ist, dann MUSS der Client über folgende Response Header informiert werden: (+++[...]+++, **x-rate-limit-remaining** (verbleibende Anfragen) und +++[...]+++). **[<=]**"
 
 Dieser funktionale Aspekt der Anforderung bezieht sich auf:
 

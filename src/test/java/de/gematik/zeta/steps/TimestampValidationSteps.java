@@ -182,42 +182,28 @@ public class TimestampValidationSteps {
   }
 
   /**
-   * Cucumber step definition for validating that two timestamps belong to the same quarter.
+   * Stores an expired quarter that cannot become valid during the CC grace period.
    *
-   * @param firstTimestamp the first epoch seconds value
-   * @param secondTimestamp the second epoch seconds value
-   * @throws AssertionError if one value is invalid or the timestamps are not in the same quarter
+   * @param varName target variable
    */
-  @Und("validiere, dass die Zeitstempel {tigerResolvedString} und {tigerResolvedString} im gleichen Quartal liegen")
-  @And("validate that the timestamps {tigerResolvedString} and {tigerResolvedString} are in the same quarter")
-  public void validateTimestampsAreInSameQuarter(String firstTimestamp, String secondTimestamp) throws AssertionError {
-    var first = parseEpochSeconds(firstTimestamp, "Erster Zeitstempel");
-    var second = parseEpochSeconds(secondTimestamp, "Zweiter Zeitstempel");
-
-    assertThat(quarterKey(first))
-        .as("Zeitstempel müssen im gleichen Quartal liegen")
-        .isEqualTo(quarterKey(second));
-
-    log.info("Validierung erfolgreich: Zeitstempel {} und {} liegen im gleichen Quartal.", first, second);
+  @Und("speichere einen Zeitstempel aus dem vorletzten Quartal in der Variable {tigerResolvedString}")
+  public void storeTimestampOutsideQuarterGrace(String varName) {
+    TigerGlobalConfiguration.putValue(varName,
+        String.valueOf(timestampOutsideQuarterGrace(Instant.now()).getEpochSecond()),
+        ConfigurationValuePrecedence.TEST_CONTEXT);
   }
 
   /**
-   * Stores the last second of the previous UTC quarter in a Tiger variable.
+   * Selects the last second of the penultimate quarter, independent of the current grace window.
    *
-   * @param varName target Tiger variable name
+   * @param now reference time in UTC
+   * @return timestamp outside both the current and previous quarter
    */
-  @Und("speichere einen Zeitstempel aus dem vorherigen Quartal in der Variable {tigerResolvedString}")
-  @And("store a timestamp from the previous quarter in variable {tigerResolvedString}")
-  public void storeTimestampFromPreviousQuarter(String varName) {
-    var now = Instant.now();
-    var previousQuarterTimestamp = firstInstantOfCurrentQuarter(now).minusSeconds(1);
-
-    TigerGlobalConfiguration.putValue(
-        varName,
-        String.valueOf(previousQuarterTimestamp.getEpochSecond()),
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-
-    log.info("Gespeicherter Zeitstempel für vorheriges Quartal: {}", previousQuarterTimestamp);
+  public static Instant timestampOutsideQuarterGrace(Instant now) {
+    var date = now.atZone(ZoneOffset.UTC);
+    int firstMonth = ((date.getMonthValue() - 1) / 3) * 3 + 1;
+    return ZonedDateTime.of(date.getYear(), firstMonth, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+        .minusMonths(3).minusSeconds(1).toInstant();
   }
 
   /**
@@ -266,17 +252,4 @@ public class TimestampValidationSteps {
     return dateTime.getYear() + "-Q" + quarter;
   }
 
-  /**
-   * Determines the first instant of the current quarter in UTC.
-   *
-   * @param value instant that defines the current quarter
-   * @return first instant of the quarter containing {@code value}
-   */
-  private Instant firstInstantOfCurrentQuarter(Instant value) {
-    var dateTime = value.atZone(ZoneOffset.UTC);
-    int firstMonthOfQuarter = ((dateTime.getMonthValue() - 1) / 3) * 3 + 1;
-    return ZonedDateTime
-        .of(dateTime.getYear(), firstMonthOfQuarter, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-        .toInstant();
-  }
 }

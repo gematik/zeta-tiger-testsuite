@@ -1,0 +1,4 @@
+[#TA_A_29374_01]
+===== TA_A_29374_01 - Service Discovery - Resource-Metadaten, Authorization Server und Konfigurationsübernahme
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Service-Discovery** unterstützen. [<=]"

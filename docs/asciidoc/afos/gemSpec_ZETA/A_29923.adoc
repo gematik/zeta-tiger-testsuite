@@ -1,0 +1,4 @@
+[#A_29923]
+==== A_29923 - Authorization Server – Replay- und Fehlleitungsschutz
+
+Der Authorization Server MUSS den Rollover gegen Wiedereinspielung und Fehlleitung absichern durch (a) einen serverseitig ausgestellten Einmal-Nonce, (b) eine Bindung an die Identität des Guard (Audience) sowie (c) eine Bindung an HTTP-Methode und Ziel-URI der Anfrage. [<=]

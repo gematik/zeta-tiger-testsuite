@@ -33,7 +33,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 504
   @TA_A_26661_24
   @TA_A_27007_24
   @TA_A_27725-01_38
-  @MASVS-RESILIENCE
   Szenario: PEP HTTP Proxy protokolliert 504 Gateway Timeout
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "gatewayTimeoutCondition" auf "isResponse && request.path =~ '.*${paths.fachdienst.helloZetaPath}'"

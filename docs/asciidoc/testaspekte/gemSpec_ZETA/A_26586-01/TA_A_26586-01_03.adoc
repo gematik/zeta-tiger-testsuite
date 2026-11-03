@@ -1,0 +1,6 @@
+[#TA_A_26586-01_03]
+===== TA_A_26586-01_03 - PDP Authorization Server - Client-Daten an Policy Engine im Request
+
+Die Komponente Authorization Server MUSS nach jeder vollständigen und erfolgreichen Authentifizierung Session-Daten in der Datenbank des PDP speichern. Zu den Session Daten gehören die **Client-**, User, und Request-Daten gemäß [policy-engine-input.yaml]. Die Session-Daten MÜSSEN bei Anfragen des Authorization-Servers **an die Policy Engine im Request mit übergeben** werden.
+
+**[<=]**

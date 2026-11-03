@@ -32,6 +32,8 @@ import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.glue.HttpGlueCode;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
 import de.gematik.test.tiger.lib.reports.SerenityReportUtils;
+import de.gematik.zeta.services.DeploymentStateRecovery;
+import de.gematik.zeta.services.RecordedMessages;
 import de.gematik.zeta.services.SystemCommandService;
 import de.gematik.zeta.services.ZetaDeploymentConfiguration;
 import de.gematik.zeta.services.ZetaDeploymentModificationService;
@@ -42,9 +44,11 @@ import de.gematik.zeta.services.model.ZetaPoppTokenToggleRequest;
 import de.gematik.zeta.services.model.ZetaPoppTokenValidityRequest;
 import de.gematik.zeta.services.model.ZetaRequiredScopesRequest;
 import io.cucumber.java.de.Dann;
+import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.de.Wenn;
 import io.cucumber.java.en.And;
+import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 import io.restassured.http.Method;
 import java.io.IOException;
@@ -89,6 +93,7 @@ public class DeploymentModificationSteps {
       "zeta_k8s_isolated_helm_rollback_proof_install_timeout";
 
   private final ZetaDeploymentModificationService service;
+  private final List<ContainerLogCompletion> containerLogCompletions = new ArrayList<>();
 
   /**
    * Creates deployment modification steps backed by the default deployment configuration service instance.
@@ -215,6 +220,71 @@ public class DeploymentModificationSteps {
     }
   }
 
+  /** Restricts the generic PEP mapping using the scenario's recoverable ConfigMap backup. */
+  @Und("begrenze die generische PEP-Route im ZETA Deployment auf ihren exakten Pfad")
+  public void restrictGenericRouteToExact() {
+    assertModificationIsAllowed();
+    var details = getDeploymentDetails();
+    try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.restrictGenericRouteToExact(details);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Static routing configuration interrupted", ex);
+    } catch (IOException | TimeoutException ex) {
+      throw new AssertionError("Could not restrict the generic PEP route", ex);
+    }
+  }
+
+  /**
+   * Configures a static upstream using the scenario's recoverable PEP ConfigMap backup.
+   *
+   * @param upstream absolute internal HTTP URL
+   * @param targetRoute external PEP route path
+   */
+  @Und("setze das statische Weiterleitungsziel {tigerResolvedString} für die Route {tigerResolvedString} im ZETA Deployment")
+  public void setStaticRouteTarget(String upstream, String targetRoute) {
+    assertModificationIsAllowed();
+    var details = getDeploymentDetails();
+    try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setStaticRouteTarget(details, targetRoute, upstream);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Static routing configuration interrupted", ex);
+    } catch (IOException | TimeoutException ex) {
+      throw new AssertionError("Could not configure the static PEP route", ex);
+    }
+  }
+
+  /**
+   * Configures the audience of a valid control token as the route's only accepted audience.
+   *
+   * @param claimsJson JSON payload of the valid control token
+   * @param targetRoute route to configure
+   */
+  @Und("setze die erwartete Audience aus Access Token Claims {tigerResolvedString} für die Route {tigerResolvedString} im ZETA Deployment")
+  public void setRequiredAudienceFromToken(String claimsJson, String targetRoute) {
+    assertModificationIsAllowed();
+    var details = getDeploymentDetails();
+    try {
+      var aud = new tools.jackson.databind.ObjectMapper().readTree(claimsJson).path("aud");
+      if (aud.isArray() && aud.size() == 1) {
+        aud = aud.get(0);
+      }
+      if (!aud.isTextual() || aud.asText().isBlank()) {
+        throw new AssertionError("The control token must have exactly one nonempty audience");
+      }
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setRequiredAudience(details, targetRoute, aud.asText());
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Audience configuration interrupted", ex);
+    } catch (IOException | TimeoutException ex) {
+      throw new AssertionError("Could not configure the CC audience fixture", ex);
+    }
+  }
+
   /**
    * Cucumber step to set the PoPP token validity mode in a ZETA Guard deployment.
    *
@@ -243,6 +313,49 @@ public class DeploymentModificationSteps {
   }
 
   /**
+   * Sets a route's validity independently of the default and registers its recovery first.
+   *
+   * @param validity quarter or a duration
+   * @param targetRoute route to configure
+   * @param leewaySeconds clock tolerance of the fixture
+   */
+  @Und("setze die PoPP Token Gültigkeit {tigerResolvedString} für die Route {tigerResolvedString} im ZETA Deployment mit Uhrtoleranz {int} Sekunden")
+  @And("set PoPP token validity {tigerResolvedString} for route {tigerResolvedString} in ZETA deployment with clock tolerance {int} seconds")
+  public void setPoppTokenValidityForRoute(String validity, String targetRoute, int leewaySeconds) {
+    assertModificationIsAllowed();
+    var details = getDeploymentDetails();
+    try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.setPoppTokenValidityForRoute(details, getPoppTokenValidityRequest(), targetRoute,
+          validity, leewaySeconds);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("PoPP validity configuration interrupted", exception);
+    } catch (IOException | TimeoutException exception) {
+      throw new AssertionError("Could not configure route-specific PoPP validity", exception);
+    }
+  }
+
+  /**
+   * Configures one worker so a second download proves an update of the initialized PEP cache.
+   */
+  @Gegebensei("der PEP verwendet für die Cache-Beobachtung genau einen Worker")
+  @Given("the PEP uses exactly one worker for cache observation")
+  public void useSinglePepWorkerForCacheObservation() {
+    assertModificationIsAllowed();
+    var details = getDeploymentDetails();
+    try {
+      prepareConfigMapBackupForCurrentScenario(details.namespace(), details.nginxConfigMapName());
+      service.useSinglePepWorker(details);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Single-worker PEP configuration interrupted", exception);
+    } catch (IOException | TimeoutException exception) {
+      throw new AssertionError("Could not configure one PEP cache worker", exception);
+    }
+  }
+
+  /**
    * Asserts that steps that modify the ZETA guard deployment are allowed by configuration.
    *
    * @throws AssertionError if modification step is not allowed
@@ -254,6 +367,37 @@ public class DeploymentModificationSteps {
       return;
     }
     throw new AssertionError("Deployment modification is not allowed, won't execute step");
+  }
+
+  /**
+   * Restarts a deployment and waits until its replacement replicas finish rolling out.
+   *
+   * @param deploymentName deployment to restart in the configured namespace
+   * @throws AssertionError identifying an unmet prerequisite if modification is disabled, configuration is missing, or rollout fails
+   */
+  @Wenn("starte das Deployment {tigerResolvedString} neu und warte auf Bereitschaft")
+  @When("restart deployment {tigerResolvedString} and wait for readiness")
+  public void restartDeployment(String deploymentName) {
+    try {
+      assertModificationIsAllowed();
+      var namespace = ZetaDeploymentConfiguration.getNamespace();
+      if (namespace == null || namespace.isBlank() || deploymentName == null || deploymentName.isBlank()) {
+        throw new AssertionError("Deployment restart requires a namespace and deployment name");
+      }
+      var restart = service.executeKubectlCommand(
+          "-n", namespace, "rollout", "restart", "deployment/" + deploymentName);
+      if (restart.exitCode() != 0) {
+        throw new AssertionError("Deployment restart failed for " + deploymentName + ": " + restart.stderr());
+      }
+      var rollout = service.waitForDeploymentRollout(
+          namespace, deploymentName, service.getPodReadyTimeoutSeconds());
+      if (rollout.exitCode() != 0) {
+        throw new AssertionError("Deployment restart rollout failed for " + deploymentName + ": " + rollout.stderr());
+      }
+    } catch (RuntimeException exception) {
+      throw new AssertionError("Test prerequisite not fulfilled: deployment preparation for '"
+          + deploymentName + "' failed: " + exception.getMessage(), exception);
+    }
   }
 
   /**
@@ -625,47 +769,6 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Verifies that rollout activity for the target image becomes visible on deployment pods within
-   * the given time budget.
-   */
-  @Und("prüfe, dass für das Deployment {tigerResolvedString} innerhalb von {int} Sekunden ein Pod mit dem Image {tigerResolvedString} für den Container {tigerResolvedString} sichtbar wird")
-  @And("verify deployment {tigerResolvedString} shows a pod with image {tigerResolvedString} for container {tigerResolvedString} within {int} seconds")
-  public void verifyDeploymentShowsPodWithImageWithinSeconds(String deploymentName, int maxDurationSeconds,
-      String expectedImage, String containerName) throws AssertionError {
-    String namespace = getNamespace();
-    try {
-      CommandResult result = service.verifyDeploymentShowsPodWithImageWithinSeconds(
-          namespace, deploymentName, containerName, expectedImage, maxDurationSeconds);
-      if (result.exitCode() != 0) {
-        throw new AssertionError(result.stderr());
-      }
-      SerenityReportUtils.addCustomData("Deployment image visibility", result.stdout());
-    } catch (Exception e) {
-      throw new AssertionError("An unexpected error occurred", e);
-    }
-  }
-
-  /**
-   * Verifies that rollout activity for the target image becomes visible before a previously started
-   * request receives its response.
-   */
-  @Und(
-      "prüfe, dass für das Deployment {tigerResolvedString} innerhalb von {int} Sekunden ein Pod mit dem Image"
-          + " {tigerResolvedString} für den Container {tigerResolvedString} sichtbar wird, bevor die erste Anfrage"
-          + " mit Pfad {tigerResolvedString} und Knoten {tigerResolvedString} der mit {tigerResolvedString}"
-          + " übereinstimmt, beantwortet wird")
-  @And(
-      "verify deployment {tigerResolvedString} shows a pod with image {tigerResolvedString} for container"
-          + " {tigerResolvedString} within {int} seconds before first request to path {tigerResolvedString}"
-          + " with {tigerResolvedString} matching {tigerResolvedString} is answered")
-  public void verifyDeploymentShowsPodWithImageBeforeFirstMatchingRequestAnswered(String deploymentName,
-      int maxDurationSeconds, String expectedImage, String containerName, String pathPattern, String rbelPath,
-      String expectedValueRegex) {
-    verifyDeploymentImageVisibilityBeforeRequestAnswered(
-        deploymentName, maxDurationSeconds, expectedImage, containerName, pathPattern, rbelPath, expectedValueRegex);
-  }
-
-  /**
    * Starts a long-running client request, triggers the deployment image update while that request is pending,
    * and verifies that rollout activity becomes visible before the tracked request is answered successfully.
    *
@@ -776,6 +879,7 @@ public class DeploymentModificationSteps {
     pollGetUntilDeploymentSwitchedToNewPod(url, expectedStatusCode, deploymentName, initialPodName, timeoutSeconds);
   }
 
+  /** Polls requests until the original pod has been replaced and the expected status is observed. */
   private void pollGetUntilDeploymentSwitchedToNewPod(String url, String expectedStatusCode, String deploymentName,
       String initialPodName, int timeoutSeconds) {
     String namespace = getNamespace();
@@ -904,22 +1008,6 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Verifies that Kubernetes finalizes the rollout before a previously started request completes.
-   */
-  @Und(
-      "prüfe, dass das Deployment {tigerResolvedString} finalisiert ist, bevor die erste Anfrage mit Pfad"
-          + " {tigerResolvedString} und Knoten {tigerResolvedString} der mit {tigerResolvedString} übereinstimmt,"
-          + " beantwortet wird oder {int} Sekunden vergangen sind")
-  @And(
-      "verify deployment {tigerResolvedString} is finalized before first request to path {tigerResolvedString}"
-          + " with {tigerResolvedString} matching {tigerResolvedString} is answered or {int} seconds have passed")
-  public void verifyDeploymentFinalizedBeforeFirstMatchingRequestAnswered(String deploymentName, String pathPattern,
-      String rbelPath, String expectedValueRegex, int timeoutSeconds) {
-    verifyRequestResponseVsDeploymentFinalization(pathPattern, rbelPath, expectedValueRegex, deploymentName,
-        timeoutSeconds, false, "200", false);
-  }
-
-  /**
    * Verifies that a previously started request with a specific expected response status completes
    * before Kubernetes reports rollout completion for the deployment.
    */
@@ -955,22 +1043,6 @@ public class DeploymentModificationSteps {
       String deploymentName, int timeoutSeconds) {
     verifyRequestResponseVsDeploymentFinalization(pathPattern, rbelPath, expectedValueRegex, deploymentName,
         timeoutSeconds, true, expectedStatusCodeRegex, true);
-  }
-
-  /**
-   * Verifies that a previously started request is answered only after a deleted pod no longer
-   * exists in Kubernetes, providing evidence that the request was taken over during rollout.
-   */
-  @Und(
-      "prüfe, dass der Pod {tigerResolvedString} nicht mehr existiert, bevor die erste Anfrage mit Pfad"
-          + " {tigerResolvedString} und Knoten {tigerResolvedString} der mit {tigerResolvedString} übereinstimmt,"
-          + " beantwortet wird oder {int} Sekunden vergangen sind")
-  @And(
-      "verify pod {tigerResolvedString} no longer exists before first request to path {tigerResolvedString}"
-          + " with {tigerResolvedString} matching {tigerResolvedString} is answered or {int} seconds have passed")
-  public void verifyPodGoneBeforeFirstMatchingRequestAnswered(String podName, String pathPattern, String rbelPath,
-      String expectedValueRegex, int timeoutSeconds) {
-    verifyRequestResponseAfterPodDisappeared(pathPattern, rbelPath, expectedValueRegex, podName, timeoutSeconds);
   }
 
   /**
@@ -1233,29 +1305,6 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Removes lingering failed rollout pods that still use an unexpected image after rollback handling.
-   *
-   * @throws AssertionError if cleanup fails
-   */
-  @Und("bereinige verbleibende fehlgeschlagene Rollout-Pods des Deployments {tigerResolvedString} für den Container {tigerResolvedString} mit anderem Image als {tigerResolvedString}")
-  @And("cleanup remaining failed rollout pods of deployment {tigerResolvedString} for container {tigerResolvedString} with image different from {tigerResolvedString}")
-  public void cleanupFailedRolloutPods(String deploymentName, String containerName, String expectedStableImage)
-      throws AssertionError {
-    assertModificationIsAllowed();
-
-    String namespace = getNamespace();
-    try {
-      CommandResult result = service.cleanupFailedRolloutPods(namespace, deploymentName, containerName, expectedStableImage);
-      if (result.exitCode() != 0) {
-        throw new AssertionError(result.stderr());
-      }
-      SerenityReportUtils.addCustomData("Failed rollout pod cleanup", result.stdout());
-    } catch (Exception e) {
-      throw new AssertionError("An unexpected error occurred", e);
-    }
-  }
-
-  /**
    * Reads the deployment namespace from Tiger configuration.
    *
    * @return configured deployment namespace
@@ -1378,6 +1427,7 @@ public class DeploymentModificationSteps {
     }
   }
 
+  /** Records the original PEP image before a scenario starts an image update. */
   private void rememberPepOriginalImageIfNeeded(String namespace, String deploymentName, String containerName) {
     if (Hooks.getCapturedPepOriginalImage().isPresent()) {
       return;
@@ -1398,7 +1448,7 @@ public class DeploymentModificationSteps {
   }
 
   /**
-   * Registers that this scenario owns the ConfigMap backup and removes stale backup data before the first modification.
+   * Registers scenario-local backup ownership only when no pre-existing backup is present.
    *
    * @param namespace Kubernetes namespace containing the ConfigMap
    * @param configMapName ConfigMap name
@@ -1413,17 +1463,15 @@ public class DeploymentModificationSteps {
     }
 
     if (service.hasConfigMapBackup(namespace, normalizedConfigMapName)) {
-      var deleteResult = service.deleteConfigMapBackup(namespace, normalizedConfigMapName);
-      if (deleteResult.exitCode() != 0) {
-        throw new AssertionError("Could not delete pre-existing ConfigMap backup '" + normalizedConfigMapName
-            + "' before scenario-local backup capture.\n" + deleteResult.stderr());
-      }
+      throw new AssertionError("Preserving pre-existing ConfigMap backup '" + normalizedConfigMapName
+          + "'; resolve its ownership and recovery before modifying the ConfigMap.");
     }
 
-    // Ownership must only be recorded after stale backup state can no longer be restored by cleanup.
+    // Register before mutation so partially completed changes are also cleaned up.
     Hooks.rememberConfigMapBackupIfAbsent(normalizedConfigMapName);
   }
 
+  /** Records an explicitly observed original image for the configured PEP container. */
   private void rememberPepOriginalImageIfNamedVariableMatches(String variableName, String deploymentName,
       String containerName, String imageReference) {
     if (!"pep_original_image".equals(variableName)) {
@@ -1434,6 +1482,7 @@ public class DeploymentModificationSteps {
     }
   }
 
+  /** Checks whether the supplied deployment and container identify the configured PEP. */
   private boolean isPepDeploymentContainer(String deploymentName, String containerName) {
     String configuredDeploymentName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.podName")
         .orElse("");
@@ -1467,7 +1516,7 @@ public class DeploymentModificationSteps {
    */
   private String extractCurrentResponseCode() {
     var messageRetriever = RbelMessageRetriever.getInstance();
-    List<RbelElement> messages = new ArrayList<>(messageRetriever.getMessageHistory().getMessages());
+    List<RbelElement> messages = RecordedMessages.snapshot();
     if (messages.isEmpty()) {
       throw new AssertionError("No RBEL messages recorded - cannot determine response code.");
     }
@@ -1493,6 +1542,7 @@ public class DeploymentModificationSteps {
     throw new AssertionError("No recent response code available - cannot determine response code.");
   }
 
+  /** Correlates the selected response timestamp with deployment finalization. */
   private void verifyRequestResponseVsDeploymentFinalization(String pathPattern, String rbelPath,
       String expectedValueRegex, String deploymentName, int timeoutSeconds, boolean expectResponseFirst,
       String expectedResponseCode, boolean expectedResponseCodeIsRegex) {
@@ -1506,7 +1556,7 @@ public class DeploymentModificationSteps {
     List<String> observations = new ArrayList<>();
 
     while (!Instant.now().isAfter(deadline)) {
-      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      var messageHistory = RecordedMessages.snapshot();
       if (messageHistory == null || messageHistory.isEmpty()) {
         sleepBeforeNextPoll();
         continue;
@@ -1582,121 +1632,6 @@ public class DeploymentModificationSteps {
     return imageVisibleObserved && responseObserved;
   }
 
-  private void verifyRequestResponseAfterPodDisappeared(String pathPattern, String rbelPath,
-      String expectedValueRegex, String podName, int timeoutSeconds) {
-    String namespace = getNamespace();
-    Instant deadline = Instant.now().plusSeconds(Math.abs(timeoutSeconds));
-    Instant responseObservedAt = null;
-    Instant podGoneObservedAt = null;
-    List<String> observations = new ArrayList<>();
-
-    while (!Instant.now().isAfter(deadline)) {
-      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
-      if (messageHistory == null || messageHistory.isEmpty()) {
-        sleepBeforeNextPoll();
-        continue;
-      }
-
-      List<RbelElement> messages = new ArrayList<>(messageHistory);
-      var request = findFirstRequestMatchingPathAndNode(messages, pathPattern, rbelPath, expectedValueRegex);
-      if (request == null) {
-        sleepBeforeNextPoll();
-        continue;
-      }
-
-      if (responseObservedAt == null) {
-        var response = findResponseForRequest(messages, request);
-        if (response != null) {
-          responseObservedAt = Instant.now();
-          String observedResponseCode = extractResponseCode(response);
-          observations.add("responseObserved=" + responseObservedAt + ", code=" + observedResponseCode);
-        }
-      }
-
-      if (podGoneObservedAt == null && podMissing(namespace, podName)) {
-        podGoneObservedAt = Instant.now();
-        boolean responsePendingWhenPodDisappeared = responseObservedAt == null;
-        observations.add("podGone=" + podGoneObservedAt + ", pod=" + podName
-            + ", responsePending=" + responsePendingWhenPodDisappeared);
-        if (!responsePendingWhenPodDisappeared) {
-          throw new AssertionError("Matching request was already answered before pod '" + podName + "' disappeared."
-              + " observations=" + observations);
-        }
-      }
-
-      if (responseObservedAt != null && podGoneObservedAt != null) {
-        SerenityReportUtils.addCustomData("Pod takeover evidence",
-            "pod=" + podName + ", requestPath=" + pathPattern + ", podGoneAt=" + podGoneObservedAt
-                + ", responseObservedAt=" + responseObservedAt + ", observations=" + observations);
-        return;
-      }
-
-      sleepBeforeNextPoll();
-    }
-
-    throw new AssertionError("Timeout while comparing request completion and disappearance of pod '" + podName
-        + "'. observations=" + observations);
-  }
-
-  private void verifyDeploymentImageVisibilityBeforeRequestAnswered(String deploymentName, int timeoutSeconds,
-      String expectedImage, String containerName, String pathPattern, String rbelPath, String expectedValueRegex) {
-    String namespace = getNamespace();
-    service.verifyRequirements(namespace);
-
-    Instant deadline = Instant.now().plusSeconds(Math.abs(timeoutSeconds));
-    Instant imageVisibleAt = null;
-    Instant responseObservedAt = null;
-    List<String> observations = new ArrayList<>();
-
-    while (!Instant.now().isAfter(deadline)) {
-      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
-      if (messageHistory == null || messageHistory.isEmpty()) {
-        sleepBeforeNextPoll();
-        continue;
-      }
-
-      List<RbelElement> messages = new ArrayList<>(messageHistory);
-      var request = findFirstRequestMatchingPathAndNode(messages, pathPattern, rbelPath, expectedValueRegex);
-      if (request == null) {
-        sleepBeforeNextPoll();
-        continue;
-      }
-
-      if (responseObservedAt == null) {
-        var response = findResponseForRequest(messages, request);
-        if (response != null) {
-          responseObservedAt = Instant.now();
-          String observedResponseCode = extractResponseCode(response);
-          observations.add("responseObserved=" + responseObservedAt + ", code=" + observedResponseCode);
-          assertObservedSuccessfulResponseCode(observedResponseCode, observations);
-        }
-      }
-
-      if (imageVisibleAt == null && deploymentShowsPodWithImage(namespace, deploymentName, expectedImage, containerName)) {
-        imageVisibleAt = Instant.now();
-        boolean responsePendingWhenImageVisible = responseObservedAt == null;
-        observations.add("imageVisible=" + imageVisibleAt + ", responsePending=" + responsePendingWhenImageVisible);
-        if (!responsePendingWhenImageVisible) {
-          throw new AssertionError("Matching request was already answered before rollout activity with image '"
-              + expectedImage + "' became visible for deployment '" + deploymentName + "'. observations=" + observations);
-        }
-      }
-
-      if (hasBackgroundUpdateEvidence(imageVisibleAt != null, responseObservedAt != null)) {
-        SerenityReportUtils.addCustomData("Background rollout evidence",
-            "deployment=" + deploymentName + ", expectedImage=" + expectedImage + ", requestPath=" + pathPattern
-                + ", imageVisibleAt=" + imageVisibleAt + ", responseObservedAt=" + responseObservedAt
-                + ", observations=" + observations);
-        return;
-      }
-
-      sleepBeforeNextPoll();
-    }
-
-    throw new AssertionError("Timeout while comparing rollout image visibility and request completion for deployment '"
-        + deploymentName + "'. observations=" + observations);
-  }
-
   /**
    * Verifies that a request is pending before an image update is triggered, then proves that a pod with the new image
    * becomes visible before the request is answered.
@@ -1721,7 +1656,7 @@ public class DeploymentModificationSteps {
 
     RbelElement initialClientRequest = null;
     while (!Instant.now().isAfter(deadline)) {
-      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      var messageHistory = RecordedMessages.snapshot();
       if (messageHistory == null || messageHistory.isEmpty()) {
         sleepBeforeNextPoll();
         continue;
@@ -1761,7 +1696,7 @@ public class DeploymentModificationSteps {
 
     try {
       while (!Instant.now().isAfter(deadline)) {
-        var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+        var messageHistory = RecordedMessages.snapshot();
         if (messageHistory == null || messageHistory.isEmpty()) {
           sleepBeforeNextPoll();
           continue;
@@ -1849,7 +1784,7 @@ public class DeploymentModificationSteps {
 
     RbelElement initialClientRequest = null;
     while (!Instant.now().isAfter(deadline)) {
-      var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      var messageHistory = RecordedMessages.snapshot();
       if (messageHistory == null || messageHistory.isEmpty()) {
         sleepBeforeNextPoll();
         continue;
@@ -1889,7 +1824,7 @@ public class DeploymentModificationSteps {
       final LiteralTakeoverEvidence evidence = new LiteralTakeoverEvidence();
 
       while (!Instant.now().isAfter(deadline)) {
-        var messageHistory = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+        var messageHistory = RecordedMessages.snapshot();
         if (messageHistory == null || messageHistory.isEmpty()) {
           sleepBeforeNextPoll();
           continue;
@@ -2122,7 +2057,8 @@ public class DeploymentModificationSteps {
   private CompletableFuture<CommandResult> startDeploymentImageUpdate(String namespace, String deploymentName,
       String containerName, String newImage) {
     rememberPepOriginalImageIfNeeded(namespace, deploymentName, containerName);
-    return CompletableFuture.supplyAsync(() -> {
+    var recovery = DeploymentStateRecovery.current();
+    return CompletableFuture.supplyAsync(() -> DeploymentStateRecovery.withContext(recovery, () -> {
       try {
         return service.setDeploymentContainerImage(namespace, deploymentName, containerName, newImage);
       } catch (Exception e) {
@@ -2133,7 +2069,7 @@ public class DeploymentModificationSteps {
             "Could not update deployment image: " + e.getMessage()
         );
       }
-    });
+    }));
   }
 
   /**
@@ -2164,6 +2100,7 @@ public class DeploymentModificationSteps {
     }
   }
 
+  /** Waits for the polling interval while preserving interruption as a failure. */
   private void sleepBeforeNextPoll() {
     try {
       TimeUnit.MILLISECONDS.sleep(DEFAULT_POLL_INTERVAL_MILLIS);
@@ -2173,6 +2110,7 @@ public class DeploymentModificationSteps {
     }
   }
 
+  /** Requires a successful response in the recorded polling observations. */
   private void assertObservedSuccessfulResponseCode(String observedResponseCode, List<String> observations) {
     if (observedResponseCode != null && !"200".equals(observedResponseCode)) {
       throw new AssertionError("Observed response for matching request has unexpected status code "
@@ -2196,6 +2134,7 @@ public class DeploymentModificationSteps {
         .orElse(null);
   }
 
+  /** Selects the first recorded request matching both the path and the required node value. */
   private RbelElement findFirstRequestMatchingPathAndNode(Collection<RbelElement> messages, String pathPattern,
       String rbelPath, String expectedValueRegex) {
     return messages.stream()
@@ -2235,6 +2174,7 @@ public class DeploymentModificationSteps {
     return !message.findRbelPathMembers("$.method").isEmpty();
   }
 
+  /** Checks the request path against the supplied pattern. */
   private boolean matchesPath(RbelElement message, String pathPattern) {
     return message.findRbelPathMembers("$.path").stream()
         .map(RbelElement::getRawStringContent)
@@ -2243,6 +2183,7 @@ public class DeploymentModificationSteps {
         .anyMatch(actualPath -> actualPath.equals(pathPattern) || Pattern.compile(pathPattern).matcher(actualPath).find());
   }
 
+  /** Checks the selected RBEL node against the expected value pattern. */
   private boolean matchesNodeValue(RbelElement message, String rbelPath, String expectedValueRegex) {
     Pattern pattern = Pattern.compile(expectedValueRegex);
     return message.findRbelPathMembers(rbelPath).stream()
@@ -2279,6 +2220,7 @@ public class DeploymentModificationSteps {
         : expectedResponseCode.equals(observedResponseCode);
   }
 
+  /** Checks the current deployment for a completed rollout. */
   private boolean isDeploymentRolloutFinalized(String namespace, String deploymentName) {
     CommandResult result = service.executeKubectlCommand("-n", namespace, "get", "deployment", deploymentName, "-o", "json");
     if (result.exitCode() != 0) {
@@ -2307,6 +2249,7 @@ public class DeploymentModificationSteps {
         && hasNewReplicaSetAvailableCondition(deployment.path("status").path("conditions"));
   }
 
+  /** Checks the deployment conditions for availability of the new ReplicaSet. */
   private static boolean hasNewReplicaSetAvailableCondition(JsonNode conditions) {
     if (!conditions.isArray()) {
       return false;
@@ -2352,6 +2295,7 @@ public class DeploymentModificationSteps {
     return matchingReadyPodNames.size() == 1 ? matchingReadyPodNames.getFirst() : null;
   }
 
+  /** Lists ready pods belonging to the requested deployment name prefix. */
   private List<String> findReadyPodNamesByPrefix(String namespace, String deploymentName) {
     CommandResult result = service.executeKubectlCommand("-n", namespace, "get", "pods", "-o", "json");
     if (result.exitCode() != 0) {
@@ -2379,6 +2323,7 @@ public class DeploymentModificationSteps {
     return matchingReadyPodNames;
   }
 
+  /** Checks whether the specified pod has disappeared from the namespace. */
   private boolean podMissing(String namespace, String podName) {
     CommandResult result = service.executeKubectlCommand("-n", namespace, "get", "pods", "-o", "json");
     if (result.exitCode() != 0) {
@@ -2400,11 +2345,13 @@ public class DeploymentModificationSteps {
     return true;
   }
 
+  /** Checks whether a matching deployment pod exposes the expected image. */
   private boolean deploymentShowsPodWithImage(String namespace, String deploymentName, String expectedImage,
       String containerName) {
     return findDeploymentPodWithImage(namespace, deploymentName, expectedImage, containerName) != null;
   }
 
+  /** Finds a deployment pod exposing the expected image in the specified container. */
   private String findDeploymentPodWithImage(String namespace, String deploymentName, String expectedImage,
       String containerName) {
     return findDeploymentPodWithImage(namespace, deploymentName, expectedImage, containerName, false);
@@ -2466,6 +2413,7 @@ public class DeploymentModificationSteps {
     return findDeploymentPodWithImage(namespace, deploymentName, expectedImage, containerName, true);
   }
 
+  /** Reads the image of the named container from a pod object. */
   private String extractContainerImage(JsonNode pod, String containerName) {
     JsonNode containers = pod.path("spec").path("containers");
     if (!containers.isArray()) {
@@ -2624,4 +2572,108 @@ public class DeploymentModificationSteps {
     }
     throw new AssertionError("Max depth for configuration keys exceeded for key: " + baseKeyPath);
   }
+
+  /**
+   * Exports a TLS certificate fixture from Kubernetes Secrets into a local directory.
+   *
+   * @param secret TLS Secret name
+   * @param caSecret CA Secret name
+   * @param directory local fixture directory
+   * @throws IOException if the directory or fixture files cannot be written
+   */
+  @Und("exportiere das TLS-Secret {tigerResolvedString} mit CA-Secret {tigerResolvedString}"
+      + " in das Verzeichnis {tigerResolvedString}")
+  public void exportTlsSecret(String secret, String caSecret, String directory) throws IOException {
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var result = service.executeKubectlCommand(false,
+        List.of("-n", getNamespace(), "get", "secret", secret, caSecret, "-o", "json"));
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Cannot read TLS fixtures: " + result.stderr());
+    }
+    var items = mapper.readTree(result.stdout()).path("items");
+    var folder = java.nio.file.Path.of(directory);
+    java.nio.file.Files.createDirectories(folder);
+    for (var item : items) {
+      var data = item.path("data");
+      var name = item.path("metadata").path("name").asString();
+      var keys = name.equals(secret) ? List.of("tls.crt", "tls.key") : List.of("ca.crt");
+      for (var key : keys) {
+        var encoded = data.path(key).asString("");
+        if (encoded.isBlank()) {
+          throw new AssertionError("Missing TLS fixture field: " + key);
+        }
+        java.nio.file.Files.write(folder.resolve(key), java.util.Base64.getDecoder().decode(encoded));
+      }
+    }
+  }
+
+  /**
+   * Waits for a matching line in the current pod's retained container logs.
+   *
+   * @param pod pod name
+   * @param container container name
+   * @param expression required line pattern
+   * @param seconds observation timeout
+   * @throws InterruptedException if observation is interrupted
+   */
+  @Dann("enthält das Protokoll des Containers {tigerResolvedString} im Pod {tigerResolvedString}"
+      + " innerhalb von {int} Sekunden das Muster {tigerResolvedString}")
+  public void awaitContainerLog(String container, String pod, int seconds, String expression)
+      throws InterruptedException {
+    var pattern = java.util.regex.Pattern.compile(expression, java.util.regex.Pattern.MULTILINE);
+    var logs = de.gematik.zeta.services.BoundedObservation.await(() -> {
+      var result = service.executeKubectlCommand(false,
+          List.of("-n", getNamespace(), "logs", pod, "-c", container, "--tail=5000"));
+      if (result.exitCode() != 0) {
+        throw new AssertionError("Container log read failed: " + result.stderr());
+      }
+      return result.stdout();
+    }, value -> pattern.matcher(value).find(), Duration.ofSeconds(seconds), Duration.ofMillis(500),
+        "Container log does not contain: " + expression);
+    SerenityReportUtils.addCustomData("Container log", logs);
+  }
+
+  /**
+   * Registers a terminal container log pattern that must be observed before scenario cleanup.
+   *
+   * @param container container name
+   * @param pod pod name
+   * @param expression terminal line pattern
+   */
+  @Und("merke den Abschlussnachweis im Container {tigerResolvedString} im Pod {tigerResolvedString}"
+      + " mit Muster {tigerResolvedString}")
+  public void rememberContainerCompletion(String container, String pod, String expression) {
+    containerLogCompletions.add(new ContainerLogCompletion(container, pod, expression));
+  }
+
+  /**
+   * Completes registered observations before shared TLS processes and routing are restored.
+   *
+   * @throws InterruptedException if observation is interrupted
+   */
+  @io.cucumber.java.After(order = 10001)
+  public void awaitRegisteredContainerCompletions() throws InterruptedException {
+    AssertionError failure = null;
+    for (var completion : containerLogCompletions) {
+      try {
+        awaitContainerLog(completion.container(), completion.pod(), 45, completion.expression());
+      } catch (RuntimeException | AssertionError error) {
+        var observationFailure = new AssertionError(
+            "Container completion failed for pod " + completion.pod(), error);
+        if (failure == null) {
+          failure = observationFailure;
+        } else {
+          failure.addSuppressed(observationFailure);
+        }
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  /** Retained container identity and completion expression. */
+  private record ContainerLogCompletion(String container, String pod, String expression) {
+  }
+
 }

@@ -1,0 +1,8 @@
+[#TA_A_30001_10]
+===== TA_A_30001_10 - ZETA, Ablauf Token Revocation - Revisionssicher protokollieren
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 07: **revisionssichere Protokollierung**.

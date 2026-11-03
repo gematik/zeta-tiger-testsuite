@@ -1,0 +1,4 @@
+[#A_29939]
+==== A_29939 - Authorization Server – Autorisierungsprüfung bei Client-übergreifender Löschung
+
+Der Authorization Server MUSS bei der Löschung eines anderen Clients (DELETE /zeta/clients/{target_client_id}) prüfen, dass der Ziel-Client tatsächlich zur Identität des aufrufenden Registration Access Token gehört, und einen nicht zur Identität gehörenden Ziel-Client ablehnen (403). Der Besitz einer Objektreferenz (target_client_id) allein DARF NICHT als Autorisierung gelten (Schutz gegen Broken Object Level Authorization). [<=]

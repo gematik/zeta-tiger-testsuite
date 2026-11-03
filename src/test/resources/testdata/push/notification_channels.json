@@ -1,0 +1,8 @@
+{
+  "channels": [
+    {
+      "id": "${testdata.notificationService.notificationChannel.id}",
+      "status": "${testdata.notificationService.notificationChannel.status}"
+    }
+  ]
+}

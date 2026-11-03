@@ -28,7 +28,7 @@ des PEP HTTP Proxys wurden so angepasst, dass sie eine andere Ziel-URL liefern a
 (``Discovery and Configuration``).
 
 | Nebenbedingung: |
-Konfigurationen zum URL-Rewriting im PEP HTTP Proxy sind aktiv (vgl. <<TA_A_26560_01>>).
+Die externe Request-URL ist im PEP HTTP Proxy statisch einer internen Ziel-URL zugeordnet.
 
 | Ablauf: |
 1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
@@ -50,7 +50,7 @@ Die Ressource wurde nicht geladen. Der MA kennt jedoch die neue Ziel-URL für ei
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_26281-01_02>>
-* <<TA_A_26560_01>>
+* <<TA_A_26560-01_01>>
 * <<TA_A_26661_01>>
 * <<TA_A_26661_16>>
 * <<TA_A_27725-01_28>>

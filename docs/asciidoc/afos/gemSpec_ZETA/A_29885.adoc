@@ -1,0 +1,4 @@
+[#A_29885]
+==== A_29885 - ZG Client, Geltungsbereich der Berechtigung
+
+Der ZG Client MUSS Access Tokens ausschließlich für die in der Policy-Engine-Konfiguration als zulässig hinterlegten Zieldienste und Scopes beziehen und verwenden. [<=]

@@ -35,6 +35,7 @@ import net.thucydides.model.domain.ReportType;
 import net.thucydides.model.domain.Story;
 import net.thucydides.model.domain.TestOutcome;
 import net.thucydides.model.domain.TestResult;
+import net.thucydides.model.environment.TestLocalEnvironmentVariables;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -63,7 +64,7 @@ class SerenityExtendedReportsMainTest {
           Scenario: Successful scenario
             Given a fulfilled precondition
         """);
-    var outputDirectory = Files.createDirectory(tempDir.resolve("output"));
+    final var outputDirectory = Files.createDirectory(tempDir.resolve("output"));
     var story = Story.withIdAndPath(
         "example_feature", "Example feature", "example_feature").asFeature();
     var outcome = TestOutcome.forTestInStory("Successful scenario", story)
@@ -84,11 +85,18 @@ class SerenityExtendedReportsMainTest {
             }
             """);
 
-    SerenityExtendedReportsMain.main(new String[]{
-        sourceDirectory.toString(),
-        outputDirectory.toString(),
-        requirementsDirectory.toString()
-    });
+    // Requirement tags must be relative to the fixture, not the repository's feature root.
+    TestLocalEnvironmentVariables.setProperty(
+        "serenity.requirements.dir", requirementsDirectory.toString());
+    try {
+      SerenityExtendedReportsMain.main(new String[]{
+          sourceDirectory.toString(),
+          outputDirectory.toString(),
+          requirementsDirectory.toString()
+      });
+    } finally {
+      TestLocalEnvironmentVariables.clear();
+    }
 
     assertThat(outputDirectory.resolve("index.html")).isNotEmptyFile();
     assertThat(outputDirectory.resolve("serenity-summary.html")).isNotEmptyFile();

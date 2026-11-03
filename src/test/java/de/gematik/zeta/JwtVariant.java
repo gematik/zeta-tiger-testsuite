@@ -24,7 +24,12 @@
 
 package de.gematik.zeta;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Supported JWT manipulation variants used by the TigerProxy JWT manipulation endpoint.
@@ -99,5 +104,68 @@ public enum JwtVariant {
    */
   public String token() {
     return name().toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Returns the proxy field selecting this variant.
+   *
+   * @return proxy manipulation field
+   */
+  public String manipulationField() {
+    return switch (this) {
+      case DUPLICATE_ALG_HEADERS -> "variant.duplicate_alg_headers";
+      case RESIGN_CORRECT_KEY -> "header.alg";
+      default -> "variant.name";
+    };
+  }
+
+  /**
+   * Resolves the proxy value from an optional variant parameter.
+   *
+   * @param parameter variant parameter: JSON algorithm array for duplicate headers, otherwise blank
+   * @return proxy replacement value
+   * @throws IllegalArgumentException if variant parameters are missing or unexpected
+   */
+  public String manipulationValue(String parameter) {
+    if (this == DUPLICATE_ALG_HEADERS) {
+      parseDuplicateAlgorithms(parameter);
+      return parameter;
+    }
+    if (parameter != null && !parameter.isBlank()) {
+      throw new IllegalArgumentException("Algorithm values only apply to duplicate alg headers");
+    }
+    return this == RESIGN_CORRECT_KEY ? "ES256" : token();
+  }
+
+  /**
+   * Parses at least two nonblank algorithm strings while preserving their order and duplicates.
+   *
+   * @param parameter JSON array of algorithm strings
+   * @return ordered algorithm values
+   * @throws IllegalArgumentException if the parameter is not a complete valid algorithm array
+   */
+  public static List<String> parseDuplicateAlgorithms(String parameter) {
+    if (parameter == null || parameter.isBlank()) {
+      throw new IllegalArgumentException("Duplicate alg headers require ordered algorithm values");
+    }
+    try {
+      var values = JsonMapper.builder()
+          .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+          .build().readTree(parameter);
+      if (values == null || !values.isArray() || values.size() < 2) {
+        throw new IllegalArgumentException(
+            "Duplicate alg headers require a JSON array with at least two strings");
+      }
+      var algorithms = new ArrayList<String>();
+      for (var value : values) {
+        if (!value.isString() || value.asText().isBlank()) {
+          throw new IllegalArgumentException("Algorithm values must be nonblank strings");
+        }
+        algorithms.add(value.asText());
+      }
+      return List.copyOf(algorithms);
+    } catch (JacksonException e) {
+      throw new IllegalArgumentException("Invalid ordered algorithm parameter", e);
+    }
   }
 }

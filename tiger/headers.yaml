@@ -2,13 +2,17 @@
 # Prefer nested full keys (e.g. ${headers.dpop.body.jti}).
 # Do not compose paths via concatenation like ${headers.dpop}.body.jti.
 
+root: "$.header"
+
 authorization:
   root: "$.header.[~'Authorization']"
   strict: "$.header.Authorization"
+  lineRegex: '(?im)^authorization:[^\r\n]*\r?\n?'
   dpopToken:
     root: "$.header.[~'Authorization'].DpopToken"
     body:
       sub: "$.header.[~'Authorization'].DpopToken.body.sub"
+      scope: "$.header.[~'Authorization'].DpopToken.body.scope"
       common_name: "$.header.[~'Authorization'].DpopToken.body.common_name"
       profession_oid: "$.header.[~'Authorization'].DpopToken.body.profession_oid"
       client_id: "$.header.[~'Authorization'].DpopToken.body.client_id"
@@ -22,6 +26,7 @@ authorization:
 dpop:
   root: "$.header.[~'DPoP']"
   strict: "$.header.dpop"
+  lineRegex: '(?im)^dpop:[^\r\n]*\r?\n?'
   header:
     root: "$.header.[~'DPoP'].header"
     typ: "$.header.[~'DPoP'].header.typ"
@@ -98,6 +103,9 @@ zeta:
       product_id: "$.header.[~'zeta-client-data'].decoded.product_id"
       product_version: "$.header.[~'zeta-client-data'].decoded.product_version"
   cause: "$.header.[~'zeta-cause']"
+  errorOrigin:
+    root: "$.header.[~'zeta-error-origin']"
+    strict: "$.header.['zeta-error-origin']"
 
 cacheControl: "$.header.[~'Cache-Control']"
 contentType: "$.header.[~'Content-Type']"
@@ -105,9 +113,11 @@ eTag:
   lenient: "$.header.[~'ETag']"
   strict: "$.header.etag"
 host: "$.header.[~'Host']"
+traceparent:
+  root: "$.header.[~'traceparent']"
+  strict: "$.header.traceparent"
 ifNoneMatch:
   lenient: "$.header.[~'if-none-match']"
-  strict: "$.header.['if-none-match']"
 rateLimit:
   limit: "$.header.[~'x-rate-limit-limit']"
   remaining: "$.header.[~'x-rate-limit-remaining']"
@@ -115,3 +125,12 @@ rateLimit:
 location:
   lenient: "$.header.[~'Location']"
   strict: "$.header.Location"
+  basicPath:
+    lenient: "$.header.[~'Location'].basicPath"
+    strict: "$.header.Location.basicPath"
+  state:
+    lenient: "$.header.[~'Location'].state"
+    strict: "$.header.Location.state"
+  code:
+    lenient: "$.header.[~'Location'].code.value"
+    strict: "$.header.Location.code.value"

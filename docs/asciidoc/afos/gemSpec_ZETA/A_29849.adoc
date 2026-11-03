@@ -1,0 +1,4 @@
+[#A_29849]
+==== A_29849 - ZETA Client, Reaktion auf terminierte Session
+
+Der ZETA Client MUSS bei einer Ablehnung aufgrund terminierter Session eine erneute Authentifizierung des Nutzers einleiten. Der ZETA Client DARF keinen weiteren Refresh-Request mit demselben Session-Kontext durchführen. [<=]

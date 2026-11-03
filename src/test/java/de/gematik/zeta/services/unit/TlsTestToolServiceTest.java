@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -39,7 +40,11 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +55,50 @@ import org.junit.jupiter.api.Test;
 class TlsTestToolServiceTest {
 
   private HttpServer server;
+  private ExecutorService serverExecutor;
   private Path configFile;
   private Path caCertificateFile;
   private Path certificateFile;
   private Path privateKeyFile;
+
+  @Test
+  void resetRequiresCleanIdleStateAndPropagatesUnsupportedEndpoint() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    var response = new AtomicReference<>("{\"running\":false,\"lastExitCode\":null,\"startedAt\":null,\"stoppedAt\":null}");
+    var status = new AtomicInteger(200);
+    server.createContext("/reset", exchange -> {
+      assertEquals("POST", exchange.getRequestMethod());
+      writeJson(exchange, status.get(), response.get());
+    });
+    server.start();
+    var service = new TlsTestToolService(baseUrl());
+    assertFalse(service.reset().running());
+    for (var dirty : java.util.List.of(
+        "{}", "{\"running\":false}", "{\"running\":true}", "{\"running\":false,\"lastExitCode\":0}",
+        "{\"running\":false,\"startedAt\":\"2026-03-13T10:15:30Z\"}")) {
+      response.set(dirty);
+      assertThrows(AssertionError.class, service::reset);
+    }
+    status.set(404);
+    assertThrows(AssertionError.class, service::reset);
+  }
+
+  @Test
+  void explicitlySelectsCertificateUseForClientRuns() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    var queries = new java.util.ArrayList<String>();
+    server.createContext(
+        "/startAsTlsClient",
+        exchange -> {
+          queries.add(exchange.getRequestURI().getRawQuery());
+          writeJson(exchange, 200, "{\"running\":true}");
+        });
+    server.start();
+    var service = new TlsTestToolService(baseUrl());
+    assertTrue(service.startAsTlsClient(true).running());
+    assertEquals(java.util.List.of("useClientCertificate=true"), queries);
+  }
+
 
   /**
    * Stops the embedded server and removes temporary files created during the test.
@@ -63,6 +108,9 @@ class TlsTestToolServiceTest {
     if (server != null) {
       server.stop(0);
     }
+    if (serverExecutor != null) {
+      serverExecutor.shutdownNow();
+    }
     deleteIfExists(configFile);
     deleteIfExists(caCertificateFile);
     deleteIfExists(certificateFile);
@@ -71,10 +119,16 @@ class TlsTestToolServiceTest {
 
   @Test
   void callsJsonAndTextEndpointsUsingNormalizedBaseUrl() throws Exception {
+    var stateRequestCount = new AtomicInteger();
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/config", exchange -> writeJson(exchange, 200, "{\"config\":\"server.port=8443\"}"));
-    server.createContext("/state", exchange -> writeJson(exchange, 200,
-        "{\"running\":true,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:15:30Z\",\"stoppedAt\":null}"));
+    server.createContext("/state", exchange -> {
+      var running = stateRequestCount.getAndIncrement() == 0;
+      writeJson(exchange, 200, running
+          ? "{\"running\":true,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:15:30Z\",\"stoppedAt\":null}"
+          : "{\"running\":false,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:15:30Z\","
+              + "\"stoppedAt\":\"2026-03-13T10:16:08Z\"}");
+    });
     server.createContext("/startAsTlsServer", exchange -> writeJson(exchange, 200,
         "{\"running\":true,\"lastExitCode\":null,\"startedAt\":\"2026-03-13T10:16:00Z\",\"stoppedAt\":null}"));
     server.createContext("/stop", exchange -> writeJson(exchange, 200,
@@ -97,6 +151,179 @@ class TlsTestToolServiceTest {
     assertEquals(Instant.parse("2026-03-13T10:16:08Z"), stopped.stoppedAt());
     var logs = service.getLogs();
     assertEquals("merged logs", logs);
+  }
+
+  /**
+   * Verifies that log retrieval waits for process completion so the logs endpoint cannot stop an
+   * in-flight TLS handshake.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void waitsForProcessCompletionBeforeReadingLogs() throws Exception {
+    final var stateRequestCount = new AtomicInteger();
+    final var stateRequestsObservedByLogsEndpoint = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/state", exchange -> {
+      var requestNumber = stateRequestCount.incrementAndGet();
+      var running = requestNumber < 3;
+      writeJson(exchange, 200, running
+          ? "{\"running\":true,\"lastExitCode\":null,\"startedAt\":\"2026-03-13T10:16:00Z\",\"stoppedAt\":null}"
+          : "{\"running\":false,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:16:00Z\","
+              + "\"stoppedAt\":\"2026-03-13T10:16:08Z\"}");
+    });
+    server.createContext("/logs", exchange -> {
+      stateRequestsObservedByLogsEndpoint.set(stateRequestCount.get());
+      writeText(exchange, 200, "complete logs");
+    });
+    server.start();
+
+    var logs = new TlsTestToolService(baseUrl()).getLogs();
+
+    assertEquals("complete logs", logs);
+    assertEquals(3, stateRequestsObservedByLogsEndpoint.get());
+  }
+
+  /**
+   * Verifies that a tool completing after its receive and close waits can still provide final logs.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void waitsBeyondTenSecondsForFinalLogs() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    var completedAt = System.nanoTime() + Duration.ofSeconds(11).toNanos();
+    server.createContext("/state", exchange -> writeJson(exchange, 200,
+        "{\"running\":" + (System.nanoTime() < completedAt) + "}"));
+    server.createContext("/logs", exchange -> {
+      assertTrue(System.nanoTime() >= completedAt);
+      writeText(exchange, 200, "complete logs");
+    });
+    server.start();
+
+    var logs = assertTimeout(Duration.ofSeconds(20), () -> new TlsTestToolService(baseUrl()).getLogs());
+
+    assertEquals("complete logs", logs);
+  }
+
+  /**
+   * Verifies that log retrieval fails after the completion timeout and does not call the logs
+   * endpoint while the TLS test tool process is still running.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void rejectsLogRetrievalWhenProcessDoesNotCompleteBeforeTimeout() throws Exception {
+    final var logsRequestCount = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    serverExecutor = Executors.newCachedThreadPool();
+    server.setExecutor(serverExecutor);
+    server.createContext("/state", exchange -> {
+      pause(Duration.ofSeconds(3));
+      writeJson(exchange, 200,
+          "{\"running\":true,\"lastExitCode\":null,\"startedAt\":\"2026-03-13T10:16:00Z\",\"stoppedAt\":null}");
+    });
+    server.createContext("/logs", exchange -> {
+      logsRequestCount.incrementAndGet();
+      writeText(exchange, 200, "incomplete logs");
+    });
+    server.start();
+
+    var service = new TlsTestToolService(baseUrl()) {
+      /**
+       * Uses a short timeout to exercise the timeout branch deterministically.
+       *
+       * @return short process completion timeout
+       */
+      @Override
+      protected Duration getProcessCompletionTimeout() {
+        return Duration.ofMillis(500);
+      }
+    };
+
+    var exception = assertTimeout(Duration.ofSeconds(3),
+        () -> assertThrows(AssertionError.class, service::getLogs));
+
+    assertTrue(exception.getMessage().contains("did not complete within 500 milliseconds"));
+    assertEquals(0, logsRequestCount.get());
+  }
+
+  /**
+   * Verifies that a transient state read timeout is retried while process completion time remains.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void retriesTransientStateFailureBeforeCompletionTimeout() throws Exception {
+    final var stateRequestCount = new AtomicInteger();
+    final var stateRequestsObservedByLogsEndpoint = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    serverExecutor = Executors.newCachedThreadPool();
+    server.setExecutor(serverExecutor);
+    server.createContext("/state", exchange -> {
+      if (stateRequestCount.incrementAndGet() == 1) {
+        pause(Duration.ofSeconds(4));
+      }
+      writeJson(exchange, 200,
+          "{\"running\":false,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:16:00Z\","
+              + "\"stoppedAt\":\"2026-03-13T10:16:08Z\"}");
+    });
+    server.createContext("/logs", exchange -> {
+      stateRequestsObservedByLogsEndpoint.set(stateRequestCount.get());
+      writeText(exchange, 200, "complete logs");
+    });
+    server.start();
+
+    var service = new TlsTestToolService(baseUrl()) {
+      /**
+       * Keeps the test short while leaving enough time for a retry after the first read timeout.
+       * The first request times out after approximately 2.5 seconds, well before the simulated
+       * 4-second response delay. The remaining budget covers the inter-poll pause and second round
+       * trip with sufficient CI scheduling tolerance.
+       *
+       * @return process completion timeout for the retry test
+       */
+      @Override
+      protected Duration getProcessCompletionTimeout() {
+        return Duration.ofSeconds(5);
+      }
+    };
+
+    var logs = assertTimeout(Duration.ofSeconds(10), service::getLogs);
+
+    assertEquals("complete logs", logs);
+    assertTrue(stateRequestsObservedByLogsEndpoint.get() >= 2);
+  }
+
+  /**
+   * Verifies that a temporary server error from the state endpoint is retried before reading logs.
+   *
+   * @throws Exception on embedded server setup failure
+   */
+  @Test
+  void retriesTransientStateServerErrorBeforeReadingLogs() throws Exception {
+    final var stateRequestCount = new AtomicInteger();
+    final var stateRequestsObservedByLogsEndpoint = new AtomicInteger();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/state", exchange -> {
+      if (stateRequestCount.incrementAndGet() == 1) {
+        writeJson(exchange, 503, "{\"error\":\"temporarily unavailable\"}");
+        return;
+      }
+      writeJson(exchange, 200,
+          "{\"running\":false,\"lastExitCode\":0,\"startedAt\":\"2026-03-13T10:16:00Z\","
+              + "\"stoppedAt\":\"2026-03-13T10:16:08Z\"}");
+    });
+    server.createContext("/logs", exchange -> {
+      stateRequestsObservedByLogsEndpoint.set(stateRequestCount.get());
+      writeText(exchange, 200, "complete logs");
+    });
+    server.start();
+
+    var logs = new TlsTestToolService(baseUrl()).getLogs();
+
+    assertEquals("complete logs", logs);
+    assertEquals(2, stateRequestsObservedByLogsEndpoint.get());
   }
 
   /**
@@ -337,6 +564,19 @@ class TlsTestToolServiceTest {
    */
   private static String readBody(InputStream inputStream) throws IOException {
     return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Pauses an embedded HTTP handler to simulate a slow service response.
+   *
+   * @param duration pause duration
+   */
+  private static void pause(Duration duration) {
+    try {
+      Thread.sleep(duration);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   /**

@@ -1,0 +1,8 @@
+[#TA_A_26477-01_06]
+===== TA_A_26477-01_06 - PEP HTTP Proxy - PoPP Token Validierung - Signatur erstellt von PoPP Server
+
+"[...]
+Insbesondere MUSS die **Signatur des PoPP Servers** gültig sein. Die Signatur des PoPP Token ist gültig, wenn sie mathematisch gültig ist und **die Signatur vom PoPP Server erstellt** wurde.
+
++++[...]+++
+**[<=]"**

@@ -1,0 +1,103 @@
+[#UC_04_10]
+== UseCase_04_10: Step-Up bei unzureichendem Authentifizierungsniveau oder Scope
+
+.UseCase_04_10
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Step-Up bei unzureichendem Authentifizierungsniveau oder Scope
+
+| Akteur: | Fachclient
+
+| weitere Akteure: | Nutzer, ZETA Client / SDK, PEP HTTP Proxy, Authorization Server, sektoraler IDP, Resource Server
+
+| Auslöser: | Ein gültiges Access Token reicht für das geforderte Authentifizierungsniveau oder die benötigten Scopes einer Ressource nicht aus.
+
+| Kurzbeschreibung: |
+Der PEP weist den Ressourcenzugriff mit einer Step-Up-Challenge zurück. Der ZETA Client übernimmt die geforderten Parameter in den Ablauf zum Erlangen eines geeigneten Access Tokens. Bei notwendiger Nutzerinteraktion meldet er den Step-Up-Bedarf an den Fachclient; nach erfolgreichem Upgrade ermöglicht er die Wiederholung des ursprünglichen Requests.
+
+| Vorbedingung: |
+. Der ZETA Client besitzt ein gültiges, vom Authorization Server signiertes Access Token für denselben registrierten Client sowie einen passenden DPoP-Schlüssel. Der Ressourcenzugriff ist bis auf das unzureichende Authentifizierungsniveau oder die fehlenden Scopes zulässig.
+. Die Ressourcenpolicy benennt die benötigten Scopes und gegebenenfalls ein über den sektoralen IDP erreichbares höheres Authentifizierungsniveau. Mindestens ein geforderter Scope fehlt in den Scope-Varianten im Ausgangstoken. Eine Altersanforderung wird nur bei entsprechender Policy vorausgesetzt.
+. Für den Refresh-Pfad besteht eine gültige Session mit nutzbarem Refresh Token. Der Authorization Server verarbeitet die angeforderte Resource und Scope-Menge und entscheidet anhand seiner Policy über die Tokenausgabe.
+. Der Fachclient kann die ursprüngliche Anfrage mit Methode, Ziel und fachlichen Nutzdaten erneut ausführen. Für den interaktiven Pfad sind das definierte Step-Up-Fehlerobjekt beziehungsweise die spezifische Exception und die erforderliche Nutzerinteraktion über den Fachclient verfügbar.
+
+| Nebenbedingung: |
+Die beiden Fehlercodes insufficient_scope und insufficient_user_authentication werden jeweils mit einem und mehreren geforderten Scopes betrachtet. Die Scope-Übernahme bleibt unabhängig von der Übernahme von acr_values und einem gegebenenfalls vorhandenen max_age.
+Ein unterstützter automatischer Upgrade-Pfad und ein Pfad mit erforderlicher Nutzerinteraktion werden entsprechend ihren Voraussetzungen unterschieden. Die Anforderung höherer Scopes belegt noch keine Gewährung durch den Authorization Server.
+
+| Ablauf: |
+. Der Fachclient sendet über den ZETA Client eine Ressourcenanfrage mit gültigem Access Token und zugehörigem DPoP Proof an den PEP HTTP Proxy.
+. Der PEP lehnt den Zugriff aufgrund seiner Ressourcenpolicy mit HTTP 401 und zeta-error-origin: pep ab. WWW-Authenticate enthält den zutreffenden Fehlercode insufficient_scope oder insufficient_user_authentication und die geforderten Parameter scope, acr_values und gegebenenfalls max_age. Bei gleichzeitig unzureichendem Niveau und Scope verwendet der PEP insufficient_user_authentication.
+. Bei unzureichendem Authentifizierungsniveau enthält der Response-Body gemäß zeta-error.yaml error=insufficient_user_authentication und eine verständliche error_description. Der Content-Type ist application/json; eine optionale error_uri verweist auf weiterführende Fehlerhilfe.
+. Der ZETA Client erkennt die Antwort als Step-Up-Bedarf und übernimmt die übermittelten Anforderungen. Im automatischen Refresh-Pfad sendet derselbe Client nach Empfang der Challenge einen Token-Request mit grant_type=refresh_token und sämtlichen geforderten Scopes. Deren Reihenfolge ist unerheblich; zusätzliche Protokollscopes sind zulässig. Ein Refresh ausschließlich mit den unveränderten bisherigen Scopes erfüllt die Scope-Übernahme nicht.
+. Benötigt das Upgrade eine neue Nutzerauthentisierung, startet der ZETA Client den entsprechenden Authentisierungsablauf mit den geforderten Parametern. Kann er diesen nicht vollständig im Hintergrund durchführen, erhält der Fachclient das definierte Step-Up-Fehlerobjekt beziehungsweise die spezifische Exception. Der Nutzer führt über Fachclient und sektoralen IDP die erforderliche Interaktion aus.
+. Der Authorization Server stellt nach erfolgreicher Authentisierung beziehungsweise erfolgreicher Prüfung des Refresh Tokens und positiver Policy-Entscheidung ein geeignetes neues Access Token aus. Die Scope-Gewährung beim Refresh ist ergänzend in <<UC_01_11>> beschrieben.
+. Der ZETA Client bietet die Wiederholung des ursprünglichen Requests mit dem neuen Token an. Der Fachclient wiederholt dieselbe fachliche Anfrage mit unveränderter Methode, unverändertem Ziel und unveränderten Nutzdaten; der PEP ermöglicht bei erfüllten Anforderungen den Ressourcenzugriff. Eine automatische Wiederholung ist nicht zwingend.
+
+| Nachbedingung: |
+Die Step-Up-Anforderungen wurden in den jeweiligen Upgrade-Ablauf übernommen. Im Refresh-Pfad enthält der Token-Request die geforderten Scopes. Nach erfolgreichem Upgrade ist die ursprüngliche Anfrage mit einem geeigneten neuen Access Token wiederholbar. Bei erforderlicher Nutzerinteraktion erhält der Fachclient ein spezifisches Step-Up-Signal.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29859_01>>
+* <<TA_A_29859_02>>
+* <<TA_A_29859_03>>
+* <<TA_A_29859_04>>
+* <<TA_A_29859_05>>
+* <<TA_A_29859_06>>
+* <<TA_A_29859_07>>
+* <<TA_A_29859_08>>
+* <<TA_A_29860_01>>
+* <<TA_A_29860_02>>
+* <<TA_A_29860_03>>
+* <<TA_A_29860_04>>
+* <<TA_A_29860_05>>
+* <<TA_A_29860_06>>
+* <<TA_A_29860_07>>
+* <<TA_A_29860_08>>
+* <<TA_A_29860_09>>
+* <<TA_A_29860_10>>
+
+|===
+
+[NOTE]
+====
+https://gemspec.gematik.de/prereleases/Draft_ZETA_26_2/gemSpec_ZETA_V2.0.0_CC/#5.4.6.1[Abschnitt 5.4.6.1] der gemSpec_ZETA V2.0.0_CC, Revision 1658346 vom 09.07.2026, unterscheidet Step-Up wegen unzureichender Nutzerauthentisierung von der Behandlung eines ungültigen Tokens beziehungsweise einer erneuten Policy-Prüfung. Der dort beschriebene vorgeschaltete Refresh-Versuch bezieht sich auf invalid_token und die entsprechende 403-Behandlung; daraus folgt keine allgemeine Pflicht, jede Step-Up-Challenge zunächst per Refresh zu behandeln.
+A_29843 ermöglicht innerhalb einer gültigen Session Token-Requests mit Refresh Token und geänderter Resource beziehungsweise geändertem Scope. Der hier beschriebene Refresh-Pfad betrachtet die Übernahme der geforderten Scopes in diesen Request; die weiteren Step-Up-Pflichten bleiben eigenständige Abläufe.
+
+Das Feature `step_up_scopes.feature` enthält ausschließlich den Scope-Nachweis im Refresh-Pfad. Die übrigen aufgeführten Abläufe bleiben Prüfentwürfe.
+====
+
+[mermaid,uc-04-10-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant F as Fachclient / Nutzer
+    participant C as ZETA Client / SDK
+    participant P as PEP HTTP Proxy
+    participant A as Authorization Server
+    participant I as sektoraler IDP
+    participant R as Resource Server
+    F->>C: Ressourcenanfrage
+    C->>P: Request mit gültigem Token und DPoP Proof
+    P-->>C: 401, zeta-error-origin pep, Challenge und JSON-Fehler
+    alt Automatischer Refresh-Pfad
+        C->>A: grant_type=refresh_token, geforderte Scopes
+        A-->>C: Geeignetes neues Access Token nach positiver Policy-Entscheidung
+    else Neue Nutzerauthentisierung
+        opt Nutzerinteraktion erforderlich
+            C-->>F: Definiertes Step-Up-Fehlerobjekt / Exception
+            F->>C: Step-Up mit Nutzerinteraktion
+        end
+        C->>A: Autorisierung mit geforderten Parametern
+        A->>I: Nutzerauthentisierung mit gefordertem Niveau / Alter
+        I-->>A: Authentisierungsnachweis
+        A-->>C: Geeignetes neues Access Token
+    end
+    C-->>F: Wiederholung der ursprünglichen Anfrage ermöglichen
+    F->>C: Ursprüngliche Anfrage wiederholen
+    C->>P: Request mit neuem Access Token und DPoP Proof
+    P->>R: Autorisierten Request weiterleiten
+    R-->>P: Fachliche Antwort
+    P-->>C: Fachliche Antwort
+    C-->>F: Fachliche Antwort
+....

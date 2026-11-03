@@ -1,0 +1,8 @@
+[#TA_A_29376_21]
+===== TA_A_29376_21 - ZETA, Ablauf Token Exchange mit Attestation - Apple-Counter gegen Replay prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 09: Im macOS-/Secure-Enclave-Profil prüft der Authorization Server den **Counter als Replay-Schutz**. Ein bereits verarbeiteter Counter wird ohne Policy-Aufruf und Tokenausgabe abgelehnt.

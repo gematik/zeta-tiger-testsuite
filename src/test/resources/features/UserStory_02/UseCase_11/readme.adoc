@@ -1,0 +1,86 @@
+[#UC_02_11]
+== UseCase_02_11: RS-Retransmissionen mit Idempotency-Key behandeln
+
+.UseCase_02_11
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | RS-Retransmissionen mit Idempotency-Key behandeln
+
+| Akteur: | Resource Server / Fachdienst
+
+| weitere Akteure: | ZETA Client Modul / SDK, Notification Service, Push Gateway
+
+| Auslöser: | Der Resource Server wiederholt die Übermittlung einer bereits angenommenen Notification mit demselben Idempotency-Key.
+
+| Kurzbeschreibung: |
+Innerhalb der Aufbewahrungsfrist muss der Notification Service denselben Schlüssel erkennen, dieselbe notification_id zurückgeben und einen erneuten Versand verhindern. Die beiden Ergebnisse werden aus jeweils eigenem Ausgangszustand untersucht. Die SOLL-Empfehlung zur idempotenten Behandlung wird für den ausdrücklich verpflichtenden Fall mit Idempotency-Key konkretisiert. Die Rückgabe der ursprünglichen ID wird in `idempotency_key.feature` mit und ohne reference geprüft. Die unabhängige Versandunterdrückung bleibt ein Prüfentwurf.
+
+| Vorbedingung: |
+. Ein autorisierter Resource Server verwendet gültiges mTLS. Ein Nutzer mit über das SDK registriertem Pusher und aktivem, dem Fachdienst zugeordnetem Channel steht bereit. Jeder unabhängige Lauf besitzt einen eigenen SDK-Kontext, Empfänger und neue Schlüssel.
+. Die konfigurierte Aufbewahrungsfrist der Notification-Status- und Verarbeitungsdaten nach A_29988 und ihr Beginn sind unabhängig bekannt. Jede Wiederholung liegt nachweislich innerhalb dieser Frist.
+. Der Client kann über das SDK im Fachdienst dasselbe Versandereignis mit identischem Request-Body und Idempotency-Key erneut auslösen. Die tatsächlichen NS-Anfragen und -Antworten bleiben einschließlich Schlüssel, Ereignis und notification_id korrelierbar.
+. Für die Variante zur Versandunterdrückung ist der erfolgreiche Erstversand am registrierten Gateway beobachtbar. Alle weiteren NS-Versandaufträge für das Ereignis sind unabhängig von der in Wiederholungsantworten zurückgegebenen ID erfassbar. Ein unabhängiger Verarbeitungsnachweis ordnet jede Retransmission ihrem abgeschlossenen Annahme-/Deduplizierungspfad und allen daraus erzeugten Versandaufträgen zu; Warteschlange, aktive Worker und verzögerte Versandaufträge sind einbezogen.
+
+| Nebenbedingung: |
+Erstübermittlung und Wiederholungen nutzen dieselbe RS-Identität. Der Fachdienst bestätigt das tatsächliche NS-Ergebnis und darf Wiederholungen nicht bereits selbst unterdrücken. Der Lauf zur ID-Rückgabe benötigt die erfolgreiche NS-Annahme, aber keinen abgeschlossenen Gateway-Versand. Der getrennte Lauf zur Versandunterdrückung benötigt dagegen den nachgewiesenen Erstversand und den Verarbeitungsabschluss aller Wiederholungen; eine HTTP-Antwort oder eine frei gewählte Ruhephase genügt nicht als Abschluss. Erfolgreiche Gateway-Antworten schließen reguläre Versand-Retries als Ursache zusätzlicher Aufträge aus. Jeder Lauf bereinigt seine eigenen Pusher und Ereignisdaten auch im Fehlerfall.
+
+| Ablauf: |
+*Rückgabe der ursprünglichen ID*
+
+. Der Client löst ein neues Ereignis aus. Der Fachdienst übermittelt POST /notifications mit Schlüssel K; der NS nimmt die Notification an und gibt N zurück.
+. Der Client veranlasst innerhalb der Aufbewahrungsfrist mehrere tatsächliche Wiederholungen mit identischem Body und K. Jede zugehörige NS-Antwort enthält N.
+. Ein unabhängiges Ereignis mit neuem Schlüssel und demselben PII-freien reference-Wert wird eigenständig mit einer von N verschiedenen notification_id angenommen. Ein weiterer frischer Lauf lässt reference von Anfang an weg und bestätigt ebenfalls die Rückgabe der ursprünglichen ID bei Wiederholung desselben Schlüssels.
+
+*Verhindern eines erneuten Versands*
+
+. Aus einem eigenen Ausgangszustand löst der Client eine Notification mit neuem Schlüssel aus. Der reguläre Versand an den registrierten Pusher und die erfolgreiche Gateway-Antwort sind bestätigt.
+. Der Fachdienst übermittelt dieselbe Notification innerhalb der Aufbewahrungsfrist mehrfach mit unverändertem Schlüssel. Der NS erkennt die Wiederholungen und erzeugt keine weiteren Versandaufträge für dieses Ereignis. Die Beobachtung bindet die Aufträge an das ursprüngliche Ereignis und den Empfänger, auch wenn eine fehlerhafte Wiederholungsantwort eine andere ID enthalten sollte.
+. Der unabhängige Verarbeitungsnachweis bestätigt für jede Wiederholung den abgeschlossenen Deduplizierungspfad ohne weiteren Versandauftrag, ohne verbliebene Arbeit in Warteschlange oder Workern und ohne verzögert eingeplanten Versand. Der vollständige Gateway-Bestand für das Ereignis bleibt beim Erstversand. Fehlt der Abschlussnachweis, ist die Variante nicht vollständig nachgewiesen.
+. Ein neues Ereignis mit eigenem Schlüssel und demselben reference wird regulär versandt. Ein frischer Lauf ohne reference bestätigt ebenfalls Erstversand und Versandunterdrückung bei Schlüsselwiederholung.
+
+| Nachbedingung: |
+Die ID-Variante liefert für wiederholte Schlüssel die ursprüngliche notification_id. Die getrennte Versandvariante weist nach abgeschlossener Verarbeitung sämtlicher Wiederholungen ausschließlich den Erstversand nach. Neue Schlüssel mit gleichem reference werden weiterhin eigenständig verarbeitet; die Varianten ohne reference funktionieren ebenfalls. Eigene Daten und Registrierungen sind bereinigt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29992_01>>
+* <<TA_A_29992_02>>
+
+|===
+
+[mermaid,uc-02-11-idempotenz,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as ZETA Client / SDK
+    participant R as Fachdienst / Resource Server
+    participant N as Notification Service
+    participant P as Push Gateway
+    rect rgb(240, 245, 255)
+        Note over C,N: Eigener Lauf zur ID-Rückgabe
+        C->>R: Neues Ereignis auslösen
+        R->>N: Notification mit Schlüssel K
+        N-->>R: Annahme mit ID N
+        R-->>C: Ergebnis
+        C->>R: Dasselbe Ereignis erneut übermitteln
+        R->>N: Derselbe Body und Schlüssel K
+        N-->>R: Dieselbe ID N
+        R-->>C: Ergebnis
+    end
+    rect rgb(245, 255, 240)
+        Note over C,P: Eigener Lauf zur Versandunterdrückung
+        C->>R: Neues Ereignis mit eigenem Schlüssel
+        R->>N: Erstübermittlung
+        N-->>R: Annahme
+        N->>P: Erstversand
+        P-->>N: Erfolg
+        C->>R: Ereignis erneut übermitteln
+        R->>N: Tatsächliche Retransmission
+        N->>N: Schlüssel erkennen, ohne Versandauftrag abschließen
+        N-->>R: Ergebnis
+        Note over N,P: Keine offene oder verzögert eingeplante Versandarbeit
+        C->>R: Kontrollereignis mit neuem Schlüssel und gleichem reference
+        R->>N: Unabhängige Notification
+        N->>P: Kontrollereignis versenden
+        P-->>N: Erfolg
+    end
+....

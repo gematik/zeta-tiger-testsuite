@@ -33,7 +33,6 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
   @TA_A_27725-01_16
   @normal
   @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: Refresh Token Binding - Refresh mit anderem DPoP Key scheitert (Negativtest)
     # TA_A_25663_02: Dieser Test verifiziert die DPoP Refresh Token Binding Anforderung
     # Testszenario: Angreifer stiehlt Refresh Token, hat aber eigenen (anderen) DPoP Key

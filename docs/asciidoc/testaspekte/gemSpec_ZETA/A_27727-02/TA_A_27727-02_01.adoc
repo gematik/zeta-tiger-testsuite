@@ -1,0 +1,4 @@
+[#TA_A_27727-02_01]
+===== TA_A_27727-02_01 - Telemetriedaten-Service - Asynchrone Lieferung
+
+Der Telemetriedaten-Service im ZETA Guard SOLL Telemetriedaten **asynchron** an den gematik Telemetriedaten-Service liefern. Dafür MUSS der Telemetriedaten-Service des ZETA Guard für die Telemetriedatenlieferung von Traces an den gematik Telemetriedaten-Service den OTLP-Exporter mit eingeschaltetem Batching verwenden. [<=]

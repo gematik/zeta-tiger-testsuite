@@ -1,0 +1,7 @@
+additionalConfigurationFiles:
+  - filename: tiger/defaults.yaml
+  - filename: tiger/paths.yaml
+    baseKey: paths
+  # order is important to override keys defined in tiger/paths.yaml
+  - filename: tiger/client-paths-oidc.yaml
+    baseKey: paths

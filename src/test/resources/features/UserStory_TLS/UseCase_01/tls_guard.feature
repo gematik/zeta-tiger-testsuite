@@ -37,6 +37,7 @@ Funktionalität: TLS-Konformität ZETA Guard
     @A_26666-01
     @TA_A_26666-01_01
     @pep_tls
+    @MASVS-NETWORK
     Beispiele: PEP HTTP Proxy
       | Komponente     | Host                  |
       | PEP HTTP Proxy | ${pep_http_proxy_url} |
@@ -44,6 +45,7 @@ Funktionalität: TLS-Konformität ZETA Guard
     @A_26669-01
     @TA_A_26669-01_01
     @pdp_tls
+    @MASVS-NETWORK
     Beispiele: PDP Authorization Server
       | Komponente               | Host            |
       | PDP Authorization Server | ${keycloak_url} |
@@ -235,7 +237,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_05
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Die Zeta-Guard-Instanz verwendet ausschließlich Schlüssellängen und Domainparameter, insbesondere ECC-Kurvenparameter, die den Empfehlungen der TR-02102-2 entsprechen.
     Gegeben sei eine TLS-1.2-TlsTestTool-Konfiguration für den Host "<Host>" mit den folgenden unterstützten Hashfunktionen:
       | SHA256 |
@@ -264,7 +265,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_05
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Die Zeta-Guard-Instanz verwendet ausschließlich Schlüssellängen und Domainparameter, insbesondere ECC-Kurvenparameter, die den Empfehlungen der TR-02102-2 entsprechen für TLS 1.3.
     Gegeben sei eine TLS-1.3-TlsTestTool-Konfiguration für den Host "<Host>" mit den folgenden TLS-1.3-Signature-Schemes:
       | ecdsa_secp256r1_sha256            |
@@ -293,7 +293,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_03
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Cipher-Suiten außerhalb der nach TR-02102-2 für TLS 1.2 zulässigen Menge werden nicht ausgehandelt.
     Gegeben sei eine TLS-1.2-TlsTestTool-Konfiguration für den Host "<Host>" für die nicht unterstützten Cipher-Suiten
     Dann werden die Tls-Test-Tool-Protokolle abgerufen
@@ -316,7 +315,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_03
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Optionale Cipher-Suiten aus TR-02102-2 für TLS 1.2 zulässigen Menge werden nicht ausgehandelt.
     Gegeben sei eine TLS-1.2-TlsTestTool-Konfiguration für den Host "<Host>" für die optional unterstützten Cipher-Suiten
     Dann werden die Tls-Test-Tool-Protokolle abgerufen
@@ -339,7 +337,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_02
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - TLS-1.2-Verbindung - elliptische Kurven
     # Profile:
     # p256: secp256r1 (0017)
@@ -378,7 +375,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_02
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - TLS-1.2-Verbindung - ECDHE mit secp384r1
     # Bietet beide Mandatory-Gruppen an (secp384r1 zuerst, dann secp256r1), damit
     # das ECDSA-P256-Serverzertifikat verwendbar bleibt (seine Kurve ist im
@@ -410,7 +406,6 @@ Funktionalität: TLS-Konformität ZETA Guard
   @A_28868
   @TA_A_28868_02
   @TA_A_28868_05
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - TLS-1.3-Verbindung - elliptische Kurven
     # Profile:
     # p256: secp256r1 (0017)
@@ -442,7 +437,6 @@ Funktionalität: TLS-Konformität ZETA Guard
   @GS-A_5542
   @TA_A_28868_02
   @TA_GS-A_5542_01
-  @MASVS-CRYPTO
   @MASVS-NETWORK
   Szenariogrundriss: <Komponente> - TLS-1.3-Verbindung - nicht unterstützte elliptische Kurven
     # Profile:
@@ -472,7 +466,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_01
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Bei TLS 1.2 MÜSSEN TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 und TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 unterstützt werden.
     # Profile:
     # ecdhe_ecdsa_aes_128_gcm_sha256 -> TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xC0,0x2B)
@@ -501,7 +494,6 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_28868
   @TA_A_28868_04
-  @MASVS-CRYPTO
   Szenariogrundriss: <Komponente> - Bei TLS 1.3 MÜSSEN TLS_AES_128_GCM_SHA256 und TLS_AES_256_GCM_SHA384 unterstützt werden.
     # Profile:
     # aes_128_gcm_sha256 -> TLS_AES_128_GCM_SHA256 (0x13,0x01)
@@ -531,6 +523,7 @@ Funktionalität: TLS-Konformität ZETA Guard
 
   @A_26964-01
   @TA_A_26964-01_01
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   Szenariogrundriss: ZETA Guard stellt OCSP Stapling bereit.
     Gegeben sei die TLS 1.2 TlsTestTool-Konfigurationsdaten für den Host "<host>" mit OCSP Status Request

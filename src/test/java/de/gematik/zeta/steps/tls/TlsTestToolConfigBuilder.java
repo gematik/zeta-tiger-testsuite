@@ -165,6 +165,38 @@ public final class TlsTestToolConfigBuilder {
         + "port=" + tlsTestToolPort + "\n";
   }
 
+  /** TLS 1.2 mbed TLS with complete application capture and explicit peer authentication. */
+  public static String buildTls12ApplicationConfig(
+      boolean server, String host, int port, String request) {
+    if (!host.matches("[A-Za-z0-9.-]+") || port < 1 || port > 65535) {
+      throw new IllegalArgumentException("Invalid TLS application endpoint");
+    }
+    return "mode="
+        + (server ? "server" : "client")
+        + "\n"
+        + "host="
+        + host
+        + "\nport="
+        + port
+        + "\n"
+        + "tlsLibrary=mbed TLS\n"
+        + "tlsVersion=(3,3)\n"
+        + "tlsVerifyPeer=true\n"
+        + "tlsCipherSuites=(0xC0,0x2B)\n"
+        + "logLevel=high\n"
+        + "listenTimeout=25\n"
+        + "receiveTimeout=5\n"
+        + "sessionLifetime=3\n"
+        + "waitBeforeClose=0\n"
+        + (server
+            ? ""
+            : "tlsUseSni=true\nmanipulateSendTlsApplicationData=1,"
+                + java.util.HexFormat.ofDelimiter(" ")
+                    .formatHex(request.getBytes(StandardCharsets.UTF_8))
+                + "\n");
+  }
+
+
   /**
    * Builds a default TLS 1.3 TLS Test Tool server configuration.
    *

@@ -1,0 +1,4 @@
+[#A_29844]
+==== A_29844 - PDP Authorization Server, Abfrage der Policy Engine bei Einsatz des Refresh Tokens
+
+Der Authorization Server MUSS Token Requests mit grant_type=refresh_token und nach erfolgreicher Verifikation des Refresh Token, über die Policy Engine abfragen, ob neue Token ausgestellt werden dürfen. [<=]

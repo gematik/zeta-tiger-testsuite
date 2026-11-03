@@ -1,0 +1,4 @@
+[#A_29381]
+==== A_29381 - ZETA, Ablauf Zugriff auf den RS ohne ZETA/ASL
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-ohne-ASL unterstützen. [<=]

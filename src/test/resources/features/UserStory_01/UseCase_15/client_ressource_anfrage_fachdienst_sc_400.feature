@@ -27,24 +27,24 @@
 @UseCase_01_15
 Funktionalität: Client Ressource Anfrage Fachdienst SC 400
 
-  @A_26477
+  @A_26477-01
   @A_26661
   @A_26988
   @A_27007
   @A_27725-01
-  @TA_A_26477_04
+  @TA_A_26477-01_04
   @TA_A_26661_18
   @TA_A_26988_03
   @TA_A_27007_18
   @TA_A_27725-01_30
   @MASVS-AUTH
-  @MASVS-RESILIENCE
+  @smb
   Szenario: Fehlender PoPP-Header bei Ressource-Anfrage
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und speichere den aktuellen Unix-Zeitstempel in der Variable "START"
     Und TGR setze lokale Variable "START_MICROS" auf "!{${START} * 1000000}"
     Und TGR setze lokale Variable "poppHeaderCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
-    Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "${headers.popp.lineRegex}" und Wert ""
+    Und Setze im TigerProxy für die Nachricht "${poppHeaderCondition}" die Regex-Manipulation auf Feld "$.header" mit Regex "${headers.popp.lineRegex}" und Wert "" und 1 Ausführungen
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
     Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.popp.root}"

@@ -1,0 +1,4 @@
+[#TA_A_29658_01]
+===== TA_A_29658_01 - Mobile Client-Registrierung - Apple-Hardwareattestierung mit E-Mail-OTP
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-DCR-für-mobile-Clients** unterstützen. [<=]"

@@ -1,0 +1,4 @@
+[#TA_A_29381_01]
+===== TA_A_29381_01 - Zugriff auf den Resource Server ohne ZETA/ASL
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-ohne-ASL** unterstützen. **[<=]**"

@@ -1,0 +1,6 @@
+[#TA_A_29976_03]
+===== TA_A_29976_03 - Notification Service - Prüfung des Access-Token-Ausstellers
+
+Der Notification Service MUSS bei jedem Aufruf des Client-Moduls die Signatur, den Gültigkeitszeitraum anhand von `exp`, `nbf` und `iat`, **den Aussteller `iss`**, die Zielgruppe `aud` sowie die für die Operation erforderlichen Scopes des ZETA-Zugriffstokens prüfen.
+Die Zielgruppe MUSS der eigenen Resource-Kennung des Notification Service entsprechen.
+Wenn eine dieser Prüfungen fehlt oder fehlschlägt, MUSS der Notification Service das Token mit HTTP 401 oder 403 zurückweisen und DARF insbesondere ein Token für eine andere Zielgruppe NICHT akzeptieren.

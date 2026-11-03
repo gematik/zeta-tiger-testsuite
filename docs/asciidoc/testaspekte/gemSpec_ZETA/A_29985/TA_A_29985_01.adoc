@@ -1,0 +1,4 @@
+[#TA_A_29985_01]
+===== TA_A_29985_01 - Notification Service – Registry je Fachdienst
+
+Der Notification Service **MUSS eine Konfiguration/Registry der je Fachdienst zulässigen Channels führen**. Eine Notification für einen dem Fachdienst nicht zugeordneten Channel MUSS er mit 403 und eine Notification für einen dem Nutzer unbekannten Channel mit 422 (UNKNOWN_CHANNEL, siehe [OpenApi-Notification-Service-RS]) zurückweisen; syntaktisch ungültige Channel-Angaben werden gemäß A_29986 mit 400 abgelehnt. Ein Channel gilt als „dem Nutzer unbekannt" (422) nur dann, wenn er nicht in der Channel-Registry des Fachdienstes geführt wird, für den Fachdienst des Aufrufers aber grundsätzlich zulässig wäre. Ist der Channel in der Registry geführt, aber auf keinem registrierten Gerät des Nutzers enabled (einschließlich des Status not_set, der wie disabled behandelt wird, vgl. A_29972), antwortet der Notification Service mit 202 und dem terminalen Status no_active_channel (A_29966).

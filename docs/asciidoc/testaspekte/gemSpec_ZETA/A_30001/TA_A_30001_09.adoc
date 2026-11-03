@@ -1,0 +1,8 @@
+[#TA_A_30001_09]
+===== TA_A_30001_09 - ZETA, Ablauf Token Revocation - Session terminieren
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 06: **Terminierung der zugehörigen Session**.

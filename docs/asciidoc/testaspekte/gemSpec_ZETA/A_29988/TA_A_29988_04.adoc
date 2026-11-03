@@ -1,0 +1,6 @@
+[#TA_A_29988_04]
+===== TA_A_29988_04 - Notification Service – Datensparsamkeit und Aufbewahrungsfristen - Keine Inhalts-/Versandhistorie bei deaktiviertem Feature
+
+"Der Notification Service MUSS Notification-Status- und Verarbeitungsdaten (notification_id, Status) nur für eine kurze, definierte Aufbewahrungsfrist speichern und nach deren Ablauf löschen. Hiervon unberührt bleiben die Historiendaten des Features Nachrichten-Historie (A_29973), sofern dieses durch den Betreiber aktiviert ist; deren Aufbewahrung richtet sich nach der Betreiber-Konfiguration. **Bei deaktiviertem Feature DARF der Notification Service keine Inhalts-/Versandhistorie vorhalten.**
+
+**[<=]**"

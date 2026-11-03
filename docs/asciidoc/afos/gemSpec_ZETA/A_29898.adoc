@@ -1,0 +1,4 @@
+[#A_29898]
+==== A_29898 - ZETA Guard – Eigenständige Vertrauensregistry je Fachdienst
+
+Jeder ZETA Guard MUSS eine eigenständige, von anderen Guards unabhängige Vertrauensregistry führen. Der ZETA Guard DARF NICHT TOFU-Vertrauenszustände (gepinnte E-Mail, Instanzschlüssel, Tombstone-/Karenzzeit-Zustände) mit anderen Guards teilen oder von diesen beziehen. [<=]

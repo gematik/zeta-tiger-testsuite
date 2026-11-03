@@ -1,0 +1,8 @@
+[#TA_A_29376_25]
+===== TA_A_29376_25 - ZETA, Ablauf Token Exchange mit Attestation - Legacy-Audience unverändert übernehmen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Erläuterung zu Schritt 13: Beim zulässigen **Legacy-audience-Vertrag wird audience unverändert übernommen und ver ist 1**.

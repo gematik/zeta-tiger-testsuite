@@ -1,0 +1,4 @@
+[#A_29942]
+==== A_29942 - Authorization Server – Verzögerte Ausführung mit Veto-Fenster
+
+Der Authorization Server MUSS eine OOB-Löschung mit einer Einspruchsfrist planen und DARF sie NICHT sofort ausführen. Der Authorization Server MUSS während der Frist alle überlebenden, gebundenen Kanäle benachrichtigen (vgl. A_25750). Die Dauer der Einspruchsfrist MUSS über Policy definiert und dokumentiert sein und MUSS mindestens so bemessen sein, dass die Benachrichtigung zugestellt und ein überlebender Faktor rechtzeitig ein Veto einlegen kann. [<=]

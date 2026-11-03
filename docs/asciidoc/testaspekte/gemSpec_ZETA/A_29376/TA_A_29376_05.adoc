@@ -1,0 +1,8 @@
+[#TA_A_29376_05]
+===== TA_A_29376_05 - ZETA, Ablauf Token Exchange mit Attestation - Apple-Attestierungssignaturen prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 09: Im macOS-/Secure-Enclave-Profil prüft der Authorization Server die **Attestierungssignaturen**. Ungültige Signaturen verhindern Policy-Aufruf und Tokenausgabe.

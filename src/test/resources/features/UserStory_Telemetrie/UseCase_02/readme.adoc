@@ -1,0 +1,84 @@
+[#UC_TELEMETRIE_02]
+== UseCase_Telemetrie_02: Tail Sampling konfigurieren und prüfen
+
+.UseCase_Telemetrie_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Tail Sampling konfigurieren und prüfen
+
+| Akteur: | Betreiber / Testsuite
+
+| weitere Akteure: | ZETA Guard, Collector, Telemetriedaten-Service
+
+| Auslöser: | Sampling wird aktiviert oder seine Konfiguration geändert.
+
+| Kurzbeschreibung: |
+Standardzustand, aktive Sampling-Parameter und getrennte Fehler-/Erfolgs-Policies werden anhand bekannter Trace-Mengen geprüft.
+Der deaktivierte Auslieferungsstandard ist mit `sampling_standard.feature` ausführbar. Aktivierung, Parameteränderungen und Mengenmessungen bleiben Prüfentwurf.
+
+| Vorbedingung: |
+. Geprüft wird die aktive Collector-Pipeline zur gematik-Telemetriedatenlieferung. Ihre Auslieferungskonfiguration, Start-/Reload-Verfahren, Samplingparameter und Export-Batching sind bekannt; Konfigurationsänderungen erfolgen nur in einer isolierten Testpipeline.
+. Das ausführbare Standardprofil verwendet die Pipeline `traces/ti_sim` und die Chart-Defaults des tatsächlich installierten Helm-Bundles unter `/chart/values/zeta-guard/telemetry-gateway/config`. Installations-Overrides sind keine Auslieferungsdefaults. Jeder Collector-Pod ist bereit, verwendet eine explizite, unveränderte ConfigMap-Datei ohne weitere Kommandozeilen-Overrides und unterstützt `print-config --mode=redacted`. Seine ConfigMap muss vor Prozessstart erstellt und zuletzt geändert worden sein. Fehlende oder zwischenzeitlich geänderte Evidenz lässt die Prüfung fehlschlagen. Sampling-Prozessoren dürfen definiert, aber in der geprüften Pipeline nicht aktiviert sein; der Eingang erfolgt direkt über OTLP.
+. Die folgenden Messvoraussetzungen gelten für die geplanten aktiven Sampling-Läufe; der reine Standardkonfigurationstest verändert keine Konfiguration und sendet keine Messpopulation.
+. Ein kontrollierter OTLP-Empfänger erfasst vollständig die Ausgabe dieser Pipeline. Ein Eingangsmitschnitt und Collector-Zähler belegen angenommene, gesampelte, exportierte und fehlgeschlagene Traces; ein begrenztes Jaeger-Suchergebnis ist nicht die Messpopulation.
+. Jede Ratenmessung verwendet N=10000 neue unabhängige, gleichverteilt erzeugte Trace-IDs ohne ERROR und zusätzlich 100 eindeutig getrennte ERROR-Traces. Nur IDs dieser endlichen Eingangsmenge werden gezählt; doppelte Exporte werden anhand der Trace-ID erkannt und nicht mehrfach gezählt.
+. Der Sender bleibt unter 200 neuen Traces/s und der aktiven Kapazität. Alle Spans eines Trace sind vor Ablauf von decision_wait eingetroffen. Bei einem ERROR-Trace folgt der ERROR-Span erst auf einen erfolgreichen Span, aber noch vor diesem Ablauf.
+. Vor dem Lauf werden die effektiven maximalen Batch-/Flush-Zeiten B und der begrenzte Transport-/Drain-Zuschlag E aus dem isolierten Prüfprofil festgelegt. Sammlungsende ist t_letzter_Eingang + decision_wait + B + E. Retries sind im Messprofil begrenzt; volle Queues, nicht erklärbare Differenzen oder Transportverluste machen die Messung ungültig.
+
+| Nebenbedingung: |
+Die statistischen Entscheidungsregeln haben ein verbleibendes Zufallsrisiko und ersetzen keine vollständige Export-/Verlustbilanz. Die Eingangs-IDs und Messparameter werden vor der Auswertung im Testprotokoll festgehalten.
+Kontrollierter Empfänger, Zählerbilanz und begrenzte Exportzeiten sind Ausführungsvoraussetzungen. SOLL-Abweichungen vom deaktivierten Standard werden mit Begründung bewertet.
+
+| Ablauf: |
+*Auslieferungszustand und Konfigurierbarkeit*
+
+. Die Testsuite liest Auslieferungskonfiguration und laufende Pipeline. Sampling ist im Standard deaktiviert; eine begründete SOLL-Abweichung wird separat dokumentiert.
+. Sie aktiviert Tail Sampling über die vorgesehenen Parameter und prüft nach dem Reload die tatsächlich verwendete Pipeline.
+. Sie prüft decision_wait=10s, num_traces=50000 und expected_new_traces_per_sec=200 als Ausgangswerte. In getrennten Läufen ändert sie jeweils nur einen dieser Werte, liest die wirksame Konfiguration zurück und stellt ihn wieder her. Die Prüfung betrifft Konfigurierbarkeit, nicht eine zusätzliche Durchsatz- oder Eviction-Zusage.
+
+*Fehlererhalt und Erfolgsrate*
+
+. Die Testsuite prüft die aktive Policy errors-always vom Typ status_code mit ERROR sowie success-sampled vom Typ probabilistic mit sampling_percentage=5. Sie sendet die vorab erfasste endliche Eingangsmenge und wartet bis zum festgelegten Sammlungsende.
+. Am Empfänger müssen alle 100 ERROR-Trace-IDs einschließlich des Trace mit späterem ERROR-Span vorkommen; keine dieser IDs zählt zur Erfolgsstichprobe.
+. Für die 10000 Erfolgstraces zählt die Testsuite die verschiedenen ausgegebenen IDs K. Bei 5 Prozent gilt vorab der inklusive Akzeptanzbereich 410 bis 590. Danach setzt sie nur sampling_percentage auf 20, bestätigt den aktiven Wert und verwendet eine neue unabhängige Eingangsmenge; hier gilt 1840 bis 2160. Diese konservativen, ungefähr vier Standardabweichungen breiten Bereiche um N*p sind Testentscheidungsregeln, keine zusätzliche Produktspezifikation. Der ERROR-Erhalt gilt unverändert.
+. Vor jeder Bewertung gleicht die Testsuite Eingang, Samplingentscheidungen, Exportzählung, Empfängermenge und Duplikate ab. Fehlende Exporte, fremde IDs, unvollständige Sammlung oder Verluste werden gesondert gemeldet und nicht als gültige Samplingmessung akzeptiert. Eine außerhalb des festgelegten Bereichs liegende gültige Messung wird als Befund dokumentiert; der Bereich wird nicht nachträglich angepasst.
+. Abschließend stellt sie alle geänderten Parameter und den ursprünglichen Aktivierungszustand wieder her und liest die wirksame Konfiguration zurück.
+
+| Nachbedingung: |
+Konfigurationsänderungen sind in der aktiven Pipeline wirksam. Bei gültigen Messvoraussetzungen kommen alle ERROR-Traces an; die Erfolgsmengen liegen in den vorab festgelegten Bereichen für 5 und 20 Prozent.
+Unvollständige oder verlustbehaftete Messungen werden nicht als bestanden ausgewiesen. Nach dem Lauf gilt die ursprüngliche Konfiguration.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_28988_01>>
+* <<TA_A_28988_02>>
+* <<TA_A_28988_03>>
+* <<TA_A_28988_04>>
+* <<TA_A_28988_05>>
+* <<TA_A_28988_06>>
+* <<TA_A_28988_07>>
+
+|===
+
+[mermaid,uc-telemetrie-02-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant T as Testsuite
+    participant C as Collector
+    participant E as Telemetriedaten-Service
+    T->>C: Konfiguration und markierte ERROR-/Erfolgstraces
+    C->>C: Tail-Sampling-Entscheidung
+    C->>E: Ausgewählte Traces
+    T->>E: Trace-IDs und Exportmenge vergleichen
+    Note over T,E: Konfiguration nach jeder Variante wiederherstellen
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::sampling_standard.feature[]
+----
+endif::[]

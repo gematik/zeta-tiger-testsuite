@@ -13,7 +13,7 @@
 
 #content table.tableblock th,
 #content table.tableblock td {
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 #content table.tableblock td {
@@ -22,5 +22,26 @@
 
 #content table.tableblock th {
   word-break: normal;
+}
+
+#content table.requirements-coverage th:first-child,
+#content table.requirements-coverage td:first-child,
+#content table.requirements-coverage th:nth-child(3),
+#content table.requirements-coverage td:nth-child(3),
+#content table.requirements-coverage th:last-child,
+#content table.requirements-coverage td:last-child,
+#content table.scenario-coverage th:last-child,
+#content table.scenario-coverage td:last-child,
+#content table.masvs-categories td:first-child,
+#content table.masvs-requirements th:nth-child(3),
+#content table.masvs-requirements td:nth-child(3),
+#content table.masvs-requirements th:nth-child(4),
+#content table.masvs-requirements td:nth-child(4) {
+  white-space: nowrap;
+}
+
+#content table.requirements-coverage td:first-child,
+#content table.requirements-coverage td:last-child {
+  font-variant-numeric: tabular-nums;
 }
 </style>

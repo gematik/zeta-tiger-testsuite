@@ -33,6 +33,10 @@ set -- \
   -Dtiger.lib.runTestsOnStart=true \
   -Dfailsafe.testFailureIgnore=false
 
+case "${PROFILE:-}" in
+  proxy|oidc|oidc-proxy) set -- "$@" "-P${PROFILE}" ;;
+esac
+
 if [ -n "${common_property_args}" ]; then
   # shellcheck disable=SC2086 # Shared helper intentionally returns a list of -D args.
   set -- "$@" ${common_property_args}

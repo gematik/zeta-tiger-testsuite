@@ -1,34 +1,46 @@
-## Summary
-<!-- Why was the dependency updated/added -->
+## Zusammenfassung
 
-## Dependency Changes
-- `group/artifact` `old` -> `new`
-- `group/artifact` `old` -> `new`
+<!-- Warum wurde die Abhängigkeit aktualisiert oder hinzugefügt? -->
 
-## Scope
-- Build/plugin only: `yes/no`
-- Runtime-impacting deps: `yes/no`
-- Transitive impact to Tiger/ZETA execution: `none/possible` (details: `...`)
+## Geänderte Abhängigkeiten
 
-## Code Changes Required
-- API migration needed due to bump: `yes/no`
-- Changed files:
-  - `...`
+- `group/artifact` `alt` -> `neu`
+- `group/artifact` `alt` -> `neu`
 
-## Validation
-Executed:
-- `PROFILE=proxy mvn -Dcucumber.filter.tags='@staging' clean verify`
-- `mvn test` (if run)
+## Umfang
 
-Result:
-- `pass/fail`
-- Relevant logs/artifacts: `...`
+- Nur Build/Plugin betroffen: `ja/nein`
+- Abhängigkeiten mit Laufzeitauswirkungen: `ja/nein`
+- Transitive Auswirkungen auf die Tiger-/ZETA-Ausführung: `keine/möglich` (Details: `...`)
 
-## Risks
-- Known breaking-change risk: `low/medium/high`
-- Areas to watch after merge: `...`
+## Erforderliche Codeänderungen
 
-## Checklist
-- [ ] Versions are intentionally selected (no accidental drift)
-- [ ] Any required API migrations are included
-- [ ] No credentials/secrets added
+- API-Migration wegen der Versionsänderung nötig: `ja/nein`
+- Geänderte Dateien: `...`
+
+## Verifikation
+
+<!-- <existing-tag-expression> durch Tags aus den betroffenen Feature-Dateien ersetzen.
+Nur tatsächlich ausgeführte Befehle stehen lassen. -->
+
+Ausgeführt:
+
+- `mvn verify -Pproxy "-Dcucumber.filter.tags=<existing-tag-expression>"`
+- `mvn test -Dskip.unit.tests=false` (falls ausgeführt)
+
+Ergebnis:
+
+- `bestanden/fehlgeschlagen`
+- Anzahl ausgeführter Szenarien/Beispiele (bestanden/fehlgeschlagen/übersprungen): `...` (null ausgeführte Szenarien sind kein bestandener Nachweis)
+- Relevante Logs/Artefakte: `...`
+
+## Risiken
+
+- Bekanntes Risiko inkompatibler Änderungen: `gering/mittel/hoch`
+- Nach dem Merge zu beobachtende Bereiche: `...`
+
+## Checkliste
+
+- [ ] Versionen wurden bewusst gewählt (keine unbeabsichtigten Versionsänderungen)
+- [ ] Erforderliche API-Migrationen sind enthalten
+- [ ] Keine Zugangsdaten/Secrets hinzugefügt

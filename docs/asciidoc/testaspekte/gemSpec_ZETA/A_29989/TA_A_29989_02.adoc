@@ -1,0 +1,6 @@
+[#TA_A_29989_02]
+===== TA_A_29989_02 - Notification Service - Shared Secrets bei Deregistrierung löschen
+
+"Der Notification Service MUSS bei Deregistrierung eines Pushers durch das Client-Modul die zugehörige Push-Konfiguration sowie das gespeicherte kryptographische Schlüsselmaterial (**shared-secret-Jahr-Monat**, AES/GCM-Schlüssel-Jahr-Monat) löschen (analog A_27156)
+
+**[<=]**"

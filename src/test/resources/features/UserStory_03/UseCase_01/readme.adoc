@@ -7,87 +7,54 @@
 | *Titel:* | Mobiler Client Authentisierung und Autorisierung OIDC SC 200
 
 | Akteur: |
-*Versicherter*
+Versicherter
 
 | weitere Akteure: |
-- *Mobiler ZETA Client*
-- *Sektoraler IDP*
-- *PDP Authorization Server*
-- *PDP Policy Engine*
-- *Resource Server*
+Fach-Client, mobiler ZETA Client, Authenticator-Modul, sektoraler IDP, Federation Master, PDP Authorization Server, PDP Policy Engine, PEP HTTP Proxy, Resource Server
 
 | Auslöser: |
-Ein Versicherter möchte über den mobilen ZETA Client auf einen geschützten Resource Server zugreifen.
+Der Versicherte wählt seinen sektoralen IDP (idp_iss) und startet den Zugriff auf einen geschützten Fachdienst.
 
 | Kurzbeschreibung: |
-Der Versicherte authentifiziert sich mit dem mobilen ZETA Client per OIDC Authorization Code Flow gegenüber einem sektoralen IDP.
-Der PDP Authorization Server tauscht den Authorization Code ein, liest die Pflicht-Claims aus dem `id_token` aus, mappt sie auf `zeta-user-info` und übergibt die Nutzer-Daten an die Policy Engine.
-Nach erfolgreicher Autorisierungsentscheidung wird die geschützte Ressource mit ``200 OK`` ausgeliefert.
-Der OIDC-Testfall richtet dafür zuerst die Offband-Bestätigung über E-Mail und OTP ein und weist anschließend sowohl das Claim-Mapping als auch den erfolgreichen Ressourcenzugriff nach.
-Ein separates Komponentenszenario prüft zusätzlich, dass das Entity Statement des PDP Authorization Servers die erlaubten Redirect-URLs des lokalen OIDC-Clients ausweist.
+Der Fach-Client übergibt den fachlichen HTTPS-Request einschließlich Headern und idp_iss an den ZETA Client. Dieser orchestriert PAR, Nutzerauthentisierung und Token-Bezug, greift mit dem erhaltenen Access Token auf die Ressource zu und gibt das Ergebnis an den Fach-Client zurück. Die eigenständigen Anforderungen zur Registrierung, zu Claims, Persistenz, Policy und Tokenausgabe bleiben zusätzlich zugeordnet.
 
 | Vorbedingung: |
-Der mobile ZETA Client ist für den OIDC Flow für Versicherte konfiguriert.
-Der sektorale IDP ist erreichbar und liefert für den Versicherten ein `id_token` mit den Pflicht-Claims `urn:telematik:claims:id` und `urn:telematik:claims:profession`.
-Der PDP Authorization Server vertraut dem sektoralen IDP.
-Die Policy Engine akzeptiert den Zugriff.
-Das Entity Statement des PDP Authorization Servers ist unter
-``/auth/realms/zeta-guard/.well-known/openid-federation`` erreichbar und enthält
-die in ``tiger/oidc_test_data.yaml`` dokumentierten Redirect-URLs des lokalen
-OIDC-Testclients.
-Das dafür verwendete Struktur-Schema liegt unter
-``src/test/resources/schemas/openid-federation-entity-statement.yaml``.
-Die normative Grundlage für Entity Statements und die
-``openid_relying_party``-Metadaten ist
-https://openid.net/specs/openid-federation-1_0.html[OpenID Federation 1.0].
-Das Szenario richtet die erforderliche TOFU-Bindung (E-Mail/OTP)
-mit einer neuen OIDC-Testidentität selbstständig ein und prüft zusätzlich den
-Offband-Versand über Mailcatcher.
-Der OIDC-Testdriver übernimmt den OTP aus der für die Testidentität zugestellten
-Mailcatcher-Nachricht automatisch; der nachgelagerte asynchrone Folgeaufruf wird
-für die Korrelation des weiteren Flows abgewartet.
-Der OIDC-Testdaten-Schritt erzeugt pro isoliertem Lauf eine neue valide Test-KVNR.
-Diese KVNR wird zugleich als E-Mail-Local-Part verwendet und zusammen mit der
-E-Mail-Adresse über ``POST /oidc/kvnr-email`` am Testdriver gesetzt, bevor der
-Ressourcenzugriff beginnt.
-Das Szenario weist anschließend am beobachteten ``POST /zeta/identity/bind-email``
-nach, dass der Client genau diese Nutzereingabe an den Authorization Server überträgt.
-Die für die Test-E-Mail verwendete Domain ist in
-``tiger/oidc_test_data.yaml`` unter ``emailDomain`` konfiguriert.
-Die Regeln für Aufbau und Prüfziffer sind in der Referenz
-https://de.wikipedia.org/wiki/Krankenversichertennummer[Krankenversichertennummer – Wikipedia] beschrieben.
-Die fachliche Prüfziffernberechnung ist zusätzlich im offiziellen
-https://www.gkv-datenaustausch.de/media/dokumente/kvnr/Anlage_1_20230102_Pruefziffernberechnung-KVNR.pdf[GKV-Datenaustausch-Dokument] beschrieben.
-Der Use Case ist eigenständig ausführbar; eine vorherige Ausführung ist nicht
-erforderlich.
+. Für den mobilen Gesamtablauf sind Service Discovery und Dynamic Client Registration abgeschlossen. Der ZETA Client besitzt sein Instanzschlüsselpaar und kennt die AS-Endpunkte. Der Authorization Server ist beim Federation Master als Relying Party registriert. Die App-/Universal-Links für Client und Authenticator sind im Betriebssystem registriert.
+. Der sektorale IDP ist erreichbar und liefert die Pflicht-Claims urn:telematik:claims:id, urn:telematik:claims:profession und urn:telematik:claims:organization. Optionale Nutzer-Claims wie Name, Geburtsdatum oder E-Mail setzen passende angeforderte Scopes/Claims und Einwilligung voraus.
+. Der Authorization Server vertraut dem sektoralen IDP; die Policy erlaubt den Ressourcenzugriff. Die gewährten Scopes und das tatsächlich nachgewiesene Authentifizierungsniveau stehen fest. Die Varianten umfassen die unterstützten unterschiedlichen amr-/acr-Profile.
+. Für die zusätzliche Registrierungsvariante verfügt der Nutzer über die eigenverantwortlich gewählte strukturell valide E-Mail-Adresse und den zweiten Kommunikationsweg für die OTP-Bestätigung.
+. Der Ressourcenzugriff erfolgt in der konfigurierten Variante ohne ASL oder mit ASL-Terminierung am PEP beziehungsweise Resource Server.
 
 | Nebenbedingung: |
-Der Testtreiber ist so konfiguriert, dass der OIDC Flow verwendet wird.
+Keine zusätzlichen Nebenbedingungen.
 
 | Ablauf: |
-. Der mobile ZETA Client startet den geschützten Ressourcenzugriff und richtet die erforderliche Offband-Bestätigung per E-Mail, Mailcatcher und OTP ein.
-. Der mobile ZETA Client startet beim PDP Authorization Server den OIDC Authorization Code Flow.
-. Der Versicherte authentifiziert sich über den mobilen ZETA Client gegenüber dem sektoralen IDP.
-. Der sektorale IDP liefert einen Authorization Code zurück.
-. Der PDP Authorization Server tauscht den Authorization Code am sektoralen IDP gegen Token und `id_token` ein.
-. Der PDP Authorization Server liest die Pflicht-Claims `urn:telematik:claims:id` und `urn:telematik:claims:profession` aus dem `id_token` aus.
-. Der PDP Authorization Server mappt die Claims auf `zeta-user-info` und ruft die Policy Engine mit den Nutzer-Daten auf.
-. Die Policy Engine antwortet mit ``200 OK``.
-. Der PDP Authorization Server liefert eine erfolgreiche Antwort an den mobilen ZETA Client zurück.
-. Der mobile ZETA Client sendet die Ressourcenanfrage an den Resource Server.
-. Der Resource Server antwortet mit ``200 OK``.
+*Mobiler Gesamtablauf*
 
-Die Nutzer-Daten werden dabei wie folgt gemappt:
-- `urn:telematik:claims:id` entspricht `identifier`.
-- `urn:telematik:claims:id` entspricht `commonName`.
-- `urn:telematik:claims:profession` entspricht `professionOID`.
+. Der Versicherte wählt idp_iss und startet den Fachdienstzugriff. Der Fach-Client erstellt den vollständigen fachlichen HTTPS-Request einschließlich Headern und beauftragt den ZETA Client mit dessen Verarbeitung.
+. Der ZETA Client führt den Authorization Request mit äußerem und innerem PAR aus. Der Authorization Server erhält die zugehörigen IDP-Metadaten und koordiniert den inneren PAR. Die dafür eigenständig zugeordneten Varianten bleiben in <<UC_03_02>> beschrieben.
+. Der Client öffnet das Authenticator-Modul mit client_id und request_uri. Der Versicherte authentisiert sich und erteilt den Consent; der sektorale IDP gibt AUTH_CODE_IDP mit state_as über oidc_redirect_uri und den App-/Universal-Link an den Client zurück.
+. Der Client übergibt AUTH_CODE_IDP und state_as per GET an den Redirection-Endpunkt des Authorization Servers. Dieser löst den inneren Code beim IDP mit innerem PKCE-Verifier und oidc_redirect_uri ein und verarbeitet das ID Token. Er gibt mit 302 AUTH_CODE_AS und state_app über app_redirect_uri zurück. Der Client löst den äußeren Code mit äußerem PKCE-Verifier, Client Assertion und DPoP am AS-Token-Endpunkt ein. Der vollständige Tokenablauf und seine Varianten sind in <<UC_03_04>> beschrieben.
+. Nach positiver Policy-Entscheidung besitzt der Client ein DPoP-gebundenes Access Token und führt damit den Ressourcenzugriff aus. Ohne ASL sendet er den fachlichen Request mit Access Token und DPoP an den PEP, der ihn an den Resource Server weitergibt. Mit ASL erfolgt der verschlüsselte Transport zur vorgesehenen Terminierungsstelle; bei RS-Terminierung verarbeitet der PEP zusätzlich die äußere ASL-Autorisierung.
+. Der Resource Server liefert die fachliche Antwort. Der Client verarbeitet gegebenenfalls die verschlüsselte Antwort, gibt die fachliche Response an den Fach-Client zurück und dieser zeigt dem Versicherten das Ergebnis an.
+
+*Zusätzlich zugeordnete Registrierungs-, Claim- und Ausgabepflichten*
+
+. Benötigt die separate Registrierungsvariante eine Nutzerbestätigung, erfasst der Client die strukturell valide E-Mail-Adresse des Nutzers, übermittelt sie an den Authorization Server und startet die E-Mail-OTP-Bestätigung. Der Nutzer schließt die Bestätigung über diesen zweiten Kommunikationsweg ab.
+. Der Authorization Server weist die Redirect-URLs aller zulässigen Clients im signierten Entity Statement als erlaubt aus.
+. Nach erfolgreicher OIDC-Authentisierung liest der Authorization Server sämtliche Claims des ID Tokens aus und speichert sie mit ihrer Client-/Session-Zuordnung in der PDP-Datenbank. Claimnamen, JSON-Typen, Arrays und zusätzliche Claims bleiben erhalten.
+. Die Pflicht-Nutzer-Daten bilden urn:telematik:claims:id auf identifier und commonName, urn:telematik:claims:profession auf professionOID und urn:telematik:claims:organization auf organizationName ab. Die Nutzer-Daten entsprechen zeta-user-info.yaml. Bei widersprechenden Feldnamen gilt das referenzierte Schema.
+. Der Authorization Server speichert Client-, User- und Request-Daten und übergibt sie als Session-Daten gemäß policy-engine-input.yaml an die Policy Engine. amr wird typgetreu als Array und acr unverändert als String aus demselben ID Token übernommen; die unterschiedlichen gültigen Authentisierungsprofile bleiben getrennte Varianten.
+. Die Access-Token-Claims entsprechen der korrelierten positiven Policy-Entscheidung: Nutzer und Client, acr, IP-Adresse, Audience und Vertragsversion sowie die tatsächlich gewährten Scopes. Angefragte Scopes sind nicht automatisch gewährt. Die Signatur ist mit dem veröffentlichten AS-Schlüssel prüfbar.
+. Die Tokenantwort entspricht dem Erfolgszweig von token-response.yaml mit signiertem, DPoP-gebundenem access_token, token_type=DPoP und ganzzahligem expires_in. Optionale Felder wie refresh_token und refresh_expires_in erfüllen bei Vorliegen ihren Typ- und Lebensdauervertrag; strengere Ausgabepflichten des jeweiligen Flows bleiben bestehen. Ein vorhandenes issued_token_type hat einen der beiden im Schema erlaubten String-Werte.
+. Das Access Token übernimmt das nachgewiesene Authentifizierungsniveau als acr im gematik-LoA-Wertebereich gematik-ehealth-loa-substantial beziehungsweise gematik-ehealth-loa-high. Die signierte Lebensdauer exp-iat entspricht der gewährten Access-Token-Laufzeit. expires_in stimmt mit exp und dem Ausgabezeitpunkt unter Berücksichtigung der Sekundenauflösung und Uhrabweichung überein.
+. Das Refresh Token für den Versicherten bleibt höchstens einen Tag gültig, auch wenn die Policy Decision eine längere Laufzeit gewährt.
 
 | Nachbedingung: |
-Der Versicherte ist authentisiert und autorisiert.
-Die Claims aus dem `id_token` wurden als schemakonforme `user_info` an die Policy Engine übergeben.
-Der Resource Server hat die angeforderte Ressource mit ``200 OK`` zurückgegeben.
+Der Versicherte ist authentisiert und autorisiert und erhält das fachliche Ergebnis. Die Teilabläufe gehören zum selben Zugriff und zu derselben Client-/Nutzeridentität. Die zusätzlich zugeordneten Pflichten erhalten die Claim- und Session-Daten, die Übergabe an die Policy Engine und die schemakonforme, entscheidungsgerechte Tokenausgabe. Das ursprüngliche ID Token und die gespeicherten Claims bleiben derselben Client-/Session-Bindung zugeordnet. Das Refresh Token bleibt höchstens einen Tag gültig.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_25661-01_04>>
 * <<TA_A_25432-01_02>>
 * <<TA_A_25432-01_05>>
 * <<TA_A_25651_01>>
@@ -95,42 +62,70 @@ Der Resource Server hat die angeforderte Ressource mit ``200 OK`` zurückgegeben
 * <<TA_A_25657_01>>
 * <<TA_A_25758_01>>
 * <<TA_A_25758_02>>
-* <<TA_A_26586_02>>
-* <<TA_A_26973-01_01>>
-* <<TA_A_27867-01_04>>
+* <<TA_A_26586-01_02>>
+* <<TA_A_26973-02_01>>
+* <<TA_A_26973-02_02>>
+* <<TA_A_29951_01>>
+* <<TA_A_29993_01>>
+* <<TA_A_29993_02>>
+* <<TA_A_29994_01>>
+* <<TA_A_29994_02>>
+* <<TA_A_29659_01>>
+* <<TA_A_28527-01_04>>
 
 |===
 
-[#usecase_03_01_sequence]
-[mermaid,usecase-02-01-sequence,svg]
+[mermaid,uc-03-01-ablauf,svg]
 ....
 sequenceDiagram
-    autonumber
-
-    actor V as Versicherter
-    participant ZC as Mobiler ZETA Client
-    participant SIDP as Sektoraler IDP
-    participant PDP-AS as PDP Authorization<br>Server
-    participant PDP-PE as PDP Policy Engine
-    participant RS as Resource Server
-
-    V->>+ZC: Starte Zugriff auf Resource Server
-    ZC->>+PDP-AS: Starte OIDC Authorization Code Flow
-    PDP-AS-->>-ZC: Authorization Redirect
-    ZC->>+SIDP: Authentifizierung Versicherter
-    SIDP-->>-ZC: Authorization Code
-    ZC->>+PDP-AS: POST /token grant_type=authorization_code
-    PDP-AS->>+SIDP: Token Request mit Authorization Code
-    SIDP-->>-PDP-AS: 200 OK mit Token und id_token
-    PDP-AS->>PDP-AS: Lese Claims aus id_token und mappe user_info
-    PDP-AS->>+PDP-PE: POST /v1/data/policies/zeta/authz/decision mit user_info
-    PDP-PE-->>-PDP-AS: 200 OK
-    PDP-AS-->>-ZC: 200 OK mit Tokens
-    ZC->>+RS: Resource Request
-    RS-->>-ZC: 200 OK
-    ZC-->>-V: "Zugriff gestattet"
+actor U as Versicherter
+    participant F as Fach-Client
+    participant C as ZETA Client
+    participant M as Authenticator-Modul
+    participant A as Authorization Server
+    participant I as Sektoraler IDP
+    participant P as Policy Engine
+    participant E as PEP HTTP Proxy
+    participant R as Resource Server
+    U->>F: idp_iss wählen und Fachdienstzugriff starten
+    F->>F: Fachlichen HTTPS-Request mit Headern erstellen
+    F->>C: Request und idp_iss verarbeiten
+    Note over C,I: Authorization Request mit äußerem und innerem PAR
+    C->>M: Authenticator öffnen (client_id, request_uri)
+    M->>I: Authentication Request
+    I-->>M: Consent und Authentisierung anfordern
+    M-->>U: Authentisierung und Consent anfordern
+    U->>M: Authentisieren und Consent freigeben
+    M->>I: Erfolgreiche Authentisierung bestätigen
+    I-->>M: 302 oidc_redirect_uri (AUTH_CODE_IDP, state_as)
+    M-->>C: App-/Universal-Link mit innerem Code und State
+    C->>A: GET Redirection-Endpunkt (innerer Code und State)
+    A->>I: POST /token mit innerem Code und PKCE
+    I-->>A: ID Token und Tokenantwort
+    A-->>C: 302 app_redirect_uri (AUTH_CODE_AS, state_app)
+    C->>A: POST /token mit äußerem Code, PKCE, Assertion und DPoP
+    A->>P: Policy-Input mit Client-, Nutzer- und Request-Daten
+    P-->>A: Positive Entscheidung mit Tokenlaufzeiten
+    A-->>C: DPoP-gebundene Tokenantwort, RT maximal 1 Tag
+    alt Ohne ASL
+        C->>E: Fachlicher Request mit Access Token und DPoP
+        E->>R: Fachlichen Request weiterleiten
+        R-->>E: 200 OK, fachliche Antwort
+        E-->>C: Fachliche Antwort
+    else ASL terminiert am PEP
+        C->>E: ASL-Aufbau und verschlüsselter Request
+        E->>R: Entschlüsselten fachlichen Request weiterleiten
+        R-->>E: 200 OK, fachliche Antwort
+        E-->>C: ASL-verschlüsselte Antwort
+    else ASL terminiert am Resource Server
+        C->>E: ASL-Aufbau und äußerlich autorisierter ASL-Request
+        E->>R: ASL-Aufbau und verschlüsselten Request weiterleiten
+        R-->>E: ASL-verschlüsselte Antwort
+        E-->>C: ASL-verschlüsselte Antwort
+    end
+    C-->>F: Fachliche Response
+    F-->>U: Ergebnis anzeigen
 ....
-
 ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case:
@@ -138,5 +133,25 @@ Feature-Datei zu diesem Use Case:
 [source]
 ----
 include::oidc_authentisierung_und_offband.feature[]
+----
+
+[source]
+----
+include::oidc_policy_claims.feature[]
+----
+
+[source]
+----
+include::oidc_nutzerdaten_speichern.feature[]
+----
+
+[source]
+----
+include::oidc_acr_weitergabe.feature[]
+----
+
+[source]
+----
+include::oidc_ablauf.feature[]
 ----
 endif::[]

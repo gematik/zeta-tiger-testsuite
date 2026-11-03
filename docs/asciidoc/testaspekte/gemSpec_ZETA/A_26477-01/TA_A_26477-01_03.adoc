@@ -1,0 +1,10 @@
+[#TA_A_26477-01_03]
+===== TA_A_26477-01_03 - PEP HTTP Proxy - PoPP Token Validierung - Ausstellungszeitpunkt im Quartal des Prüfzeitpunkts
+
+"[...]
+
+Zusätzlich MUSS die Konfiguration **pro Endpunkt** unterstützen, dass die Dauer der Gültigkeit des PoPP Token in Sekunden seit Ausstellung und **nach Ausstellungszeitpunkt** und **Prüfzeitpunkt innerhalb des gleichen Quartals** eingestellt werden kann.
+Bei einem Prüfzeitpunkt innerhalb des gleichen Quartals MUSS eine grace-period von 5 Minuten beim Quartalswechsel akzeptiert werden.
+
++++[...]+++
+**[<=]"**

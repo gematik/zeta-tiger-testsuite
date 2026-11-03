@@ -25,17 +25,42 @@
 package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsExchange;
+import com.sun.net.httpserver.HttpsServer;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.net.ssl.ExtendedSSLSession;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.TrustManagerFactory;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Unit tests for {@link PoppTokenSteps}.
@@ -87,6 +112,147 @@ class PoppTokenStepsTest {
         .contains("\"actorProfessionOid\":\"1.2.276.0.76.4.50\"")
         .contains("\"patientId\":\"X110639491\"")
         .contains("\"insurerId\":\"109500969\"");
+  }
+
+  /**
+   * Proves direct HTTPS setup works with a test certificate without changing global TLS defaults.
+   *
+   * @throws Exception if fixture startup or token generation fails
+   */
+  @Test
+  void fetchesTokenOverDirectHttpsWithTestCertificate() throws Exception {
+    final var previousProxy = ProxySelector.getDefault();
+    final var defaultContext = SSLContext.getDefault();
+    final var defaultSocketFactory = HttpsURLConnection.getDefaultSSLSocketFactory();
+    final var defaultHostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
+    var httpsServer = HttpsServer.create(new InetSocketAddress("localhost", 0), 0);
+    server = httpsServer;
+    httpsServer.setHttpsConfigurator(new HttpsConfigurator(serverSslContext()));
+    var method = new AtomicReference<String>();
+    var contentType = new AtomicReference<String>();
+    var requestBody = new AtomicReference<String>();
+    server.createContext("/token-generator", exchange -> {
+      method.set(exchange.getRequestMethod());
+      contentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
+      requestBody.set(readBody(exchange.getRequestBody()));
+      writeResponse(exchange, "{\"tokenResults\":[\"HTTPS_POPP_TOKEN\"]}");
+    });
+    server.start();
+    configure();
+    put("paths.popp.tokenGenerator", "https://localhost:" + server.getAddress().getPort() + "/token-generator");
+    try {
+      ProxySelector.setDefault(ProxySelector.of(new InetSocketAddress("localhost", 1)));
+      // Keep this SSLHandshakeException control independent of globally installed BCJSSE providers.
+      var strictContext = SSLContext.getInstance("TLS", "SunJSSE");
+      strictContext.init(null, null, null);
+      var strictConnection = (HttpsURLConnection) URI.create(read("paths.popp.tokenGenerator"))
+          .toURL().openConnection(Proxy.NO_PROXY);
+      strictConnection.setSSLSocketFactory(strictContext.getSocketFactory());
+      strictConnection.setConnectTimeout(2000);
+      strictConnection.setReadTimeout(2000);
+      try {
+        assertThatThrownBy(strictConnection::getResponseCode).isInstanceOf(SSLHandshakeException.class);
+      } finally {
+        strictConnection.disconnect();
+      }
+      new PoppTokenSteps().fetchFreshPoppToken("1-20014060625", "1.2.276.0.76.4.50", "POPP_TOKEN");
+      assertThat(read("POPP_TOKEN")).isEqualTo("HTTPS_POPP_TOKEN");
+      assertThat(method.get()).isEqualTo("POST");
+      assertThat(contentType.get()).startsWith("application/json");
+      assertThat(requestBody.get()).contains("\"actorId\":\"1-20014060625\"");
+      assertThat(SSLContext.getDefault()).isSameAs(defaultContext);
+      assertThat(HttpsURLConnection.getDefaultSSLSocketFactory()).isSameAs(defaultSocketFactory);
+      assertThat(HttpsURLConnection.getDefaultHostnameVerifier()).isSameAs(defaultHostnameVerifier);
+    } finally {
+      ProxySelector.setDefault(previousProxy);
+    }
+  }
+
+  /**
+   * Requires DNS SNI with Bouncy Castle and omits SNI for IPv4 and bracketed IPv6 URLs.
+   *
+   * @param host URL host used for the direct backend call
+   * @param expectedName expected SNI name, or empty for IP literals
+   * @throws Exception if fixture startup or token generation fails
+   */
+  @ParameterizedTest
+  @CsvSource({"localhost, localhost", "127.0.0.1, ''", "[::1], ''"})
+  void sendsDestinationSniWithBouncyCastle(String host, String expectedName) throws Exception {
+    final var previousProxy = ProxySelector.getDefault();
+    var httpsServer = HttpsServer.create(new InetSocketAddress(host, 0), 0);
+    server = httpsServer;
+    httpsServer.setHttpsConfigurator(new HttpsConfigurator(serverSslContext()));
+    var observedName = new AtomicReference<String>();
+    server.createContext("/token-generator", exchange -> {
+      var session = (ExtendedSSLSession) ((HttpsExchange) exchange).getSSLSession();
+      var names = session.getRequestedServerNames();
+      var name = names.isEmpty() ? "" : ((SNIHostName) names.getFirst()).getAsciiName();
+      observedName.set(name);
+      if (!expectedName.equals(name)) {
+        exchange.sendResponseHeaders(421, -1);
+        exchange.close();
+        return;
+      }
+      exchange.getRequestBody().readAllBytes();
+      writeResponse(exchange, "{\"tokenResults\":[\"SNI_POPP_TOKEN\"]}");
+    });
+    server.start();
+    configure();
+    put("paths.popp.tokenGenerator", "https://" + host + ":" + server.getAddress().getPort() + "/token-generator");
+    try {
+      ProxySelector.setDefault(ProxySelector.of(new InetSocketAddress("localhost", 1)));
+      new PoppTokenSteps(bouncyCastleClientContext())
+          .fetchFreshPoppToken("1-20014060625", "1.2.276.0.76.4.50", "POPP_TOKEN");
+      assertThat(observedName.get()).isEqualTo(expectedName);
+      assertThat(read("POPP_TOKEN")).isEqualTo("SNI_POPP_TOKEN");
+    } finally {
+      ProxySelector.setDefault(previousProxy);
+    }
+  }
+
+  /**
+   * Creates a Bouncy Castle client trusting only the server fixture, without installing providers globally.
+   *
+   * @return isolated client context
+   * @throws Exception if the context or trust store cannot be initialized
+   */
+  private SSLContext bouncyCastleClientContext() throws Exception {
+    var trustStore = KeyStore.getInstance("PKCS12");
+    trustStore.load(null, null);
+    try (var input = Files.newInputStream(
+        Path.of("src/test/resources/tls-test-tool/certificates/ecdsa/zeta-tls-test-tool-server_good.pem"))) {
+      trustStore.setCertificateEntry("fixture", CertificateFactory.getInstance("X.509").generateCertificate(input));
+    }
+    var trustManagers = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    trustManagers.init(trustStore);
+    var context = SSLContext.getInstance("TLS", new BouncyCastleJsseProvider(new BouncyCastleProvider()));
+    context.init(null, trustManagers.getTrustManagers(), null);
+    return context;
+  }
+
+  /**
+   * Loads an existing TLS test certificate whose issuer and hostname are not trusted for localhost.
+   *
+   * @return server context containing only test-owned key material
+   * @throws Exception if fixture material cannot be loaded
+   */
+  private SSLContext serverSslContext() throws Exception {
+    var directory = Path.of("src/test/resources/tls-test-tool/certificates/ecdsa");
+    var keyStore = KeyStore.getInstance("PKCS12");
+    keyStore.load(null, null);
+    try (var certificateInput = Files.newInputStream(directory.resolve("zeta-tls-test-tool-server_good.pem"));
+        var keyReader = new PEMParser(Files.newBufferedReader(directory.resolve("zeta-tls-test-tool-server.privkey.pem")))) {
+      var certificate = CertificateFactory.getInstance("X.509").generateCertificate(certificateInput);
+      var keyPair = (PEMKeyPair) keyReader.readObject();
+      var privateKey = new JcaPEMKeyConverter().getPrivateKey(keyPair.getPrivateKeyInfo());
+      keyStore.setKeyEntry("server", privateKey, "fixture".toCharArray(),
+          new java.security.cert.Certificate[]{certificate});
+    }
+    var keyManagers = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+    keyManagers.init(keyStore, "fixture".toCharArray());
+    var context = SSLContext.getInstance("TLS");
+    context.init(keyManagers.getKeyManagers(), null, null);
+    return context;
   }
 
   /**

@@ -1,0 +1,6 @@
+[#TA_A_29907_02]
+===== TA_A_29907_02 - Authorization Server – Instanzschlüssel im Besitz der Client-Instanz - Privaten Instanzschlüssel nicht an AS übertragen
+
+"Der Authorization Server MUSS den Instanzschlüssel (F2) als öffentlichen Schlüssel der Client-Instanz führen. **Der zugehörige private Schlüssel DARF NICHT an den Authorization Server übertragen werden** (vgl. A_25769).
+
+**[<=]**"

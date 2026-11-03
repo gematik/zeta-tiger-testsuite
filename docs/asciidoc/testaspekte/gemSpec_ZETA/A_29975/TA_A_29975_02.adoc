@@ -1,0 +1,8 @@
+[#TA_A_29975_02]
+===== TA_A_29975_02 - Pusher-Abfrage ohne ZETA-Zugriffstoken ablehnen
+
+"Der Notification Service MUSS Aufrufe des ZETA Client Moduls / SDK (Registrierung/**Verwaltung von Pushern**, Schlüsselverwaltung, Channel-Konfiguration) über ein vom ZETA Guard (AuthS) ausgestelltes ZETA-Zugriffstoken (OAuth 2.0 Access Token, at+jwt gemäß [RFC9068], DPoP-gebunden gemäß [gemAPI_ZETA]) authentisieren.
+Das Token MUSS spezifisch für den Notification Service ausgestellt sein (siehe A_29979).
+**Aufrufe ohne gültiges Token MUSS er mit 401 ablehnen.** **[<=]**"
+
+Hinweis: Abfrage der registrierten Pusher ohne Authorization-Header.

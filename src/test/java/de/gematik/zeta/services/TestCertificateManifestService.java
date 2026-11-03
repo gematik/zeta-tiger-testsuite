@@ -32,9 +32,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,6 +50,48 @@ import lombok.extern.slf4j.Slf4j;
 public class TestCertificateManifestService {
 
   private static final Path DEFAULT_MANIFEST_RELATIVE_PATH = Path.of("manifest/cert-manifest.tsv");
+  private static final Map<Path, Set<String>> SELECTED_STEMS = new HashMap<>();
+
+  /**
+   * Selects a random matching stem without reusing a selection from this JVM and manifest.
+   *
+   * @param manifestPath manifest containing the certificate stems
+   * @param stemPattern regular expression matching eligible stems
+   * @return selected stem
+   * @throws IOException if the manifest cannot be read
+   * @throws IllegalArgumentException if the pattern is empty or no eligible stem remains
+   */
+  public String chooseUnusedStem(Path manifestPath, String stemPattern) throws IOException {
+    if (stemPattern == null || stemPattern.isBlank()) {
+      throw new IllegalArgumentException("Certificate stem pattern must not be blank");
+    }
+    var pattern = Pattern.compile(stemPattern);
+    var canonicalPath = manifestPath.toRealPath();
+    synchronized (SELECTED_STEMS) {
+      var selected = SELECTED_STEMS.computeIfAbsent(canonicalPath, ignored -> new HashSet<>());
+      String choice = null;
+      int candidates = 0;
+      try (var lines = Files.lines(canonicalPath, StandardCharsets.UTF_8)) {
+        var iterator = lines.iterator();
+        var header = readHeader(canonicalPath, iterator);
+        while (iterator.hasNext()) {
+          var line = iterator.next();
+          if (!line.isBlank()) {
+            var stem = ManifestColumn.STEM.read(splitValues(line, header), header.indexByColumn());
+            if (pattern.matcher(stem).matches() && !selected.contains(stem)
+                && ThreadLocalRandom.current().nextInt(++candidates) == 0) {
+              choice = stem;
+            }
+          }
+        }
+      }
+      if (choice == null) {
+        throw new IllegalArgumentException("No unselected certificate stem matches " + stemPattern);
+      }
+      selected.add(choice);
+      return choice;
+    }
+  }
 
   /**
    * One row from the certificate manifest, enriched with the repo root for path resolution.

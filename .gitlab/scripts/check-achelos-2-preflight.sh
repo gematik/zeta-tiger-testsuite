@@ -3,7 +3,7 @@ set -eu
 
 : "${ZETA_BASE_URL:?ZETA_BASE_URL is required}"
 
-hello_zeta_url="https://${ZETA_BASE_URL}/proxy/achelos_testfachdienst/hellozeta"
+hello_zeta_url="https://${ZETA_BASE_URL}/td-smcb/proxy/achelos_testfachdienst/hellozeta"
 
 # achelos-2 intentionally uses a Let's Encrypt staging certificate. Keep the
 # trust exception scoped to this availability probe and still require HTTPS,

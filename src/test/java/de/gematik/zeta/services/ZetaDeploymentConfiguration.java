@@ -242,7 +242,7 @@ public class ZetaDeploymentConfiguration {
 
     var helmValuesFile = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.helmValuesFile")
         .filter(value -> !value.isBlank())
-        .orElse("local-test/values." + targetStage + ".yaml");
+        .orElse("private/values." + targetStage + ".yaml");
 
     return new HelmDeploymentRequest(helmDeploymentDirectory,
         targetStage, helmArgs, envVars, helmReleaseName, helmValuesFile);

@@ -1,0 +1,8 @@
+[#TA_A_29951_01]
+===== TA_A_29951_01 - PDP Authorization Server, Token Ausstellung - Schemakonforme Erfolgsantwort
+
+"Der Authorization Server MUSS **die Token Response nach dem Schema [token-response.yaml] erstellen.**
+
+[<=]"
+
+Bei positiver Policy-Entscheidung entspricht der JSON-Antwortkörper dem Zweig **successResponse** des referenzierten Schemas: Pflichtfelder, Feldtypen und zulässige Werte werden gemeinsam betrachtet. Optionale Felder werden bei Vorliegen ebenfalls nach diesem Schema geprüft. Ein vorhandenes issued_token_type ist ein String mit einem der beiden dort definierten Werte.

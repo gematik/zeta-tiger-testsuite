@@ -1,0 +1,4 @@
+[#A_29848]
+==== A_29848 - PDP Authorization Server, Prüfung Session-Status bei Verwendung des Refresh Token
+
+Der Authorization Server MUSS bei Token Requests mit grant_type=refresh_token vor der Ausstellung eines neuen Token-Sets prüfen, ob die referenzierte Session terminiert wurde. Ist die Session terminiert, MUSS der Authorization Server den Request ablehnen. [<=]

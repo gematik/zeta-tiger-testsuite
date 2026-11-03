@@ -1,0 +1,4 @@
+[#A_29881]
+==== A_29881 - ZG Client, Konfiguration über die Policy Engine
+
+Der ZG Client MUSS seine Konfiguration (zulässige Zieldienste, Scopes/Audiences, Token-Endpunkte sowie Caching-Parameter) zur Laufzeit von der Policy Engine beziehen und für die in der Response der Policy Engine angegebene Gültigkeitsdauer cachen. Nach Ablauf der Gültigkeitsdauer MUSS der ZG Client die aktuelle Konfiguration von der Policy Engine beziehen. Eine ausschließlich statische, lokale Konfiguration ist nicht zulässig. [<=]

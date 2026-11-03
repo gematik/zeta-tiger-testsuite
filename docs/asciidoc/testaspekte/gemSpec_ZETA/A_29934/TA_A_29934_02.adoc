@@ -1,0 +1,6 @@
+[#TA_A_29934_02]
+===== TA_A_29934_02 - Authorization Server – Löschung anderer Clients nur auf Client-Ebene - F1 nicht verändern
+
+"Der Authorization Server MUSS einem eingebuchten Client die Löschung eines anderen Clients derselben Identität erlauben und DARF NICHT bei dieser Löschung identitätsgebundenen Faktor (F1) **verändern** oder entfernen. Die clientseitige Darstellung und Auslösung erfolgt gemäß A_25733; die Höchstzahl registrierbarer Clients bleibt nach A_25748-02 begrenzt.
+
+**[<=]**"

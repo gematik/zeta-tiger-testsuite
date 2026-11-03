@@ -1,0 +1,4 @@
+[#A_29909]
+==== A_29909 - Authorization Server – Eine E-Mail je Identität; Verwaltung nur durch registrierten Client
+
+Der Authorization Server MUSS einer Identität genau eine verifizierte E-Mail-Adresse zuordnen, gebunden bei der Erstnutzung (TOFU). Der Authorization Server DARF NICHT das Hinzufügen einer weiteren E-Mail-Adresse nach der Erstnutzung zulassen. Nach erfolgreicher Erstregistrierung MUSS der Authorization Server sicherstellen, dass die Anwendungsfälle Client löschen, Client umbenennen und E-Mail-Adresse aktualisieren nur durch einen registrierten, gültigen (mobilen) Client durchgeführt werden. [<=]

@@ -31,7 +31,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 301
   @A_27725-01
   @TA_A_26661_16
   @TA_A_27725-01_28
-  @MASVS-RESILIENCE
   Szenario: PEP HTTP Proxy protokolliert 301 Moved Permanently
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "redirectLocation" auf "https://example.invalid/achelos_testfachdienst/hellozeta"

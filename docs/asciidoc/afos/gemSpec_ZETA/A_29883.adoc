@@ -1,0 +1,4 @@
+[#A_29883]
+==== A_29883 - ZG Client, Caching und Erneuerung von Access Tokens
+
+Der ZG Client MUSS bezogene Access Tokens bis zu deren Ablauf zwischenspeichern und VOR Ablauf der Gültigkeit automatisiert erneuern, sodass für die Fachkomponente durchgehend ein gültiges Access Token zur Verfügung steht. [<=]

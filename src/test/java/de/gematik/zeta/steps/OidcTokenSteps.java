@@ -24,13 +24,20 @@
 
 package de.gematik.zeta.steps;
 
+import com.nimbusds.jwt.SignedJWT;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
+import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Und;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Base64;
+import org.jose4j.jwa.AlgorithmConstraints;
+import org.jose4j.jwa.AlgorithmConstraints.ConstraintType;
+import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
 import org.jose4j.jwe.JsonWebEncryption;
+import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -39,6 +46,34 @@ import tools.jackson.databind.ObjectMapper;
 public class OidcTokenSteps {
 
   private static final ObjectMapper JSON = new ObjectMapper();
+
+  /**
+   * Retains the original nested JWS for independent signature and type-preserving claim checks.
+   *
+   * @param jwePath path in the currently selected IDP response
+   * @param variableName variable receiving the unmodified compact JWS
+   */
+  @Dann("entschlüssle das ID Token {tigerResolvedString} der aktuellen Antwort als signiertes JWT in Variable {string}")
+  public void storeSignedIdToken(String jwePath, String variableName) {
+    var compact = RbelMessageRetriever.getInstance().findElementInCurrentResponse(jwePath).getRawStringContent();
+    TigerGlobalConfiguration.putValue(variableName,
+        decryptSignedToken(compact, OidcDecryptionKeyPreflight.currentKey()), ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
+  static String decryptSignedToken(String compact, Key key) {
+    try {
+      var jwe = new JsonWebEncryption();
+      jwe.setAlgorithmConstraints(new AlgorithmConstraints(ConstraintType.PERMIT, KeyManagementAlgorithmIdentifiers.ECDH_ES));
+      jwe.setContentEncryptionAlgorithmConstraints(new AlgorithmConstraints(ConstraintType.PERMIT, ContentEncryptionAlgorithmIdentifiers.AES_256_GCM));
+      jwe.setCompactSerialization(compact);
+      jwe.setKey(key);
+      var signed = jwe.getPayload();
+      SignedJWT.parse(signed);
+      return signed;
+    } catch (Exception e) {
+      throw new AssertionError("Cannot decrypt the original signed ID token using the configured ECDH-ES/A256GCM profile");
+    }
+  }
 
   /**
    * Decrypts the JWE selected from the current response and stores one nested JWT claim.

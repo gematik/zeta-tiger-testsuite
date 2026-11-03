@@ -87,7 +87,7 @@ class GitLabClient:
         return url
 
     def request(self, method: str, url: str, data=None):
-        """Execute a REST request and parse JSON responses."""
+        """Execute a REST request, retrying socket timeouts only for GET requests."""
         headers = {"User-Agent": "GitLab-Issue-Sync"}
         if self.token.startswith("job:"):
             headers["JOB-TOKEN"] = self.token[4:]
@@ -116,7 +116,9 @@ class GitLabClient:
                     time.sleep(delay)
                     continue
                 raise
-            except urllib.error.URLError:
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if isinstance(exc, TimeoutError) and method.upper() != "GET":
+                    raise
                 if attempt < self.max_retries:
                     time.sleep(self.retry_backoff * (2**attempt))
                     continue

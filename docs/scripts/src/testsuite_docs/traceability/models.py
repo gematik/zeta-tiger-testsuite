@@ -71,6 +71,7 @@ class ScenarioCoverage:
   test_aspects: Set[str]
   requirements: Set[str]
   masvs_tags: Set[str] = field(default_factory=set)
+  ignored: bool = False
 
 
 @dataclass(slots=True)

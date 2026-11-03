@@ -25,10 +25,14 @@
 package de.gematik.zeta.steps.tls;
 
 import de.gematik.zeta.model.tls.TlsServerCertificates;
+import de.gematik.zeta.services.TlsTestToolEndpoint;
+import de.gematik.zeta.services.TlsTestToolService;
 import de.gematik.zeta.services.TlsTestToolServiceFactory;
+import de.gematik.zeta.services.TlsTestToolSession;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.serenitybdd.core.Serenity;
 
@@ -36,7 +40,37 @@ import net.serenitybdd.core.Serenity;
  * Scenario-local lifecycle context for service-backed TLS test tool runs.
  */
 @Slf4j
-public class TlsTestToolRunContext {
+public class TlsTestToolRunContext implements AutoCloseable {
+  private TlsTestToolSession session;
+  private TlsTestToolEndpoint managedEndpoint;
+
+  /**
+   * Reserves a Kubernetes-managed endpoint before configuration or route attachment.
+   *
+   * @param endpoint installed endpoint to reserve
+   * @param gatewayService gateway Service identifying this run
+   * @throws Exception if endpoint selection or reservation fails
+   */
+  public void reserveGateway(TlsTestToolEndpoint endpoint, String gatewayService) throws Exception {
+    if (managedEndpoint != null || session != null || TlsTestToolServiceFactory.currentSession() != null) {
+      throw new AssertionError("TLS tool context already has a session");
+    }
+    managedEndpoint = endpoint;
+    managedEndpoint.start(Map.of(), gatewayService);
+  }
+
+  /**
+   * Attaches a dedicated gateway to the currently reserved Kubernetes endpoint.
+   *
+   * @param serviceName gateway Service name
+   * @throws InterruptedException if endpoint convergence is interrupted
+   */
+  public void attachGateway(String serviceName) throws InterruptedException {
+    if (managedEndpoint == null || !tlsTestToolStarted) {
+      throw new AssertionError("A running Kubernetes-managed TLS server is required");
+    }
+    managedEndpoint.attachGateway(serviceName);
+  }
 
   /**
    * Cached TLS test tool logs for the current scenario.
@@ -63,9 +97,7 @@ public class TlsTestToolRunContext {
     log.debug("TLS Test Tool service CA certificate file path: {}", caCertificateFile);
 
     clear();
-    var tlsTestToolService = TlsTestToolServiceFactory.getInstance();
-    tlsTestToolService.stop();
-    tlsTestToolService.clearLogs();
+    var tlsTestToolService = prepareRun();
     tlsTestToolService.updateConfig(configFileLocation);
     tlsTestToolService.updateCaCertificate(caCertificateFile);
     tlsTestToolService.startAsTlsClient();
@@ -93,21 +125,32 @@ public class TlsTestToolRunContext {
   public void runServer(String tlsTestToolConfigBuffer, TlsServerCertificates serverCertificate) {
     var effectiveServerCertificate =
         serverCertificate == null ? TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_GOOD_CERTIFICATE : serverCertificate;
-    var configFileLocation = Path.of(createTempConfigFile(tlsTestToolConfigBuffer));
     var certificateFile = TlsTestToolCertificateFixtures.resolveCertificateOrKeyPath(effectiveServerCertificate.getRelativePath());
     var privateKeyFile = TlsTestToolCertificateFixtures.resolveCertificateOrKeyPath(
         TlsServerCertificates.getPrivateKeyForCertificate(effectiveServerCertificate).getRelativePath());
     var caCertificateFile = resolveCaCertificatePath();
 
+    runServer(tlsTestToolConfigBuffer, certificateFile, privateKeyFile, caCertificateFile);
+  }
+
+  /**
+   * Runs the installed TLS server with explicit certificate files.
+   *
+   * @param configuration tool configuration
+   * @param certificateFile PEM certificate chain
+   * @param privateKeyFile matching PEM private key
+   * @param caCertificateFile PEM trust anchors
+   */
+  public void runServer(String configuration, Path certificateFile, Path privateKeyFile,
+      Path caCertificateFile) {
+    var configFileLocation = Path.of(createTempConfigFile(configuration));
     log.debug("TLS Test Tool service configuration file path: {}", configFileLocation);
     log.debug("TLS Test Tool service certificate file path: {}", certificateFile);
     log.debug("TLS Test Tool service private key file path: {}", privateKeyFile);
     log.debug("TLS Test Tool service CA certificate file path: {}", caCertificateFile);
 
     clear();
-    var tlsTestToolService = TlsTestToolServiceFactory.getInstance();
-    tlsTestToolService.stop();
-    tlsTestToolService.clearLogs();
+    var tlsTestToolService = prepareRun();
     tlsTestToolService.updateConfig(configFileLocation);
     tlsTestToolService.updateCertificate(certificateFile, privateKeyFile);
     tlsTestToolService.updateCaCertificate(caCertificateFile);
@@ -124,7 +167,7 @@ public class TlsTestToolRunContext {
     if (!tlsTestToolStarted) {
       throw new AssertionError("TLS test tool has not been started.");
     }
-    tlsLogs = TlsTestToolServiceFactory.getInstance().getLogs();
+    tlsLogs = (managedEndpoint == null ? session.api() : managedEndpoint.api()).getLogs();
     saveLogsToSerenityReport();
     return tlsLogs;
   }
@@ -153,6 +196,42 @@ public class TlsTestToolRunContext {
   private void clear() {
     tlsLogs = "";
     tlsTestToolStarted = false;
+  }
+
+  private TlsTestToolService prepareRun() {
+    TlsTestToolService api;
+    if (managedEndpoint == null) {
+      session = TlsTestToolServiceFactory.getSession();
+      api = session.api();
+    } else {
+      managedEndpoint.reset();
+      api = managedEndpoint.api();
+    }
+    // Keep the OCSP response explicitly staged earlier in this owned scenario.
+    api.stop();
+    api.clearLogs();
+    return api;
+  }
+
+  /** Releases the shared tool after assertions, including partially failed preparation. */
+  @Override
+  public void close() {
+    if (managedEndpoint != null) {
+      try {
+        managedEndpoint.close();
+      } finally {
+        managedEndpoint = null;
+      }
+      return;
+    }
+    var current = session == null ? TlsTestToolServiceFactory.currentSession() : session;
+    if (current != null) {
+      try {
+        current.close();
+      } finally {
+        TlsTestToolServiceFactory.releaseSession(current);
+      }
+    }
   }
 
   /**

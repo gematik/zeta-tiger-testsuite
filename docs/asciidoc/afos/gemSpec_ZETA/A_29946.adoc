@@ -1,0 +1,4 @@
+[#A_29946]
+==== A_29946 - Authorization Server – Funktionstrennung bei der Löschung (Vier-Augen-Prinzip)
+
+Der Authorization Server SOLL die Auslösung einer OOB-Löschung einem Vier-Augen-Prinzip unterwerfen, bei dem die Freigabe der Löschung durch einen anderen Operator erfolgt als deren Initiierung. Diese Funktionstrennung wirkt vor der Ausführung (Tombstone, A_29944) und ist ein von der zweiten, unabhängigen Bestätigung bei der Wiederregistrierung (A_29945) getrennter, früherer Vier-Augen-Schritt: A_29943 sichert das Veto der Löschung, A_29945 die spätere Wiederregistrierung nach dem Tombstone. [<=]

@@ -1,4 +1,0 @@
-[#TA_A_25752_01]
-===== TA_A_25752_01 - PDP Client-Registrierung - Nutzer über Hintergrund zur Ablehnung der Client-Registrierung informieren - Client-Eigenschaften
-
-"Falls ein Client nicht die geforderten Parameter der Client Policy unterstützt bzw. das geforderte Niveau nicht erreicht, MUSS die Komponente Authorization Server den Nutzer **nutzerfreundlich darüber informieren, welche Clienteigenschaften zu der Ablehnung geführt haben.** **[<=]"**

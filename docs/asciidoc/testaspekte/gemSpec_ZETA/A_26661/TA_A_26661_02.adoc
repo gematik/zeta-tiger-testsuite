@@ -1,18 +1,12 @@
 [#TA_A_26661_02]
-===== TA_A_26661_02 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit Client Assertion JWT - 400 Bad Request
+===== TA_A_26661_02 - ZETA Guard - HTTP Statuscodes - Authentifizierung mit SM(C)-B signiertem Subject Token - 400 Bad Request
 
-"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen.  **[<=]**
+"Der ZETA Guard MUSS die HTTP Statuscodes gemäß Tabelle "ZT_HTTP_Statuscodes" unterstützen. **[<=]**"
 
-Tabelle 6: ZT_HTTP_Statuscodes
-
-+++[...]+++
-
+.Tabelle 7: ZT_HTTP_Statuscodes (Auszug)
+[cols="1,3"]
 |===
-
-| **Endpunkte** | **HTTP Statuscodes** |
-| --- | --- |
-| **Authentifizierung mit Client Assertion JWT** | +++[...]+++ +++<br />+++**400 Bad Request**: Fehlerhafte oder ungültige JWT-Assertion (z.B. falsches Format oder fehlende Claims). Der Client sollte die JWT-Assertion auf Fehler prüfen (z.B. Format, fehlende Claims) und die Anfrage entsprechend korrigieren oder erneut senden. +++<br />+++[...] |
-
+| Endpunkte | HTTP Statuscodes
+| **Authentifizierung mit SM(C)-B signiertem Subject Token**
+| ... **400 Bad Request: Fehlerhafte oder ungültige JWT-Assertion (z.B. falsches Format oder fehlende Claims).** ...
 |===
-
-[...]"

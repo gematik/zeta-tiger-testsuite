@@ -1,0 +1,6 @@
+[#TA_A_29953_01]
+===== TA_A_29953_01 - PDP Authorization Server - Ablehnungsgründe der Policy Engine übernehmen
+
+"Der Authorization Server MUSS vor der Token Ausstellung die Decision der Policy Engine abfragen und den Request Body gemäß [policy-engine-input.yaml] erstellen. Wenn die Response der Policy Engine gemäß [pdp-decision.yaml] allow: true enthält, dann MUSS der Authorization Server die Token mit den Gültigkeitsdauern aus der Response erstellen. **Wenn die Response allow: false enthält, dann MUSS der Authorization Server in der Token Response gemäß [token-response.yaml] die reasons aus der Response der Policy Engine übernehmen.**
+
+[<=]"

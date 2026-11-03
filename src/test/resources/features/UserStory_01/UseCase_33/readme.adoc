@@ -1,0 +1,57 @@
+[#UC_01_33]
+== UseCase_01_33: Endpunkte des ZETA Guard durch Service Discovery ermitteln
+
+.UseCase_01_33
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Endpunkte des ZETA Guard durch Service Discovery ermitteln
+
+| Akteur: | ZETA Client
+
+| weitere Akteure: | PEP HTTP Proxy, PDP Authorization Server
+
+| Auslöser: | Der Client benötigt die Konfiguration für den Zugriff auf einen Resource Server.
+
+| Kurzbeschreibung: |
+Der Client ermittelt zuerst die Resource-Metadaten und anschließend die Metadaten des darin bezeichneten Authorization Servers. Er übernimmt beide Dokumente in seine Konfiguration.
+
+| Vorbedingung: |
+Die Adresse des Resource Servers ist bekannt. Der Client besitzt noch keine Discovery-Konfiguration für diese Ressource. PEP und Authorization Server sind erreichbar.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der ZETA Client sendet GET /.well-known/oauth-protected-resource mit dem Host des Resource Servers an den PEP HTTP Proxy.
+. Der PEP antwortet mit 200 OK und dem Well-Known-JSON-Dokument der geschützten Ressource.
+. Der Client entnimmt diesem Dokument den Authorization Server und sendet GET /.well-known/oauth-authorization-server an dessen Host.
+. Der PDP Authorization Server antwortet mit 200 OK und seinem Well-Known-JSON-Dokument.
+. Der Client übernimmt die empfangenen Resource- und Authorization-Server-Metadaten sowie ihre Zuordnung in seine Konfiguration.
+
+| Nachbedingung: |
+Die Konfiguration enthält die empfangenen Metadaten der Ressource und des zugehörigen Authorization Servers. Dessen Endpunkte stehen dem Client für die weiteren Operationen zur Verfügung.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29374_01>>
+
+|===
+
+[mermaid,uc-01-33-service-discovery,svg]
+....
+sequenceDiagram
+    participant C as ZETA Client
+    participant P as PEP HTTP Proxy
+    participant A as PDP Authorization Server
+    C->>P: GET /.well-known/oauth-protected-resource (RS-Host)
+    P-->>C: 200 OK, Resource-Metadaten
+    C->>A: GET /.well-known/oauth-authorization-server (ermittelter AS-Host)
+    A-->>C: 200 OK, AS-Metadaten
+    C->>C: Konfiguration übernehmen
+....
+
+ifdef::render_features[]
+[source]
+----
+include::service_discovery.feature[]
+----
+endif::[]

@@ -1,0 +1,4 @@
+[#A_29907]
+==== A_29907 - Authorization Server – Instanzschlüssel im Besitz der Client-Instanz
+
+Der Authorization Server MUSS den Instanzschlüssel (F2) als öffentlichen Schlüssel der Client-Instanz führen. Der zugehörige private Schlüssel DARF NICHT an den Authorization Server übertragen werden (vgl. A_25769). [<=]

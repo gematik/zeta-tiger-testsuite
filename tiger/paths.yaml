@@ -1,34 +1,14 @@
-client:
-  baseUrl: "http://zetaClient"
-  helloZeta: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta"
-  helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
-  helloZetaProxyError: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta/proxy-error"
-  configure: "http://zetaClient/testdriver-api/configure"
-  discover: "http://zetaClient/testdriver-api/discover"
-  register: "http://zetaClient/testdriver-api/register"
-  reset: "http://zetaClient/testdriver-api/reset"
-  websocketBaseUrl: "wss://${zeta_base_url}/proxy/achelos_testfachdienst/ws"
-  storage: "http://zetaClient/testdriver-api/storage"
-  storagePath: "/testdriver-api/storage"
-  notifications:
-    pushers: "http://zetaClient/testdriver-api/notifications/pushers"
-    pushersPath: "/testdriver-api/notifications/pushers"
-    channelsLocal: "http://zetaClient/testdriver-api/notifications/channels/local"
-    channelsLocalPath: "/testdriver-api/notifications/channels/local"
-  notificationTestEvents: "http://zetaClient/proxy/achelos_testfachdienst/test-support/notifications"
-  notificationTestEventsPath: "/proxy/achelos_testfachdienst/test-support/notifications"
-  oidc:
-    # The local testdriver exposes the resource through the configured
-    # testfachdienst route. /proxy/hellozeta is not a deployed resource path.
-    helloZeta: "http://zetaClient/proxy/achelos_testfachdienst/hellozeta"
-    helloZetaPath: "/proxy/achelos_testfachdienst/hellozeta"
-    kvnrEmail: "http://zetaClient/oidc/kvnr-email"
-    kvnrEmailPath: "/oidc/kvnr-email"
-    # These endpoints are part of the reusable testdriver OIDC interface.
-    verifyOtp: "http://zetaClient/oidc/verify-otp"
-    verifyOtpPath: "/oidc/verify-otp"
-    resendOtp: "http://zetaClient/oidc/resend-otp"
-    resendOtpPath: "/oidc/resend-otp"
+androidRegistration:
+  triggerUrl: "http://zetaClient/td-oidc/testdriver-api/hellozeta/android"
+  triggerPath: "/td-oidc/testdriver-api/hellozeta/android"
+  guardHost: "${zeta_base_url}"
+  trustAnchors: "src/test/resources/certificates/android/google-attestation-roots.pem"
+
+appleRegistration:
+  triggerUrl: "http://zetaClient${paths.appleRegistration.triggerPath}"
+  triggerPath: "/td-oidc/testdriver-api/hellozeta/ios"
+  guardHost: "${zeta_base_url}"
+  trustAnchors: "src/test/resources/certificates/apple/apple-app-attestation-root.pem"
 
 mailcatcher:
   # Mailcatcher is exposed by the Tiger proxy below the same ingress host as
@@ -37,6 +17,7 @@ mailcatcher:
   messagesPath: "/mailcatcher/messages"
 
 nativeClient:
+  deploymentName: "nativedriver"
   baseUrl: "http://zetaClient"
   helloZeta: "http://zetaClient/nativedriver-api/hellonative"
   helloZetaPath: "/nativedriver-api/hellonative"
@@ -45,8 +26,8 @@ nativeClient:
 
 erezept:
   rest:
-    proxyPath: "/proxy/achelos_testfachdienst/api/erezept"
     pepPath: "/pep/achelos_testfachdienst/api/erezept"
+    rsPath: "/achelos_testfachdienst/api/erezept"
 
   websocket:
     userQueue: "/achelos_testfachdienst/user/queue/erezept"
@@ -59,22 +40,39 @@ erezept:
 
 fachdienst:
   upstreamBasePath: "/testfachdienst"
+  routingUpstream: "http://tiger-proxy"
+  notificationTestEventsPath: "/achelos_testfachdienst/test-support/notifications"
+  notificationTestEventsWithPoppPath: "/achelos_testfachdienst/test-support/notifications"
   helloZetaPath: "/achelos_testfachdienst/hellozeta"
   helloZetaProxyErrorPath: "/achelos_testfachdienst/hellozeta/proxy-error"
 
 guard:
   baseUrl: "http://zetaGuard"
+  issuerUrl: "https://${zeta_base_url}/auth/realms/zeta-guard"
+  brokerEndpointPath: "/auth/realms/zeta-guard/broker/zeta-sekidp-oidc/endpoint"
+  notificationServiceUrl: "https://${zeta_base_url}/notification-service"
   pepRoutePrefix: "/pep/"
+  notificationServiceRs: "http://zetaGuard/notification-service-rs"
+  notificationServiceRsPath: "/notifications"
+  notificationTestEventsPath: "/pep${paths.fachdienst.notificationTestEventsPath}"
+  notificationUsersPathPrefix: "/users/"
   notificationPushersSetPath: "/push/v1/pushers/set"
+  notificationPushersPath: "/push/v1/pushers"
+  notificationChannelsPath: "/push/v1/channels"
+  # Expected identities from the local Helm notification/authserver configuration.
+  notificationAuthorizationServerUri: "https://${zeta_base_url}/"
+  notificationProtectedResourcePath: "/.well-known/oauth-protected-resource/notification-service"
   notificationChannelsPathPrefix: "/push/v1/channels/"
-  helloZetaPath: "/pep/achelos_testfachdienst/hellozeta"
+  helloZetaPath: "/pep${paths.fachdienst.helloZetaPath}"
   helloZetaProxyErrorPath: "/pep/achelos_testfachdienst/hellozeta/proxy-error"
   tokenEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/token"
   certsEndpointPath: "/auth/realms/zeta-guard/protocol/openid-connect/certs"
   registerEndpointPath: "/auth/realms/zeta-guard/clients-registrations/openid-connect"
+  registerVerifyEndpointPath: "${paths.guard.registerEndpointPath}/verify"
   nonceEndpointPath: "/auth/realms/zeta-guard/zeta-guard-nonce"
   bindEmailPath: "/auth/realms/zeta-guard/zeta/identity/bind-email"
   bindEmailVerifyPath: "/auth/realms/zeta-guard/zeta/identity/bind-email/verify"
+  clientsManagementPath: "/auth/realms/zeta-guard/zeta/clients"
   wellKnownOAuthServerPath: "/.well-known/oauth-authorization-server"
   wellKnownOAuthProtectedResourcePath: "/.well-known/oauth-protected-resource"
   wellKnownTiServiceProviderMetadataPath: "/.well-known/ti-service-provider-metadata"
@@ -87,6 +85,7 @@ guard:
   helloZetaFullPath: "https://${zeta_base_url}${paths.guard.helloZetaPath}"
 
 sectoralIdp:
+  authorizationEndpointPath: "/auth"
   # The local/staged SekIDP receives the token exchange at /token. The
   # /sekidp ingress prefix is not part of the RBEL-recorded request path.
   tokenEndpointPath: "/token"
@@ -98,13 +97,14 @@ tigerProxy:
   resetJwtManipulationPath: "/manipulation/resetJwtManipulation"
   modifyJwtPath: "/manipulation/modifyJwt"
   resetMessagesPath: "/resetMessages"
-  messagesWithMetaPath: "/getMessagesWithMeta"
+  messagesWithMetaPath: "/getMessageIndex"
   messageContentPath: "/messageContent"
 
 opa:
   decisionPath: "/v1/data/policies/zeta/authz/decision"
 
 popp:
+  ecKeyFile: "src/test/resources/keys/popp-token-server_ecKey.pem"
   jwks: "/jwks.json"
   signedJwks: "/.well-known/signed-jwks"
   tokenGenerator: "${popp_token_generator_url}"
@@ -124,6 +124,22 @@ prometheus:
   prometheusMetricsRangeSearchPath: "/api/v1/query_range"
   
 jaeger:
-  baseUrl: "https://${zeta_base_url}"
+  baseUrl: "http://${jaeger_url}"
   jaegerTracesSearchPath: "/jaeger/ui/api/traces"
   jaegerTracesSearchPathPattern: "/jaeger/ui/api/traces.*"
+
+androidClient:
+  baseUrl: "http://zetaClient"
+  reset: "${paths.androidClient.baseUrl}/androiddriver-api/reset"
+  resetPath: "/androiddriver-api/reset"
+  notifications:
+    register: "${paths.androidClient.baseUrl}/androiddriver-api/notifications/register"
+    registerPath: "/androiddriver-api/notifications/register"
+    subscribeAll: "${paths.androidClient.baseUrl}/androiddriver-api/notifications/subscribe-all"
+    subscribeAllPath: "/androiddriver-api/notifications/subscribe-all"
+    unsubscribeAll: "${paths.androidClient.baseUrl}/androiddriver-api/notifications/unsubscribe-all"
+    received: "${paths.androidClient.baseUrl}/androiddriver-api/notifications/received"
+    receivedPath: "/androiddriver-api/notifications/received"
+
+pushGateway:
+  encryptedDispatchPath: "/push/v1/notifyEncrypted/batch"

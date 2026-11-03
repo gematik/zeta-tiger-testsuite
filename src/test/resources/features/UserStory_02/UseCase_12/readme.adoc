@@ -1,0 +1,74 @@
+[#UC_02_12]
+== UseCase_02_12: Aktivierte Nachrichten-Historie abrufen und rekonstruieren
+
+.UseCase_02_12
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Aktivierte Nachrichten-Historie abrufen und rekonstruieren
+
+| Akteur: | Authentisierter Nutzer über ZETA Client Modul / SDK
+
+| weitere Akteure: | Fachdienst / Resource Server, Notification Service, Push Gateway
+
+| Auslöser: | Der Nutzer liest nach dem Versand einzelne Nachrichten oder die Historie seines Geräts.
+
+| Kurzbeschreibung: |
+Der Notification Service stellt die versendeten Nachrichten über beide Historien-Endpunkte bereit und erhält die vollständige Zuordnung von identifier, Inhalt und Nutzer. Personenbezug im identifier und Klartext-Nachrichteninhalte am Gateway werden gesondert untersucht. Der Schutz des Inhalts am Gateway ist in `kein_klartext_am_gateway.feature` ausführbar. Historienabrufe, vollständige Rekonstruktion und identifier-Prüfung bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Das Feature Nachrichten-Historie ist für den Fachdienst gemäß A_29974 aktiviert. Das Versandprofil verwendet die nach A_29970/A_29971 vorgesehene verschlüsselte Betriebsart; die Historien-Aufbewahrungsfrist ist unabhängig bekannt und während sämtlicher Abrufe nicht abgelaufen.
+. Zwei getrennt authentisierte Nutzer besitzen jeweils einen eigenen, über das SDK registrierten Pusher und aktiven Channel. Für jede Nutzeridentität stehen gültige dienstspezifische Tokens mit notification.history.read und gültigem DPoP-Nachweis nach A_29975–A_29978/A_29979 bereit.
+. Jeder unabhängige Lauf erzeugt seine eigenen SDK-Kontexte und versendet mehrere unterschiedlich markierte Nachrichten über SDK-ausgelöste Fachdienstereignisse. Die tatsächlich versendeten Nachrichten und ihre Nutzer-/Pusher-Zuordnung sind unabhängig von den späteren Historienantworten bekannt.
+. Das SDK kann GET /history/{notification_id} und GET /history/device/{pushkey} an der Notification-Service-Resource ausführen. Die vollständigen NS-Antworten und die für die Nachrichten tatsächlich am registrierten Gateway eingehenden Nutzdaten sind beobachtbar. Die referenzierte Client–FD Push API Version 1.1.0 legt die Antwortschemas fest.
+
+| Nebenbedingung: |
+Die Betreiberaktivierung bleibt eine Voraussetzung und wird nicht aus einem erfolgreichen Historienabruf abgeleitet. Einzelabruf, Gerätehistorie, vollständige Rekonstruktion und Datenschutz erhalten jeweils eigene Ausgangsdaten und benötigen keinen erfolgreichen Vorgängerlauf. Referenzen sind PII-frei; die Vorgabe verlangt keine Eindeutigkeit des reference-Feldes. Die im Ausgangsereignis verwendete Referenz und Nachricht sind unabhängig bekannt. Jeder Lauf entfernt seine eigenen Registrierungen und Ereignisdaten auch bei Fehlern.
+
+| Ablauf: |
+*Einzelabruf*
+
+. Der Client löst eine Nachricht im Fachdienst aus. Der Resource Server übermittelt sie, der NS versendet sie an das registrierte Gateway und ordnet sie der aktivierten Historie des Nutzers zu.
+. Der authentisierte Client ruft die Nachricht über GET /history/{notification_id} ab. Die Antwort entspricht dem referenzierten Message-Schema; identifier und vollständiger payload passen zur unabhängig bekannten versendeten Nachricht. Eine bloß schema-konforme Ersatznachricht genügt nicht.
+
+*Gerätehistorie und vollständige Rekonstruktion*
+
+. In einem eigenen Lauf veranlasst jeder Nutzer mehrere Nachrichten mit voneinander unterscheidbaren Inhalten. Der Client liest GET /history/device/{pushkey} für seinen eigenen Pusher. Die Antwort entspricht dem referenzierten Messages-Schema und enthält die zu diesem Gerät versendeten Nachrichten.
+. Für die Rekonstruktion enthält der Ausgangsbestand zusätzlich zwei unterschiedliche Ereignisse mit demselben zulässigen reference-Wert. Die Historie wird mit dem vollständigen, unabhängig erfassten Versandbestand des jeweiligen Nutzers verglichen: keine versendete Nachricht fehlt, keine fremde oder nicht versendete Nachricht kommt hinzu, und jede Referenz bleibt ihrem tatsächlichen Inhalt zugeordnet. Die zwei Ereignisse mit gleichem reference bleiben rekonstruierbar; eine Deduplizierung allein über reference darf sie nicht zusammenfallen lassen. Eine Reihenfolge wird nur verlangt, wenn der geltende Schnittstellenvertrag sie festlegt.
+
+*Datenschutz*
+
+. Ein eigener Lauf verwendet eine synthetische Nutzeridentität, einen PII-freien identifier und einen eindeutig markierten Nachrichteninhalt. Der NS erhält den identifier bei Versand und Historienverarbeitung ohne Hinzufügen von KVNR, Telematik-ID, Namen oder Nachrichteninhalt. Die tatsächlich am Gateway und in der Historie auftretenden identifier werden mit der ursprünglichen Referenz verglichen.
+. In einem getrennten Lauf derselben verschlüsselten Betriebsart enthalten die tatsächlichen Gateway-Nutzdaten den Nachrichteninhalt ausschließlich in verschlüsselter Form. Die markierte Nachricht darf dort weder in einem Klartextfeld noch in einer nur kodierten Klartextkopie auftreten. Die verschlüsselten Gateway-Nutzdaten repräsentieren weiterhin den unveränderten ursprünglichen Inhalt. Der berechtigte Historienabruf liefert diesen Inhalt im getrennten Abruflauf. Die Details von Schlüsselableitung und Nachrichtenverschlüsselung bleiben den Pflichten aus A_29970 zugeordnet.
+
+| Nachbedingung: |
+Beide Historien-Endpunkte liefern die passenden versendeten Nachrichten. Der rekonstruierte Bestand ist vollständig und nutzerbezogen; gleichlautende Referenzen führen nicht zum Verlust verschiedener Nachrichten. Der identifier bleibt PII-frei und im gewählten verschlüsselten Versandprofil liegt kein Nachrichteninhalt im Gateway im Klartext vor. Eigene Daten und Registrierungen sind bereinigt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29973_01>>
+* <<TA_A_29973_02>>
+* <<TA_A_29973_03>>
+* <<TA_A_29973_05>>
+* <<TA_A_29973_06>>
+
+|===
+
+[mermaid,uc-02-12-nachrichtenhistorie,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Authentisierter Client / SDK
+    participant R as Fachdienst / Resource Server
+    participant N as Notification Service
+    participant P as Push Gateway
+    C->>R: Neues Versandereignis
+    R->>N: Notification mit PII-freier Referenz
+    N->>P: Verschlüsselter Nachrichteninhalt und identifier
+    P-->>N: Erfolg
+    N->>N: Nachricht und Nutzerzuordnung in Historie übernehmen
+    C->>N: GET history mit notification_id
+    N-->>C: Zugehöriger identifier und vollständiger Inhalt
+    C->>N: GET history/device mit eigenem pushkey
+    N-->>C: Vollständige Nachrichtenhistorie des Geräts
+    Note over C,N: Getrennte Nutzer und gleiche Referenzen verschiedener Ereignisse
+    Note over N,P: identifier ohne Personenbezug, Nachrichteninhalt ohne Klartextkopie
+....

@@ -26,7 +26,6 @@ package de.gematik.zeta.services.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,15 +33,12 @@ import static org.mockito.Mockito.when;
 import de.gematik.zeta.services.StompSessionManager;
 import de.gematik.zeta.services.WebSocketClientFactory;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.socket.WebSocketHttpHeaders;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 /** Unit tests for {@link StompSessionManager}. */
 class StompSessionManagerTest {
@@ -71,45 +67,42 @@ class StompSessionManagerTest {
     assertThat(headersCaptor.getValue().getReceipt()).isNull();
   }
 
-  /**
-   * Verifies that a delayed callback from a timed-out retry cannot replace the active session.
-   */
+  /** Verifies that a failed STOMP handshake cancels its future and closes the transport owner. */
   @Test
-  void retryKeepsSuccessfulSessionWhenPreviousAttemptConnectsLate() {
-    var firstClient = mock(WebSocketStompClient.class);
-    var secondClient = mock(WebSocketStompClient.class);
-    var clientFactory = mock(WebSocketClientFactory.class);
-    when(clientFactory.create()).thenReturn(firstClient, secondClient);
-
-    var firstSession = mock(StompSession.class);
-    var secondSession = mock(StompSession.class);
-    when(firstSession.isConnected()).thenReturn(true);
-    when(secondSession.isConnected()).thenReturn(true);
-
-    var staleFirstHandler = new AtomicReference<StompSessionHandler>();
-    when(firstClient.connectAsync(anyString(), any(WebSocketHttpHeaders.class),
-        any(StompHeaders.class), any(StompSessionHandler.class)))
-        .thenAnswer(invocation -> {
-          staleFirstHandler.set(invocation.getArgument(3));
-          return new CompletableFuture<StompSession>();
-        });
-    when(secondClient.connectAsync(anyString(), any(WebSocketHttpHeaders.class),
-        any(StompHeaders.class), any(StompSessionHandler.class)))
-        .thenAnswer(invocation -> {
-          var handler = invocation.<StompSessionHandler>getArgument(3);
-          handler.afterConnected(secondSession, new StompHeaders());
-          return CompletableFuture.completedFuture(secondSession);
-        });
-
-    var manager = new StompSessionManager(clientFactory);
-    StompSessionManager.setConnectionTimeout(0);
+  void timeoutClosesPendingConnection() {
+    var factory = mock(WebSocketClientFactory.class);
+    var webSocket = mock(de.gematik.zeta.services.DirectWebSocketClient.Connection.class);
+    var connection = new CompletableFuture<StompSession>();
+    when(factory.connectStomp(any(), any(StompSessionHandler.class))).thenReturn(connection);
+    var manager = new StompSessionManager(factory);
+    ReflectionTestUtils.setField(manager, "rawWebSocket", webSocket);
+    manager.setConnectionTimeout(0);
     try {
-      ReflectionTestUtils.invokeMethod(manager, "connectStompInternal", "ws://localhost/ws");
-      staleFirstHandler.get().afterConnected(firstSession, new StompHeaders());
-
-      assertThat(manager.getSession()).isSameAs(secondSession);
+      org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+          ReflectionTestUtils.invokeMethod(manager, "connectStompInternal", "ws://localhost/ws"))
+          .isInstanceOf(AssertionError.class).hasMessageContaining("STOMP CONNECTED");
+      assertThat(connection.isCancelled()).isTrue();
+      verify(factory).close();
     } finally {
-      StompSessionManager.setConnectionTimeout(5);
+      manager.setConnectionTimeout(5);
     }
   }
+
+  /** Verifies scenario timeout overrides cannot leak into the next manager's configured defaults. */
+  @Test
+  void timeoutOverridesRemainLocalToScenario() {
+    var first = new StompSessionManager(new WebSocketClientFactory());
+    var second = new StompSessionManager(new WebSocketClientFactory());
+    final Object originalConnectionTimeout = ReflectionTestUtils.getField(second, "connectionTimeout");
+    final Object originalMessageTimeout = ReflectionTestUtils.getField(second, "messageTimeout");
+
+    first.setConnectionTimeout(47);
+    first.setMessageTimeout(53);
+
+    assertThat(ReflectionTestUtils.getField(second, "connectionTimeout")).isEqualTo(originalConnectionTimeout);
+    assertThat(ReflectionTestUtils.getField(second, "messageTimeout")).isEqualTo(originalMessageTimeout);
+    assertThat(ReflectionTestUtils.getField(first, "connectionTimeout")).isEqualTo(47);
+    assertThat(ReflectionTestUtils.getField(first, "messageTimeout")).isEqualTo(53);
+  }
+
 }

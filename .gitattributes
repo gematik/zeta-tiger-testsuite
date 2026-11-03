@@ -9,6 +9,8 @@
 *.kt         text working-tree-encoding=UTF-8
 *.groovy     text working-tree-encoding=UTF-8
 *.xml        text working-tree-encoding=UTF-8
+# Preserve the downloaded upstream schema byte-for-byte, including CRLF.
+docs/specifications/2.0.0-cc/schemas/upstream/afoListeSteckbrief_v2.xsd -text -working-tree-encoding
 *.json       text working-tree-encoding=UTF-8
 *.yaml       text working-tree-encoding=UTF-8
 *.yml        text working-tree-encoding=UTF-8
@@ -38,6 +40,7 @@
 *.gif   binary
 *.ico   binary
 *.pdf   binary
+*.xlsx  binary
 *.zip   binary
 *.jar   binary
 *.war   binary

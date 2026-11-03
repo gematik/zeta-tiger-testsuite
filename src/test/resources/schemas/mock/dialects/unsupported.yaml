@@ -1,0 +1,4 @@
+openapi: 3.2.0
+components:
+  schemas:
+    Example: {type: string}

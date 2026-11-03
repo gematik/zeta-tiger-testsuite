@@ -1,0 +1,8 @@
+[#TA_A_29020_13]
+===== TA_A_29020_13 - Performance - Telemetriedatenlieferung - Lieferung ZETA Guard HTTP Proxy - Keine Profession-OID ohne SM-B-Anwendung
+
+"Der Produkttyp MUSS für jede ausgeführte Operation die Betriebsdaten (Traces) mit Traceparametern gemäß der Tabelle "Tab_gemSpec_Perf_Trace_HTTPSpanParameter_Telemetriedatenlieferung" in einer Telemetriedatenlieferung an den Telemetriedaten-Service senden. Das Senden der Telemetriedaten SOLL asynchron erfolgen, um die Performance der Operation nicht negativ zu beeinflussen.
+
+**[<=]**"
+
+Die Tabelle beschränkt die Übermittlung von **profession_oid auf Use Cases, in denen ein SM-B-Zertifikat Anwendung findet**.

@@ -1,0 +1,4 @@
+[#TA_A_29977_01]
+===== TA_A_29977_01 - Notification Service - DPoP-Bindung des ZETA-Zugriffstoken
+
+"Der Notification Service MUSS sicherstellen, dass das ZETA-Zugriffstoken **sender-constrained ist (z. B. via DPoP oder mTLS-gebundenem Token gemäß den ZETA-Vorgaben)** und DARF ein Token NICHT akzeptieren, dessen Nachweis der Besitzbindung (Proof-of-Possession) fehlt oder ungültig ist. **[<=]**"

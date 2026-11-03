@@ -24,9 +24,16 @@
 
 package de.gematik.zeta;
 
+import static de.gematik.test.tiger.common.config.TigerConfigurationKeys.TIGER_DEFAULT_PROFILE;
+
+import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.TigerDirector;
 import io.cucumber.junit.TigerCucumberRunner;
 import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.util.Locale;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
@@ -37,6 +44,7 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
  * <p>Delegates execution to Tiger's JUnit Platform runner and exits non-zero when discovery yields
  * no tests or when scenarios fail.
  */
+@Slf4j
 public final class TigerTestsuiteMain {
 
   private static final String DEFAULT_GLUE = "de.gematik.test.tiger.glue,de.gematik.zeta";
@@ -58,7 +66,7 @@ public final class TigerTestsuiteMain {
       runCucumberSuite();
     } catch (RuntimeException ex) {
       exitCode = 1;
-      ex.printStackTrace(System.err);
+      log.error("Testsuite execution failed", ex);
     } finally {
       try {
         if (TigerDirector.isInitialized()) {
@@ -86,11 +94,7 @@ public final class TigerTestsuiteMain {
             .configurationParameter("cucumber.plugin", plugin)
             .configurationParameter("cucumber.publish.quiet", "true");
 
-    var tags = System.getProperty("cucumber.filter.tags");
-
-    if (tags != null && !tags.isBlank()) {
-      builder.configurationParameter("cucumber.filter.tags", tags);
-    }
+    builder.configurationParameter("cucumber.filter.tags", configureCucumberTags());
 
     var request = builder.selectors(DiscoverySelectors.selectClasspathResource("features")).build();
 
@@ -98,12 +102,16 @@ public final class TigerTestsuiteMain {
     TigerCucumberRunner.discoverAndRunTests(request, summaryListener);
 
     var summary = summaryListener.getSummary();
-    summary.printTo(new PrintWriter(System.out, true));
+    var summaryOutput = new StringWriter();
+    summary.printTo(new PrintWriter(summaryOutput));
+    log.info("{}", summaryOutput);
     if (summary.getTestsFoundCount() == 0) {
       throw new IllegalStateException("No tests found (Cucumber features not discovered)");
     }
     if (summary.getTotalFailureCount() > 0) {
-      summary.printFailuresTo(new PrintWriter(System.err, true));
+      var failureOutput = new StringWriter();
+      summary.printFailuresTo(new PrintWriter(failureOutput));
+      log.error("{}", failureOutput);
       throw new IllegalStateException("Tests failed: " + summary.getTotalFailureCount());
     }
   }
@@ -120,5 +128,74 @@ public final class TigerTestsuiteMain {
         + ",junit:" + cucumberOutputDir + "/cucumber.xml"
         + ",io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
         + ",de.gematik.zeta.traceability.RuntimeCoveragePlugin";
+  }
+
+  /**
+   * Applies profile selection and an optional selector through Cucumber's native tag property.
+   *
+   * @return effective Cucumber tag expression
+   */
+  static String configureCucumberTags() {
+    var selection = AuthenticationProfile.current().selectionExpression();
+    var additional = System.getProperty("cucumber.filter.tags", System.getenv("CUCUMBER_FILTER_TAGS"));
+    var tags = additional == null || additional.isBlank() ? selection
+        : "(" + selection + ") and (" + additional + ")";
+    System.setProperty("cucumber.filter.tags", tags);
+    return tags;
+  }
+
+  /** Authentication mode selected by the Tiger runtime profile. */
+  public enum AuthenticationProfile {
+    SMB,
+    OIDC;
+
+    /**
+     * Resolves the explicit or existing fallback profile through Tiger configuration.
+     *
+     * @return selected authentication mode
+     */
+    public static AuthenticationProfile current() {
+      var profile = TigerGlobalConfiguration.readStringOptional("profile")
+          .or(() -> TIGER_DEFAULT_PROFILE.getValue().filter(value -> Files.exists(
+              TigerGlobalConfiguration.resolveRelativePathToTigerYaml("tiger-" + value + ".yaml"))));
+      return fromProfile(profile.orElse(null));
+    }
+
+    /**
+     * Maps a maintained Tiger profile to its authentication mode.
+     *
+     * @param profile Tiger profile name, or null for the default configuration
+     * @return selected authentication mode
+     * @throws IllegalArgumentException for unsupported profiles
+     */
+    public static AuthenticationProfile fromProfile(String profile) {
+      return switch (profile == null ? "" : profile.trim().toLowerCase(Locale.ROOT)) {
+        case "", "proxy" -> SMB;
+        case "oidc", "oidc-proxy" -> OIDC;
+        default -> throw new IllegalArgumentException("Unsupported authentication profile: " + profile);
+      };
+    }
+
+    /**
+     * Checks that the resolved route configuration declares the selected authentication mode.
+     *
+     * @param configuredMode resolved paths.client.authMode value
+     * @throws AssertionError when the runtime profile and route configuration disagree
+     */
+    public void verifyConfiguredMode(String configuredMode) {
+      if (configuredMode == null || !name().equalsIgnoreCase(configuredMode.trim())) {
+        throw new AssertionError("Authentication profile " + this
+            + " does not match paths.client.authMode=" + configuredMode);
+      }
+    }
+
+    /**
+     * Returns the mandatory scenario selection for this authentication mode.
+     *
+     * @return Cucumber-compatible tag expression
+     */
+    public String selectionExpression() {
+      return "not @Ignore and not @" + (this == SMB ? "oidc" : "smb");
+    }
   }
 }

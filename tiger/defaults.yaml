@@ -3,6 +3,8 @@
 # Override via environment variable ZETA_BASE_URL or Maven property -Dzeta_base_url=....
 zeta_base_url: zeta-kind.local
 
+android_push_firebase_project_id: zeta-4899c
+
 # Hostname (without scheme) for the external Keycloak endpoint.
 # Override via environment variable KEYCLOAK_URL or Maven property -Dkeycloak_url=....
 keycloak_url: authserver
@@ -11,14 +13,39 @@ keycloak_url: authserver
 # Override via environment variable PEP_HTTP_PROXY_URL or Maven property -Dpep_http_proxy_url=....
 pep_http_proxy_url: pep-proxy-svc
 
-zeta_proxy_url: localhost:9999
+# Host used by the locally port-forwarded support services below.
+# For Docker bridge networking, set ZETA_PORT_FORWARD_HOST (or
+# -Dzeta_port_forward_host=...) once instead of overriding every service URL.
+zeta_port_forward_host: localhost
+
+# All service URLs are host:port values without a scheme.
+# Each value can still be overridden individually for non-standard deployments.
+# Tiger Proxy: ZETA_PROXY_URL / -Dzeta_proxy_url=...
+zeta_proxy_url: ${zeta_port_forward_host}:9999
+
+# OpenSearch: OPENSEARCH_URL / -Dopensearch_url=...
+opensearch_url: ${zeta_port_forward_host}:9200
+
+# Prometheus: PROMETHEUS_URL / -Dprometheus_url=...
+prometheus_url: ${zeta_port_forward_host}:9090
+
+# Jaeger query API: JAEGER_URL / -Djaeger_url=...
+jaeger_url: ${zeta_port_forward_host}:16686
+
+# TLS test tool: ZETA_TLS_TEST_TOOL_SERVICE_URL / -Dzeta_tls_test_tool_service_url=...
+zeta_tls_test_tool_service_url: ${zeta_port_forward_host}:9012
+
+# Certificate-validation mock: ZETA_CERT_VALIDATION_MOCK_URL /
+# -Dzeta_cert_validation_mock_url=...
+zeta_cert_validation_mock_url: ${zeta_port_forward_host}:9013
+
+# Load Dispenser: LOAD_DISPENSER_URL / -Dload_dispenser_url=...
+load_dispenser_url: ${zeta_port_forward_host}:50051
+load_dispenser_setup_semaphore: 16
+load_dispenser_restart_on_failure: true
 
 allow_deployment_modification: false
 allow_performance_tests: false
-
-# Plaintext gRPC service address of the load dispenser.
-# Override via environment variable LOAD_DISPENSER_URL.
-load_dispenser_url: localhost:50051
 
 # PoPP token generator endpoint used by functional PoPP token steps.
 # The Load Dispenser signs valid PoPP tokens internally for hellozeta workloads.
@@ -44,24 +71,17 @@ schemaValidation:
   # instead of stopping on validation errors.
   soft: true
 
-# OpenSearch host (without scheme) for telemetry lookups.
-# Override via environment variable OPENSEARCH_URL or Maven property -Dopensearch_url=....
-opensearch_url: ${zeta_base_url}:9200
-
-# Prometheus host (without scheme) for telemetry metrics lookups.
-# Override via environment variable PROMETHEUS_URL or Maven property -Dprometheus_url=....
-prometheus_url: ${zeta_base_url}:9090
-
 # Directory of the sibling zeta-test-certificates checkout.
 # Override via environment variable ZETA_TEST_CERTIFICATES_DIR or Maven property
 # -DtestCertificates.dir=....
 testCertificates.dir: ../zeta-test-certificates
 
-# TLS Test Tool Service URL
-# Override via environment variable ZETA_TLS_TEST_TOOL_SERVICE_URL or Maven property
-# -Dzeta_tls_test_tool_service_url=....
-zeta_tls_test_tool_service_url: ${zeta_base_url}:9012
-
-# Certificate validation mock URL
-# Override via Maven property -Dzeta_cert_validation_mock_url=....
-zeta_cert_validation_mock_url: ${zeta_base_url}:9013
+# WebSocket functional-test timing defaults in seconds.
+# Override, for example, with -Dwebsocket.connectionTimeoutSeconds=10.
+# Gherkin timeout steps override connection/message waits for their scenario only.
+websocket:
+  connectionTimeoutSeconds: 5
+  messageTimeoutSeconds: 10
+  loadConnectionTimeoutSeconds: 10
+  # Maximum peer Close wait; only timeout or transport failure forces an abort.
+  closeTimeoutSeconds: 1

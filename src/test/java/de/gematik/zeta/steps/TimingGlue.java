@@ -29,6 +29,9 @@ import de.gematik.rbellogger.data.core.TracingMessagePairFacet;
 import de.gematik.rbellogger.facets.timing.RbelMessageTimingFacet;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
 import de.gematik.test.tiger.lib.reports.SerenityReportUtils;
+import de.gematik.test.tiger.proxy.handler.SingleConnectionParser.SingleConnectionParserMarkerFacet;
+import de.gematik.zeta.services.BoundedObservation;
+import de.gematik.zeta.services.RecordedMessages;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
 import java.time.Duration;
@@ -46,6 +49,42 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TimingGlue {
 
+  private Instant cacheResponseTime;
+
+  /**
+   * Remembers the observed response that established the cache entry used by this scenario.
+   */
+  @Dann("merke den Empfangszeitpunkt der aktuellen Antwort als Cache-Beginn")
+  public void rememberCacheResponseTime() {
+    var retriever = RbelMessageRetriever.getInstance();
+    var response = findResponseForRequest(
+        RecordedMessages.snapshot(), retriever.getCurrentRequest());
+    if (response == null) {
+      throw new AssertionError("No correlated cache response");
+    }
+    cacheResponseTime = requireTimingFacet(response, "cache response")
+        .getTransmissionTime().toInstant();
+  }
+
+  /**
+   * Requires the actual resource request to occur within the observed cache lifetime.
+   *
+   * @param lifetimeSeconds cache lifetime supplied in the observed response
+   */
+  @Dann("prüfe, dass die aktuelle Anfrage innerhalb der gemerkten Cache-Gültigkeit von {int} Sekunden liegt")
+  public void verifyCurrentRequestWithinCacheLifetime(int lifetimeSeconds) {
+    var request = RbelMessageRetriever.getInstance().getCurrentRequest();
+    var requestTime = requireTimingFacet(request, "resource request").getTransmissionTime().toInstant();
+    if (!isWithinCacheLifetime(cacheResponseTime, requestTime, lifetimeSeconds)) {
+      throw new AssertionError("Resource request is outside the observed cache lifetime");
+    }
+  }
+
+  static boolean isWithinCacheLifetime(Instant start, Instant request, int seconds) {
+    return start != null && seconds > 0 && !request.isBefore(start)
+        && request.isBefore(start.plusSeconds(seconds));
+  }
+
   /**
    * Helper to extract the required timing facet from an {@link RbelElement} or throw a concise
    * assertion error.
@@ -62,46 +101,6 @@ public class TimingGlue {
   }
 
   /**
-   * Logs a summary of all RBEL messages captured in the current test run. Uses
-   * {@link RbelMessageRetriever} to obtain all recorded messages and delegates to
-   * {@link #logAllMessages(Collection)} for structured logging.
-   */
-  @Dann("logge alle Nachrichten")
-  @Then("log all messages")
-  public void logAllMessages() {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
-    logAllMessages(messages);
-  }
-
-  /**
-   * Logs details for each RBEL message pair including request/response UUIDs and latency. If a
-   * message does not contain a {@link TracingMessagePairFacet}, a note is logged.
-   *
-   * @param messages the collection of RBEL messages to log; may be {@code null}
-   */
-  private void logAllMessages(Collection<RbelElement> messages) {
-    if (messages == null) {
-      log.info("RBEL messages recorded: 0");
-      return;
-    }
-    log.info("RBEL messages recorded: {}", messages.size());
-    var index = 0;
-    for (var m : messages) {
-      var tracingMessagePairFacet = m.getFacet(TracingMessagePairFacet.class).orElse(null);
-      if (tracingMessagePairFacet == null) {
-        log.info("[{}] Message UUID {} has no TracingMessagePairFacet - skipping",
-            String.format("%03d", index), m.getUuid());
-        index++;
-        continue;
-      }
-      log.info("[{}] Pair UUID {}", String.format("%03d", index), m.getUuid());
-      this.getDurationBetweenRequestAndResponse(tracingMessagePairFacet.getRequest(),
-          tracingMessagePairFacet.getResponse());
-      index++;
-    }
-  }
-
-  /**
    * Computes and reports the response time for the currently active request/response pair. Adds a
    * custom entry to the Serenity report and logs the measured latency.
    *
@@ -111,7 +110,7 @@ public class TimingGlue {
   @Dann("gebe die Antwortzeit vom aktuellen Nachrichtenpaar aus")
   @Then("show response time of current message pair")
   public void showResponseTimeOfCurrentMessagePair() {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       throw new AssertionError("No RBEL messages recorded – cannot determine response time.");
     }
@@ -132,38 +131,6 @@ public class TimingGlue {
   }
 
   /**
-   * Verifies that the currently selected request/response pair took at least the given number of
-   * seconds.
-   *
-   * @param minimumSeconds minimum acceptable response duration in seconds
-   */
-  @Dann("prüfe, dass die Antwortzeit vom aktuellen Nachrichtenpaar mindestens {int} Sekunden beträgt")
-  @Then("verify the current message pair response time is at least {int} seconds")
-  public void verifyCurrentMessagePairResponseTimeAtLeastSeconds(int minimumSeconds) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
-    if (messages == null || messages.isEmpty()) {
-      throw new AssertionError("No RBEL messages recorded – cannot determine response time.");
-    }
-
-    var request = RbelMessageRetriever.getInstance().getCurrentRequest();
-    if (request == null) {
-      throw new AssertionError("No current request available – cannot determine response time.");
-    }
-
-    var response = this.findResponseForRequest(messages, request);
-    if (response == null) {
-      throw new AssertionError("No matching response found for request " + request.getUuid());
-    }
-
-    var duration = this.getDurationBetweenRequestAndResponse(request, response);
-    var minimumDuration = Duration.ofSeconds(Math.abs(minimumSeconds));
-    if (duration.compareTo(minimumDuration) < 0) {
-      throw new AssertionError("Current message pair response time was " + duration.toMillis()
-          + " ms, expected at least " + minimumDuration.toMillis() + " ms.");
-    }
-  }
-
-  /**
    * Verifies that the first recorded request matching the given path and node matcher took at
    * least the given amount of time until its correlated response arrived.
    *
@@ -176,7 +143,7 @@ public class TimingGlue {
   @Then("verify first request to path {tigerResolvedString} with {tigerResolvedString} matching {tigerResolvedString} has a response time of at least {int} seconds")
   public void verifyFirstMatchingRequestResponseTimeAtLeastSeconds(String pathPattern, String rbelPath,
       String expectedValueRegex, int minimumSeconds) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       throw new AssertionError("No RBEL messages recorded – cannot determine response time.");
     }
@@ -208,6 +175,7 @@ public class TimingGlue {
    * @param pathPattern path value or regex to identify the request that must occur in between
    * @param rbelPath RBEL path whose value must match {@code expectedValueRegex}
    * @param expectedValueRegex value or regex to match at {@code rbelPath}
+   * @throws InterruptedException if the bounded parsing observation is interrupted
    */
   @Dann("prüfe, dass zwischen aktueller Anfrage und aktueller Antwort eine Anfrage mit Pfad"
       + " {tigerResolvedString} und Knoten {tigerResolvedString} der mit {tigerResolvedString}"
@@ -215,8 +183,8 @@ public class TimingGlue {
   @Then("verify a request to path {tigerResolvedString} with {tigerResolvedString} matching"
       + " {tigerResolvedString} occurs between the current request and response")
   public void verifyMatchingRequestOccursBetweenCurrentRequestAndResponse(
-      String pathPattern, String rbelPath, String expectedValueRegex) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      String pathPattern, String rbelPath, String expectedValueRegex) throws InterruptedException {
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       throw new AssertionError("No RBEL messages recorded - cannot determine request timing.");
     }
@@ -234,13 +202,13 @@ public class TimingGlue {
 
     var requestTime = transmissionTimeOf(currentRequest, "current request " + currentRequest.getUuid());
     var responseTime = transmissionTimeOf(currentResponse, "current response " + currentResponse.getUuid());
-    var matchingRequest = findFirstRequestMatchingPathAndNodeBetween(
-        messages, pathPattern, rbelPath, expectedValueRegex, requestTime, responseTime);
-    if (matchingRequest == null) {
-      throw new AssertionError("No request found for path '" + pathPattern + "' with node '" + rbelPath
-          + "' matching '" + expectedValueRegex + "' between current request at " + requestTime
-          + " and current response at " + responseTime + ".");
-    }
+    var matchingRequest = BoundedObservation.await(
+        () -> findFirstRequestMatchingPathAndNodeBetween(RecordedMessages.snapshot(),
+            pathPattern, rbelPath, expectedValueRegex, requestTime, responseTime),
+        Objects::nonNull, Duration.ofSeconds(20), Duration.ofMillis(100),
+        "No request found for path '" + pathPattern + "' with node '" + rbelPath
+            + "' matching '" + expectedValueRegex + "' between current request at " + requestTime
+            + " and current response at " + responseTime + ".");
 
     var matchingTime = transmissionTimeOf(matchingRequest, "matching request " + matchingRequest.getUuid());
     SerenityReportUtils.addCustomData("Intermediate request timing",
@@ -250,16 +218,44 @@ public class TimingGlue {
   }
 
   /**
-   * Verifies that the currently selected request with the given path was sent before the previous
-   * request with the same path reached the configured cache lifetime.
+   * Requires the selected request to follow the correlated response of a recorded request.
+   *
+   * @param requestId UUID of the recorded reference request
+   * @throws AssertionError if either message or its timing is missing, or the order is invalid
+   */
+  @Dann("prüfe, dass die aktuelle Anfrage nach der Antwort auf Anfrage {tigerResolvedString} gesendet wurde")
+  public void verifyCurrentRequestSentAfterResponse(String requestId) {
+    var messages = RecordedMessages.snapshot();
+    var reference = messages.stream()
+        .filter(message -> requestId.equals(message.getUuid()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing reference request " + requestId));
+    var response = findResponseForRequest(messages, reference);
+    if (response == null) {
+      throw new AssertionError("Missing correlated response for request " + requestId);
+    }
+    var current = RbelMessageRetriever.getInstance().getCurrentRequest();
+    if (current == null) {
+      throw new AssertionError("No current request selected");
+    }
+    if (!transmissionTimeOf(current, "current request")
+        .isAfter(responseReceivedAt(messages, response))) {
+      throw new AssertionError("Current request was not sent after the reference response");
+    }
+  }
+
+  /**
+   * Verifies that the currently selected download with the given path completed before the previous
+   * response with the same path reached the configured cache lifetime. Overlapping downloads do
+   * not establish that an already received cache entry was updated.
    *
    * @param pathPattern path value or regex to identify both requests
    * @param maxAgeSeconds cache lifetime in seconds that must not be reached
    */
-  @Dann("prüfe, dass die aktuelle Anfrage mit Pfad {tigerResolvedString} vor Ablauf von {int} Sekunden seit der vorherigen Anfrage mit diesem Pfad gesendet wurde")
-  @Then("verify current request with path {tigerResolvedString} was sent before {int} seconds elapsed since the previous request with this path")
-  public void verifyCurrentRequestWasSentBeforePreviousMatchingRequestExpired(String pathPattern, int maxAgeSeconds) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+  @Dann("prüfe, dass der aktuelle Download mit Pfad {tigerResolvedString} vor Ablauf von {int} Sekunden seit Empfang der vorherigen Antwort mit diesem Pfad vollständig abgeschlossen wurde")
+  @Then("verify current download with path {tigerResolvedString} completed before {int} seconds elapsed since receiving the previous response with this path")
+  public void verifyCurrentDownloadCompletedBeforePreviousMatchingResponseExpired(String pathPattern, int maxAgeSeconds) {
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       throw new AssertionError("No RBEL messages recorded – cannot determine request timing.");
     }
@@ -278,12 +274,31 @@ public class TimingGlue {
       throw new AssertionError("No previous request found for path '" + pathPattern + "'.");
     }
 
-    var elapsed = getDurationBetweenRequests(previousRequest, currentRequest);
-    var maxAge = Duration.ofSeconds(Math.abs(maxAgeSeconds));
+    var previousResponse = findResponseForRequest(messages, previousRequest);
+    if (previousResponse == null) {
+      throw new AssertionError("No correlated previous cache response for path '" + pathPattern + "'.");
+    }
+    var receivedPrevious = responseReceivedAt(messages, previousResponse);
+    var sentCurrent = requireTimingFacet(currentRequest, "current request").getTransmissionTime().toInstant();
+    var elapsed = Duration.between(receivedPrevious, sentCurrent);
+    if (maxAgeSeconds <= 0) {
+      throw new AssertionError("Positive cache lifetime required");
+    }
+    var maxAge = Duration.ofSeconds(maxAgeSeconds);
     if (elapsed.isNegative() || elapsed.compareTo(maxAge) >= 0) {
       throw new AssertionError("Current request to path '" + pathPattern + "' was sent "
-          + elapsed.toMillis() + " ms after the previous request, expected less than "
+          + elapsed.toMillis() + " ms after the previous cache response, expected less than "
           + maxAge.toMillis() + " ms.");
+    }
+    var currentResponse = findResponseForRequest(messages, currentRequest);
+    if (currentResponse == null) {
+      throw new AssertionError("No correlated current download response for path '" + pathPattern + "'.");
+    }
+    var receivedCurrent = responseReceivedAt(messages, currentResponse);
+    if (receivedCurrent.isBefore(sentCurrent)
+        || Duration.between(receivedPrevious, receivedCurrent).compareTo(maxAge) >= 0) {
+      throw new AssertionError("Current download to path '" + pathPattern
+          + "' did not complete before the previous cache response expired.");
     }
   }
 
@@ -328,27 +343,25 @@ public class TimingGlue {
     return duration;
   }
 
-  /**
-   * Calculates the elapsed time between two request messages.
-   *
-   * @param previousRequest the earlier request message
-   * @param currentRequest the later request message
-   * @return duration between the two request transmission timestamps
-   * @throws AssertionError if either request lacks the required timing facet
-   */
-  private Duration getDurationBetweenRequests(@NonNull RbelElement previousRequest,
-      @NonNull RbelElement currentRequest) {
-    var previousTiming = requireTimingFacet(previousRequest, "previous request " + previousRequest.getUuid());
-    var currentTiming = requireTimingFacet(currentRequest, "current request " + currentRequest.getUuid());
-
-    var duration = Duration.between(previousTiming.getTransmissionTime(),
-        currentTiming.getTransmissionTime());
-
-    log.info("Duration between previous request with UUID: {} and current request with UUID: {} "
-            + "taken from Tiger Message logs is {} ms", previousRequest.getUuid(), currentRequest.getUuid(),
-        duration.toMillis());
-
-    return duration;
+  /** Assembled TCP messages inherit the first chunk's timestamp; receipt requires every chunk. */
+  static Instant responseReceivedAt(Collection<RbelElement> messages, RbelElement response) {
+    var received = requireTimingFacet(response, "response").getTransmissionTime().toInstant();
+    var chunks = response.getFacet(SingleConnectionParserMarkerFacet.class);
+    if (chunks.isEmpty()) {
+      return received;
+    }
+    if (chunks.get().getSourceUuids().isEmpty()) {
+      throw new AssertionError("Missing response chunk identities");
+    }
+    for (var uuid : chunks.get().getSourceUuids()) {
+      var chunk = messages.stream().filter(message -> uuid.equals(message.getUuid())).findFirst()
+          .orElseThrow(() -> new AssertionError("Missing response chunk timing evidence: " + uuid));
+      var timestamp = requireTimingFacet(chunk, "response chunk").getTransmissionTime().toInstant();
+      if (timestamp.isAfter(received)) {
+        received = timestamp;
+      }
+    }
+    return received;
   }
 
   /**

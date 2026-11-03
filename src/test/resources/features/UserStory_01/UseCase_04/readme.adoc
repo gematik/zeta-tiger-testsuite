@@ -27,9 +27,13 @@ Der ZETA Client führt die Service-Discovery durch, registriert sich per Dynamic
 Der stationäre ZETA Client ist noch nicht beim ZETA Guard registriert.
 
 | Nebenbedingung: |
-Keine zusätzlichen Nebenbedingungen.
+Für Policy-`user_info` sind die Feldnamen des gepinnten Schemas maßgeblich, insbesondere `professionOID`. Abweichende Spec-Feldnamen ändern weder den Beobachtungspfad noch das gezielt manipulierte Feld.
+
+Die Policy-Ablehnung wird mit technisch gültiger Client-Authentifizierung, gültigem signiertem Subject Token und gültigem DPoP-Proof geprüft. Nicht vertrauenswürdige Credentials dürfen den Aufruf nicht bereits vor der Policy-Verarbeitung beenden.
 
 | Ablauf: |
+Die folgenden JWT-Darstellungen sind Ausschnitte des CC-Profils gemäß `schemas/v_2_0`; sie ersetzen keine vollständige Schemaprüfung. Auslassungen und Platzhalter werden vor dem Signieren typgerecht ergänzt: `exp` und `iat` sind ganzzahlige NumericDate-Werte in Sekunden, `aud` ist das dargestellte String-Array. Header, Pflichtclaims und die im jeweiligen Flow erforderlichen frischen AS-Nonces und Schlüsselbindungen müssen vollständig und gültig sein. Bei einer Negativvariante wird anschließend ausschließlich der ausdrücklich benannte Fehlergrund verändert.
+
 1. Der MA startet im ZETA Client die Abfrage des *Service Directorys*.
 2. Der ZETA Client ruft den well-known Endpunkt des Resource Servers auf:
 - ``GET /.well-known/oauth-protected-resource Host: <RS-FQDN>``
@@ -123,7 +127,7 @@ Keine zusätzlichen Nebenbedingungen.
 {
 "iss": "<client_id>",
 "sub": "<client_id>",
-"aud": "<AS_Token_Endpoint_URL>",
+"aud": ["<AS_Token_Endpoint_URL>"],
 "exp": "...",
 "jti": "...",
 "client_statement": {}
@@ -132,15 +136,18 @@ Keine zusätzlichen Nebenbedingungen.
 ----
 +
 
-24. Der ZETA Client erstellt ein *SMC-B Access Token* (JWT).
+24. Der ZETA Client erstellt ein *SMC-B Subject Token* (JWT). Er verwendet die zuvor tatsächlich vom AS gelieferte frische Nonce. `client_key.jkt` ist der JWK-Thumbprint des in der erfolgreichen DCR registrierten Client-Instance-Schlüssels; `dpop_key.jkt` ist der Thumbprint des öffentlichen Schlüssels des zu diesem Exchange gehörenden DPoP-Proofs. Die Bindungen werden vor dem SMC-B-Signieren in das Subject Token aufgenommen.
 +
-.SMC-B Access Token Claims:
+.SMC-B Subject Token Claims:
 [source,json]
 ----
 {
 "iss": "<client_id>",// Issuer is the client
 "sub": "<Telematik-ID from SMC-B>",// Subject is the institution
-"aud": "[<Resource_Server_Endpoint_URL>]",// Audience is the Resource Server
+"aud": ["<AS_Token_Endpoint_URL>"],// Audience is the Authorization Server
+"nonce": "<fresh nonce actually issued by the AS>",
+"client_key": {"jkt": "<thumbprint of the DCR-registered client public key>"},
+"dpop_key": {"jkt": "<thumbprint of the exchange DPoP public key>"},
 "exp": "...",// Short-lived
 "iat": "...",
 "jti": "...",
@@ -155,7 +162,7 @@ Keine zusätzlichen Nebenbedingungen.
 27. SMC-B signiert den Hash.
 28. KTG liefert die *JWT-Signatur* zurück an ZETA Client.
 
-29. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Access Token* ein.
+29. Der ZETA Client fügt die JWT-Signatur in das *SMC-B Subject Token* ein.
 30. Der ZETA Client erstellt ein *DPoP Proof JWT* für den Token-Austausch.
 - Enthält Claims für den Token Request.
 +
@@ -182,7 +189,7 @@ Keine zusätzlichen Nebenbedingungen.
 [source,txt]
 ----
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-&subject_token=<SMC-B_Access_Token>
+&subject_token=<SMC-B_Subject_Token>
 &subject_token_type=urn:ietf:params:oauth:token-type:jwt
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<Client_Assertion_JWT>...
@@ -196,17 +203,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 - Subject Token
 33. Der PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
 - ``POST /v1/data/authz`` mit Input-Parametern.
-34. Die PDP-PE antwortet mit ``403 Forbidden`` <<A_25661>>
+34. Die PDP-PE antwortet mit ``200 OK``, der negativen Policy-Entscheidung ``result.allow=false`` und den Ablehnungsgründen in ``result.reasons``.
 35. Der PDP Authorization Server generiert *Fehlermeldung*.
-36. Der PDP Authorization Server liefert ``403 Forbidden`` und Fehlermeldung als JSON Object an ZETA Client zurück. <<A_26662>>
+36. Der PDP Authorization Server liefert ``403 Forbidden`` mit ``error=access_denied`` und schemakonformer Fehlermeldung als JSON Object an den ZETA Client zurück. Das Attribut ``reasons`` enthält die unverändert übernommenen Ablehnungsgründe der Policy Engine. <<A_25661-01>>, <<A_26662>>
 37. Der ZETA Client meldet dem MA: *„Registrierung fehlgeschlagen“*.
 
 | Nachbedingung: |
 Der stationäre ZETA Client besitzt kein gültiges Access- oder Refresh-Token.
+Die Token-Antwort an den ZETA Client enthält die Ablehnungsgründe aus der Decision-Response der Policy Engine.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25752_01>>
-* <<TA_A_25661_03>>
+* <<TA_A_25752-01_01>>
+* <<TA_A_25661-01_03>>
 * <<TA_A_26661_01>>
 * <<TA_A_26661_13>>
 * <<TA_A_26662_01>>
@@ -265,7 +273,7 @@ sequenceDiagram
     end
 
     opt 3. SMC-B Signatur holen
-        ZC->>ZC: Erstellen von SMC-B Access Token (JWT)
+        ZC->>ZC: Erstellen von SMC-B Subject Token (JWT)
         ZC->>+KTG: External Authenticate<br>(JWT-Hash)
         KTG->>+SMC: Signiere (Hash)
         SMC-->>-KTG: Signatur
@@ -273,7 +281,7 @@ sequenceDiagram
     end
 
     opt 4. DPoP Proof erstellen
-        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Access Token
+        ZC->>ZC: Hinzufügen von JWT-Signature<br>zu SMC-B Subject Token
         ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
     end
 
@@ -281,9 +289,9 @@ sequenceDiagram
         ZC->>PDP-AS: POST /token (RFC 8693) DPoP: signed_dpop_jwt
         PDP-AS-->>PDP-AS: Validiere Request
         PDP-AS->>+PDP-PE: POST /v1/data/authz
-        PDP-PE-->>-PDP-AS: 403 Forbidden
+        PDP-PE-->>-PDP-AS: 200 OK, result.allow=false, result.reasons
         PDP-AS->>PDP-AS: Erzeuge Fehlermeldung als JSON Objekt
-        PDP-AS-->>-ZC: 403 Forbidden, sowie Fehlermeldung
+        PDP-AS-->>-ZC: 403 Forbidden, error=access_denied, reasons aus Decision-Response
         ZC-->>-MA: "Registrierung fehlgeschlagen"
     end
 ....

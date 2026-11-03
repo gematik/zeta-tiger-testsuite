@@ -1,0 +1,6 @@
+[#TA_A_29862_02]
+===== TA_A_29862_02 - ZETA Client, zusätzlichen DPoP-Proof im äußeren HTTP Request verwenden
+
+"Der ZETA Client MUSS beim durchführen eines fachlichen Requests zum Resource Server ein zusätzliches DPoP Token für den /ASL Endpunkt gemäß Tabelle Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server erzeugen und **im äußeren HTTP Request im DPoP Header verwenden.**
+
+[<=]"

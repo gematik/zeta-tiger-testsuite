@@ -1,0 +1,6 @@
+[#TA_A_29981_04]
+===== TA_A_29981_04 - Notification Service - Verwaltung der mTLS-Zertifikate - Client- und Server-Zertifikate gemeinsam verwalten
+
+"Der Betreiber des Notification Service MUSS die für die mTLS-Authentisierung verwendeten Client-/Server-Zertifikate gemeinsam mit dem Betreiber des Resource Servers ausstellen und **verwalten** sowie eine Sperrung/Rotation kompromittierter Zertifikate ermöglichen.
+
+**[<=]**"

@@ -1,0 +1,37 @@
+# Schema for the user-info JSON object.
+# The PDP authorization server stores user-info records for all authenticated
+# user.
+# The PEP can request user-info records for a user by sending a request.
+#
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: zeta user info
+description: Schema for the zeta_user_info JSON object.
+type: object
+properties:
+  identifier:
+    type: string
+    description: "Telematik-ID, KVNR or other unique identifier"
+  professionOID:
+    type: string
+    description: "Profession identifier (OID)"
+  commonName:
+    type: string
+    description: "Kurzname der Institution"
+  organizationName:
+    type: string
+    description: "Name der Organisation oder Institution"
+  birthdate:
+    type: string
+    format: date
+    pattern: '^\d{4}-\d{2}-\d{2}$'
+    description: >-
+      Geburtsdatum des Versicherten (YYYY-MM-DD, ISO 8601 / OpenID Connect
+      Core 5.1). Optional und consent-abhängig: aus dem id_token-Claim
+      'birthdate' übernommen, sofern der Nutzer am sektoralen IDP der Freigabe
+      zugestimmt hat (siehe A_26973-02). Fehlt das Feld, wenn kein Consent
+      vorliegt.
+required:
+  - identifier
+  - professionOID
+  - commonName

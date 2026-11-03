@@ -1,0 +1,10 @@
+[#TA_A_29820_01]
+===== TA_A_29820_01 - Authorization Server, Attribute amr und acr bei Token Exchange mit SMC-B signiertem Subject-Token - amr an die Policy Engine übergeben
+
+"Der PDP Authorization Server MUSS beim Token Exchange mit SMC-B signiertem Subject-Token im Request an die Policy Engine gemäß [policy-engine-input.yaml] die Attribute amr und acr wie folgt verwenden:
+
+**amr: urn:telematik:auth:sc**
+
+acr: gematik-ehealth-loa-substantial
+
+**[<=]**"

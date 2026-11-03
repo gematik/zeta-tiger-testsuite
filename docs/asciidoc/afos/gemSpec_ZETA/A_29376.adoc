@@ -1,0 +1,4 @@
+[#A_29376]
+==== A_29376 - ZETA, Ablauf Token Exchange mit Attestation
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation unterstützen. [<=]

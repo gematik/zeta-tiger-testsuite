@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.steps.TestCertificateSteps;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -54,6 +55,8 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Unit tests for {@link TestCertificateSteps}.
@@ -64,6 +67,51 @@ class TestCertificateStepsTest {
 
   @TempDir
   Path tempDir;
+
+  /** Verifies that the selection step publishes a stem consumable by the existing loader. */
+  @Test
+  void publishesSelectedManifestStem() throws IOException {
+    configureManifest(createTestRepo());
+    steps.chooseCertificateStem("stem-0001", "selected.stem");
+    assertThat(read("selected.stem")).isEqualTo("stem-0001");
+    steps.loadCertificateEntryByStem(read("selected.stem"), "selected.cert");
+    assertThat(read("selected.cert.stem")).isEqualTo("stem-0001");
+  }
+
+  /**
+   * Verifies both supported file encodings produce identical DER certificate variables.
+   *
+   * @param pem whether to encode the input certificate as PEM
+   * @throws Exception if the certificate fixture cannot be created or read
+   */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void loadsPublicCertificateFileAsCanonicalDer(boolean pem) throws Exception {
+    var store = KeyStore.getInstance("PKCS12");
+    store.load(new ByteArrayInputStream(Base64.getDecoder().decode(
+        createKeyStoreBase64("issuer", "00"))), "00".toCharArray());
+    var encoded = store.getCertificate("issuer").getEncoded();
+    var file = tempDir.resolve(pem ? "issuer.pem" : "issuer.der");
+    if (pem) {
+      Files.writeString(file, "-----BEGIN CERTIFICATE-----\n"
+          + Base64.getMimeEncoder().encodeToString(encoded) + "\n-----END CERTIFICATE-----\n");
+    } else {
+      Files.write(file, encoded);
+    }
+    steps.loadCertificateFile(file.toString(), "public.issuer");
+    assertThat(read("public.issuer")).isEqualTo(Base64.getEncoder().encodeToString(encoded));
+  }
+
+  /** Verifies missing or malformed public certificates are rejected. */
+  @Test
+  void rejectsUnreadablePublicCertificateFiles() throws IOException {
+    assertThatThrownBy(() -> steps.loadCertificateFile(
+        tempDir.resolve("missing.pem").toString(), "public.missing")).isInstanceOf(IOException.class);
+    var malformed = tempDir.resolve("invalid.pem");
+    Files.writeString(malformed, "not a certificate");
+    assertThatThrownBy(() -> steps.loadCertificateFile(malformed.toString(), "public.invalid"))
+        .isInstanceOf(CertificateException.class);
+  }
 
   /**
    * Remove certificate and deployment overrides after each test run.
@@ -87,10 +135,10 @@ class TestCertificateStepsTest {
    * @throws IOException on filesystem errors
    */
   @Test
-  void loadCertificateEntryByIndexPublishesPathsAndBase64Values() throws IOException {
+  void loadCertificateEntryByStemPublishesPathsAndBase64Values() throws IOException {
     configureManifest(createTestRepo());
 
-    steps.loadCertificateEntryByIndex(1, "perf.client.single");
+    steps.loadCertificateEntryByStem("stem-0001", "perf.client.single");
 
     assertThat(read("perf.client.single.stem")).isEqualTo("stem-0001");
     assertThat(Path.of(read("perf.client.single.crt_path")))

@@ -33,6 +33,14 @@ targets:
       - name: "Nonce"
         span: "${telemetry.span.authorizationServer.nonce}"
 
+  pdp_revoke:
+    name: "PDP Revocation"
+    service: "${telemetry.service.authorizationServer}"
+    spans: "${telemetry.span.authorizationServer.revoke}"
+    latencies:
+      - name: "Revoke"
+        span: "${telemetry.span.authorizationServer.revoke}"
+
   pdp_kalte_clients:
     name: "PDP"
     service: "${telemetry.service.authorizationServer}"

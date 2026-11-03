@@ -1,0 +1,4 @@
+[#A_30000]
+==== A_30000 - PDP Authorization Server - Access Token außerhalb des Geltungsbereichs
+
+Wird ein Access Token übergeben, MUSS der Authorization Server mit 200 OK ohne serverseitige Wirkung antworten und KANN alternativ error=unsupported_token_type (400) gemäß RFC 7009 §2.2.1 zurückgeben. [<=]

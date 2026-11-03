@@ -1,0 +1,8 @@
+[#TA_A_30001_29]
+===== TA_A_30001_29 - ZETA, Ablauf Token Revocation - Vollständiger korrelierter Auditdatensatz
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung betrifft dieser Testaspekt Schritt 07, den **korrelierten Auditdatensatz mit Trace-Id, Session-Id, Trigger-Source, Reason-Code und Zeitpunkt**. Die Revisionssicherheit ist der eigenständige Fokus von <<TA_A_30001_10>>.

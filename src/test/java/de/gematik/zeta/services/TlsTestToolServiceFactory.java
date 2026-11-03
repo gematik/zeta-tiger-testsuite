@@ -30,6 +30,7 @@ import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
  * Factory for {@link TlsTestToolService}.
  */
 public class TlsTestToolServiceFactory {
+  private static final ThreadLocal<TlsTestToolSession> CURRENT = new ThreadLocal<>();
 
   public static final String TLS_TEST_TOOL_SERVICE_BASE_URL_CONFIG_KEY = "tlsTestTool.serviceUrl";
 
@@ -39,14 +40,45 @@ public class TlsTestToolServiceFactory {
    * @return configured client instance
    */
   public static TlsTestToolService getInstance() {
+    try {
+      return new TlsTestToolService(serviceUrl());
+    } catch (IllegalArgumentException | NullPointerException e) {
+      throw new AssertionError("The TLS Test Tool service configuration is invalid.", e);
+    }
+  }
+
+  static String serviceUrl() {
     var baseUrl = TigerGlobalConfiguration.readStringOptional(TLS_TEST_TOOL_SERVICE_BASE_URL_CONFIG_KEY)
         .map(TigerGlobalConfiguration::resolvePlaceholders)
         .orElseThrow(() -> new AssertionError("The TLS Test Tool service URL is not configured."));
+    if (baseUrl.isBlank() || baseUrl.contains("${")) {
+      throw new AssertionError("The TLS Test Tool service URL is not configured.");
+    }
+    return normalizeBaseUrl(baseUrl).replaceAll("/+$", "");
+  }
 
-    try {
-      return new TlsTestToolService(normalizeBaseUrl(baseUrl));
-    } catch (IllegalArgumentException | NullPointerException e) {
-      throw new AssertionError("The TLS Test Tool service configuration is invalid.", e);
+  /** Claims and resets the shared tool once, before any ordinary scenario configuration upload. */
+  public static TlsTestToolSession getSession() {
+    var session = CURRENT.get();
+    if (session == null) {
+      session = new TlsTestToolSession(getInstance());
+      CURRENT.set(session);
+      session.start("", "ordinary-tls");
+      session.reset();
+    }
+    session.assertOwned();
+    return session;
+  }
+
+  /** Returns partially initialized ownership for the scenario cleanup hook, without creating it. */
+  public static TlsTestToolSession currentSession() {
+    return CURRENT.get();
+  }
+
+  /** Removes only this scenario's session after cleanup, leaving failed recovery backups intact. */
+  public static void releaseSession(TlsTestToolSession session) {
+    if (CURRENT.get() == session) {
+      CURRENT.remove();
     }
   }
 

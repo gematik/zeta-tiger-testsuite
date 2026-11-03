@@ -1,0 +1,4 @@
+[#A_29913]
+==== A_29913 - Authorization Server – Fachdienstübergreifende Fast-Path-Registrierung (Guard-Vouching)
+
+Der Authorization Server MUSS als Alternative zur E-Mail-OTP-Erstnutzung eine fachdienstübergreifende Fast-Path-Registrierung zulassen (attestation_type=zeta_attestation_token), bei der ein Client eine bestehende, gültige und faktor­gestützte Registrierung derselben Identität an einem anderen ZETA Guard nachweist. Der Ziel-Guard MUSS in diesem Fall die Identitätsbindung und die verifizierte E-Mail (F1) aus einer geprüften, signierten ZETA Attestation Token des Quell-Guards übernehmen und DARF für diesen Pfad KEINE erneute E-Mail-OTP-Verifikation verlangen. Die Einlösung erfolgt als zusätzliches Credential auf der definierten API POST /register (vgl. A_29658). [<=]

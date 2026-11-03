@@ -1,0 +1,6 @@
+[#TA_A_29987_04]
+===== TA_A_29987_04 - Notification Service – Schutz vor Überlast und Missbrauch - Temporäre Nichtverfügbarkeit mit HTTP 503
+
+"Der Notification Service MUSS Maßnahmen gegen Überlast und Missbrauch implementieren (Rate-Limiting mit 429/Retry-After, Begrenzung von Payload- und Stapelgrößen) und **bei temporärer Nichtverfügbarkeit mit 503**/Retry-After antworten. Überschreitet eine Notification die zulässige Payload-Größe, MUSS er sie mit 413 (PAYLOAD_TOO_LARGE, siehe [OpenApi-Notification-Service-RS]) zurückweisen.
+
+**[<=]**"

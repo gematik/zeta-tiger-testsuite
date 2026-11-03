@@ -1,0 +1,4 @@
+[#A_29868]
+==== A_29868 - ZETA Guard - Dual-Stack bei TLS-Terminierung
+
+Der Anbieter des TI 2.0-Dienstes MUSS sicherstellen, dass die gemäß A_28851 vorgesehenen TLS-Terminierungspunkte über IPv4 und IPv6 erreichbar sind. Die Sicherheitsmechanismen (z. B. Zertifikatsprüfung, Rate-Limiting, Protokollierung) MÜSSEN für beide IP-Versionen gleichwertig umgesetzt werden. [<=]

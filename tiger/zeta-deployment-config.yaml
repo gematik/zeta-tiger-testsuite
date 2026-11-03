@@ -4,7 +4,7 @@ podReadyTimeout: ${zeta_k8s_pod_ready_timeout}
 helmDeploymentDirectory: ${zeta_k8s_helm_deployment_directory}
 helmDeploymentTargetStage: local
 helmReleaseName: "zeta-testenv-local"
-helmValuesFile: "local-test/values.local.yaml"
+helmValuesFile: "private/values.local.yaml"
 helmDeploymentArgs: "--force-conflicts"
 immutableServiceClusterIpOverrides:
   "0":
@@ -25,8 +25,18 @@ keycloak:
   databaseContainerName: "postgres"
   realmName: "zeta-guard"
   kubectlRequestTimeout: "10s"
+  sessionAdmin:
+    deploymentName: "authserver"
+    containerName: "keycloak"
+    serverUrl: "http://localhost:8080/auth"
   signingKey:
+    # Automatic resolution: matching local key, Keycloak database, then test HSM simulator.
+    # Real HSM key export is not supported.
     providerId: "ecdsa-generated"
+    hsmSimulator:
+      deploymentName: "hsm-sim"
+      containerName: "hsm-sim"
+      keyFile: "/etc/hsm_sim/keys/zeta-guard-keycloak-token-es256-v1.p256.key.pem"
   oidcDecryptionKey:
     providerId: "ecdh-generated"
     privateKeyConfigName: "ecdhPrivateKey"
@@ -76,3 +86,9 @@ pep:
 
 authserver:
   podName: "authserver"
+
+sekidp:
+  podName: "sekidp-gsi-server"
+
+loadDispenser:
+  deploymentName: "load-dispenser"

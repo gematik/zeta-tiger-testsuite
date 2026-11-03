@@ -1,6 +1,0 @@
-==== Testaspekte für die Anforderung A_25337
-
-Folgende Testaspekte testen <<A_25337>>.
-
-include::TA_A_25337_01.adoc[]
-

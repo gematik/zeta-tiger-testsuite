@@ -31,7 +31,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 404
   @A_27725-01
   @TA_A_28426_03
   @TA_A_27725-01_33
-  @MASVS-RESILIENCE
   Szenario: Service Discovery erneut durchführen nach 404 Not Found
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 

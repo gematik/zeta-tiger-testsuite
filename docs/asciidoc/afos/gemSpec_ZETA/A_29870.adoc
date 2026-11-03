@@ -1,0 +1,4 @@
+[#A_29870]
+==== A_29870 - ZETA Guard - Verarbeitung von IPv6 in Forwarded-Headern
+
+Die Komponenten des ZETA Guard MÜSSEN IPv6-Adressen in Forwarded-Headern gemäß RFC 7239 korrekt verarbeiten und an nachgelagerte Komponenten konsistent weiterreichen. [<=]

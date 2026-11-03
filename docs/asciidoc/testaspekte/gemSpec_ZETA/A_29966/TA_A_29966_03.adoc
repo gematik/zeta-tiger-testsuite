@@ -1,0 +1,4 @@
+[#TA_A_29966_03]
+===== TA_A_29966_03 - Notification Service – terminaler Status bei fehlendem aktiven Channel
+
+"Der Notification Service MUSS bei der Annahme einer Notification synchron prüfen, ob der adressierte Channel für den Nutzer aktiv (enabled) ist. Ist der Channel auf keinem registrierten Gerät enabled, MUSS er **die Notification nicht an das Push Gateway weiterleiten und den terminalen Status no_active_channel bereits in der 202-Antwort zurückgeben**. **[<=]**"

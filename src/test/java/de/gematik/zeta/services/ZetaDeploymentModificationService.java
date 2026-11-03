@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.services;
 
+import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.services.model.CommandResult;
 import de.gematik.zeta.services.model.HelmDeploymentRequest;
 import de.gematik.zeta.services.model.KubectlPatchCommandResult;
@@ -43,8 +44,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,7 +81,8 @@ public class ZetaDeploymentModificationService {
   );
   private static final PepNginxRouteTemplateConfig DEFAULT_PEP_NGINX_ROUTE_TEMPLATE =
       new PepNginxRouteTemplateConfig("/pep/", "/testfachdienst");
-  private static final String K8S_SUFFIX_ORIGINAL_RESOURCE = "tiger-original-backup";
+  private static final ThreadLocal<String> CONFIG_MAP_BACKUP_OWNER =
+      ThreadLocal.withInitial(() -> UUID.randomUUID().toString());
   private static final int K8S_POD_STATUS_CHECK_INTERVAL = 2;
   private static final int MAX_OBSERVATION_ENTRIES = 8;
   private final int processTimeoutSeconds;
@@ -233,12 +237,37 @@ public class ZetaDeploymentModificationService {
    * @throws AssertionError if command execution fails before the process can return an exit code
    */
   public CommandResult deployZetaGuardWithHelmOverrides(HelmDeploymentRequest request) throws AssertionError {
+    return deployZetaGuardWithHelmOverrides(request, null, null);
+  }
+
+  /**
+   * Deploys with a persisted ownership label so recovery also recognizes interrupted upgrades.
+   *
+   * @param request deployment request
+   * @param description optional safe ownership marker
+   * @param namespace namespace of the captured Helm release when using an ownership marker
+   * @return deployment result
+   */
+  public CommandResult deployZetaGuardWithHelmOverrides(HelmDeploymentRequest request, String description, String namespace) {
     String helmArgs = request.valuesOverride().stream()
         .map(value -> "--set " + value)
         .reduce("", (acc, value) -> acc.isBlank() ? value : acc + " " + value);
+    if (description != null) {
+      request.validateMakeReleaseName();
+      if (!description.matches("zeta-testsuite-[a-zA-Z0-9-]+")) {
+        throw new IllegalArgumentException("Invalid Helm ownership marker");
+      }
+      helmArgs += " --description " + description
+          + " --labels " + HelmStateRecovery.OWNERSHIP_LABEL + "=" + description;
+    }
 
-    List<String> args = List.of("deploy", "stage=" + request.targetStage(),
-        MAKE_PARAM_HELM_ARGS + "='" + helmArgs + "'");
+    List<String> args = new ArrayList<>(List.of("deploy", "stage=" + request.targetStage(),
+        MAKE_PARAM_HELM_ARGS + "=" + helmArgs));
+    if (description != null) {
+      Objects.requireNonNull(namespace, "namespace must not be null for an owned Helm upgrade");
+      args.add("NAMESPACE=" + namespace);
+      args.add("VALUES=" + request.helmValuesFile());
+    }
 
     return executeMakeCommand(request.helmDeploymentDirectory(), args, request.environmentVariables());
   }
@@ -437,12 +466,7 @@ public class ZetaDeploymentModificationService {
       String targetRoute, boolean enabled)
       throws IOException, InterruptedException, TimeoutException {
     var targetPoppValue = enabled ? request.nginxPoppEnabledValue() : request.nginxPoppDisabledValue();
-    var patchFunc = getPoppToggleFunction(request.nginxPoppValueRegex(), targetRoute, targetPoppValue);
-
-    return modifyPepNginxConfigAndRestart(
-        details.namespace(), details.pepPodName(), details.nginxConfigMapName(), details.nginxConfigMapKeySegments(),
-        patchFunc
-    );
+    return setNginxRouteDirective(details, request.nginxPoppValueRegex(), targetRoute, targetPoppValue);
   }
 
   /**
@@ -463,13 +487,7 @@ public class ZetaDeploymentModificationService {
     var targetDirective = enabled
         ? request.nginxClientDataForwardingEnabledValue()
         : request.nginxClientDataForwardingDisabledValue();
-    var patchFunc = getNginxDirectiveToggleFunction(
-        request.nginxClientDataForwardingRegex(), targetRoute, targetDirective);
-
-    return modifyPepNginxConfigAndRestart(
-        details.namespace(), details.pepPodName(), details.nginxConfigMapName(), details.nginxConfigMapKeySegments(),
-        patchFunc
-    );
+    return setNginxRouteDirective(details, request.nginxClientDataForwardingRegex(), targetRoute, targetDirective);
   }
 
   /**
@@ -488,13 +506,75 @@ public class ZetaDeploymentModificationService {
       ZetaRequiredScopesRequest request, String targetRoute, String requiredScopes)
       throws IOException, InterruptedException, TimeoutException {
     var targetDirective = renderRequiredScopesDirective(request.nginxRequiredScopesTemplate(), requiredScopes);
-    var patchFunc = getNginxDirectiveToggleFunction(
-        request.nginxRequiredScopesRegex(), targetRoute, targetDirective);
+    return setNginxRouteDirective(details, request.nginxRequiredScopesRegex(), targetRoute, targetDirective);
+  }
 
-    return modifyPepNginxConfigAndRestart(
-        details.namespace(), details.pepPodName(), details.nginxConfigMapName(), details.nginxConfigMapKeySegments(),
-        patchFunc
-    );
+  /**
+   * Restricts the generic PEP location to its exact path while retaining explicit child routes.
+   *
+   * @param details deployment connection settings
+   * @return patch result
+   * @throws IOException when a temporary file cannot be written
+   * @throws InterruptedException when rollout waiting is interrupted
+   * @throws TimeoutException when rollout does not finish
+   */
+  public KubectlPatchCommandResult restrictGenericRouteToExact(ZetaDeploymentDetails details)
+      throws IOException, InterruptedException, TimeoutException {
+    var prefix = pepNginxRouteTemplate.genericRoutePrefix();
+    return modifyPepNginxConfigAndRestart(details.namespace(), details.pepPodName(), details.nginxConfigMapName(),
+        details.nginxConfigMapKeySegments(), config -> NginxRouteConfiguration.restrictPrefixToExact(config, prefix),
+        dump -> NginxRouteConfiguration.requireExactDumpLocation(dump, prefix));
+  }
+
+  /**
+   * Sets and verifies the effective static upstream URL of an external PEP route.
+   *
+   * @param details deployment connection settings
+   * @param targetRoute external route path in the configured PEP virtual host
+   * @param upstream absolute internal HTTP URL without nginx variables
+   * @return patch result
+   * @throws IOException when a temporary file cannot be written
+   * @throws InterruptedException when rollout waiting is interrupted
+   * @throws TimeoutException when rollout does not finish
+   */
+  public KubectlPatchCommandResult setStaticRouteTarget(ZetaDeploymentDetails details,
+      String targetRoute, String upstream) throws IOException, InterruptedException, TimeoutException {
+    return setNginxRouteDirective(details, "(?m)^\\s*proxy_pass\\s+[^;]+;", targetRoute,
+        staticRoutingDirective(upstream));
+  }
+
+  /**
+   * Renders one literal HTTP upstream without nginx expressions or configuration delimiters.
+   *
+   * @param upstream absolute internal URL
+   * @return proxy_pass directive
+   */
+  static String staticRoutingDirective(String upstream) {
+    if (upstream == null || !upstream.matches("https?://[A-Za-z0-9.-]+(?::[0-9]{1,5})?/[A-Za-z0-9._~/-]*")) {
+      throw new IllegalArgumentException("Expected a literal absolute HTTP upstream URL");
+    }
+    return "proxy_pass " + upstream + ";";
+  }
+
+  /**
+   * Enables audience matching with exactly one expected audience on the selected route.
+   *
+   * @param details deployment connection settings
+   * @param targetRoute external route path
+   * @param audience single expected audience
+   * @return patch result
+   * @throws IOException when a temporary file cannot be written
+   * @throws InterruptedException when rollout waiting is interrupted
+   * @throws TimeoutException when rollout does not finish
+   */
+  public KubectlPatchCommandResult setRequiredAudience(ZetaDeploymentDetails details,
+      String targetRoute, String audience) throws IOException, InterruptedException, TimeoutException {
+    if (audience == null || !audience.matches("[A-Za-z0-9._:/-]+")) {
+      throw new IllegalArgumentException("Expected one audience without nginx separators or quotes");
+    }
+    // Use the single-audience directive used by the maintained Helm deployment.
+    var directive = "pep_require_aud \"" + audience + "\";";
+    return setNginxRouteDirective(details, "(?m)^\\s*pep_require_aud(?:_any)?\\s+[^;]+;", targetRoute, directive);
   }
 
   /**
@@ -518,6 +598,67 @@ public class ZetaDeploymentModificationService {
         details.namespace(), details.pepPodName(), details.nginxConfigMapName(), details.nginxConfigMapKeySegments(),
         patchFunc
     );
+  }
+
+  /**
+   * Sets PoPP validity on one route, preserving the server default and other locations.
+   *
+   * @param details deployment identity
+   * @param request directive syntax
+   * @param targetRoute route to configure
+   * @param validity quarter or a duration
+   * @param leewaySeconds explicit clock tolerance for this time-validation fixture
+   * @return tracked configuration patch
+   * @throws IOException if the patch cannot be written
+   * @throws InterruptedException if rollout waiting is interrupted
+   * @throws TimeoutException if the deployment does not become ready
+   */
+  public KubectlPatchCommandResult setPoppTokenValidityForRoute(ZetaDeploymentDetails details,
+      ZetaPoppTokenValidityRequest request, String targetRoute, String validity, int leewaySeconds)
+      throws IOException, InterruptedException, TimeoutException {
+    if (leewaySeconds < 0 || leewaySeconds > 300) {
+      throw new IllegalArgumentException("Clock tolerance must be between 0 and 300 seconds");
+    }
+    var directive = renderPoppValidityDirective(request.nginxPoppValidityTemplate(), validity);
+    var leeway = "pep_leeway " + leewaySeconds + ";";
+    var clockRegex = "pep_leeway\\s+[^;]+;";
+    return modifyPepNginxConfigAndRestart(details.namespace(), details.pepPodName(),
+        details.nginxConfigMapName(), details.nginxConfigMapKeySegments(), config -> {
+          var result = NginxRouteConfiguration.patch(config, targetRoute, request.nginxPoppValidityRegex(), directive,
+              pepNginxRouteTemplate.genericRoutePrefix(), pepNginxRouteTemplate.upstreamBasePath());
+          return NginxRouteConfiguration.patch(result, targetRoute, clockRegex, leeway,
+              pepNginxRouteTemplate.genericRoutePrefix(), pepNginxRouteTemplate.upstreamBasePath());
+        }, dump -> {
+          NginxRouteConfiguration.requireDumpDirective(dump, targetRoute, request.nginxPoppValidityRegex(), directive);
+          NginxRouteConfiguration.requireDumpDirective(dump, targetRoute, clockRegex, leeway);
+        });
+  }
+
+  /**
+   * Configures one PEP worker so successive JWKS downloads belong to one initialized cache.
+   *
+   * @param details deployment and nginx ConfigMap identity
+   * @return result of the tracked ConfigMap update
+   * @throws IOException if the patch cannot be written
+   * @throws InterruptedException if the rollout wait is interrupted
+   * @throws TimeoutException if the restarted deployment does not become ready
+   */
+  public KubectlPatchCommandResult useSinglePepWorker(ZetaDeploymentDetails details)
+      throws IOException, InterruptedException, TimeoutException {
+    return modifyPepNginxConfigAndRestart(details.namespace(), details.pepPodName(),
+        details.nginxConfigMapName(), details.nginxConfigMapKeySegments(), config -> {
+          var matcher = Pattern.compile("(?m)^(\\h*)worker_processes\\h+[^;\\r\\n]+;").matcher(config);
+          if (!matcher.find()) {
+            throw new AssertionError("Missing nginx worker_processes directive");
+          }
+          var start = matcher.start();
+          var end = matcher.end();
+          var indent = matcher.group(1);
+          if (matcher.find()) {
+            throw new AssertionError("Ambiguous nginx worker_processes directives");
+          }
+          return config.substring(0, start) + indent + "worker_processes 1;" + config.substring(end);
+        });
   }
 
   /**
@@ -598,6 +739,12 @@ public class ZetaDeploymentModificationService {
     if (replicas < 0) {
       throw new IllegalArgumentException("replicas must not be negative");
     }
+    var recovery = DeploymentStateRecovery.currentFor(namespace);
+    if (recovery != null) {
+      var result = recovery.change("deployment/" + deploymentName, "/spec/replicas", JSON.valueToTree(replicas), "");
+      return result.exitCode() == 0
+          ? waitForDeploymentRollout(namespace, deploymentName, podReadyTimeoutSeconds) : result;
+    }
 
     String patch = String.format("{\"spec\":{\"replicas\":%d}}", replicas);
     String patchFile = null;
@@ -639,6 +786,10 @@ public class ZetaDeploymentModificationService {
     Objects.requireNonNull(deploymentName, "deploymentName must not be null");
     Objects.requireNonNull(containerName, "containerName must not be null");
     Objects.requireNonNull(newImage, "newImage must not be null");
+    var recovery = DeploymentStateRecovery.currentFor(namespace);
+    if (recovery != null) {
+      return recovery.changeImage("deployment/" + deploymentName, containerName, newImage);
+    }
 
     String patch = String.format(
         "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"%s\",\"image\":\"%s\"}]}}}}",
@@ -692,6 +843,10 @@ public class ZetaDeploymentModificationService {
     Objects.requireNonNull(namespace, "namespace must not be null");
     Objects.requireNonNull(deploymentName, "deploymentName must not be null");
     Objects.requireNonNull(strategyJson, "strategyJson must not be null");
+    var recovery = DeploymentStateRecovery.currentFor(namespace);
+    if (recovery != null) {
+      return recovery.change("deployment/" + deploymentName, "/spec/strategy", JSON.readTree(strategyJson), "");
+    }
 
     String patch = "{\"spec\":{\"strategy\":" + strategyJson + "}}";
     String patchFile = null;
@@ -1007,6 +1162,7 @@ public class ZetaDeploymentModificationService {
     return getContainerImageReference(namespace, deploymentName, podName, containerName);
   }
 
+  /** Resolves the configured container image reference for the target deployment. */
   private CommandResult getConfiguredContainerImageReferenceForDeployment(String namespace, String deploymentName,
       String containerName) {
     String imageJsonPath = String.format("{.spec.template.spec.containers[?(@.name==\"%s\")].image}", containerName);
@@ -1567,6 +1723,7 @@ public class ZetaDeploymentModificationService {
     return normalizedImage;
   }
 
+  /** Reads the owning ReplicaSet name from a pod object. */
   private String extractOwnerReplicaSetName(JsonNode pod) {
     JsonNode ownerReferences = pod.path("metadata").path("ownerReferences");
     if (!ownerReferences.isArray()) {
@@ -1582,6 +1739,7 @@ public class ZetaDeploymentModificationService {
     return "";
   }
 
+  /** Collects pod and container evidence for deployment rollout verification. */
   private DeploymentObservation observeDeploymentState(JsonNode pods, String deploymentName, String containerName,
       String expectedStableImage) {
     List<String> podSummaries = new ArrayList<>();
@@ -1633,6 +1791,7 @@ public class ZetaDeploymentModificationService {
     );
   }
 
+  /** Captures readiness, image and failure state for the selected container. */
   private ContainerStateSnapshot inspectContainerState(JsonNode pod, String containerName) {
     String image = "";
     JsonNode specContainers = pod.path("spec").path("containers");
@@ -1666,6 +1825,7 @@ public class ZetaDeploymentModificationService {
     return new ContainerStateSnapshot(image, false, pod.path("status").path("phase").asString(""), "", "");
   }
 
+  /** Formats collected rollout evidence and the last command result for diagnostics. */
   private String formatObservationDetails(List<String> evidenceNotes, List<String> stateSnapshots, CommandResult lastRolloutResult) {
     List<String> details = new ArrayList<>();
     if (!evidenceNotes.isEmpty()) {
@@ -1687,6 +1847,7 @@ public class ZetaDeploymentModificationService {
     return details.isEmpty() ? "No deployment observations collected." : String.join("\n", details);
   }
 
+  /** Adds a non-empty deployment observation to the diagnostic details. */
   private void addObservationDetail(List<String> details, String detail) {
     if (detail == null || detail.isBlank() || details.size() >= MAX_OBSERVATION_ENTRIES || details.contains(detail)) {
       return;
@@ -1709,6 +1870,8 @@ public class ZetaDeploymentModificationService {
    *     result with details about the last observed error or timeout
    */
   public CommandResult waitForDeploymentRollout(String namespace, String deploymentName, int timeoutSeconds) {
+    final long maxTimeout = Math.abs((long) timeoutSeconds);
+    final long deadline = rolloutObservationTime() + TimeUnit.SECONDS.toNanos(maxTimeout);
     int expectedReplicas = 1;
 
     CommandResult replicasResult = executeKubectlCommand("get", "deploy", deploymentName, "-n", namespace,
@@ -1731,19 +1894,23 @@ public class ZetaDeploymentModificationService {
       }
     }
 
-    final int maxTimeout = Math.abs(timeoutSeconds);
-    int elapsedSeconds = 0;
     CommandResult lastResult = null;
 
-    while (elapsedSeconds < maxTimeout) {
+    while (rolloutObservationTime() < deadline) {
       lastResult = executeKubectlCommand(false, "rollout", "status", "deployment/" + deploymentName, "-n", namespace,
           "--timeout=5s");
 
       if (lastResult.exitCode() == 0) {
+        if (rolloutObservationTime() >= deadline) {
+          break;
+        }
         CommandResult podListResult = executeKubectlCommand("-n", namespace, "get", "pods",
             "--no-headers", "-o", "custom-columns=NAME:.metadata.name");
         if (podListResult.exitCode() != 0) {
           return podListResult;
+        }
+        if (rolloutObservationTime() > deadline) {
+          break;
         }
 
         List<String> matchingPods = Arrays.stream(podListResult.stdout().split("\\R"))
@@ -1765,6 +1932,9 @@ public class ZetaDeploymentModificationService {
         );
       }
 
+      if (rolloutObservationTime() >= deadline) {
+        break;
+      }
       try {
         sleepForPodStatusCheckInterval();
       } catch (InterruptedException ie) {
@@ -1776,7 +1946,6 @@ public class ZetaDeploymentModificationService {
             "Rollout wait interrupted"
         );
       }
-      elapsedSeconds += K8S_POD_STATUS_CHECK_INTERVAL;
     }
 
     String timeoutMessage = "Rollout and replica check did not complete within " + maxTimeout + " seconds";
@@ -1787,6 +1956,11 @@ public class ZetaDeploymentModificationService {
         lastResult == null ? "" : lastResult.stdout(),
         timeoutMessage + (lastResult != null && !lastResult.stderr().isBlank() ? "\n" + lastResult.stderr() : "")
     );
+  }
+
+  /** Monotonic time includes kubectl execution in the rollout observation budget. */
+  protected long rolloutObservationTime() {
+    return System.nanoTime();
   }
 
   /**
@@ -1806,14 +1980,85 @@ public class ZetaDeploymentModificationService {
       String nginxConfigMapName, String[] nginxConfigMapKeySegments,
       UnaryOperator<String> nginxPatchFunc)
       throws TimeoutException, InterruptedException, IOException {
+    return modifyPepNginxConfigAndRestart(namespace, pepPodName, nginxConfigMapName,
+        nginxConfigMapKeySegments, nginxPatchFunc, null);
+  }
 
-    // patch nginx config map
-    KubectlPatchCommandResult pepNginxPatchResult = changeConfigMap(namespace, nginxConfigMapName, nginxConfigMapKeySegments, nginxPatchFunc);
+  private KubectlPatchCommandResult modifyPepNginxConfigAndRestart(String namespace, String pepPodName,
+      String nginxConfigMapName, String[] nginxConfigMapKeySegments, UnaryOperator<String> nginxPatchFunc,
+      Consumer<String> configVerifier) throws TimeoutException, InterruptedException, IOException {
+    var recovery = DeploymentStateRecovery.currentFor(namespace);
+    KubectlPatchCommandResult result;
+    if (recovery != null) {
+      var target = "configmap/" + nginxConfigMapName;
+      var pointer = Arrays.stream(nginxConfigMapKeySegments)
+          .map(segment -> segment.replace("~", "~0").replace("/", "~1"))
+          .collect(java.util.stream.Collectors.joining("/", "/", ""));
+      result = recovery.changeText(target, pointer, nginxPatchFunc, pepPodName);
+      if (result.commandResult().exitCode() != 0) {
+        throw new AssertionError("Nginx configuration patch failed: " + result.commandResult().stderr());
+      }
+    } else {
+      result = changeConfigMap(namespace, nginxConfigMapName, nginxConfigMapKeySegments, nginxPatchFunc);
+      requireConfigMapCommand(result.commandResult(), "change nginx ConfigMap " + nginxConfigMapName);
+    }
 
-    // restart pods to load modified config
-    restartPod(namespace, pepPodName, true, podReadyTimeoutSeconds);
+    if (recovery != null || configVerifier != null) {
+      // Restart every replica: a ConfigMap mounted with subPath is not updated in existing pods.
+      var restart = executeKubectlCommand("-n", namespace, "rollout", "restart", "deployment/" + pepPodName);
+      if (restart.exitCode() != 0) {
+        throw new AssertionError("Nginx rollout restart failed: " + restart.stderr());
+      }
+      var rollout = waitForDeploymentRollout(namespace, pepPodName, podReadyTimeoutSeconds);
+      if (rollout.exitCode() != 0) {
+        throw new AssertionError("Nginx rollout failed: " + rollout.stderr());
+      }
+    } else {
+      restartPod(namespace, pepPodName, true, podReadyTimeoutSeconds);
+    }
+    if (configVerifier != null) {
+      verifyPepNginxConfiguration(namespace, pepPodName, configVerifier);
+    }
+    return result;
+  }
 
-    return pepNginxPatchResult;
+  private KubectlPatchCommandResult setNginxRouteDirective(ZetaDeploymentDetails details,
+      String regex, String route, String directive) throws IOException, InterruptedException, TimeoutException {
+    return modifyPepNginxConfigAndRestart(details.namespace(), details.pepPodName(), details.nginxConfigMapName(),
+        details.nginxConfigMapKeySegments(), config -> NginxRouteConfiguration.patch(config, route, regex, directive,
+            pepNginxRouteTemplate.genericRoutePrefix(), pepNginxRouteTemplate.upstreamBasePath()),
+        dump -> NginxRouteConfiguration.requireDumpDirective(dump, route, regex, directive));
+  }
+
+  private void verifyPepNginxConfiguration(String namespace, String deploymentName, Consumer<String> verifier) {
+    var containerName = TigerGlobalConfiguration
+        .readStringOptional("zetaDeploymentConfig.pep.nginx.containerName").orElse("nginx");
+    var pods = readPodsForNamespaceInternal(namespace, false);
+    int verified = 0;
+    for (var pod : pods) {
+      var name = pod.path("metadata").path("name").asString("");
+      if (!name.startsWith(deploymentName + "-") || !pod.path("metadata").path("deletionTimestamp").isMissingNode()
+          && !pod.path("metadata").path("deletionTimestamp").isNull()) {
+        continue;
+      }
+      if (!isPodReady(pod)) {
+        throw new AssertionError("Cannot verify nginx configuration in unready PEP pod " + name);
+      }
+      // Do not log the configuration dump: included files can contain credentials.
+      var dump = executeKubectlCommand(false, "-n", namespace, "exec", name, "-c", containerName, "--", "nginx", "-T");
+      if (dump.exitCode() != 0) {
+        throw new AssertionError("Could not validate nginx configuration in " + name + ": " + dump.stderr());
+      }
+      try {
+        verifier.accept(dump.stdout());
+      } catch (AssertionError error) {
+        throw new AssertionError("Nginx preparation verification failed in " + name + ": " + error.getMessage(), error);
+      }
+      verified++;
+    }
+    if (verified == 0) {
+      throw new AssertionError("No ready PEP pods found for nginx configuration verification: " + deploymentName);
+    }
   }
 
   /**
@@ -1874,162 +2119,106 @@ public class ZetaDeploymentModificationService {
       UnaryOperator<String> updateFunc)
       throws IOException, IllegalStateException {
 
-    // get config map value
-    CommandResult cmOriginalValue = executeKubectlCommand("-n", namespace, "get", "configmap",
-        cmName, "-o=jsonpath='" + buildJsonPath(cmKeySegments) + "'");
-
-    if (cmOriginalValue.stdout() == null || cmOriginalValue.stdout().isBlank()) {
-      throw new IllegalStateException(String.format("Cannot change ConfigMap %s: "
-          + "received empty value from cluster", cmName));
+    if (cmKeySegments.length != 2 || !"data".equals(cmKeySegments[0])) {
+      throw new IllegalArgumentException("ConfigMap changes must target a single data key");
     }
-
-    var modifiedCm = updateFunc.apply(cmOriginalValue.stdout());
-
-    // sanitize before patching
-    modifiedCm = escapeJson(modifiedCm);
-    modifiedCm = stripSingleQuotes(modifiedCm);
-
-    // prepare patch string
-    String cmPatchStr = assemblePatchString(cmKeySegments, modifiedCm);
-    var cmPatchFile = createTempFile(cmPatchStr);
-
-    try {
-      List<String> params = Arrays.asList("-n", namespace, "patch", "configmap",
-          cmName, "--type", "merge", "--patch-file", cmPatchFile);
-
-      // backup existing config map before modification
-      CommandResult backupResult = createConfigMapBackup(namespace, cmName);
-      if (backupResult.exitCode() != 0) {
-        throw new IllegalStateException("Could not backup ConfigMap " + cmName + " before modification");
-      }
-
-      // patch config map
-      CommandResult patchResult = executeKubectlCommand(params);
-      return new KubectlPatchCommandResult(patchResult, cmOriginalValue.stdout());
-    } finally {
-      deleteTempFileQuietly(cmPatchFile);
+    var current = readConfigMap(namespace, cmName);
+    var original = ConfigMapBackupGuard.data(current).path(cmKeySegments[1]);
+    if (!original.isString() || original.asString().isBlank()) {
+      throw new IllegalStateException("Cannot change ConfigMap " + cmName + ": missing data value");
     }
+    var desired = ConfigMapBackupGuard.data(current).deepCopy();
+    desired.put(cmKeySegments[1], Objects.requireNonNull(updateFunc.apply(original.asString())));
+    var backupResult = ensureConfigMapBackup(namespace, cmName, current);
+    requireConfigMapCommand(backupResult, "create backup for " + cmName);
+    var backup = JSON.readTree(backupResult.stdout());
+    var intent = ConfigMapBackupGuard.pendingPatch(backup, current, desired, CONFIG_MAP_BACKUP_OWNER.get());
+    requireConfigMapCommand(patchConfigMap(namespace, ConfigMapBackupGuard.backupName(cmName), intent),
+        "record pending change for " + cmName);
+    var result = patchConfigMap(namespace, cmName, ConfigMapBackupGuard.dataPatch(current, desired));
+    return new KubectlPatchCommandResult(result, original.asString());
   }
 
-  /**
-   * Deletes the backup up a ConfigMap resource.
-   *
-   * @param namespace Target kubernetes namespace
-   * @param configMapName ConfigMap whose backup is to be deleted
-   * @return Command result
-   */
+  /** Deletes only this run's backup, after confirming that the original data is restored. */
   public CommandResult deleteConfigMapBackup(String namespace, String configMapName) {
-    CommandResult result = executeKubectlCommand("-n", namespace, "delete", "configmap", assemblyBackupResourceName(configMapName));
-    if (result.exitCode() != 0) {
-      log.error("Could not delete ConfigMap backup of {}", configMapName);
+    var existing = getConfigMapBackup(namespace, configMapName);
+    if (existing.stdout().isBlank()) {
+      return existing;
     }
-    return result;
+    var options = ConfigMapBackupGuard.deleteOptions(JSON.readTree(existing.stdout()),
+        readConfigMap(namespace, configMapName), CONFIG_MAP_BACKUP_OWNER.get());
+    String file = null;
+    try {
+      file = createTempFile(JSON.writeValueAsString(options));
+      return executeKubectlCommand("delete", "--raw", "/api/v1/namespaces/" + namespace
+          + "/configmaps/" + ConfigMapBackupGuard.backupName(configMapName), "-f", file);
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not prepare guarded ConfigMap backup deletion", e);
+    } finally {
+      if (file != null) {
+        deleteTempFileQuietly(file);
+      }
+    }
   }
 
-  /**
-   * Restores a previously backed up ConfigMap resource by overwriting all changes and restoring the original state.
-   *
-   * @param namespace Target kubernetes namespace
-   * @param configMapName ConfigMap to be restored
-   * @return Command result
-   * @throws IOException if required temporary file could not be created
-   */
+  /** Restores owned data changes while preserving current metadata and rejecting foreign changes. */
   public CommandResult restoreConfigMapBackup(String namespace, String configMapName) throws IOException {
-
-    CommandResult existingBackup = getConfigMapBackup(namespace, configMapName);
-
-    if (existingBackup.exitCode() != 0) {
-      log.debug("ConfigMap backup of {} was not found", configMapName);
-      return new CommandResult(List.of(), 0, "Not found", "");
+    var existing = getConfigMapBackup(namespace, configMapName);
+    if (existing.stdout().isBlank()) {
+      throw new IllegalStateException("Cannot prove ConfigMap restoration: backup is missing for " + configMapName);
     }
-
-    var restoreManifest = buildConfigMapRestoreManifest(existingBackup.stdout(), namespace, configMapName);
-    var configMapTmpFile = createTempFile(restoreManifest);
-    try {
-      return executeKubectlCommand("-n", namespace, "apply", "--server-side", "--force-conflicts",
-          HELM_FIELD_MANAGER_ARGUMENT, "-f", configMapTmpFile);
-    } finally {
-      deleteTempFileQuietly(configMapTmpFile);
-    }
+    var patch = ConfigMapBackupGuard.restorePatch(JSON.readTree(existing.stdout()),
+        readConfigMap(namespace, configMapName), CONFIG_MAP_BACKUP_OWNER.get());
+    return patch.isEmpty() ? new CommandResult(List.of(), 0, "Already restored", "")
+        : patchConfigMap(namespace, configMapName, patch);
   }
 
-  /**
-   * Builds a sanitized server-side apply manifest from a ConfigMap backup.
-   *
-   * <p>Only declarative ConfigMap fields are copied. Cluster-generated identity and version fields
-   * from the backup resource must not be applied to the Helm-managed target.</p>
-   *
-   * @param backupConfigMapJson serialized backup ConfigMap
-   * @param namespace target namespace
-   * @param configMapName target ConfigMap name
-   * @return JSON manifest suitable for server-side apply
-   * @throws IOException when the backup cannot be parsed or serialized
-   */
-  private String buildConfigMapRestoreManifest(String backupConfigMapJson, String namespace, String configMapName)
-      throws IOException {
-    JsonNode backup = JSON.readTree(backupConfigMapJson);
-    if (!(backup instanceof ObjectNode restore)) {
-      throw new IOException("ConfigMap backup is empty or invalid");
-    }
-
-    if (!(restore.path("metadata") instanceof ObjectNode metadata)) {
-      throw new IOException("ConfigMap backup contains no metadata object");
-    }
-    metadata.put("name", configMapName);
-    metadata.put("namespace", namespace);
-    metadata.remove(List.of(
-        "creationTimestamp", "generation", "managedFields", "resourceVersion", "selfLink", "uid"));
-    if (metadata.path("annotations") instanceof ObjectNode annotations) {
-      annotations.remove("kubectl.kubernetes.io/last-applied-configuration");
-    }
-    restore.remove("status");
-    return JSON.writeValueAsString(restore);
-  }
-
-  /**
-   * Creates a copy of a ConfigMap resources specified by configMapName if there isn't a backup already present
-   * in the given namespace.
-   *
-   * @param namespace Target kubernetes namespace
-   * @param configMapName ConfigMap to be backed up
-   * @return Command result
-   * @throws IOException if required temporary file could not be created
-   */
+  /** Creates an owned snapshot, or validates a snapshot already created by this run. */
   public CommandResult createConfigMapBackup(String namespace, String configMapName) throws IOException {
+    return ensureConfigMapBackup(namespace, configMapName, readConfigMap(namespace, configMapName));
+  }
 
-    CommandResult existingBackup = getConfigMapBackup(namespace, configMapName);
-
-    if (existingBackup.exitCode() == 0) {
-      log.debug("ConfigMap {} was already backed up", configMapName);
-      return new CommandResult(List.of(), 0, "Unchanged", "");
+  private CommandResult ensureConfigMapBackup(String namespace, String name, JsonNode current) throws IOException {
+    var existing = getConfigMapBackup(namespace, name);
+    if (!existing.stdout().isBlank()) {
+      ConfigMapBackupGuard.requireOwned(JSON.readTree(existing.stdout()), current, CONFIG_MAP_BACKUP_OWNER.get());
+      return existing;
     }
-
-    String backupConfigMapName = assemblyBackupResourceName(configMapName);
-
-    CommandResult configMapOriginal = executeKubectlCommand("-n", namespace, "get", "configmap",
-        configMapName, "-o", "yaml");
-
-    String configMapBackup = Pattern.compile("\n {2}name: " + Pattern.quote(configMapName) + "\n")
-        .matcher(configMapOriginal.stdout())
-        .replaceAll("\n  name: " + backupConfigMapName + "\n");
-
-    var configMapTmpFile = createTempFile(configMapBackup);
+    var backup = ConfigMapBackupGuard.backup(current, CONFIG_MAP_BACKUP_OWNER.get());
+    var file = createTempFile(JSON.writeValueAsString(backup));
     try {
-      return executeKubectlCommand("-n", namespace, "apply", "-f", configMapTmpFile);
+      // Create, never apply: a backup created concurrently must not be overwritten.
+      return executeKubectlCommand("-n", namespace, "create", "-f", file, "-o", "json");
     } finally {
-      deleteTempFileQuietly(configMapTmpFile);
+      deleteTempFileQuietly(file);
     }
   }
 
-  /**
-   * Checks whether a backup for the given ConfigMap exists.
-   *
-   * @param namespace Target kubernetes namespace
-   * @param configMapName ConfigMap whose backup is to be checked
-   * @return {@code true} if a backup exists
-   */
+  /** Checks existence without interpreting API failures as an absent backup. */
   public boolean hasConfigMapBackup(String namespace, String configMapName) {
-    return getConfigMapBackup(namespace, configMapName).exitCode() == 0;
+    return !getConfigMapBackup(namespace, configMapName).stdout().isBlank();
+  }
+
+  private JsonNode readConfigMap(String namespace, String name) {
+    var result = executeKubectlCommand("-n", namespace, "get", "configmap", name, "-o", "json");
+    requireConfigMapCommand(result, "read " + name);
+    return JSON.readTree(result.stdout());
+  }
+
+  private CommandResult patchConfigMap(String namespace, String name, JsonNode patch) throws IOException {
+    var file = createTempFile(JSON.writeValueAsString(patch));
+    try {
+      return executeKubectlCommand("-n", namespace, "patch", "configmap", name,
+          "--type=json", HELM_FIELD_MANAGER_ARGUMENT, "--patch-file", file);
+    } finally {
+      deleteTempFileQuietly(file);
+    }
+  }
+
+  private static void requireConfigMapCommand(CommandResult result, String action) {
+    if (result.exitCode() != 0) {
+      throw new IllegalStateException("Could not " + action + ": " + result.stderr());
+    }
   }
 
   /**
@@ -2088,51 +2277,6 @@ public class ZetaDeploymentModificationService {
   }
 
   /**
-   * Creates a function that sets the PoPP related config value in a nginx config section for a specific route.
-   *
-   * @param poppValueRegex Captures the present PoPP config value regardless of its state
-   * @param targetRoute Target route for dis-/enabling PoPP verification
-   * @param targetPoppValue Target value to be set for PoPP verification
-   * @return Function that sets the defined targetPoppValue for targetRoute
-   */
-  private UnaryOperator<String> getPoppToggleFunction(String poppValueRegex, String targetRoute, String targetPoppValue) {
-    return getNginxDirectiveToggleFunction(poppValueRegex, targetRoute, targetPoppValue);
-  }
-
-  /**
-   * Creates a function that sets a directive in a nginx config section for a specific route.
-   *
-   * @param directiveRegex Captures the present directive regardless of its state
-   * @param targetRoute Target route for setting the directive
-   * @param targetDirective Target directive to be written into the route section
-   * @return Function that sets the defined target directive for targetRoute
-   */
-  private UnaryOperator<String> getNginxDirectiveToggleFunction(String directiveRegex, String targetRoute, String targetDirective) {
-    return (str) -> {
-      Matcher routeSection = getNginxLocationMatcher(str, targetRoute);
-      if (!routeSection.find()) {
-        var patchedConfig = addPepRouteLocationWithDirective(str, targetRoute, targetDirective);
-        if (!patchedConfig.equals(str)) {
-          return patchedConfig;
-        }
-        log.warn("Setting nginx directive: no matching route config found for {}", targetRoute);
-        return str;
-      }
-      String originalSection = routeSection.group(0);
-      Matcher directiveConfigValue = Pattern.compile(directiveRegex).matcher(originalSection);
-      String patchedSection;
-      if (directiveConfigValue.find()) {
-        patchedSection = directiveConfigValue.replaceAll(Matcher.quoteReplacement(targetDirective));
-      } else {
-        // if directive is not present, append it after last config statement of location section
-        Matcher sectionEnd = Pattern.compile(";\\s+}\\s*$").matcher(originalSection);
-        patchedSection = sectionEnd.replaceAll(Matcher.quoteReplacement(";\n      " + targetDirective + "\n  }"));
-      }
-      return str.replace(originalSection, patchedSection);
-    };
-  }
-
-  /**
    * Renders the nginx directive for the configured required scopes after validating the value.
    *
    * @param template directive template containing a single {@code %s} placeholder
@@ -2146,81 +2290,6 @@ public class ZetaDeploymentModificationService {
           "Required scopes must contain only letters, digits, '.', '_', ':', '-' and spaces between scopes");
     }
     return Objects.requireNonNull(template, "required scopes template must not be null").formatted(trimmedScopes);
-  }
-
-  /**
-   * Creates a matcher for an nginx location section that addresses the requested route.
-   *
-   * @param nginxConfig nginx configuration content
-   * @param targetRoute route configured in a Cucumber deployment modification step
-   * @return matcher positioned before the first matching location section
-   */
-  private Matcher getNginxLocationMatcher(String nginxConfig, String targetRoute) {
-    return Pattern.compile("location\\s+(?:=\\s+)?" + Pattern.quote(targetRoute) + "\\s+\\{[^}]*}")
-        .matcher(nginxConfig);
-  }
-
-  /**
-   * Adds a route-specific PEP location with the requested directive when the generic PEP route exists.
-   *
-   * @param nginxConfig nginx configuration content
-   * @param targetRoute missing route for which a specific location should be created
-   * @param targetDirective directive that should be configured in the created location
-   * @return updated nginx configuration, or the original content when no route can be derived
-   */
-  private String addPepRouteLocationWithDirective(String nginxConfig, String targetRoute, String targetDirective) {
-    var routePrefix = pepNginxRouteTemplate.genericRoutePrefix();
-    if (!targetRoute.startsWith(routePrefix) || routePrefix.equals(targetRoute)) {
-      return nginxConfig;
-    }
-
-    var genericPepRoute = getNginxLocationMatcher(nginxConfig, routePrefix);
-    if (!genericPepRoute.find()) {
-      return nginxConfig;
-    }
-
-    var newLocation = renderPepRouteLocation(targetRoute, targetDirective, genericPepRoute.group(0));
-    if (newLocation.isBlank()) {
-      return nginxConfig;
-    }
-
-    return nginxConfig.substring(0, genericPepRoute.start())
-        + newLocation
-        + "\n"
-        + nginxConfig.substring(genericPepRoute.start());
-  }
-
-  /**
-   * Renders an nginx location for a concrete PEP route by reusing the generic PEP upstream.
-   *
-   * @param targetRoute concrete PEP route to create
-   * @param targetDirective directive to insert into the location
-   * @param genericPepRoute generic PEP location section used as routing template
-   * @return rendered nginx location, or an empty string when no compatible upstream is present
-   */
-  private String renderPepRouteLocation(String targetRoute, String targetDirective, String genericPepRoute) {
-    var proxyPassMatcher = Pattern.compile(
-        "proxy_pass\\s+([^;]*?" + Pattern.quote(pepNginxRouteTemplate.upstreamBasePath()) + ")/?\\s*;")
-        .matcher(genericPepRoute);
-    if (!proxyPassMatcher.find()) {
-      return "";
-    }
-
-    var routeSuffix = targetRoute.substring(pepNginxRouteTemplate.genericRoutePrefix().length());
-    var proxyPass = proxyPassMatcher.group(1) + "/" + routeSuffix;
-    var includeProxyHeaders = genericPepRoute.contains("include proxy_headers.conf;")
-        ? "            include proxy_headers.conf;\n"
-        : "";
-    var proxySslVerifyOff = genericPepRoute.contains("proxy_ssl_verify off;")
-        ? "            proxy_ssl_verify off;\n"
-        : "";
-
-    return """
-            location %s {
-%s                proxy_pass %s;
-%s                %s
-            }
-            """.formatted(targetRoute, includeProxyHeaders, proxyPass, proxySslVerifyOff, targetDirective);
   }
 
   /**
@@ -2262,36 +2331,6 @@ public class ZetaDeploymentModificationService {
           "PoPP token validity must be 'quarter' or a duration like '300s', but was: " + validity);
     }
     return template.formatted(trimmedValidity);
-  }
-
-  /**
-   * Assembles a JSON string from segments as required for kubectl patch command.
-   *
-   * <p>Does not perform JSON escape on patchValue, needs to be done before calling this method.</p>
-   *
-   * @param segments Key segments for manifest value
-   * @param patchValue Value to be applied by patch
-   * @return JSON formed patch string
-   */
-  private String assemblePatchString(String[] segments, String patchValue) {
-    StringBuilder builder = new StringBuilder();
-    int keyCount = 0;
-    for (String segment : segments) {
-      builder.append("{\"").append(segment).append("\":");
-      keyCount++;
-    }
-    builder.append("\"").append(patchValue).append("\"").repeat("}", keyCount);
-    return builder.toString();
-  }
-
-  /**
-   * Constructs a string derived from resourceName.
-   *
-   * @param resourceName Target resource name serving as base
-   * @return Derived string
-   */
-  private String assemblyBackupResourceName(String resourceName) {
-    return resourceName + "-" + K8S_SUFFIX_ORIGINAL_RESOURCE;
   }
 
   /**
@@ -2424,9 +2463,10 @@ public class ZetaDeploymentModificationService {
    * @return Command result of the backup lookup
    */
   private CommandResult getConfigMapBackup(String namespace, String configMapName) {
-    String backupConfigMapName = assemblyBackupResourceName(configMapName);
-    return executeKubectlCommand(Arrays.asList("-n", namespace, "get", "configmap",
-        backupConfigMapName, "-o", "json"), false);
+    var result = executeKubectlCommand(Arrays.asList("-n", namespace, "get", "configmap",
+        ConfigMapBackupGuard.backupName(configMapName), "--ignore-not-found", "-o", "json"), false);
+    requireConfigMapCommand(result, "look up backup for " + configMapName);
+    return result;
   }
 
   /**
@@ -2645,6 +2685,7 @@ public class ZetaDeploymentModificationService {
     TimeUnit.SECONDS.sleep(K8S_POD_STATUS_CHECK_INTERVAL);
   }
 
+  /** Reads namespace pods after optionally checking Kubernetes access. */
   private JsonNode readPodsForNamespaceInternal(String namespace, boolean verifyRequirements) throws AssertionError {
     if (verifyRequirements) {
       verifyRequirements(namespace);
@@ -2681,20 +2722,6 @@ public class ZetaDeploymentModificationService {
           + (waitingReason.isBlank() ? "" : ", waiting=" + waitingReason)
           + (terminatedReason.isBlank() ? "" : ", terminated=" + terminatedReason);
     }
-  }
-
-  /**
-   * Constructs JSONPath string from given segments; escapes potential dot chars.
-   *
-   * @param segments Segments for construction
-   * @return JSONPath string
-   */
-  private static String buildJsonPath(String[] segments) {
-    StringBuilder jsonPath = new StringBuilder("{");
-    for (String segment : segments) {
-      jsonPath.append(".").append(segment.replace(".", "\\."));
-    }
-    return jsonPath + "}";
   }
 
   /**
@@ -2793,6 +2820,7 @@ public class ZetaDeploymentModificationService {
     return imageWithoutDigest + ":" + imageTag.trim();
   }
 
+  /** Removes a temporary command file without masking the original operation failure. */
   private static void deleteTempFileQuietly(String tempFile) {
     if (tempFile == null) {
       return;

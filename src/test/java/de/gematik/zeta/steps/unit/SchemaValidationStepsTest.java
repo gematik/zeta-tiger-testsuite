@@ -38,6 +38,8 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Unit tests for {@link SchemaValidationSteps} to ensure project schemas validate expected payloads
@@ -45,16 +47,113 @@ import org.junit.jupiter.api.Test;
  */
 class SchemaValidationStepsTest {
 
+  private static final String CC_POLICY_INPUT = """
+      {"version":"1.1", "user_info":{
+        "identifier":"3-test", "commonName":"Test", "professionOID":"1.2.276.0.76.4.50"},
+       "client_registration_data":{
+        "client_id":"test", "product_id":"product", "product_version":"1", "platform":"linux",
+        "posture_type":"software", "registration_timestamp":1, "device_info":{}, "attestation_result":{}},
+       "authorization_request":{
+        "resource":"https://resource.example/endpoint", "scopes":["read"], "ip_address":"127.0.0.1",
+        "previous_ip_address":"127.0.0.1", "grant_type":"urn:ietf:params:oauth:grant-type:token-exchange",
+        "acr":"gematik-ehealth-loa-substantial"}}
+      """;
+
+  /** The upstream policy contract resolves its dependencies and requires its original user fields. */
+  @Test
+  void upstreamPolicyInputResolvesReferencesAndRejectsSpecOnlyUserFields() {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(CC_POLICY_INPUT,
+          "schemas/v_2_0/schemas/policy-engine-input.yaml"));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          CC_POLICY_INPUT.replace("commonName", "common_name").replace("professionOID", "profession_oid"),
+          "schemas/v_2_0/schemas/policy-engine-input.yaml"));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          CC_POLICY_INPUT.replace("\"platform\":\"linux\"", "\"platform\":\"unsupported\""),
+          "schemas/v_2_0/schemas/policy-engine-input.yaml"));
+    });
+  }
+
+  /** Android posture requires runtime evidence even when the old certificate chain is present. */
+  @ParameterizedTest
+  @ValueSource(strings = {"nonce", "signed_client_data_hash"})
+  void androidPostureRejectsMissingRuntimeEvidence(String field) {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      var posture = """
+          {"product_id":"test", "product_version":"1", "build":{},
+           "nonce":"bm9uY2U", "signed_client_data_hash":"c2lnbmF0dXJl"}
+          """;
+      var schema = "schemas/v_2_0/schemas/posture-android.yaml";
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(posture, schema));
+      var incomplete = field.equals("nonce")
+          ? posture.replace("\"nonce\":\"bm9uY2U\", ", "")
+          : posture.replace(", \"signed_client_data_hash\":\"c2lnbmF0dXJl\"", "");
+      assertThrows(AssertionError.class,
+          () -> validator.validateJsonAgainstYamlSchema(incomplete, schema));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          """
+          {"product_id":"test", "product_version":"1", "build":{},
+           "key_attestation_certificate_chain":["Y2VydA"]}
+          """, schema));
+    });
+  }
+
+  /** The renamed optional chain is validated rather than silently treated as an unknown field. */
+  @Test
+  void androidPostureValidatesOptionalCertificateChain() {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      var posture = """
+          {"product_id":"test", "product_version":"1", "build":{},
+           "nonce":"bm9uY2U", "signed_client_data_hash":"c2lnbmF0dXJl",
+           "android_key_attestation_certificate_chain":["Y2VydA"]}
+          """;
+      var schema = "schemas/v_2_0/schemas/posture-android.yaml";
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(posture, schema));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          posture.replace("[\"Y2VydA\"]", "\"Y2VydA\""), schema));
+    });
+  }
+
+  /** Optional user fields retain their upstream constraints, also through the policy reference. */
+  @ParameterizedTest
+  @ValueSource(strings = {"7", "null", "\"not-a-date\"", "\"2000/12/31\"", "\"2000-02-30\""})
+  void upstreamUserInfoRejectsInvalidBirthdate(String birthdate) {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      var validUser = "{\"identifier\":\"id\",\"commonName\":\"name\",\"professionOID\":\"oid\"}";
+      var invalidUser = validUser.replace("}", ",\"birthdate\":" + birthdate + "}");
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          invalidUser, "schemas/v_2_0/schemas/zeta-user-info.yaml"));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          CC_POLICY_INPUT.replace("\"identifier\":\"3-test\"",
+              "\"birthdate\":" + birthdate + ",\"identifier\":\"3-test\""),
+          "schemas/v_2_0/schemas/policy-engine-input.yaml"));
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(
+          validUser.replace("}", ",\"birthdate\":\"2000-12-31\"}"),
+          "schemas/v_2_0/schemas/zeta-user-info.yaml"));
+    });
+  }
+
+  /** Upstream error objects remain usable through token-response's relative schema reference. */
+  @Test
+  void ccTokenResponseResolvesErrorContract() {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(
+          "{\"error\":\"access_denied\",\"reasons\":{\"denied\":true}}", "schemas/v_2_0/schemas/token-response.yaml"));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          "{\"error\":42}", "schemas/v_2_0/schemas/token-response.yaml"));
+    });
+  }
+
   private static final String ALLOW_ADDITIONAL_PROPERTIES_CONFIG =
       "schemaValidation.allowAdditionalProperties";
   private static final String SOFT_ASSERT_CONFIG = "schemaValidation.soft";
 
   /* Schemas */
-  private static final String AS_WELL_KNOWN_SCHEMA = "schemas/v_1_0/as-well-known.yaml";
-  private static final String ACCESS_TOKEN_SCHEMA = "schemas/v_1_0/access-token.yaml";
+  private static final String AS_WELL_KNOWN_SCHEMA = "schemas/v_2_0/schemas/as-well-known.yaml";
+  private static final String ACCESS_TOKEN_SCHEMA = "schemas/v_2_0/schemas/access-token.yaml";
   /** Special case: The client-assertion-jwt.yaml references sub-schemas. */
-  private static final String CLIENT_ASSERTION_JWT_SCHEMA = "schemas/v_1_0/client-assertion-jwt.yaml";
-  private static final String SUBJECT_TOKEN_SMB_SCHEMA = "schemas/v_1_0/subject-token-smb.yaml";
+  private static final String CLIENT_ASSERTION_JWT_SCHEMA = "schemas/v_2_0/schemas/client-assertion-jwt.yaml";
+  private static final String SUBJECT_TOKEN_SMB_SCHEMA = "schemas/v_2_0/schemas/subject-token-smb.yaml";
 
   /* JSON Examples */
   private static final String EXAMPLE_ACCESS_TOKEN = loadResource("mocks/access-token_example.json");
@@ -122,6 +221,51 @@ class SchemaValidationStepsTest {
                   + ".lE0buRB4kHpwlXTfPDMb1m1MVoejIiNDi6z7EjYUwgtiNk-2UCffGMu3DusW_-EBH35P29G0G8yUYtjfdV_pOA";
 
   private final SchemaValidationSteps validator = new SchemaValidationSteps();
+
+  /** Requires an explicit classpath location for selecting a schema. */
+  @Test
+  void schemaNamesRequireAnExplicitResourcePath() {
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema(
+          EXAMPLE_ACCESS_TOKEN, ACCESS_TOKEN_SCHEMA));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema(
+          EXAMPLE_ACCESS_TOKEN, "access-token.yaml"));
+    });
+  }
+
+  @Test
+  void standaloneJsonSchemaDoesNotAcquireOpenApiNullability() {
+    var schema = "schemas/mock/dialects/external.yaml";
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () -> {
+      assertDoesNotThrow(() -> validator.validateJsonAgainstYamlSchema("\"allowed\"", schema));
+      assertThrows(AssertionError.class, () -> validator.validateJsonAgainstYamlSchema("null", schema));
+    });
+  }
+
+  /** Ensures the lifecycle continues after API schema errors, but cannot finish successfully. */
+  @Test
+  void pusherApiErrorsAreCollectedUntilTheFinalSoftAssertionCheck() {
+    var valid = """
+        {"pushers":[{"pushkey":"owned","app_id":"app","kind":"http",
+        "app_display_name":"App","device_display_name":"Device","lang":"de",
+        "data":{"url":"https://example.test/push/v1/"},"append":false}]}
+        """;
+    var schema = "schemas/push_notifications_openapi/fd_openapi.yaml"
+        + "#/paths/~1pushers/get/responses/200/content/application~1json/schema";
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "true", () -> {
+      assertDoesNotThrow(() -> validator.validateJsonAgainstOpenApiSchema(valid, schema));
+      assertDoesNotThrow(SoftAssertionsContext::assertAll);
+      assertDoesNotThrow(() -> validator.validateJsonAgainstOpenApiSchema(
+          valid.replace("\"append\":false", "\"append\":null"), schema));
+      // A later operation is still validated instead of being skipped.
+      assertDoesNotThrow(() -> validator.validateJsonAgainstOpenApiSchema("{\"pushers\":[]}", schema));
+      assertThrows(AssertionError.class, SoftAssertionsContext::assertAll);
+      assertDoesNotThrow(SoftAssertionsContext::assertAll);
+    });
+    withTigerConfigValue(SOFT_ASSERT_CONFIG, "false", () ->
+        assertThrows(AssertionError.class, () -> validator.validateJsonAgainstOpenApiSchema(
+            valid.replace("\"append\":false", "\"append\":null"), schema)));
+  }
 
   /**
    * Cleanup soft assertions after each test if necessary.

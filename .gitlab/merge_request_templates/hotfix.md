@@ -1,31 +1,42 @@
-## Summary
-<!-- Production/staging issue fixed and immediate impact -->
+## Zusammenfassung
 
-## Incident / Reason
-- Reference (ticket/alert): `...`
-- Affected area: `...`
-- Root cause: `...`
+<!-- Behobenes Problem in Produktion/Staging und unmittelbare Auswirkungen -->
 
+## Vorfall / Anlass
 
-## Risk Assessment
-- Why this is safe for fast merge: `...`
-- Known limitations: `...`
+- Referenz (Ticket/Alarm): `...`
+- Betroffener Bereich: `...`
+- Fehlerursache: `...`
 
-## Validation
-Executed:
-- `PROFILE=proxy mvn -Dcucumber.filter.tags='@staging' clean verify`
-- Additional targeted check(s): `...`
+## Risikobewertung
 
-Result:
-- `pass/fail`
-- Relevant logs/artifacts: `...`
+- Warum ein kurzfristiger Merge vertretbar ist: `...`
+- Bekannte Einschränkungen: `...`
 
-## Rollback Plan
-- Revert commit(s): `...`
-- Fallback config toggle (if any): `...`
+## Verifikation
 
-## Checklist
-- [ ] Fix scope is minimal and isolated
-- [ ] No unrelated refactoring included
-- [ ] No credentials/secrets added
-- [ ] Rollback plan is clear
+<!-- <existing-tag-expression> durch Tags aus den betroffenen Feature-Dateien ersetzen.
+Nur tatsächlich ausgeführte Befehle stehen lassen. -->
+
+Ausgeführt:
+
+- `mvn verify -Pproxy "-Dcucumber.filter.tags=<existing-tag-expression>"`
+- Zusätzliche gezielte Prüfungen: `...`
+
+Ergebnis:
+
+- `bestanden/fehlgeschlagen`
+- Anzahl ausgeführter Szenarien/Beispiele (bestanden/fehlgeschlagen/übersprungen): `...` (null ausgeführte Szenarien sind kein bestandener Nachweis)
+- Relevante Logs/Artefakte: `...`
+
+## Rücksetzplan
+
+- Zurückzunehmende Commits: `...`
+- Konfigurationsschalter für die Rückfalllösung (falls vorhanden): `...`
+
+## Checkliste
+
+- [ ] Korrekturumfang ist minimal und abgegrenzt
+- [ ] Kein sachfremdes Refactoring enthalten
+- [ ] Keine Zugangsdaten/Secrets hinzugefügt
+- [ ] Rücksetzplan ist klar

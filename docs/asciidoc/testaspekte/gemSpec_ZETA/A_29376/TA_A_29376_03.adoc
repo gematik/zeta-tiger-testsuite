@@ -1,0 +1,8 @@
+[#TA_A_29376_03]
+===== TA_A_29376_03 - ZETA, Ablauf Token Exchange mit Attestation - Client-Schlüssel an DCR-Registrierung binden
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 07: Der Authorization Server prüft die **Übereinstimmung von client_key im Subject Token mit dem registrierten DCR-Client-Key**. Bei einer Abweichung erfolgt weder Policy-Aufruf noch Tokenausgabe.

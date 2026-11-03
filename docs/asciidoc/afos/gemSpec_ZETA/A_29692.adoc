@@ -1,0 +1,4 @@
+[#A_29692]
+==== A_29692 - ZETA Client - Versionierung der Token Ausstellung
+
+Der ZETA Client MUSS das Feld api_versions_supported auswerten und bei Unterstützung von Contract v2 den Parameter resource [RFC8707] und scope verwenden, andernfalls den Parameter audience (Contract v1) verwenden [<=]

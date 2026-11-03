@@ -1,0 +1,6 @@
+[#TA_A_30000_03]
+===== TA_A_30000_03 - PDP Authorization Server - Access Token außerhalb des Geltungsbereichs - Keine serverseitige Wirkung auf Access Token
+
+"Wird ein Access Token übergeben, MUSS der Authorization Server mit 200 OK **ohne serverseitige Wirkung** antworten und KANN alternativ error=unsupported_token_type (400) gemäß RFC 7009 §2.2.1 zurückgeben.
+
+**[<=]**"

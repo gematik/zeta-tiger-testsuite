@@ -2,6 +2,7 @@
 url: "https://zeta-tls-test-tool-server"
 port: 4433
 serviceUrl: ${zeta_tls_test_tool_service_url}
+deployment: zeta-tls-test-tool-service
 certificateDirectoryPath: "src/test/resources/tls-test-tool/certificates"
 caCertificatePath: "src/test/resources/tls-test-tool/certificates/ecdsa/zeta-tls-test-tool-server_CA.cer"
 clientDisableTlsVerification: false

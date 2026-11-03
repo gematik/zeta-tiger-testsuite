@@ -1,0 +1,4 @@
+[#A_29933]
+==== A_29933 - ZETA Client – Ersatzgerät bei E-Mail-Verlust
+
+Der ZETA Client SOLL einen Nutzer, der den Zugriff auf die gebundene E-Mail verloren hat und über ein weiteres registriertes Gerät verfügt, anleiten, zunächst von diesem Gerät die E-Mail zu ändern (A_29911) und erst danach das Ersatzgerät zu registrieren (vgl. Nutzer­unterstützung A_25732). [<=]

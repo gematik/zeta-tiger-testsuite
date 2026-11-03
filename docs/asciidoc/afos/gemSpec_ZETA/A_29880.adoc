@@ -1,0 +1,4 @@
+[#A_29880]
+==== A_29880 - ZG Client, Authentifizierung mittels Workload Identity Federation
+
+Der ZG Client MUSS sich gegenüber externen Diensten mittels Workload Identity Federation gemäß RFC 8693 (Token Exchange) authentifizieren. [<=]

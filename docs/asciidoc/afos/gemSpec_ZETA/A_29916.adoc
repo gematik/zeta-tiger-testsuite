@@ -1,0 +1,4 @@
+[#A_29916]
+==== A_29916 - Authorization Server – Faktorverankerung statt IDP-Ableitung
+
+Der Authorization Server MUSS sicherstellen, dass der Fast-Path durch den Besitz des Instanzschlüssels (F2) autorisiert wird, der aus einer IDP-Kompromittierung nicht ableitbar ist. Eine erfolgreiche IDP-Authentisierung allein DARF NICHT ausreichen, um den Fast‑Path (zeta_attestation_token) einzulösen (vgl. A_29896). [<=]

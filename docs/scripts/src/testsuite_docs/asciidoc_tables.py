@@ -29,13 +29,6 @@ from __future__ import annotations
 from typing import List, Optional, Sequence
 
 
-def table_block_attributes(*, cols_directive: str, autowidth: bool) -> str:
-  """Build the normalized Asciidoc table attribute line."""
-  if autowidth:
-    return f'[%header,cols="{cols_directive}",options="autowidth"]'
-  return f'[%header,width="100%",cols="{cols_directive}"]'
-
-
 def escape_asciidoc_table_cell(value: object) -> str:
   """Escape the subset of characters that would break table rendering."""
   text = str(value)
@@ -65,7 +58,6 @@ def write_asciidoc_table(
     *,
     disclaimer: Optional[str] = None,
     cols_directive: str,
-    autowidth: bool = False,
     block_attributes: Optional[Sequence[str]] = None,
 ) -> str:
   """Return a complete Asciidoc table block."""
@@ -74,8 +66,7 @@ def write_asciidoc_table(
     prefix_lines.append(disclaimer)
   if block_attributes:
     prefix_lines.extend(block_attributes)
-  prefix_lines.append(
-      table_block_attributes(cols_directive=cols_directive, autowidth=autowidth))
+  prefix_lines.append(f'[%header,width="100%",cols="{cols_directive}"]')
 
   body = render_asciidoc_table_body(headers, rows)
   content = "\n".join(prefix_lines + [body])

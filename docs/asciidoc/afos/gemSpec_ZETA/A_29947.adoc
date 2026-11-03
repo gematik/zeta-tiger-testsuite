@@ -1,0 +1,4 @@
+[#A_29947]
+==== A_29947 - Authorization Server – Vorrang der Selbst-Recovery
+
+Der Authorization Server SOLL vor einer OOB-Löschung prüfen, ob noch ein überlebender Faktor vorliegt, und in diesem Fall auf die Selbst-Recovery verweisen. [<=]

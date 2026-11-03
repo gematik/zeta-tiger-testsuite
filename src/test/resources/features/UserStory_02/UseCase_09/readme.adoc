@@ -1,0 +1,70 @@
+[#UC_02_09]
+== UseCase_02_09: Statusdaten und optionale Nachrichtenhistorie getrennt aufbewahren
+
+.UseCase_02_09
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Statusdaten und optionale Nachrichtenhistorie getrennt aufbewahren
+
+| Akteur: | Betreiber des Notification Service
+
+| weitere Akteure: | Resource Server, Client-Modul
+
+| Auslöser: | Notifications durchlaufen ihre Aufbewahrungsfristen oder die Nachrichtenhistorie wird deaktiviert.
+
+| Kurzbeschreibung: |
+Kurzlebige Status-/Verarbeitungsdaten werden nach ihrer definierten Frist gelöscht; eine aktivierte Historie folgt ihrer eigenen Betreiberfrist.
+Für die kurze definierte Aufbewahrungsfrist der Status- und Verarbeitungsdaten existiert ein ausführbares Szenario. Die weiteren Varianten bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Der Betreiber dokumentiert eine kurze begründete Frist T_status samt Fristbeginn und Löschmechanismus. Die Spezifikation setzt hierfür keine feste Sekundenzahl.
+. Ein Historienprofil verwendet eine eigene, längere Frist T_history. Ein zweites Profil hat die Historie von Beginn an deaktiviert; ein drittes wird nach vorhandener Historie in den deaktivierten Zielzustand versetzt.
+. Status-/Verarbeitungsdaten und Inhalts-/Versandhistorie sind getrennt erkennbar; individuelle Fristbeginne und tatsächliche Speicherbestände sind vor und nach dem Fristablauf beobachtbar.
+. Das Client-Modul registriert Pusher und aktiviert deren Channel. Fachliche Ereignisse im Resource Server erzeugen eindeutig identifizierbare Notifications für den registrierten Nutzer.
+
+| Nebenbedingung: |
+Bloßes Ausblenden abgelaufener Daten aus einer API genügt nicht: Die zugehörigen Status-/Verarbeitungsdaten müssen tatsächlich gelöscht sein. Eine Ausführungszeit des Löschmechanismus darf die vorab definierte maximale Aufbewahrungsfrist nicht verlängern. Historienkonfiguration und Statusfrist sind unabhängig voneinander wirksam. Der Aufbewahrungsnachweis ist den tatsächlich angenommenen Notifications und ihren individuellen Fristbeginnen zugeordnet.
+
+| Ablauf: |
+. Vorab dokumentiert der Betreiber eine konkrete begründete Frist T_status samt Beginn und Löschmechanismus und aktiviert dieses Statusprofil. Die Testsuite verarbeitet mehrere Notifications mit unterschiedlichen Fristbeginnen und erfasst notification_id, Status und die konkrete Frist je Datensatz. Die Spezifikation gibt keine pauschale Sekunden-/Tageszahl vor.
+. Mit kontrollierter Zeit werden API und tatsächliche Speicherbestände vor und nach den individuellen T_status-Fristen geprüft. Abgelaufene Status-/Verarbeitungsdaten sind physisch gelöscht; bloßes Ausblenden aus einer Liste genügt nicht. Unterschiedliche Fristbeginne verhindern einen nur globalen Ausblendungsnachweis; daraus wird keine zusätzliche Mindestaufbewahrung abgeleitet.
+. Bei aktivierter Historie mit einer eigenen T_history größer T_status bleibt die noch aufzubewahrende Historie nach Statuslöschung erhalten. Nach Ablauf ihrer eigenen Frist wird die konfigurierte Historienaufbewahrung beziehungsweise Löschung geprüft.
+. Bei von Beginn an deaktivierter Historie verarbeitet der NS mehrere Notifications. Es werden keine Inhalts-/Versandhistorienbestände angelegt; die ausdrücklich erlaubten kurzlebigen Status-/Verarbeitungsdaten werden separat nach T_status gelöscht. Im deaktivierten Zielzustand nach Abschaltung vorhandener Historie wird ebenfalls kein Historienbestand vorgehalten.
+
+| Nachbedingung: |
+Statusdaten und Historie erfüllen ihre jeweils geltenden Regeln. Im deaktivierten Zustand existiert keine Inhalts-/Versandhistorie. Konfiguration, Testzeit und Testdaten werden wiederhergestellt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29988_01>>
+* <<TA_A_29988_02>>
+* <<TA_A_29988_03>>
+* <<TA_A_29988_04>>
+
+|===
+
+[mermaid,uc-02-09-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant B as Betreiber
+    participant R as Resource Server
+    participant N as Notification Service
+    participant D as Speicher
+    B->>N: T_status und unabhängige Historienkonfiguration setzen
+    R->>N: Notifications zu verschiedenen Zeitpunkten erzeugen
+    B->>D: Bestand vor und nach T_status prüfen
+    N->>N: Abgelaufene Status-/Verarbeitungsdaten löschen
+    alt Historie aktiviert
+        B->>D: Historie bis zur eigenen Frist T_history prüfen
+    else Historie deaktiviert
+        B->>D: Keine Inhalts-/Versandhistorie nachweisen
+    end
+....
+
+[.lead]
+Feature-Datei zum definierten lokalen Aufbewahrungsprofil:
+
+[source]
+----
+include::statusdaten_aufbewahrungsfrist.feature[]
+----

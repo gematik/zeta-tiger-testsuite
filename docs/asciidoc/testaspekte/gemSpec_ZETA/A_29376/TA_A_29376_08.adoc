@@ -1,0 +1,8 @@
+[#TA_A_29376_08]
+===== TA_A_29376_08 - ZETA, Ablauf Token Exchange mit Attestation - Policy-Ablehnung bei gültigen Credentials
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 17: Bei technisch gültigen Credentials und **Policy deny antwortet der Authorization Server mit 403 und error=access_denied ohne Tokens**. Die reasons entsprechen der korrelierten Entscheidung und dem referenzierten Fehlerschema; der Array-Platzhalter der Abbildung bestimmt nicht deren normative Struktur.

@@ -1,0 +1,4 @@
+[#A_29857]
+==== A_29857 - PDP Authorization Server - Protokollierung der Session-Termination
+
+Die Komponente Authorization Server MUSS jede Session-Termination revisionssicher protokollieren. Das Protokoll MUSS mindestens Trace-Id, Session-Id, Trigger-Source, Reason-Code und Zeitpunkt enthalten. [<=]

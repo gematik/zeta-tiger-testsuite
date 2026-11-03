@@ -1,3 +1,6 @@
+# Collector pipeline assigned to trace delivery to the gematik telemetry service.
+gematikTracePipeline: 'traces/ti_sim'
+
 # names for prometheus queries, i.e. used for metrics
 # corresponds to query label container
 container:
@@ -25,7 +28,7 @@ containerName:
   authorizationServer: 'keycloak'
   pdpDatabase: 'postgresql'
   policyEngine: 'opa'
-  notificationService: 'notification-service' # Dummy value, TODO: container not available yet, name not yet known
+  notificationService: 'notification-service' # Container name shared by the FDV and RS deployments; log ingestion not yet observed.
   # managementService: 'management-service' # Dummy value, component not provided
   telemetryDataService: 'telemetry-gateway'
   resourceServer: 'testfachdienst'
@@ -57,6 +60,7 @@ span:
     nonce2: 'GET /realms/{realm}/{extension}'
     clientRegistration: 'POST /realms/{realm}/clients-registrations/{provider}'
     token: 'POST /realms/{realm}/protocol/{protocol}/token'
+    revoke: 'POST /realms/{realm}/protocol/{protocol}/revoke'
   policyEngine:
     data: 'POST /v1/data/{path...}'
 

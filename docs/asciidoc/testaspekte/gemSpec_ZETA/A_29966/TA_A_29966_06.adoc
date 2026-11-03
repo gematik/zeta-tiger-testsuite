@@ -1,0 +1,4 @@
+[#TA_A_29966_06]
+===== TA_A_29966_06 - Notification Service – gerätegenaue Auswahl der Empfänger
+
+"Der Notification Service MUSS den Channel als für den Nutzer aktiv behandeln, wenn der Channel für mindestens ein registriertes Gerät (pushkey) des Nutzers den Status enabled hat, und **den Versand anschließend an jeden Pusher ausführen, dessen pushkey den adressierten Channel auf enabled gesetzt hat**. **[<=]**"

@@ -1,9 +1,9 @@
 [#US_02]
 == UserStory_02: Push-Benachrichtigungen von ZETA Clients verwalten
 
-Als Hersteller des ZETA Guard möchte ich Push-Konfigurationen und Benachrichtigungseinstellungen von ZETA Clients verwalten, damit Nutzer Push-Benachrichtigungen kontrollieren und der Notification Service ihre Push-Gateways adressieren kann.
+Als Hersteller des ZETA Guard möchte ich Push-Konfigurationen und Benachrichtigungseinstellungen von ZETA Clients verwalten und die Zustellvoraussetzungen synchron prüfen, damit Nutzer Push-Benachrichtigungen kontrollieren und der Notification Service ausschließlich zustellbare Notifications verarbeitet.
 
-==== Akzeptanzkriterien:
+=== Akzeptanzkriterien:
 
 * Der Notification Service registriert die vom ZETA Client gesendete Push-Konfiguration und liefert ihre nicht geheimen Werte zurück.
 * Der Notification Service aktualisiert eine vorhandene Push-Konfiguration und liefert ihre geänderten Werte zurück.
@@ -12,11 +12,48 @@ Als Hersteller des ZETA Guard möchte ich Push-Konfigurationen und Benachrichtig
 * Der ZETA Client aktiviert, ändert und deaktiviert den Benachrichtigungskanal nachvollziehbar.
 * Ereignisse über registrierte Clients werden nur bei aktiviertem Benachrichtigungskanal angenommen.
 * Ereignisse über Neuregistrierungen werden nur bei aktiviertem Benachrichtigungskanal angenommen.
+* Nutzer ohne registrierten Pusher werden bei Versand und Channel-Abfrage als unbekannt behandelt.
+* Notifications ohne aktiven Channel werden terminal beantwortet, nicht weitergeleitet und nicht persistiert.
+* Bei mehreren Geräten werden Channel-Zustände auf Nutzerebene aggregiert und nur aktivierte Pusher adressiert.
+* Notification-Datensätze werden erst nach einem tatsächlichen Versand mit dem Status ``accepted`` persistiert.
+* Bei aktiviertem verschlüsseltem Versand erhält der Android-Client die über das Push Gateway zugestellte Nachricht und entschlüsselt deren UTF-8-Inhalt unverändert.
+* Der Notification Service akzeptiert nur gültig signierte, zeitlich gültige und für ihn ausgestellte Tokens mit dem für die Operation erforderlichen Scope.
+* Vorhandene Notification-Service-Protokolle enthalten bei der Nutzerauflösung und Notification-Verarbeitung keine Klartext-Identifikatoren.
 
 === Identifizierte Use Cases
+
+Die UseCases_03 bis _09 ergänzen Pseudonymisierung in der VAU-Variante, verschlüsselten Versand, mTLS-Zertifikatsverwaltung, Überlastschutz, Versandwiederholung, RS-Berechtigungen und getrennte Aufbewahrungsfristen.
+UseCase_07 enthält ausführbare Szenarien zur verschlüsselten Android-Zustellung und zur Entfernung abgelehnter Pusher. Weitere implementierte Varianten und verbleibende Prüfentwürfe sind in den jeweiligen UseCases ausgewiesen.
+
+UseCase_10 enthält ausführbare Szenarien zur Eingabevalidierung. UseCase_11 prüft die Rückgabe der ursprünglichen notification_id bei RS-Retransmissionen mit Idempotency-Key in ausführbaren Szenarien; die unabhängige Versandunterdrückung bleibt ein Prüfentwurf.
+UseCase_12 enthält ein ausführbares Szenario zum Schutz des Nachrichteninhalts am Gateway; Historienabrufe, vollständige Rekonstruktion und identifier-Prüfung bleiben Prüfentwürfe. UseCase_13 zum Persistenzschutz der Nachrichten-Historie bleibt ein Entwurf ohne ausführbare Szenarien.
 
 :leveloffset: +2
 
 include::UseCase_01/readme.adoc[]
+
+include::UseCase_02/readme.adoc[]
+
+include::UseCase_03/readme.adoc[]
+
+include::UseCase_04/readme.adoc[]
+
+include::UseCase_05/readme.adoc[]
+
+include::UseCase_06/readme.adoc[]
+
+include::UseCase_07/readme.adoc[]
+
+include::UseCase_08/readme.adoc[]
+
+include::UseCase_09/readme.adoc[]
+
+include::UseCase_10/readme.adoc[]
+
+include::UseCase_11/readme.adoc[]
+
+include::UseCase_12/readme.adoc[]
+
+include::UseCase_13/readme.adoc[]
 
 :leveloffset: -2

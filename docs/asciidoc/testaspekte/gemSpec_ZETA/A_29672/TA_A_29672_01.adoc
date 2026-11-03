@@ -1,0 +1,4 @@
+[#TA_A_29672_01]
+===== TA_A_29672_01 - OIDC-Token-Bezug - Policy allow mit Hardwareattestierung
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-OIDC-Token-Bezug** unterstützen. [<=]"

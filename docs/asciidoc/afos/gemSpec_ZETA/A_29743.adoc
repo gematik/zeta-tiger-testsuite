@@ -1,0 +1,4 @@
+[#A_29743]
+==== A_29743 - ZETA Guard, Automatische und unterbrechungsfreie Aktualisierung der Provisioning Daten
+
+Der ZETA Guard MUSS einen Mechanismus implementieren, um das Provisioning Image im laufenden Betrieb zu aktualisieren: Erkennung neuer Versionen: Der ZETA Guard MUSS zyklisch auf das Vorhandensein eines neuen Images (identifiziert über das Tag latest) in der Registry prüfen. Unterbrechungsfreies Laden (Hot-Reload): Nach erfolgreicher Signaturprüfung MÜSSEN die neuen Trust Anchor und Konfigurationen unterbrechungsfrei (Zero-Downtime / Hot-Reload) in die aktiven Konfigurationen der betroffenen Komponenten eingespielt werden. Laufende Validierungsprozesse und bestehende Sitzungen DÜRFEN hierbei nicht gestört werden [<=]

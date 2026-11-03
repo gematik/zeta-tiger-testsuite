@@ -1,0 +1,71 @@
+[#UC_02_10]
+== UseCase_02_10: Eingehende Notification-Service-Requests gegen die OpenAPI validieren
+
+.UseCase_02_10
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Eingehende Notification-Service-Requests gegen die OpenAPI validieren
+
+| Akteur: | Resource Server / Fachdienst und ZETA Client Modul / SDK
+
+| weitere Akteure: | Notification Service, Push Gateway
+
+| Auslöser: | Der Fachdienst fragt Nutzer-Channels ab oder übermittelt eine Notification; das Client Modul verwaltet Pusher und Channels.
+
+| Kurzbeschreibung: |
+Der Notification Service validiert die eingehenden Requests gegen die formal validierenden Regeln der referenzierten OpenAPI und weist ungültige Requests mit HTTP 400 zurück. Pflichtfelder, Identifikatorformate, Identifikatortyp und weitere Schema-Regeln bilden isolierte Eingabevarianten derselben Validierungspflicht. Die formalen Negativvarianten der RS-Channel-Abfrage, Notification-, Pusher- und Channel-Eingaben sind als unabhängige Szenarien mit gültigen Kontrollen ausführbar. Historienabrufe werden im eigenen Historien-UseCase beschrieben.
+
+| Vorbedingung: |
+. Der Resource Server ist für den Fachdienst autorisiert und verwendet gültiges mTLS. Das Client Modul besitzt für seine jeweilige Operation ein gültiges dienstspezifisches Token mit dem erforderlichen Scope. Ein Nutzer mit registriertem Pusher und aktivem, dem Fachdienst zugeordnetem Channel steht bereit.
+. Maßgeblich sind die Notification-Service-RS-OpenAPI Version 1.0.0 und die Client–FD Push API Version 1.1.0 für die nach A_29972/A_29973 bereitgestellten Endpunkte. Die vollständigen Parameter- und Request-Body-Regeln jeder eingehenden Operation werden berücksichtigt, einschließlich referenzierter Schemas; beschreibende Annotationen schaffen keine zusätzlichen Validierungsregeln.
+. Für jede ungültige Eingabe gibt es eine ansonsten gültige Kontrollanfrage derselben Operation. Berechtigung, Nutzerbestand, Channel-Zuordnung, Größenlimits und Verfügbarkeit bleiben gültig.
+
+| Nebenbedingung: |
+Der Client verwendet für die Client-Modul-Schnittstelle das SDK und löst die RS-Channel-Abfrage und das Versandereignis über SDK-Operationen im Fachdienst aus. Die daraus entstehenden Anfragen und tatsächlichen NS-Antworten sind korrelierbar. Jede Variante verändert genau eine formale Regel; fehlende Pflichtfelder und ungültige vorhandene Werte werden getrennt behandelt. Nur formal eingeschränkte Eingaben erhalten eine entsprechende Negativvariante. Jeder unabhängige Lauf stellt seinen Nutzer-, Pusher- und SDK-Kontext selbst her und bereinigt seine eigenen Daten auch bei einer Ablehnung. Eine vollständige lokale Schema-Prüfung der beobachteten Eingabe ersetzt nicht die Prüfung ihrer tatsächlichen Ablehnung durch den NS.
+
+| Ablauf: |
+. Der Client veranlasst im Fachdienst eine gültige Abfrage über GET /users/{userId}/channels und ein gültiges Versandereignis über POST /notifications. Er führt zusätzlich gültige Pusher- und Channel-Operationen über die Client-Modul-Schnittstelle aus. Der Notification Service beantwortet die Aufrufe regulär.
+. Bei weiteren Aufrufen fehlt jeweils ein nach der OpenAPI erforderlicher Queryparameter, der erforderliche Request-Body oder ein erforderliches Body-Feld einschließlich verschachtelter Nutzerfelder. Dies umfasst auch die formalen Pflichtfelder von POST /pushers/set und POST /channels/{pushkey}. Der Notification Service weist jede solche Anfrage mit HTTP 400 zurück.
+. Anfragen enthalten jeweils einen Identifikator außerhalb des formal zugelassenen Wertebereichs. Pattern und Längengrenzen von UserIdValue gelten sowohl für den Pfadparameter userId als auch für user.value. Die gültigen Alternativen für KVNR und Telematik-ID dienen als Kontrollen; eine in diesem Schema nicht definierte typabhängige Einschränkung wird nicht zusätzlich verlangt.
+. Der Fachdienst verwendet einen vorhandenen, aber unzulässigen id_type getrennt im Queryparameter und in user.id_type. Der Notification Service antwortet jeweils mit HTTP 400; beide zugelassenen Enum-Werte bleiben bei gültigen Nutzerdaten verwendbar.
+. Weitere Varianten verletzen jeweils eine andere formal validierende Schema-Regel der Operation: Datentypen, zulässige Priority-Werte, die maximale reference-Länge, die Längengrenzen eines vorhandenen Idempotency-Key oder das Verbot zusätzlicher Eigenschaften im NotificationRequest. An der Client-Modul-Schnittstelle werden insbesondere unzulässige Channel-Statuswerte sowie die formalen Typ-, Enum- und Formatregeln der Pusher-Eingabe getrennt betrachtet. Der Notification Service weist die jeweilige Anfrage mit HTTP 400 zurück. Zulässige optionale Werte und erlaubte zusätzliche Payload-Eigenschaften bleiben schema-konform.
+. Nach jeder ungültigen Variante gelingt die zugehörige gültige Kontrollanfrage weiterhin.
+
+| Nachbedingung: |
+Alle schema-widrigen Varianten sind vom Notification Service mit HTTP 400 zurückgewiesen. Die gültigen Kontrollanfragen derselben Operationen gelingen weiterhin.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29986_01>>
+
+|===
+
+[mermaid,uc-02-10-eingabevalidierung,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as ZETA Client / SDK
+    participant R as Fachdienst / Resource Server
+    participant N as Notification Service
+    C->>N: Gültige Pusher- und Channel-Aufrufe
+    N-->>C: Reguläre Antworten
+    C->>R: Channel-Abfrage oder Versandereignis
+    R->>N: Gültiger Request
+    N-->>R: Reguläre Antwort
+    R-->>C: Ergebnis
+    loop Getrennte ungültige Eingabevarianten
+        C->>R: Channel-Abfrage oder Versandereignis
+        R->>N: Request mit genau einem Schema-Verstoß
+        N-->>R: HTTP 400
+        R-->>C: Ablehnung
+        C->>R: Gültige Kontrolloperation
+        R->>N: Schema-konformer Request
+        N-->>R: Reguläre Antwort
+        R-->>C: Ergebnis
+    end
+    loop Ungültige Client-Modul-Eingaben
+        C->>N: SDK-Aufruf mit genau einem Schema-Verstoß
+        N-->>C: HTTP 400
+        C->>N: Gültige Kontrolloperation
+        N-->>C: Reguläre Antwort
+    end
+....

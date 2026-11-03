@@ -1,0 +1,126 @@
+[#UC_02_02]
+== UseCase_02_02: Zustellvoraussetzungen synchron vorprüfen
+
+.UseCase_02_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Zustellvoraussetzungen synchron vorprüfen
+
+| Akteur: |
+*Resource Server eines Fachdienstes*
+
+| weitere Akteure: |
+*ZETA Guard Notification Service*
+
+*ZETA Client Modul / SDK*
+
+| Auslöser: |
+Ein Resource Server übermittelt eine Notification für einen Nutzer ohne registrierten Pusher.
+
+| Kurzbeschreibung: |
+Der Notification Service behandelt einen Nutzer ohne registriertes Gerät als unbekannt.
+Der Use Case prüft die Ablehnung von ``POST /notifications`` mit ``404 USER_NOT_FOUND``.
+Zwei getrennte Szenarien prüfen einen bisher unbekannten Nutzer und einen zuvor bekannten Nutzer nach Löschung seines letzten Pushers.
+
+| Vorbedingung: |
+. Eine exklusiv reservierte KVNR aus `testdata.oidc.kvnrPool` ist im OIDC-Testdriver konfiguriert und in `oidcTestData.kvnr` verfügbar. Ihre Pusher-Liste wurde vor der Nutzung dynamisch bereinigt und als leer geprüft.
+. Die Pusher-Abfrage ist für diese Identität authentisiert und ihre direkte Antwort ist beobachtbar.
+. Der Resource Server darf die RS-Schnittstelle aufrufen; der Channel ``zeta`` ist für den Fachdienst zulässig.
+. Die direkte Anfrage und Antwort von ``POST /notifications`` am Notification Service sind beobachtbar.
+. Pusher-Registrierung, -Löschung und Channel-Konfiguration für dieselbe Identität sind verfügbar; ihre backendseitigen Antworten sind beobachtbar.
+
+| Ablauf für einen bisher unbekannten Nutzer: |
+. Das ZETA Client Modul fragt die Pusher der konfigurierten Identität ab.
+. Der Test ordnet die backendseitige Anfrage über den Token-Subject der KVNR zu, validiert die erfolgreiche Antwort gegen das referenzierte Pusher-Schema und verlangt ein vorhandenes, leeres JSON-Array im Feld ``pushers``.
+. Der Resource Server sendet eine Notification mit derselben KVNR, dem Channel ``zeta`` und einer eindeutigen Korrelations-ID.
+. Der Test wählt die backendseitige Anfrage über Pfad und Korrelations-ID aus und prüft Methode, Nutzer und Channel.
+. Der Notification Service beantwortet diese Anfrage mit ``404 USER_NOT_FOUND``.
+. Anschließend registriert das SDK für dieselbe Identität einen laufindividuellen Pusher und liest ihn zurück. Der Channel ``zeta`` wird ausdrücklich auf ``disabled`` gesetzt und dieser Zustand am Service zurückgelesen.
+. Eine äquivalente Notification über dieselbe RS-Schnittstelle, mit derselben KVNR und einer neuen Korrelations-ID, muss nun ``202`` mit ``status: no_active_channel`` liefern. Damit ist die RS-Nutzersuche funktionsfähig; ein Endpunkt, der jeden Nutzer als unbekannt ablehnt, kann nicht bestehen. Eine Gateway-Zustellung ist für diese Kontrolle nicht erforderlich.
+
+| Ablauf nach Löschung des letzten Pushers: |
+. Der Test bereinigt den laufindividuell bezeichneten Test-Pusher idempotent zu Szenariobeginn.
+. Das ZETA Client Modul registriert den Test-Pusher und liest den Bestand direkt vom Notification Service zurück.
+. Der Test bindet Registrierung und Bestandsabfrage über den Token-Subject an dieselbe KVNR und verlangt genau diesen einen Pusher mit passender App-ID und ``kind: http``.
+. Er validiert dieselbe Bestandsantwort unmittelbar gegen das vollständige Pusher-Schema; Schemaabweichungen werden bis zum Szenarioabschluss gesammelt.
+. Vor der Löschung deaktiviert das SDK den Channel ``zeta`` ausdrücklich und liest diesen Zustand zurück. Die korrelierte Notification für denselben Nutzer muss über dieselbe RS-Schnittstelle ``202`` mit ``status: no_active_channel`` liefern. So ist der Nutzer nicht nur an der Client-Schnittstelle, sondern auch an der RS-Schnittstelle nachweislich bekannt.
+. Das ZETA Client Modul löscht diesen Pusher; der Test prüft Nutzer, Pushkey, App-ID, ``kind: null`` und die erfolgreiche Antwort der backendseitigen Löschoperation.
+. Eine erneute, derselben KVNR zugeordnete Bestandsabfrage muss ein vorhandenes, leeres ``pushers``-Array liefern.
+. Der Resource Server sendet ohne Identitätswechsel eine Notification mit derselben KVNR und eindeutiger Korrelations-ID.
+. Der Test prüft an der direkten Notification-Anfrage Methode, Identifikatortyp, Nutzer und Channel sowie die Antwort ``404 USER_NOT_FOUND``.
+
+| Nachbedingung: |
+Die korrelierte Notification-Anfrage wurde für den Nutzer ohne registrierten Pusher mit ``404 USER_NOT_FOUND`` zurückgewiesen.
+Im Löschfall ist das zuvor nachgewiesene letzte Gerät entfernt; ein verbliebener Nutzerzustand darf keine Annahme der Notification ermöglichen. Im Fall des anfangs unbekannten Nutzers wird der anschließend eingerichtete Kontroll-Pusher durch den After-Hook gelöscht.
+Beide Szenarien registrieren vor dem ersten Schreibzugriff eine gezielte Bereinigung für den laufindividuellen Schlüssel, die konfigurierte App-ID und die unabhängig erzeugte Identität. Der Hook löscht ausschließlich diesen Pusher, prüft seine Abwesenheit auch nach einem früheren Assertionsfehler und behält bei Bereinigungsfehlern den Wiederherstellungsnachweis unter ``target/notification-lifecycle/``. Die Szenarien aktivieren die gesammelte Schemafehlerbehandlung ausdrücklich; harte Zustands- und Statusprüfungen bleiben erhalten.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29966_01>>
+
+|===
+
+.Schema der Pusher-Antwort
+Die Bestandsprüfungen referenzieren ``schemas/push_notifications_openapi/definitions/pusher_get.yaml#/schema`` aus der Client–FD Push API.
+Das referenzierte Schema definiert den Array-Typ; die Leerprüfungen ergänzen den erforderlichen Objekttyp, das Pflichtfeld ``pushers`` und ``maxItems: 0`` als Vorbedingung von <<TA_A_29966_01>>.
+F17 des Löschszenarios verlangt vor der Löschung genau einen Eintrag mit dem Test-Pushkey, der App-ID und ``kind: http``.
+F17a übernimmt dieselbe korrelierte Antwort als JSON-String für den OpenAPI-Schritt; F17b validiert sie unmittelbar über das Antwortschema von ``GET /pushers`` in ``schemas/push_notifications_openapi/fd_openapi.yaml`` gegen die unveränderte importierte Definition.
+Der OpenAPI-Schritt berücksichtigt ``schemaValidation.soft`` (Standardwert ``true``) und meldet gesammelte Schemafehler beim Szenarioabschluss.
+Der dokumentierte TGR-Schritt ``JSON_SCHEMA`` bietet diese verzögerte Fehlerbehandlung nicht; die harten Bestands- und Versandprüfungen bleiben erhalten.
+Das referenzierte Schema validiert die Pusher-Struktur einschließlich ihrer Pflichtfelder; die lokalen Ergänzungen prüfen ausdrücklich Objekt- und Array-Typen sowie die konkreten Identifikationswerte.
+Diese Anzahl ist die notwendige Vorbedingung für den Nachweis „letzten Pusher gelöscht“ und keine allgemeine Beschränkung der zulässigen Geräteanzahl.
+Der OpenAPI-Schritt wertet die Erweiterung ``nullable`` im Dialekt 3.0 aus: ``kind: null`` ist erlaubt, ``append: null`` nicht. Die harten ergänzenden Assertions verlangen weiterhin entweder eine vorhandene leere Liste oder den konkreten Wert ``http``.
+Die Schema-Prüfung ergänzt die Vorbedingung und ersetzt weder die Nutzerkorrelation noch den Nachweis von ``404 USER_NOT_FOUND``.
+
+.Gemeinsame Pusher-Vorlage
+Die Registrierung lädt ``src/test/resources/testdata/push/pusher.json`` mit den Standardwerten aus ``tiger/testdata.yaml`` über ``!{file(...)}``.
+Beide Szenarien verwenden einen laufindividuellen Pushkey mit Präfix ``zeta-lifecycle-precondition`` und die konfigurierte App-ID. Das Löschszenario überschreibt außerdem Geräteanzeigename und Profil lokal.
+Die Vorlage verwendet das Format der SDK-Testdriver-Modelle ``PusherConfigRequest`` und ``PusherData`` und ist kein JSON-Schema.
+Bereinigung, Bestandsnachweis und Löschung prüfen dieselbe zuvor festgelegte Identität dieses Testgeräts.
+
+.Gemeinsame Notification-Vorlage
+Alle Versandoperationen laden ``src/test/resources/mocks/notification_request.json`` über den dokumentierten TGR-Ausdruck ``!{file(...)}``.
+Tiger ersetzt dabei die Platzhalter ``notificationUserId`` und ``notificationCorrelationId`` mit den lokalen Werten des jeweiligen Szenarios.
+Die Vorlage entspricht der Struktur von ``NotificationRequest`` in ``src/test/resources/schemas/v_2_0/openapi/notification-service-rs-endpoint.yaml``.
+Die backendseitigen Assertions binden den versendeten Nutzer und die Korrelations-ID weiterhin an die direkte Antwort des Notification Service.
+
+[mermaid]
+....
+sequenceDiagram
+    autonumber
+
+    participant Client as ZETA Client Modul / SDK
+    participant RS as Resource Server
+    participant NS as Notification Service
+
+    opt Szenario nach Löschung des letzten Pushers
+        Client->>NS: Test-Pusher idempotent bereinigen und registrieren
+        Client->>NS: GET /push/v1/pushers für dieselbe KVNR
+        NS-->>Client: 200 mit genau dem registrierten Test-Pusher
+        Client->>NS: Channel zeta deaktivieren und zurücklesen
+        RS->>NS: POST /notifications für registrierte KVNR
+        NS-->>RS: 202 no_active_channel
+        Client->>NS: POST /push/v1/pushers/set mit kind null
+        NS-->>Client: 200
+    end
+    Client->>NS: GET /push/v1/pushers für die konfigurierte KVNR
+    NS-->>Client: 200 mit leerem pushers-Array
+    RS->>NS: POST /notifications mit derselben KVNR und Korrelations-ID
+    NS-->>RS: 404 USER_NOT_FOUND
+    opt Szenario für bisher unbekannten Nutzer
+        Client->>NS: Kontroll-Pusher registrieren und zurücklesen
+        Client->>NS: Channel zeta deaktivieren und zurücklesen
+        RS->>NS: POST /notifications für dieselbe KVNR
+        NS-->>RS: 202 no_active_channel
+    end
+    Client->>NS: After-Hook löscht eigenen Pusher und prüft Abwesenheit
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::zustellvoraussetzungen_synchron_vorpruefen.feature[]
+----
+endif::[]

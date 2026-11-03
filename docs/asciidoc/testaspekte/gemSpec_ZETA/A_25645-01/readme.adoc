@@ -1,6 +1,0 @@
-==== Testaspekte für die Anforderung A_25645-01
-
-Folgende Testaspekte testen <<A_25645-01>>.
-
-include::TA_A_25645-01_01.adoc[]
-

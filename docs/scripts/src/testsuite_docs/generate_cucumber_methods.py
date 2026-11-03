@@ -57,9 +57,9 @@ class StepEntry:
 
   def file_relative(self, repo_root: Path) -> str:
     try:
-      return str(self.origin.relative_to(repo_root))
+      return self.origin.relative_to(repo_root).as_posix()
     except ValueError:
-      return str(self.origin)
+      return self.origin.as_posix()
 
 
 class H5Collector(HTMLParser):
@@ -110,8 +110,10 @@ def extract_manual_steps(html_path: Path) -> list[str]:
 
 def extract_project_glue(glue_root: Path) -> list[StepEntry]:
   """Scan Java glue classes, grouping German/English annotations per method."""
+  java_string = r'"(?:\\.|[^"\\])*"'
   step_pattern = re.compile(
-    r"@(Gegebensei|Wenn|Dann|Given|When|Then)\s*\(\s*\"(?P<phrase>[^\"]+)\""
+    r"@(Gegebensei|Wenn|Dann|Given|When|Then)\s*\(\s*"
+    rf"(?P<expression>{java_string}(?:\s*\+\s*{java_string})*)\s*\)"
   )
 
   entries: list[StepEntry] = []
@@ -131,7 +133,7 @@ def extract_project_glue(glue_root: Path) -> list[StepEntry]:
 
       # Javadoc start/end handling
       if stripped.startswith("/**"):
-        collecting_javadoc = True
+        collecting_javadoc = "*/" not in stripped
         current_javadoc = [stripped]
         continue
       if collecting_javadoc:
@@ -145,6 +147,13 @@ def extract_project_glue(glue_root: Path) -> list[StepEntry]:
         annotations.append(stripped)
         continue
 
+      # Parentheses inside Java strings are part of the step phrase, not annotation syntax.
+      if annotations:
+        syntax = re.sub(java_string, "", annotations[-1])
+        if syntax.count("(") > syntax.count(")"):
+          annotations[-1] += " " + stripped
+          continue
+
       # Method signature detection (simple heuristic)
       if re.match(r"^(public|protected|private)\s+[\w<>\[\]\s,?]+\s+\w+\s*\(", stripped):
         german = None
@@ -153,7 +162,9 @@ def extract_project_glue(glue_root: Path) -> list[StepEntry]:
           m = step_pattern.search(ann)
           if not m:
             continue
-          phrase = " ".join(m.group("phrase").split())
+          literals = re.findall(java_string, m.group("expression"))
+          phrase = "".join(decode_java_string(literal) for literal in literals)
+          phrase = " ".join(phrase.split())
           annot = m.group(1)
           if annot in {"Gegebensei", "Wenn", "Dann"}:
             german = phrase
@@ -180,6 +191,23 @@ def extract_project_glue(glue_root: Path) -> list[StepEntry]:
     annotations = []
 
   return deduplicate_entries(entries)
+
+
+def decode_java_string(literal: str) -> str:
+  """Decode Java string escapes without confusing literal backslashes with escape prefixes."""
+  escapes = {'b': '\b', 't': '\t', 'n': '\n', 'f': '\f', 'r': '\r',
+             '"': '"', "'": "'", '\\': '\\', 's': ' '}
+
+  def replace(match: re.Match[str]) -> str:
+    value = match.group(1)
+    if value.startswith('u'):
+      return chr(int(value.lstrip('u'), 16))
+    if value[0] in '01234567':
+      return chr(int(value, 8))
+    return escapes[value]
+
+  return re.sub(r"\\(u+[0-9a-fA-F]{4}|[0-3][0-7]{0,2}|[4-7][0-7]?|[btnfr\"'\\s])",
+                replace, literal[1:-1])
 
 
 def normalize_javadoc(raw: str) -> str:
@@ -233,8 +261,8 @@ def render_asciidoc_table(
   table = write_asciidoc_table(
       headers=list(df.columns),
       rows=df.values.tolist(),
-      cols_directive="2,2,3,5",
-      autowidth=True,
+      cols_directive="3,3,2,5",
+      block_attributes=['[.cucumber-methods]'],
   )
   header = (
     "// Dieses Tabellenfragment wird automatisch von generate-cucumber-methods erzeugt.\n"

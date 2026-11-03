@@ -25,6 +25,7 @@
 package de.gematik.zeta.steps;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -39,9 +40,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class HooksConfigMapBackupTest {
+
+  /** Clears configuration written by the deployment restore fixtures. */
+  @AfterEach
+  void clearConfiguration() {
+    TigerGlobalConfiguration.clearTestVariables();
+  }
 
   /**
    * Verifies that stale cluster backups are ignored when the current scenario did not capture them.
@@ -63,10 +71,10 @@ class HooksConfigMapBackupTest {
   }
 
   /**
-   * Verifies that a scenario-local ConfigMap backup is restored and removed during cleanup.
+   * Rejects legacy backup ownership without a durable session rather than deleting recovery evidence.
    */
   @Test
-  void restoreDeploymentModificationsRestoresCapturedBackupAndDeletesIt() {
+  void restoreDeploymentModificationsRetainsLegacyBackupWithoutDurableSession() {
     configureDeploymentRestore();
 
     var service = new FakeDeploymentModificationService();
@@ -75,11 +83,12 @@ class HooksConfigMapBackupTest {
 
     hooks.prepareSoftAssertions();
     Hooks.rememberConfigMapBackupIfAbsent("pep-test-nginx-conf");
-    hooks.restoreDeploymentModifications(scenario);
+    assertThrows(AssertionError.class, () -> hooks.restoreDeploymentModifications(scenario));
 
-    assertEquals(List.of("pep-test-nginx-conf"), service.restoredConfigMaps);
-    assertEquals(List.of("pep-test-nginx-conf"), service.deletedConfigMapBackups);
-    assertEquals(1, service.restartCount);
+    assertTrue(service.restoredConfigMaps.isEmpty());
+    assertTrue(service.deletedConfigMapBackups.isEmpty());
+    assertEquals(0, service.restartCount);
+    hooks.clearScenarioLifecycleState();
   }
 
   /**

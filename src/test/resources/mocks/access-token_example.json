@@ -22,6 +22,7 @@
     "iat": 1740924000,
     "jti": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "scope": "vsdservice",
+    "acr": "gematik-ehealth-loa-substantial",
     "cnf": {
       "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"
     },

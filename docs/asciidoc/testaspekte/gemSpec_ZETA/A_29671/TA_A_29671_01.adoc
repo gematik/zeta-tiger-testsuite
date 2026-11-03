@@ -1,0 +1,6 @@
+[#TA_A_29671_01]
+===== TA_A_29671_01 - ZETA, Ablauf Nutzerauthentisierung am sektoralen IDP - Authentication Request und unveränderte Code-/State-Weitergabe im Gutfall
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-OIDC-Nutzerauthentisierung** unterstützen.
+
+**[<=]**"

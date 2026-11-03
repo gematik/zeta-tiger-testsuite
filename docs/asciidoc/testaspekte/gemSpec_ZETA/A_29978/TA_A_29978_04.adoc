@@ -1,0 +1,4 @@
+[#TA_A_29978_04]
+===== TA_A_29978_04 - Notification Service - Ablehnung von Operationen auf Daten anderer Nutzer
+
+"Der Notification Service MUSS Schreib-/Leseoperationen des Client-Moduls (Registrierung, Schlüssel, Channel-Konfiguration eines Pushers) ausschließlich auf die im ZETA-Zugriffstoken authentisierte Nutzeridentität beziehen und MUSS **Operationen auf Pusher/Daten anderer Nutzer mit 403 ablehnen**. **[<=]**"

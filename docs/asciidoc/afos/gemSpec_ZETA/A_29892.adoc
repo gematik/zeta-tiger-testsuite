@@ -1,0 +1,4 @@
+[#A_29892]
+==== A_29892 - Authorization Server – Bereitstellung der TOFU-Erweiterungsschnittstellen
+
+Der Authorization Server MUSS zusätzlich zur bereits definierten Client-Registration-API (POST /register, POST /register/verify; definiert durch A_29658) die darauf aufbauenden TOFU-Erweiterungen gemäß Annex [zeta-guard-client-management] (RFC 7592-Registrierungsverwaltung /register/{client_id}, Schlüssel-Rollover, E-Mail-Änderung, Recovery, Client-Verwaltung, clientseitiges Veto) sowie die privilegierte, IDP-unabhängige Operator-Schnittstelle für die außerordentliche Löschung gemäß Annex zeta-guard-admin-oob.yaml bereitstellen. Die Bereitstellung der Basis-Registrierung selbst richtet sich unverändert nach A_29658. [<=]

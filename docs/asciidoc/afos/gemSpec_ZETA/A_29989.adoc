@@ -1,0 +1,4 @@
+[#A_29989]
+==== A_29989 - Notification Service – Löschung bei Deregistrierung
+
+Der Notification Service MUSS bei Deregistrierung eines Pushers durch das Client-Modul die zugehörige Push-Konfiguration sowie das gespeicherte kryptographische Schlüsselmaterial (shared-secret-Jahr-Monat, AES/GCM-Schlüssel-Jahr-Monat) löschen (analog A_27156) [<=]

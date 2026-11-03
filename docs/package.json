@@ -1,12 +1,8 @@
 {
   "name": "zeta-docs",
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "puppeteer"
-    ]
-  },
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "11.12.0"
+    "@mermaid-js/mermaid-cli": "12.0.0",
+    "puppeteer": "25.16.0"
   }
 }

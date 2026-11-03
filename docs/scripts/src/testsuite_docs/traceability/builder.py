@@ -25,9 +25,8 @@
 """Traceability helpers for the testsuite documentation.
 
 This module aggregates requirements, test aspects and feature metadata into a
-collection of artefacts consumed by the Asciidoc manual. The default
-configuration focuses on the ``gemSpec_ZETA`` specification, which forms the
-canonical requirements baseline for the project.
+collection of artefacts consumed by the Asciidoc manual. Requirements and test
+aspects are read from the selected Asciidoc catalogues.
 
 Entry points deliberately avoid side effects unless ``write_outputs`` is
 explicitly enabled so that higher-level tools can compose the functionality
@@ -36,10 +35,9 @@ without touching the filesystem during dry runs.
 
 from __future__ import annotations
 
-import csv
-import json
 import logging
 import re
+import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -47,10 +45,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from ..masvs_tags import load_masvs_mapping
-from ..asciidoc_tables import (
-  render_asciidoc_table_body,
-  table_block_attributes,
-)
+from ..asciidoc_tables import write_asciidoc_table
+from ..zeta_afos import DEFAULT_TEST_PROCEDURE, DEFAULT_XML
 from .models import (
   Requirement,
   ScenarioCoverage,
@@ -88,8 +84,7 @@ MERMAID_THEME_DIRECTIVE = (
   "}}}%%"
 )
 
-# Requirement sources bundled into the documentation. Primary catalogue is
-# gemSpec_ZETA; when set to None, load all subfolders under afos.
+# Set a specification subdirectory to restrict the catalogues; None loads all.
 REQUIREMENT_SPEC_SUBDIR = None
 
 # Regex helpers for parsing adoc / gherkin files.
@@ -101,7 +96,7 @@ ANCHOR_PATTERN = re.compile(r"^\[#(?P<anchor>[A-Za-z0-9_\-]+)]")
 FEATURE_NAME_PATTERN = re.compile(r"^Funktionalität:\s*(?P<name>.+?)\s*$",
                                   re.IGNORECASE)
 SCENARIO_PATTERN = re.compile(
-    r"^Szenario(?:grundriss)?(?::|\s+Outline:)\s*(?P<name>.+?)\s*$",
+    r"^Szenario(?P<outline>grundriss|\s+Outline)?:\s*(?P<name>.+?)\s*$",
     re.IGNORECASE)
 TAG_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)")
 REQUIREMENT_TAG_CANDIDATE_PATTERN = re.compile(
@@ -112,24 +107,19 @@ EXAMPLES_PATTERN = re.compile(r"^Beispiele(?::\s*(?P<label>.*))?\s*$",
 
 def build_traceability(
     project_root: Optional[Path] = None,
-    product_status_csv: Optional[Path] = None,
     *,
     write_outputs: bool = True,
 ) -> TraceabilityReport:
   """Collect traceability data and optionally persist the derived artefacts.
 
-  The routine focuses on the ``gemSpec_ZETA`` catalogue, ensuring that counts
-  such as the "total number of requirements" align with the specification that
-  is actually in scope for the testsuite.
+  Requirements include the selected XML product-test catalogue and additional
+  maintained Asciidoc definitions. Every selected requirement needs a definition.
 
   Args:
       project_root: Repository root override. When omitted the path is derived
         from the location of this module.
-      write_outputs: When ``True`` the generated tables, diagrams and JSON
-        payload are written to the standard documentation targets.
-      product_status_csv: Optional CSV with product implementation flags
-        (defaults to
-        ``docs/asciidoc/tables/source/product_implementation.csv``).
+      write_outputs: When ``True`` the generated tables and diagrams are
+        written to the standard documentation targets.
   """
 
   root = project_root or Path(__file__).resolve().parents[5]
@@ -163,16 +153,23 @@ def build_traceability(
   diagrams_generated_dir = diagrams_dir / "generated"
   tables_dir = asciidoc_root / "tables"
   tables_generated_dir = tables_dir / "generated"
-  tables_source_dir = tables_dir / "source"
   features_root = root / "src" / "test" / "resources" / "features"
   masvs_mapping_path = docs_root / "masvs_mapping.csv"
   if write_outputs:
     diagrams_generated_dir.mkdir(parents=True, exist_ok=True)
     tables_generated_dir.mkdir(parents=True, exist_ok=True)
 
-  requirements = {}
+  catalogue_ids = _load_requirement_catalogue(root / DEFAULT_XML)
+  afo_requirements = {}
   for req_dir in requirements_dirs:
-    requirements.update(_load_requirements(req_dir))
+    afo_requirements.update(_load_requirements(req_dir))
+  missing = catalogue_ids - afo_requirements.keys()
+  if missing:
+    raise ValueError("Missing Asciidoc definitions for catalogue requirements: "
+                     + ", ".join(sorted(missing)))
+  requirements = {identifier: afo_requirements[identifier]
+                  for identifier in sorted(catalogue_ids)}
+  requirements.update(afo_requirements)
   test_aspects = {}
   for ta_dir in test_aspects_dirs:
     test_aspects.update(_load_test_aspects(ta_dir, requirements))
@@ -190,24 +187,14 @@ def build_traceability(
         for ta_id, test_aspect in test_aspects.items()
       },
   )
+  coverage_scenarios = [scenario for scenario in scenarios if not scenario.ignored]
 
   records = _build_traceability_records(
       requirements=requirements,
       test_aspects=test_aspects,
       use_cases=use_cases,
-      scenarios=scenarios,
+      scenarios=coverage_scenarios,
   )
-
-  status_path = product_status_csv if product_status_csv is not None else (
-      tables_source_dir / "product_implementation.csv")
-  if not status_path.is_absolute():
-    status_path = (root / status_path).resolve()
-  product_status = _load_product_status(status_path)
-  status_path_for_report: Optional[Path] = None
-  try:
-    status_path_for_report = status_path.relative_to(root)
-  except ValueError:
-    status_path_for_report = Path(status_path.name)
 
   known_user_stories = {
     story
@@ -219,26 +206,18 @@ def build_traceability(
   }
   features_table = _render_features_table(
       use_cases, records, sorted(known_user_stories))
-  product_gap_table, gap_summary = _render_product_gap_table(
-      requirements,
-      test_aspects,
-      records,
-      product_status,
-      status_path_for_report,
-  )
-  gap_summary_chart, gap_summary_table = _render_product_gap_summary(
-      gap_summary)
+  requirement_coverage_table = _render_requirement_coverage_table(
+      requirements, test_aspects, records)
   traceability_table = _render_traceability_matrix(records)
   masvs_mapping = _load_masvs_mapping_if_present(masvs_mapping_path)
   masvs_category_table, masvs_requirement_table, masvs_summary = _render_masvs_tables(
       requirements=requirements,
-      scenarios=scenarios,
+      scenarios=coverage_scenarios,
       masvs_mapping=masvs_mapping,
   )
   coverage_charts, coverage_summary = _render_coverage_charts(
       records, requirements, test_aspects
   )
-  coverage_summary["product_gap"] = gap_summary
   coverage_summary["masvs"] = masvs_summary
 
   traceability_links = [
@@ -280,28 +259,32 @@ def build_traceability(
 
   if write_outputs:
     _write_text_file(tables_generated_dir / "features_table.adoc", features_table)
-    _write_text_file(tables_generated_dir / "product_gap_table.adoc", product_gap_table)
-    _write_text_file(tables_generated_dir / "product_gap_summary.adoc",
-                     gap_summary_table)
+    _write_text_file(tables_generated_dir / "requirements_coverage_table.adoc",
+                     requirement_coverage_table)
     _write_text_file(tables_generated_dir / "traceability_matrix.adoc",
                      traceability_table)
     _write_text_file(tables_generated_dir / "masvs_coverage_by_category.adoc",
                      masvs_category_table)
     _write_text_file(tables_generated_dir / "masvs_coverage_by_requirement.adoc",
                      masvs_requirement_table)
-    _write_text_file(diagrams_generated_dir / "product-gap-summary.mmd",
-                     gap_summary_chart)
     for filename, content in coverage_charts.items():
       _write_text_file(diagrams_generated_dir / filename, content)
 
-    generated_dir = root / "target" / "generated-docs"
-    generated_dir.mkdir(parents=True, exist_ok=True)
-    _write_text_file(
-        generated_dir / "traceability.json",
-        json.dumps(asdict(report), indent=2, ensure_ascii=False),
-    )
-
   return report
+
+
+def _load_requirement_catalogue(path: Path) -> Set[str]:
+  """Read the product-test selection from the pinned XML catalogue."""
+  requirements = ET.parse(path).findall(".//requirement")
+  selected = {
+    requirement.attrib["id"] for requirement in requirements
+    if DEFAULT_TEST_PROCEDURE in requirement.findtext("testProcedure", "")
+    and (not REQUIREMENT_SPEC_SUBDIR
+         or requirement.findtext("sourceDocumentId") == REQUIREMENT_SPEC_SUBDIR)
+  }
+  if not selected:
+    raise ValueError(f"No product-test requirements in {path}")
+  return selected
 
 
 def _load_requirements(directory: Path) -> Dict[str, Requirement]:
@@ -372,8 +355,9 @@ def _load_use_case_anchors(userstories_root: Path) -> Dict[str, str]:
 
   Both the directory name (``UseCase_01``) and the combined tag
   (``UserStory_01/UseCase_01`` expressed as ``UseCase_01_01``) are mapped to the
-  resolved anchor so feature files and traceability reports may reference
-  whichever convention is more convenient.
+  resolved anchor so feature tags and generated tables may reference
+  whichever convention is more convenient. An explicit ``UC_`` anchor also
+  supplies its corresponding ``UseCase_`` tag, preserving the anchor's case.
   """
   anchors: Dict[str, str] = {}
   if not userstories_root.exists():
@@ -381,6 +365,8 @@ def _load_use_case_anchors(userstories_root: Path) -> Dict[str, str]:
   for usecase_readme in userstories_root.rglob("UseCase_*/readme.adoc"):
     anchor = _extract_anchor(usecase_readme)
     if anchor:
+      if anchor.startswith("UC_"):
+        anchors[f"UseCase_{anchor.removeprefix('UC_')}"] = anchor
       use_case_dir = usecase_readme.parent.name
       anchors[use_case_dir] = anchor
       story_dir = usecase_readme.parent.parent.name if usecase_readme.parent.parent else ""
@@ -388,39 +374,6 @@ def _load_use_case_anchors(userstories_root: Path) -> Dict[str, str]:
       if combined_tag and combined_tag not in anchors:
         anchors[combined_tag] = anchor
   return anchors
-
-
-def _load_product_status(path: Path) -> Dict[str, Optional[str]]:
-  """Read product implementation status from CSV.
-
-  Expected columns: ``Anforderung`` (ID), ``umgesetzt`` (``ja``/``nein``/
-  ``teilweise``). Unrecognised values are treated as unknown.
-  """
-  if not path.exists():
-    LOGGER.info("Produktstatus-Datei %s nicht gefunden, verwende leere Angaben",
-                path)
-    return {}
-
-  records: Dict[str, Optional[str]] = {}
-  try:
-    with path.open(encoding="utf-8", newline="") as handle:
-      reader = csv.DictReader(handle)
-      for row in reader:
-        requirement_id = (
-            row.get("Anforderung") or row.get("anforderung")
-            or row.get("requirement_id") or row.get("id") or "").strip()
-        if not requirement_id:
-          continue
-        implemented_raw = (
-            row.get("umgesetzt") or row.get("implemented") or row.get("status")
-            or "").strip()
-        records[requirement_id] = _normalise_product_flag(implemented_raw)
-  except (OSError, csv.Error) as exc:
-    LOGGER.warning("Konnte Produktstatus nicht aus %s laden: %s", path, exc)
-    return {}
-
-  LOGGER.info("Produktstatus aus %s geladen (%d Einträge)", path, len(records))
-  return records
 
 
 def _parse_feature_files(
@@ -518,6 +471,7 @@ def _parse_feature_files(
             test_aspects=test_aspect_tags,
             requirements=requirement_tags,
             masvs_tags={tag for tag in tags if tag.startswith("MASVS-")},
+            ignored=any(tag.casefold() == "ignore" for tag in tags),
         )
     )
 
@@ -533,6 +487,7 @@ def _parse_feature_files(
     feature_name: Optional[str] = None
     current_scenario_name: Optional[str] = None
     current_scenario_tags: Set[str] = set()
+    current_scenario_is_outline = False
 
     for raw_line in file_content:
       stripped = raw_line.strip()
@@ -543,18 +498,16 @@ def _parse_feature_files(
         continue
       examples_match = EXAMPLES_PATTERN.match(stripped)
       if examples_match:
-        if pending_tags:
-          if current_scenario_name:
-            example_tags = set(pending_tags)
-            append_scenario_coverage(
-                scenario_name=current_scenario_name,
-                tags=current_scenario_tags | example_tags,
-                feature_path=feature_path,
-                feature_rel=feature_rel,
-                feature_name=feature_name,
-                user_story_id=user_story_id,
-            )
-          pending_tags = []
+        if current_scenario_name and current_scenario_is_outline:
+          append_scenario_coverage(
+              scenario_name=current_scenario_name,
+              tags=current_scenario_tags | set(pending_tags),
+              feature_path=feature_path,
+              feature_rel=feature_rel,
+              feature_name=feature_name,
+              user_story_id=user_story_id,
+          )
+        pending_tags = []
         continue
       feature_match = FEATURE_NAME_PATTERN.match(stripped)
       if feature_match:
@@ -578,15 +531,17 @@ def _parse_feature_files(
         tags = feature_tags | scenario_tags
         current_scenario_name = scenario_name
         current_scenario_tags = set(tags)
+        current_scenario_is_outline = scenario_match.group("outline") is not None
 
-        append_scenario_coverage(
-            scenario_name=scenario_name,
-            tags=tags,
-            feature_path=feature_path,
-            feature_rel=feature_rel,
-            feature_name=feature_name,
-            user_story_id=user_story_id,
-        )
+        if not current_scenario_is_outline:
+          append_scenario_coverage(
+              scenario_name=scenario_name,
+              tags=tags,
+              feature_path=feature_path,
+              feature_rel=feature_rel,
+              feature_name=feature_name,
+              user_story_id=user_story_id,
+          )
 
     if pending_tags:
       LOGGER.debug("Unconsumed tags at end of %s: %s", feature_rel,
@@ -849,64 +804,55 @@ def _render_features_table(
     "User Story",
     "Use Case",
     "Testaspekt",
-    "implementiert (Szenario vorhanden)",
+    "getestet",
   ]
   _suppress_repeated_cells(rows, (0, 1))
-  return _write_asciidoc_table(
+  return write_asciidoc_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,2a,1",
+      cols_directive="2,3,8a,^1",
+      block_attributes=["[.scenario-coverage]"],
   )
 
 
-def _render_product_gap_table(
+def _render_requirement_coverage_table(
     requirements: Dict[str, Requirement],
     test_aspects: Dict[str, TestAspect],
     records: Sequence[TraceabilityRecord],
-    product_status: Dict[str, Optional[str]],
-    status_path: Optional[Path],
-) -> Tuple[str, Dict[str, int]]:
-  """Render product vs. testsuite coverage gaps per requirement."""
-  entries, summary_counts = _build_gap_entries(requirements, test_aspects,
-                                               records, product_status)
+) -> str:
+  """Render numbered scenario coverage and test-aspect counts per requirement."""
+  requirement_to_aspects: Dict[str, Set[str]] = defaultdict(set)
+  for aspect in test_aspects.values():
+    requirement_to_aspects[aspect.requirement_id].add(aspect.test_aspect_id)
+  covered_aspects = {record.test_aspect_id for record in records if record.implemented}
 
   rows: List[List[str]] = []
-  for entry in entries:
-    coverage_progress = _format_coverage_progress(
-        int(entry["tas_covered"]),
-        int(entry["tas_total"]),
-    )
+  for index, requirement_id in enumerate(sorted(requirements), start=1):
+    aspects = requirement_to_aspects.get(requirement_id, set())
+    total = len(aspects)
+    covered = len(aspects & covered_aspects)
+    percentage = int(round(100 * covered / total)) if total else 0
+    if covered == 0:
+      label = "nein"
+    elif covered < total:
+      label = "teilweise"
+    else:
+      label = "ja"
     rows.append([
-      str(entry["index"]),
-      _format_reference(entry["requirement_id"]),
-      _format_optional_boolean(entry["product_flag"]),
-      entry["coverage_label"],
-      coverage_progress,
-      entry["status"],
+      str(index),
+      _format_reference(requirement_id),
+      label,
+      f"{percentage}% ({covered}/{total})",
     ])
 
-  headers = [
-    "Nr.",
-    "Anforderung",
-    "im Produkt umgesetzt",
-    "getestet",
-    "Testabdeckung",
-    "Hinweise",
-  ]
-  table = _write_asciidoc_table(
-      headers,
+  return write_asciidoc_table(
+      ["Nr.", "Anforderung", "getestet", "Testabdeckung"],
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,2,2,2,4,4",
+      cols_directive=">1,18,^2,>3",
+      block_attributes=["[.requirements-coverage]"],
   )
-  prefix: List[str] = []
-  if status_path:
-    prefix.append(f"// Produktstatus-Quelle: {status_path.as_posix()}")
-  content = ("\n".join(prefix) + "\n" + table) if prefix else table
-  if not content.endswith("\n"):
-    content += "\n"
-  return content, summary_counts
 
 
 def _render_traceability_matrix(records: Sequence[TraceabilityRecord]) -> str:
@@ -942,14 +888,15 @@ def _render_traceability_matrix(records: Sequence[TraceabilityRecord]) -> str:
     "Anforderung",
     "Testaspekt",
     "Use Case",
-    "implementiert",
+    "getestet",
   ]
   _suppress_repeated_cells(rows, (0, 1))
-  return _write_asciidoc_table(
+  return write_asciidoc_table(
       headers,
       rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,2,1,2",
+      cols_directive="6,8,5,^2",
+      block_attributes=["[.scenario-coverage]"],
   )
 
 
@@ -1009,7 +956,7 @@ def _render_masvs_tables(
 
   scenario_rows.sort(key=lambda row: (row[0], row[1], row[2], row[3]))
   _suppress_repeated_cells(scenario_rows, (0, 1))
-  category_table = _write_asciidoc_table(
+  category_table = write_asciidoc_table(
       [
         "MASVS-Kategorie",
         "Anforderung",
@@ -1018,7 +965,8 @@ def _render_masvs_tables(
       ],
       scenario_rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,1,1,4a",
+      cols_directive="1,4,3,5a",
+      block_attributes=["[.masvs-categories]"],
   )
 
   requirement_rows: List[List[str]] = []
@@ -1043,7 +991,7 @@ def _render_masvs_tables(
       ", ".join(linked_scenarios) if linked_scenarios else "-",
     ])
 
-  requirement_table = _write_asciidoc_table(
+  requirement_table = write_asciidoc_table(
       [
         "Anforderung",
         "MASVS-Kategorie(n)",
@@ -1053,7 +1001,8 @@ def _render_masvs_tables(
       ],
       requirement_rows,
       disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="1,2,1,1,4a",
+      cols_directive="6,2,^1,^1,7a",
+      block_attributes=["[.masvs-requirements]"],
   )
   summary = {
     "categories": len(categories_seen),
@@ -1079,113 +1028,6 @@ def _masvs_tags_for_requirement(
 def _format_masvs_category(masvs_tag: str) -> str:
   """Render a MASVS tag as its category label."""
   return masvs_tag.removeprefix("MASVS-")
-
-
-def _render_product_gap_summary(summary_counts: Dict[str, int]) -> Tuple[str,
-                                                                         str]:
-  """Render a pie chart and table summarising product vs. test coverage."""
-
-  chart_lines = [MERMAID_THEME_DIRECTIVE, "pie showData"]
-  chart_lines.append(
-      f'  "Umgesetzt & getestet" : {summary_counts["implemented_tested"]}')
-  chart_lines.append("  "
-                     f'"Umgesetzt, Tests fehlen/teilweise" : {summary_counts["implemented_missing_tests"]}'
-                     )
-  chart_lines.append(
-      f'  "Getestet, Umsetzung unklar/nicht" : {summary_counts["tested_but_unimplemented"]}'
-  )
-  chart_lines.append(
-      f'  "Ungetestet & Umsetzung unklar" : {summary_counts["untested_unknown"]}'
-  )
-  chart_lines.append("")
-  chart = "\n".join(chart_lines)
-
-  summary_rows = [
-    ["Umgesetzt & getestet", str(summary_counts["implemented_tested"])],
-    [
-      "Umgesetzt, Tests fehlen/teilweise",
-      str(summary_counts["implemented_missing_tests"])
-    ],
-    [
-      "Getestet, Umsetzung unklar/nicht",
-      str(summary_counts["tested_but_unimplemented"])
-    ],
-    [
-      "Ungetestet & Umsetzung unklar",
-      str(summary_counts["untested_unknown"])
-    ],
-  ]
-  summary_table = _write_asciidoc_table(
-      ["Kategorie", "Anzahl"],
-      summary_rows,
-      disclaimer=ASCIIDOC_DISCLAIMER,
-      cols_directive="2,1",
-      autowidth=True,
-  )
-  return chart, summary_table
-
-
-def _write_asciidoc_table(
-    headers: Sequence[str],
-    rows: Sequence[Sequence[str]],
-    *,
-    disclaimer: Optional[str] = None,
-    cols_directive: str,
-    autowidth: bool = False,
-    block_attributes: Optional[Sequence[str]] = None,
-    row_roles: Optional[Sequence[Optional[str]]] = None,
-) -> str:
-  """Return an Asciidoc table rendered from ``headers`` and ``rows``."""
-  table_body = render_asciidoc_table_body(headers, rows)
-
-  if row_roles:
-    table_body = _inject_row_roles(table_body, row_roles, len(headers))
-
-  prefix_lines: List[str] = []
-  if disclaimer:
-    prefix_lines.append(disclaimer)
-  if block_attributes:
-    prefix_lines.extend(block_attributes)
-  prefix_lines.append(
-      table_block_attributes(cols_directive=cols_directive, autowidth=autowidth))
-
-  content = "\n".join(prefix_lines + [table_body])
-  if not content.endswith("\n"):
-    content += "\n"
-  return content
-
-
-def _inject_row_roles(table_body: str, row_roles: Sequence[Optional[str]],
-                      col_count: int) -> str:
-  """Insert Asciidoc row roles before each data row."""
-  lines = table_body.splitlines()
-  output: List[str] = []
-  data_row_index = 0
-  header_lines_seen = 0
-  in_data = False
-  cols_seen = 0
-
-  for line in lines:
-    if line.startswith("^|"):
-      header_lines_seen += 1
-      output.append(line)
-      continue
-    if not in_data and header_lines_seen >= col_count and line.strip() == "":
-      output.append(line)
-      in_data = True
-      continue
-    if in_data and line.startswith("|"):
-      if cols_seen % col_count == 0 and data_row_index < len(row_roles):
-        role = row_roles[data_row_index]
-        if role:
-          output.append(f"[.{role}]")
-        data_row_index += 1
-      cols_seen += 1
-      output.append(line)
-      continue
-    output.append(line)
-
-  return "\n".join(output)
 
 
 def _suppress_repeated_cells(
@@ -1279,142 +1121,6 @@ def _format_boolean(value: bool) -> str:
   return "ja" if value else "nein"
 
 
-def _format_optional_boolean(value: Optional[object]) -> str:
-  """Render optional boolean-like flags with an explicit unknown state."""
-  if value is None:
-    return "unbekannt"
-  if isinstance(value, str):
-    lowered = value.strip().lower()
-    if lowered in {"ja", "yes", "true"}:
-      return "ja"
-    if lowered in {"nein", "no", "false"}:
-      return "nein"
-    if lowered == "teilweise":
-      return "teilweise"
-  if isinstance(value, bool):
-    return _format_boolean(value)
-  return str(value)
-
-
-def _format_coverage_progress(covered: int, total: int) -> str:
-  """Render coverage as percentage with covered/total counts."""
-  percent = _percentage(covered, total)
-  return f"{percent}% ({covered}/{total})"
-
-
-def _format_ratio_percent(numerator: int, denominator: int) -> str:
-  """Render a ratio with percentage, e.g. ``2/3 (67%)``."""
-  if denominator <= 0:
-    return "0/0 (0%)"
-  value = max(numerator, 0)
-  percent = _percentage(value, denominator)
-  return f"{value}/{denominator} ({percent}%)"
-
-
-def _percentage(numerator: int, denominator: int) -> int:
-  """Return a rounded percentage clamped to 0..100."""
-  if denominator <= 0:
-    return 0
-  return max(0, min(100, int(round((numerator / denominator) * 100))))
-
-
-def _normalise_product_flag(raw_value: str) -> Optional[str]:
-  """Map free-form CSV entries to ``ja``/``nein``/``teilweise``."""
-  value = raw_value.strip().lower()
-  if not value:
-    return None
-  if value in {"ja", "yes", "true", "1", "y"}:
-    return "ja"
-  if value in {"nein", "no", "false", "0", "n"}:
-    return "nein"
-  if value in {"teilweise", "partial", "partially", "teilw."}:
-    return "teilweise"
-  return None
-
-
-def _build_gap_entries(
-    requirements: Dict[str, Requirement],
-    test_aspects: Dict[str, TestAspect],
-    records: Sequence[TraceabilityRecord],
-    product_status: Dict[str, Optional[str]],
-) -> Tuple[List[Dict[str, object]], Dict[str, int]]:
-  """Derive gap entries with coverage labels, statuses and summary counts."""
-  requirement_to_tas: Dict[str, Set[str]] = defaultdict(set)
-  for ta in test_aspects.values():
-    requirement_to_tas[ta.requirement_id].add(ta.test_aspect_id)
-
-  testsuite_coverage: Dict[str, Set[str]] = defaultdict(set)
-  for record in records:
-    if record.implemented:
-      testsuite_coverage[record.requirement_id].add(record.test_aspect_id)
-
-  entries: List[Dict[str, object]] = []
-  summary_counts = {
-    "implemented_tested": 0,
-    "implemented_missing_tests": 0,
-    "tested_but_unimplemented": 0,
-    "untested_unknown": 0,
-  }
-
-  for idx, requirement_id in enumerate(sorted(requirements), start=1):
-    product_flag = product_status.get(requirement_id)
-    tas_total = len(requirement_to_tas.get(requirement_id, set()))
-    tas_covered = len(testsuite_coverage.get(requirement_id, set()))
-
-    if tas_covered == 0:
-      coverage_label = "nein"
-    elif tas_covered < tas_total:
-      coverage_label = "teilweise"
-    else:
-      coverage_label = "ja"
-
-    if product_flag == "ja" and coverage_label == "ja":
-      status = "OK"
-      summary_counts["implemented_tested"] += 1
-    elif product_flag == "ja" and coverage_label == "teilweise":
-      status = "Teilweise getestet"
-      summary_counts["implemented_missing_tests"] += 1
-    elif product_flag == "ja":
-      status = "Tests fehlen"
-      summary_counts["implemented_missing_tests"] += 1
-    elif product_flag == "teilweise" and coverage_label == "ja":
-      status = "Produkt teilweise umgesetzt, Tests vorhanden"
-      summary_counts["tested_but_unimplemented"] += 1
-    elif product_flag == "teilweise" and coverage_label == "teilweise":
-      status = "Produkt teilweise umgesetzt, teilweise getestet"
-      summary_counts["tested_but_unimplemented"] += 1
-    elif product_flag == "teilweise":
-      status = "Produkt teilweise umgesetzt, Tests fehlen"
-      summary_counts["implemented_missing_tests"] += 1
-    elif product_flag == "nein" and coverage_label == "ja":
-      status = "Produkt fehlt (Tests vorhanden)"
-      summary_counts["tested_but_unimplemented"] += 1
-    elif product_flag == "nein" and coverage_label == "teilweise":
-      status = "Produkt fehlt (teilweise getestet)"
-      summary_counts["tested_but_unimplemented"] += 1
-    elif product_flag == "nein":
-      status = "Produkt fehlt & ungetestet"
-      summary_counts["untested_unknown"] += 1
-    elif product_flag is None and coverage_label != "nein":
-      status = "Produkt unbekannt (Tests vorhanden)"
-      summary_counts["tested_but_unimplemented"] += 1
-    else:
-      status = "Keine Angaben"
-      summary_counts["untested_unknown"] += 1
-
-    entries.append({
-      "index": idx,
-      "requirement_id": requirement_id,
-      "product_flag": product_flag,
-      "coverage_label": coverage_label,
-      "status": status,
-      "tas_total": tas_total,
-      "tas_covered": tas_covered,
-    })
-
-  return entries, summary_counts
-
-
 def _dataclass_to_payload(instance, *, path_fields: Tuple[str, ...] = ()) -> \
     Dict[str, object]:
   """Convert dataclass instances into JSON-serialisable dictionaries."""
@@ -1484,7 +1190,7 @@ def _render_coverage_charts(
   implemented_test_aspects = covered_test_aspects & set(test_aspects)
   open_test_aspects = max(total_test_aspects - len(implemented_test_aspects), 0)
   test_aspect_summary = {
-    "implementiert": len(implemented_test_aspects),
+    "getestet": len(implemented_test_aspects),
     "offen": open_test_aspects,
     "gesamt": total_test_aspects,
   }
@@ -1504,7 +1210,7 @@ def _render_coverage_charts(
 
   requirement_pie: List[str] = [
     MERMAID_DISCLAIMER,
-    "%% Anteil der Anforderungen je Abdeckungsstatus basierend auf implementierten Testaspekten.",
+    "%% Anteil der Anforderungen je Abdeckungsstatus basierend auf Testaspekten mit Szenarien.",
     MERMAID_THEME_DIRECTIVE,
     "pie showData",
     '  title Anforderungen nach Abdeckungsstatus',
@@ -1516,27 +1222,27 @@ def _render_coverage_charts(
 
   any_coverage_pie: List[str] = [
     MERMAID_DISCLAIMER,
-    "%% Anteil der Anforderungen mit mindestens einem implementierten Testaspekt.",
+    "%% Anteil der Anforderungen mit mindestens einem getesteten Testaspekt.",
     MERMAID_THEME_DIRECTIVE,
     "pie showData"
   ]
   if requirements_with_any_coverage:
     any_coverage_pie.append(
-        f'  "mindestens ein Testaspekt implementiert" : {requirements_with_any_coverage}'
+        f'  "mindestens ein Testaspekt getestet" : {requirements_with_any_coverage}'
     )
   if requirements_without_any_coverage:
     any_coverage_pie.append(
-        f'  "kein Testaspekt implementiert" : {requirements_without_any_coverage}'
+        f'  "kein Testaspekt getestet" : {requirements_without_any_coverage}'
     )
 
   test_aspect_pie: List[str] = [
     MERMAID_DISCLAIMER,
-    "%% Gegenüberstellung implementierter und offener Testaspekte.",
+    "%% Gegenüberstellung getesteter und offener Testaspekte anhand vorhandener Szenarien.",
     MERMAID_THEME_DIRECTIVE,
     "pie showData",
-    '  title Testaspekte nach Implementierungsstatus',
+    '  title Testaspekte nach Testabdeckung',
   ]
-  for label in ("implementiert", "offen"):
+  for label in ("getestet", "offen"):
     count = test_aspect_summary[label]
     if count:
       test_aspect_pie.append(f'  "{label}" : {count}')
@@ -1552,24 +1258,6 @@ def _render_coverage_charts(
     "requirements_any_coverage": any_coverage_summary,
     "test_aspects": test_aspect_summary,
   }
-
-
-def _write_asciidoc_table_simple(
-    headers: Sequence[str],
-    rows: Sequence[Sequence[str]],
-    *,
-    disclaimer: Optional[str] = None,
-    cols_directive: str,
-    autowidth: bool = False,
-) -> str:
-  """Compatibility wrapper around the canonical Asciidoc table writer."""
-  return _write_asciidoc_table(
-      headers,
-      rows,
-      disclaimer=disclaimer,
-      cols_directive=cols_directive,
-      autowidth=autowidth,
-  )
 
 
 def _format_timestamp_iso(value: Optional[datetime]) -> Optional[str]:

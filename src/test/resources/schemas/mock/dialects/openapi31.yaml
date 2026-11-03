@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info: {title: Dialect regression fixtures, version: '1'}
+paths: {}
+components:
+  schemas:
+    Nullable: {type: [string, 'null']}
+    LegacyNullable: {type: string, nullable: true}
+    RefSibling:
+      $ref: '#/components/schemas/Nullable'
+      enum: [allowed]
+    UnknownDialect:
+      $schema: https://example.invalid/unsupported-dialect
+      type: string

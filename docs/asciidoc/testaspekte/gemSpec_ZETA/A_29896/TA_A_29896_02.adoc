@@ -1,0 +1,6 @@
+[#TA_A_29896_02]
+===== TA_A_29896_02 - Authorization Server – IDP-Authentisierung notwendig, aber nicht hinreichend - Bestehende Registrierung verändern
+
+"Der Authorization Server MUSS sicherstellen, dass eine erfolgreiche Authentisierung des Nutzers gegenüber dem sektoralen IDP allein NICHT ausreicht, um eine bestehende Client-Registrierung zu übernehmen, **zu verändern** oder wiederherzustellen. Jede solche Operation MUSS zusätzlich den Besitz bzw. die Kontrolle mindestens eines bei der Erstnutzung gebundenen Faktors aus {F1, F2} nachweisen (vgl. A_25649).
+
+**[<=]**"

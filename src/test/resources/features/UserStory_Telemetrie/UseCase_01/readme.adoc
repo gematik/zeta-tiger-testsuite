@@ -1,4 +1,4 @@
-[#UseCase_TELEMETRIE_01]
+[#UC_TELEMETRIE_01]
 == UseCase_Telemetrie_01: OpenTelemetry-Basisprüfungen ohne fachlichen Trigger
 
 .UseCase_Telemetrie_01
@@ -13,53 +13,32 @@
 *ZETA Guard*
 
 | Auslöser: |
-Die Testsuite prüft vorhandene Telemetriedaten in OpenSearch ohne vorgelagerten fachlichen End-to-End-Ablauf.
+Die Guard-Komponenten erzeugen Telemetriedaten für ihre Operationen.
 
 | Kurzbeschreibung: |
-Es wird geprüft, dass zentrale ZETA Guard Komponenten OpenTelemetry-konforme Logs bereitstellen und über den Telemetrie-Pfad auffindbar sind.
+Geprüft werden die Konfiguration des OTLP-Protokolls und des Batch-Exports für Traces sowie vorhandene Jaeger-Treffer für ausgewählte Operationen von HTTP Proxy, Authorization Server und Policy Engine.
 
 | Vorbedingung: |
-. OpenSearch ist erreichbar.
-. Prometheus ist erreichbar.
+. Jaeger ist erreichbar.
 . Kubernetes-Zugriff ist für konfigurationsbasierte Telemetrie-Prüfungen verfügbar.
-. Die ZETA Guard Umgebung erzeugt und exportiert Telemetriedaten.
+. In Jaeger sind Traces der geprüften Operationen aus der letzten Stunde verfügbar.
 
 | Nebenbedingung: |
-Nur Testaspekte ohne dedizierten Trigger und ohne passende Zuordnung zu einem fachlichen Use Case werden hier geprüft.
+Der Telemetriedaten-Service ist für die Lieferung an den gematik Telemetriedaten-Service konfiguriert.
 
 | Ablauf: |
-. Die Testsuite prüft die gerenderte Telemetrie-Gateway Collector-Konfiguration auf einen OTLP-gRPC- oder OTLP-HTTP/JSON-Exporter, der von einer Service-Pipeline verwendet wird.
-. Die Testsuite fragt OpenSearch mit komponentenspezifischen Suchkriterien ab.
-. Die Testsuite fragt Jaeger mit komponentenspezifischen Suchkriterien ab.
-. Die Testsuite fragt Prometheus mit komponentenspezifischen Suchkriterien ab.
-. Die Antworten werden auf HTTP-Status und vorhandene Treffer validiert.
+. Die Guard-Komponenten stellen ihre Telemetriedaten dem Telemetriedaten-Service bereit.
+. Der Telemetriedaten-Service liefert die Telemetriedaten asynchron per OTLP-gRPC oder OTLP-HTTP/JSON an den gematik Telemetriedaten-Service.
+. Für Traces verwendet er einen OTLP-Exporter mit eingeschaltetem Batching; Batch-Prozessor und Exporter sind in derselben Trace-Pipeline aktiviert.
+. Die Testsuite fragt Jaeger mit Service, Operation und HTTP-Pfad als Suchkriterien für die letzte Stunde ab.
+. Die Jaeger-Antworten werden auf HTTP-Status 200 und eine vorhandene Trace-ID im ersten Treffer geprüft.
 
 | Nachbedingung: |
-Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifiziert.
+Die Telemetriedaten werden über einen zulässigen OTLP-Exporter geliefert; die Lieferung von Traces verwendet Batching.
+Für jede geprüfte Operation liegt eine erfolgreiche Jaeger-Antwort mit einer Trace-ID vor.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_27261_01>>
-* <<TA_A_27264_01>>
-* <<TA_A_27264_02>>
-* <<TA_A_27264_03>>
-* <<TA_A_27264_04>>
-* <<TA_A_27264_05>>
-* <<TA_A_27264_08>>
-* <<TA_A_27264_09>>
-* <<TA_A_27264_10>>
-* <<TA_A_27264_11>>
-* <<TA_A_27264_12>>
-* <<TA_A_27264_13>>
-* <<TA_A_27264_14>>
-* <<TA_A_27264_17>>
-* <<TA_A_27264_18>>
-* <<TA_A_27264_19>>
-* <<TA_A_27264_20>>
-* <<TA_A_27264_21>>
-* <<TA_A_27264_22>>
-* <<TA_A_27264_23>>
-* <<TA_A_27264_26>>
-* <<TA_A_27264_27>>
 * <<TA_A_27492-02_01>>
 * <<TA_A_27492-02_02>>
 * <<TA_A_27492-02_03>>
@@ -67,10 +46,22 @@ Die grundlegende Verfügbarkeit querschnittlicher Telemetriedaten ist verifizier
 * <<TA_A_27492-02_05>>
 * <<TA_A_27492-02_06>>
 * <<TA_A_27492-02_07>>
-* <<TA_A_27727-01_01>>
-* <<TA_A_27727-01_02>>
+* <<TA_A_27727-02_01>>
+* <<TA_A_27727-02_02>>
 
 |===
+
+[#usecase_telemetrie_01_sequence]
+[mermaid,usecase-telemetrie-01-sequence,svg]
+....
+sequenceDiagram
+    participant Guard as Guard-Komponenten
+    participant Telemetrie as Telemetriedaten-Service
+    participant Gematik as gematik Telemetriedaten-Service
+    Guard->>Telemetrie: Telemetriedaten der Operationen
+    Telemetrie->>Telemetrie: Traces bündeln
+    Telemetrie-->>Gematik: Asynchroner OTLP-Export mit Batching
+....
 
 ifdef::render_features[]
 [.lead]

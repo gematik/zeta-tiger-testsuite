@@ -1,0 +1,4 @@
+[#A_29918]
+==== A_29918 - ZETA Guard – Eigenständige Weiterentwicklung nach Fast‑Path‑Registrierung (akzeptierte Divergenz)
+
+Der ZETA Guard MUSS E-Mail (F1) nach einer Fast-Path-Registrierung eigenständig führen. Eine spätere E-Mail-Änderung (A_29911) an einem Guard DARF NICHT automatisch auf andere Guards übertragen werden; eine Divergenz der E-Mails zwischen den Guards ist zulässig und erwartbar. [<=]

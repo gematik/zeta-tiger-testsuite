@@ -1,0 +1,8 @@
+[#TA_A_29376_04]
+===== TA_A_29376_04 - ZETA, Ablauf Token Exchange mit Attestation - TPM-Quote-Signatur prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 08: Im Windows-/Linux-TPM-Profil prüft der Authorization Server die **Hardware-Signatur der Quote**. Eine ungültige Signatur verhindert Policy-Aufruf und Tokenausgabe; sie wird nicht durch Software-Fallback umgangen.

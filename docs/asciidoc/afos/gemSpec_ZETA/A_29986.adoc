@@ -1,0 +1,4 @@
+[#A_29986]
+==== A_29986 - Notification Service – Eingabevalidierung
+
+Der Notification Service MUSS alle eingehenden Requests gegen das in der OpenAPI definierte Schema validieren (Pflichtfelder, Formate/Pattern für KVNR und Telematik-ID, id_type) und ungültige Requests mit 400 ablehnen. [<=]

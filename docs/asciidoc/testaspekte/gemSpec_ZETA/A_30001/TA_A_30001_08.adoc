@@ -1,0 +1,8 @@
+[#TA_A_30001_08]
+===== TA_A_30001_08 - ZETA, Ablauf Token Revocation - Übergebenes Refresh Token widerrufen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 06: **übergebenes Refresh Token**.

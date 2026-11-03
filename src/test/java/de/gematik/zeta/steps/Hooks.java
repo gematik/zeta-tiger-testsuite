@@ -24,19 +24,22 @@
 
 package de.gematik.zeta.steps;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.glue.HttpGlueCode;
-import de.gematik.test.tiger.lib.TigerHttpClient;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
+import de.gematik.zeta.TigerTestsuiteMain.AuthenticationProfile;
 import de.gematik.zeta.reporting.DeploymentVersionCapture;
+import de.gematik.zeta.services.AslProfile;
+import de.gematik.zeta.services.DeploymentStateRecovery;
+import de.gematik.zeta.services.DirectHttpClients;
+import de.gematik.zeta.services.HelmStateRecovery;
+import de.gematik.zeta.services.PerformanceIngressRoutingService;
 import de.gematik.zeta.services.TestDriverConfigurationService;
 import de.gematik.zeta.services.TestDriverConfigurationServiceFactory;
 import de.gematik.zeta.services.TlsTestToolServiceFactory;
 import de.gematik.zeta.services.ZetaDeploymentConfiguration;
 import de.gematik.zeta.services.ZetaDeploymentModificationService;
 import de.gematik.zeta.services.model.CommandResult;
-import de.gematik.zeta.traceability.TraceabilityLookup;
 import io.cucumber.java.After;
 import io.cucumber.java.AfterAll;
 import io.cucumber.java.Before;
@@ -45,7 +48,6 @@ import io.cucumber.java.Scenario;
 import io.restassured.http.Method;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,31 +60,35 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
-import net.serenitybdd.core.Serenity;
 import org.opentest4j.TestAbortedException;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 /**
- * Injects traceability information into every Serenity scenario report.
+ * Manages scenario preparation, assertions and cleanup hooks.
  */
 @Slf4j
 public class Hooks {
 
-  private static final ObjectMapper JSON = new ObjectMapper();
-  private static final TraceabilityLookup TRACEABILITY = TraceabilityLookup.load();
+  private static final ObjectMapper DRIVER_JSON = new ObjectMapper();
+
   private static final String NO_PROXY_TAG = "@no_proxy";
   private static final String REQUIRE_KUBECTL_TAG = "@require_kubectl";
   private static final String REQUIRE_SIGNING_KEY_TAG = "@require_signing_key";
   private static final String PERFORMANCE_TAG = "@performance";
+  private static final String PERFORMANCE_DIRECT_ROUTING_TAG = "@performance_direct_routing";
   private static final String LONGRUNNING_TAG = "@longrunning";
   private static final String TPM_ENVIRONMENT_TAG = "@tpm_environment";
-  private static final String REQUIRE_OIDC_TESTDRIVER_TAG = "@require_oidc_testdriver";
   private static final String REQUIRE_OIDC_DECRYPTION_KEY_TAG = "@require_oidc_decryption_key";
   private static final String DEPLOYMENT_MODIFICATION_TAG = "@deployment_modification";
   private static final String TLS_CLIENT_FACHDIENST_HOOK_TAG = "@tls_client_fachdienst_hook";
   private static final String TLS_NATIVE_CLIENT_FACHDIENST_HOOK_TAG = "@tls_native_client_fachdienst_hook";
   private static final String RESET_TLS_REVOCATION_CACHE_TAG = "@reset_tls_revocation_cache";
   private static final String OCSP_MOCK_MODE_MODIFIED_TAG = "@ocsp_mock_mode_modified";
-  private static final String RESET_NOTIFICATION_PUSHERS_TAG = "@reset_notification_pushers";
   private static final String TLS_SUBCA_ROOT_TAG = "@tls_subca_root";
   private static final String TLS_TEST_TOOL_URL_CONFIG_KEY = "tlsTestTool.url";
   private static final String TLS_TEST_TOOL_PORT_CONFIG_KEY = "tlsTestTool.port";
@@ -97,9 +103,6 @@ public class Hooks {
   private static final String ALLOW_PERFORMANCE_TESTS_CONFIG_KEY = "allow_performance_tests";
   private static final String ALLOW_LONGRUNNING_TESTS_CONFIG_KEY = "allow_longrunning_tests";
   private static final String TPM_ENVIRONMENT_CONFIG_KEY = "tpm_environment";
-  private static final String TESTDRIVER_DEPLOYMENT_NAME = "testdriver";
-  private static final String TESTDRIVER_AUTH_MODE_ENVIRONMENT_VARIABLE = "AUTH_MODE";
-  private static final String REQUIRED_OIDC_AUTH_MODE = "OIDC";
   private static final ThreadLocal<String> CAPTURED_PEP_ORIGINAL_IMAGE = new ThreadLocal<>();
   private static final ThreadLocal<Map<String, Integer>> CAPTURED_DEPLOYMENT_REPLICAS =
       ThreadLocal.withInitial(HashMap::new);
@@ -109,34 +112,48 @@ public class Hooks {
       ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Boolean> SCENARIO_ABORTED = ThreadLocal.withInitial(() -> false);
   private static final int ORDER_CLEAR_SCENARIO_LIFECYCLE_STATE = Integer.MIN_VALUE;
-  private static final int ORDER_RESTORE_DEPLOYMENT_STATE = ORDER_CLEAR_SCENARIO_LIFECYCLE_STATE + 1;
+  private static final int ORDER_RESTORE_PERFORMANCE_ROUTING = ORDER_CLEAR_SCENARIO_LIFECYCLE_STATE + 1;
+  private static final int ORDER_RESTORE_DEPLOYMENT_STATE = ORDER_RESTORE_PERFORMANCE_ROUTING + 1;
   private static final int ORDER_PREPARE_SOFT_ASSERTIONS = ORDER_RESTORE_DEPLOYMENT_STATE + 1;
-  private static final int ORDER_RESET_TIGER_PROXY_STATE = ORDER_PREPARE_SOFT_ASSERTIONS + 1;
-  private static final int ORDER_CLEAR_RECORDED_MESSAGES = ORDER_RESET_TIGER_PROXY_STATE + 1;
-  private static final int ORDER_PROXY_REQUIREMENT_GUARD = ORDER_CLEAR_RECORDED_MESSAGES + 1;
-  private static final int ORDER_KUBECTL_REQUIREMENT_GUARD = ORDER_PROXY_REQUIREMENT_GUARD + 1;
-  private static final int ORDER_SIGNING_KEY_REQUIREMENT_GUARD = ORDER_KUBECTL_REQUIREMENT_GUARD + 1;
-  private static final int ORDER_PERFORMANCE_REQUIREMENT_GUARD = ORDER_SIGNING_KEY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_RECOVER_PERFORMANCE_ROUTING = ORDER_PREPARE_SOFT_ASSERTIONS + 1;
+  private static final int ORDER_RESET_TIGER_PROXY_STATE = ORDER_RECOVER_PERFORMANCE_ROUTING + 1;
+  private static final int ORDER_PROXY_REQUIREMENT_GUARD = ORDER_RESET_TIGER_PROXY_STATE + 1;
+  private static final int ORDER_CLEAR_RECORDED_MESSAGES = ORDER_PROXY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_DRIVER_PROFILE_GUARD = ORDER_CLEAR_RECORDED_MESSAGES + 1;
+  private static final int ORDER_KUBECTL_REQUIREMENT_GUARD = ORDER_DRIVER_PROFILE_GUARD + 1;
+  private static final int ORDER_PERFORMANCE_REQUIREMENT_GUARD = ORDER_KUBECTL_REQUIREMENT_GUARD + 1;
   private static final int ORDER_TPM_ENVIRONMENT_REQUIREMENT_GUARD = ORDER_PERFORMANCE_REQUIREMENT_GUARD + 1;
-  private static final int ORDER_OIDC_TESTDRIVER_REQUIREMENT_GUARD = ORDER_TPM_ENVIRONMENT_REQUIREMENT_GUARD + 1;
   private static final int ORDER_OIDC_DECRYPTION_KEY_REQUIREMENT_GUARD =
-      ORDER_OIDC_TESTDRIVER_REQUIREMENT_GUARD + 1;
+      ORDER_TPM_ENVIRONMENT_REQUIREMENT_GUARD + 1;
   private static final int ORDER_VERIFY_DEPLOYMENT_MODIFICATION =
       ORDER_OIDC_DECRYPTION_KEY_REQUIREMENT_GUARD + 1;
-  private static final int ORDER_RESET_TLS_REVOCATION_CACHE = ORDER_VERIFY_DEPLOYMENT_MODIFICATION + 1;
+  private static final int ORDER_RESET_MAILCATCHER = ORDER_VERIFY_DEPLOYMENT_MODIFICATION + 1;
+  private static final int ORDER_SIGNING_KEY_REQUIREMENT_GUARD = ORDER_RESET_MAILCATCHER + 1;
+  private static final int ORDER_ENABLE_PERFORMANCE_ROUTING = ORDER_SIGNING_KEY_REQUIREMENT_GUARD + 1;
+  private static final int ORDER_RESET_TLS_REVOCATION_CACHE = ORDER_ENABLE_PERFORMANCE_ROUTING + 1;
   private static final int ORDER_TLS_CLIENT_PRE_HOOK = ORDER_RESET_TLS_REVOCATION_CACHE + 1;
-  private static final int ORDER_APPEND_TRACEABILITY = Integer.MAX_VALUE;
-  private static final int ORDER_VERIFY_SOFT_ASSERTIONS = ORDER_APPEND_TRACEABILITY - 1;
+  private static final int ORDER_VERIFY_SOFT_ASSERTIONS = Integer.MAX_VALUE - 1;
 
+  private static HelmStateRecovery globalHelmRecovery;
   private static ZetaDeploymentModificationService deploymentModificationService = ZetaDeploymentConfiguration.getServiceInstance();
   private static final int ORDER_TLS_CLIENT_POST_HOOK = ORDER_VERIFY_SOFT_ASSERTIONS - 1;
   private static final int ORDER_RESTORE_OCSP_MOCK_MODE = ORDER_TLS_CLIENT_POST_HOOK - 1;
-  private static final int ORDER_RESET_NOTIFICATION_PUSHERS = ORDER_RESTORE_OCSP_MOCK_MODE - 1;
-  private static final String PUSHER_ENDPOINT_CONFIG_KEY = "paths.client.notifications.pushers";
+  // Cucumber runs @After hooks in descending order. Keep the active SDK context for
+  // NotificationLifecycleSteps.cleanup (order 100) before pool cleanup changes identities.
+  private static final int ORDER_RESET_NOTIFICATION_PUSHERS = 99;
+
+  /** Runs the owned OIDC driver reset before scenario lifecycle cleanup releases its lock. */
+  public static final int ORDER_RESET_OWNED_OIDC_DRIVER = ORDER_RESET_NOTIFICATION_PUSHERS - 1;
+
   private final TigerProxyManipulationsSteps tigerProxyManipulationsSteps;
   private final TestDriverConfigurationService testDriverConfigurationService;
   private final SigningKeyPreflight signingKeyPreflight;
   private final OidcDecryptionKeyPreflight oidcDecryptionKeyPreflight;
+  private final NotificationPusherCleanup notificationPusherCleanup;
+  private final PerformanceIngressRoutingService performanceIngressRoutingService;
+  private final ThreadLocal<PerformanceIngressRoutingService.RoutingSnapshot> performanceRoutingSnapshot =
+      new ThreadLocal<>();
+  private final ThreadLocal<Boolean> deploymentCleanupFailed = ThreadLocal.withInitial(() -> false);
 
   /**
    * Creates hooks backed by the default deployment configuration service instance.
@@ -157,17 +174,37 @@ public class Hooks {
   public Hooks(final ZetaDeploymentModificationService injectedDeploymentModificationService,
                final TigerProxyManipulationsSteps tigerProxyManipulationsSteps,
                final TestDriverConfigurationService testDriverConfigurationService) {
+    this(injectedDeploymentModificationService, tigerProxyManipulationsSteps, testDriverConfigurationService,
+        new NotificationPusherCleanup(testDriverConfigurationService));
+  }
+
+  Hooks(final ZetaDeploymentModificationService injectedDeploymentModificationService,
+        final TigerProxyManipulationsSteps tigerProxyManipulationsSteps,
+        final TestDriverConfigurationService testDriverConfigurationService,
+        final NotificationPusherCleanup notificationPusherCleanup) {
+    this.notificationPusherCleanup = notificationPusherCleanup;
     deploymentModificationService = injectedDeploymentModificationService;
     this.tigerProxyManipulationsSteps = tigerProxyManipulationsSteps;
     this.testDriverConfigurationService = testDriverConfigurationService;
+    this.performanceIngressRoutingService =
+        new PerformanceIngressRoutingService(injectedDeploymentModificationService);
     var jwtSteps = new JwtSteps();
     this.signingKeyPreflight = new SigningKeyPreflight(
         tigerProxyManipulationsSteps,
         new TigerProxyAccessTokenExtractor(),
         jwtSteps,
-        new KeycloakSigningKeyResolver(injectedDeploymentModificationService, jwtSteps));
+        new KeycloakSigningKeyResolver(injectedDeploymentModificationService, jwtSteps),
+        new HsmSimulatorSigningKeyResolver(injectedDeploymentModificationService, jwtSteps));
     this.oidcDecryptionKeyPreflight = new OidcDecryptionKeyPreflight(
         new KeycloakOidcDecryptionKeyResolver(injectedDeploymentModificationService));
+  }
+
+  /** Reserves the shared OIDC driver before any scenario hook can reset the proxy. */
+  @Before(order = ORDER_CLEAR_SCENARIO_LIFECYCLE_STATE)
+  public void reserveOidcDriver() {
+    if (AuthenticationProfile.current() == AuthenticationProfile.OIDC) {
+      OidcScenarioContext.acquireDriver();
+    }
   }
 
   /**
@@ -178,22 +215,26 @@ public class Hooks {
   @BeforeAll
   @SuppressWarnings("unused")
   public static void applyGlobalModifications() throws AssertionError {
-    DeploymentVersionCapture.capture(deploymentModificationService);
     verifyGlobalConfiguration();
+    DeploymentVersionCapture.capture(deploymentModificationService);
 
-    CommandResult result = null;
-    if (ZetaDeploymentConfiguration.isAslEnabled()) {
-      var request = ZetaDeploymentConfiguration.getEnableAslRequest();
-      result = deploymentModificationService.enableAsl(request);
+    if (!ZetaDeploymentConfiguration.isDeploymentModificationAllowed()) {
+      return;
     }
-
-    if (ZetaDeploymentConfiguration.isAslDisabled()) {
-      var request = ZetaDeploymentConfiguration.getDisableAslRequest();
-      result = deploymentModificationService.disableAsl(request);
-    }
-
-    if (result != null && result.exitCode() != 0) {
-      throw new AssertionError("Applying global modifications failed: " + formatCommandResult(result));
+    var namespace = ZetaDeploymentConfiguration.getNamespace();
+    new DeploymentStateRecovery(deploymentModificationService, namespace).recoverAbandoned();
+    new PerformanceIngressRoutingService(deploymentModificationService).recoverAbandonedRouting(namespace);
+    new HelmStateRecovery(deploymentModificationService, namespace).recoverAbandoned();
+    if (ZetaDeploymentConfiguration.isAslEnabled() || ZetaDeploymentConfiguration.isAslDisabled()) {
+      var request = ZetaDeploymentConfiguration.isAslEnabled()
+          ? ZetaDeploymentConfiguration.getEnableAslRequest() : ZetaDeploymentConfiguration.getDisableAslRequest();
+      var recovery = new HelmStateRecovery(deploymentModificationService, request, namespace);
+      globalHelmRecovery = recovery;
+      var marker = recovery.begin();
+      var result = deploymentModificationService.deployZetaGuardWithHelmOverrides(request, marker, namespace);
+      if (result.exitCode() != 0) {
+        throw new AssertionError("Applying global modifications failed: " + formatCommandResult(result));
+      }
     }
   }
 
@@ -205,16 +246,12 @@ public class Hooks {
   @AfterAll
   @SuppressWarnings("unused")
   public static void restoreGlobalModifications() throws AssertionError {
-    verifyGlobalConfiguration();
-
-    // only roll back if global modifications were requested
-    if (ZetaDeploymentConfiguration.isAslEnabled() || ZetaDeploymentConfiguration.isAslDisabled()) {
-      var request = ZetaDeploymentConfiguration.getRestoreRequest();
-      var result = deploymentModificationService.restoreOriginalZetaDeployment(request);
-
-      if (result != null && result.exitCode() != 0) {
-        throw new AssertionError("Restoring global modifications failed: " + formatCommandResult(result));
-      }
+    if (globalHelmRecovery != null) {
+      var namespace = ZetaDeploymentConfiguration.getNamespace();
+      new DeploymentStateRecovery(deploymentModificationService, namespace).recoverAbandoned();
+      new PerformanceIngressRoutingService(deploymentModificationService).recoverAbandonedRouting(namespace);
+      globalHelmRecovery.finish();
+      globalHelmRecovery = null;
     }
   }
 
@@ -370,22 +407,55 @@ public class Hooks {
   }
 
   /**
-   * Resets TigerProxy state before each scenario to keep scenarios independent from one another.
+   * Resets TigerProxy manipulations before and after each scenario, including failed scenarios.
+   * Recorded messages remain available for reporting and other cleanup hooks.
    *
-   * <p>If the standalone TigerProxy is not configured or not reachable, the cleanup is skipped so
-   * scenarios tagged {@code @no_proxy} still run unchanged.</p>
+   * <p>If the standalone TigerProxy is not configured, the cleanup is skipped. A configured proxy
+   * must acknowledge both resets; otherwise stale manipulations could affect later scenarios.</p>
    */
   @Before(order = ORDER_RESET_TIGER_PROXY_STATE)
+  @After(order = ORDER_RESET_TIGER_PROXY_STATE)
   public void resetTigerProxyState() {
     tigerProxyManipulationsSteps.resetTigerProxyStateIfAvailable();
   }
 
   /**
-   * Clears RBEL messages before each scenario so scenario assertions only see data created within the scenario itself.
+   * Clears standalone history for proxy scenarios before resetting the local assertion history.
+   *
+   * @param scenario active Cucumber scenario
+   * @throws AssertionError if the required standalone message reset is not acknowledged
    */
   @Before(order = ORDER_CLEAR_RECORDED_MESSAGES)
-  public void clearRecordedMessages() {
+  public void clearRecordedMessages(final Scenario scenario) {
+    if (!isScenarioAborted() && !scenario.getSourceTagNames().contains(NO_PROXY_TAG)) {
+      tigerProxyManipulationsSteps.resetTigerProxyMessagesStrictly();
+    }
     RbelMessageRetriever.getInstance().clearRbelMessages();
+  }
+
+  /** Clears the test mailbox before OIDC setup can request its first OTP. */
+  @Before(order = ORDER_RESET_MAILCATCHER)
+  public void resetMailcatcher() {
+    if (isScenarioAborted() || AuthenticationProfile.current() != AuthenticationProfile.OIDC) {
+      return;
+    }
+    try {
+      var endpoint = URI.create(TigerGlobalConfiguration.resolvePlaceholders(
+          "https://${zeta_base_url}${paths.mailcatcher.messagesPath}"));
+      var client = new RestTemplate(DirectHttpClients.testBackendRequestFactory(Duration.ofSeconds(5)));
+      var deleted = client.exchange(endpoint, HttpMethod.DELETE, HttpEntity.EMPTY, Void.class);
+      if (deleted.getStatusCode().value() != 204) {
+        throw new AssertionError("Mailcatcher reset did not acknowledge deletion with HTTP 204.");
+      }
+      var body = client.getForObject(endpoint, String.class);
+      var messages = body == null ? null : DRIVER_JSON.readTree(body);
+      if (messages == null || !messages.isArray() || !messages.isEmpty()) {
+        throw new AssertionError("Mailcatcher reset did not leave an empty mailbox.");
+      }
+      log.info("Mailcatcher reset acknowledged and empty mailbox verified.");
+    } catch (RuntimeException failure) {
+      throw new AssertionError("Mailcatcher reset failed before OIDC scenario setup.", failure);
+    }
   }
 
   /**
@@ -424,7 +494,7 @@ public class Hooks {
   /**
    * Skip kubectl-dependent scenarios unless kubectl and cluster access are available.
    */
-  @Before(order = ORDER_KUBECTL_REQUIREMENT_GUARD)
+  @Before(value = REQUIRE_KUBECTL_TAG, order = ORDER_KUBECTL_REQUIREMENT_GUARD)
   public void skipIfKubectlMissing(final Scenario scenario) {
     if (scenario == null || !scenario.getSourceTagNames().contains(REQUIRE_KUBECTL_TAG)) {
       return;
@@ -448,14 +518,70 @@ public class Hooks {
       log.warn("{} (scenario: '{}', namespace='{}')", reason, scenario.getName(), namespace, e);
       abortScenario(reason);
     }
+
+    if (scenario.getSourceTagNames().contains("@smb")) {
+      verifyDriverRuntime(AuthenticationProfile.SMB);
+    } else if (scenario.getSourceTagNames().contains("@oidc")) {
+      verifyDriverRuntime(AuthenticationProfile.OIDC);
+    }
+  }
+
+  /** Verifies the configured authentication mode for SMC-B scenarios. */
+  @Before(value = "@smb", order = ORDER_DRIVER_PROFILE_GUARD)
+  public void verifySmbProfile() {
+    verifyProfile(AuthenticationProfile.SMB);
+  }
+
+  /** Verifies the configured authentication mode for OIDC scenarios. */
+  @Before(value = "@oidc", order = ORDER_DRIVER_PROFILE_GUARD)
+  public void verifyOidcProfile() {
+    verifyProfile(AuthenticationProfile.OIDC);
   }
 
   /**
-   * Verifies the signing key required by a scenario and skips only when local and Keycloak fallback
+   * Checks the selected client configuration unless an earlier hook aborted the scenario.
+   *
+   * @param profile authentication mode required by the scenario
+   */
+  private void verifyProfile(final AuthenticationProfile profile) {
+    if (!isScenarioAborted()) {
+      profile.verifyConfiguredMode(TigerGlobalConfiguration.readStringOptional("paths.client.authMode")
+          .map(TigerGlobalConfiguration::resolvePlaceholders).orElse(null));
+    }
+  }
+
+  /**
+   * Verifies the selected driver's declared runtime authentication mode.
+   *
+   * @param profile authentication mode required by the scenario
+   * @throws AssertionError if the selected deployment or its authentication mode is inconsistent
+   */
+  private void verifyDriverRuntime(final AuthenticationProfile profile) {
+    var deployment = driverConfigurationValue("paths.client", "deploymentName");
+    var container = driverConfigurationValue("paths.client", "containerName");
+    var result = deploymentModificationService.executeKubectlCommand(false,
+        "-n", ZetaDeploymentConfiguration.getNamespace(), "get", "deployment", deployment, "-o", "json");
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Cannot observe the SDK authentication profile");
+    }
+    var containers = DRIVER_JSON.readTree(result.stdout()).at("/spec/template/spec/containers")
+        .valueStream().filter(value -> container.equals(value.path("name").asString())).toList();
+    if (containers.size() != 1) {
+      throw new AssertionError("Ambiguous testdriver runtime profile");
+    }
+    var modes = containers.getFirst().path("env").valueStream()
+        .filter(value -> "AUTH_MODE".equals(value.path("name").asString())).toList();
+    if (modes.size() != 1 || !profile.name().equals(modes.getFirst().path("value").asString())) {
+      throw new AssertionError("This scenario requires the " + profile + " SDK profile in the selected deployment");
+    }
+  }
+
+  /**
+   * Verifies the signing key required by a scenario and skips only when local and configured fallback
    * resolution both fail.
    *
    * <p>The local check deliberately uses the existing testclient request and JWT verification glue.
-   * The fallback uses the existing Java kubectl service to resolve the active Keycloak key and
+   * The fallback uses the existing Java kubectl service to read the database or test simulator key and
    * stores it at the configured path for the scenario's TigerProxy manipulation.</p>
    *
    * @param scenario active Cucumber scenario
@@ -466,7 +592,7 @@ public class Hooks {
     try {
       signingKeyPreflight.ensureAvailable();
     } catch (AssertionError | RuntimeException e) {
-      reason = "Skipping: configured signing key is invalid or the Keycloak signing-key fallback is unavailable";
+      reason = "Skipping: signing-key preflight failed: " + e.getMessage();
       log.warn("{} (scenario: '{}')", reason, scenario.getName(), e);
     } finally {
       tigerProxyManipulationsSteps.resetTigerProxyStateIfAvailable();
@@ -528,90 +654,6 @@ public class Hooks {
   }
 
   /**
-   * Skips OIDC scenarios when the deployed testdriver is not configured for OIDC.
-   *
-   * <p>The Helm value documented by the OIDC MR is {@code testdriver.authMode=OIDC}; the
-   * deployed testdriver exposes that value as the {@code AUTH_MODE} environment variable.
-   * Reading the deployment template makes this guard validate the actual deployment rather
-   * than a local test-suite assumption.</p>
-   *
-   * @param scenario active Cucumber scenario
-   */
-  @Before(value = REQUIRE_OIDC_TESTDRIVER_TAG, order = ORDER_OIDC_TESTDRIVER_REQUIREMENT_GUARD)
-  public void skipIfTestdriverIsNotConfiguredForOidc(final Scenario scenario) {
-    if (scenario == null) {
-      return;
-    }
-
-    String namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
-        .map(TigerGlobalConfiguration::resolvePlaceholders)
-        .orElse("");
-    if (namespace.isBlank()) {
-      String reason = "Skipping: OIDC testdriver guard requires a configured Kubernetes namespace";
-      scenario.log(reason);
-      abortScenario(reason);
-    }
-
-    CommandResult result;
-    try {
-      result = deploymentModificationService.executeKubectlCommand(
-          false,
-          "-n", namespace,
-          "get", "deployment", TESTDRIVER_DEPLOYMENT_NAME,
-          "-o", "json");
-    } catch (AssertionError | RuntimeException e) {
-      String reason = "Skipping: OIDC testdriver guard could not read the deployed testdriver configuration";
-      scenario.log(reason);
-      log.warn("{} (namespace='{}', deployment='{}')", reason, namespace, TESTDRIVER_DEPLOYMENT_NAME, e);
-      abortScenario(reason);
-      return;
-    }
-
-    String deploymentJson = result.stdout() == null ? "" : result.stdout().trim();
-    if (result.exitCode() != 0 || deploymentJson.isBlank()) {
-      String reason = "Skipping: OIDC testdriver guard could not read AUTH_MODE from deployment '"
-          + TESTDRIVER_DEPLOYMENT_NAME + "'";
-      scenario.log(reason);
-      log.warn("{} (namespace='{}', exitCode={}, stderr='{}')", reason, namespace, result.exitCode(), result.stderr());
-      abortScenario(reason);
-      return;
-    }
-
-    String actualAuthMode;
-    try {
-      actualAuthMode = testdriverEnvironmentValue(
-          deploymentJson, TESTDRIVER_AUTH_MODE_ENVIRONMENT_VARIABLE);
-    } catch (AssertionError | RuntimeException e) {
-      String reason = "Skipping: OIDC testdriver guard could not parse deployment '"
-          + TESTDRIVER_DEPLOYMENT_NAME + "'";
-      scenario.log(reason);
-      log.warn("{} (namespace='{}')", reason, namespace, e);
-      abortScenario(reason);
-      return;
-    }
-
-    if (actualAuthMode.isBlank()) {
-      String reason = "Skipping: OIDC testdriver guard could not read AUTH_MODE from deployment '"
-          + TESTDRIVER_DEPLOYMENT_NAME + "'";
-      scenario.log(reason);
-      log.warn("{} (namespace='{}')", reason, namespace);
-      abortScenario(reason);
-      return;
-    }
-
-    if (!REQUIRED_OIDC_AUTH_MODE.equalsIgnoreCase(actualAuthMode)) {
-      String reason = "Skipping: deployed testdriver AUTH_MODE is '" + actualAuthMode
-          + "' but OIDC scenarios require '" + REQUIRED_OIDC_AUTH_MODE + "'";
-      scenario.log(reason);
-      log.warn("{} (namespace='{}', deployment='{}')", reason, namespace, TESTDRIVER_DEPLOYMENT_NAME);
-      abortScenario(reason);
-    }
-
-    log.info("OIDC testdriver guard passed: deployment '{}' uses AUTH_MODE={}.",
-        TESTDRIVER_DEPLOYMENT_NAME, actualAuthMode);
-  }
-
-  /**
    * Loads the PDP Authorization Server's OIDC decryption key into RBEL before protocol traffic starts.
    *
    * @param scenario active Cucumber scenario
@@ -634,33 +676,39 @@ public class Hooks {
   }
 
   /**
-   * Reads one environment variable from the testdriver container in a Kubernetes deployment.
+   * Resolves a required Kubernetes identity from the same configuration prefix as the driver's URLs.
    *
-   * @param deploymentJson Kubernetes deployment JSON
-   * @param environmentVariableName environment variable to read from the testdriver container
-   * @return environment variable value, or an empty string when the container or variable is absent
+   * @param pathPrefix configuration prefix of the selected regular or native driver
+   * @param setting name of the deployment or container setting
+   * @return nonblank configured Kubernetes identity
    */
-  private String testdriverEnvironmentValue(
-      final String deploymentJson, final String environmentVariableName) {
-    try {
-      var containers = JSON.readTree(deploymentJson)
-          .path("spec")
-          .path("template")
-          .path("spec")
-          .path("containers");
-      for (var container : containers) {
-        if (!TESTDRIVER_DEPLOYMENT_NAME.equals(container.path("name").asText())) {
-          continue;
-        }
-        for (var environmentVariable : container.path("env")) {
-          if (environmentVariableName.equals(environmentVariable.path("name").asText())) {
-            return environmentVariable.path("value").asText("").trim();
-          }
-        }
-      }
-      return "";
-    } catch (IOException e) {
-      throw new AssertionError("Could not parse the deployed testdriver configuration.", e);
+  private String driverConfigurationValue(final String pathPrefix, final String setting) {
+    String key = pathPrefix + "." + setting;
+    return TigerGlobalConfiguration.readStringOptional(key)
+        .map(TigerGlobalConfiguration::resolvePlaceholders)
+        .map(String::trim)
+        .filter(value -> !value.isEmpty())
+        .orElseThrow(() -> new AssertionError("Missing driver configuration " + key + "."));
+  }
+
+  /** Selects ASL profiles unless an earlier prerequisite hook already aborted the scenario. */
+  @Before(value = "@asl_off or @asl_pep or @asl_rs", order = ORDER_VERIFY_DEPLOYMENT_MODIFICATION)
+  public void selectAslProfile(final Scenario scenario) {
+    if (isScenarioAborted()) {
+      return;
+    }
+    String requested = AslProfile.selectedTag(new HashSet<>(scenario.getSourceTagNames()));
+    String active = AslProfile.activeTag();
+    scenario.log("ASL resource profile: requested=" + requested + ", advertised=" + active);
+    if (!active.equals(requested)) {
+      abortScenario("Profile mismatch: " + requested + " requires a different advertised ASL mode than " + active);
+    }
+    if ("@asl_rs".equals(requested)) {
+      TigerGlobalConfiguration.readStringOptional("asl.rs.upstreamHost")
+          .map(TigerGlobalConfiguration::resolvePlaceholders)
+          .filter(host -> !host.isBlank())
+          .orElseThrow(() -> new AssertionError(
+              "RS ASL profile requires asl.rs.upstreamHost and a distinct recorded PEP-to-RS hop"));
     }
   }
 
@@ -707,6 +755,41 @@ public class Hooks {
       log.error("Unexpected error while verifying deployment modification requirements", e);
       abortScenario(reason);
     }
+    new DeploymentStateRecovery(deploymentModificationService, namespace).attach();
+  }
+
+  /**
+   * Routes PEP, PDP, and performance WebSocket traffic directly to their Kubernetes services.
+   *
+   * <p>The matching after hook restores the captured ingress state even when the scenario fails.</p>
+   *
+   * @param scenario active Cucumber scenario
+   */
+  @Before(value = PERFORMANCE_DIRECT_ROUTING_TAG, order = ORDER_ENABLE_PERFORMANCE_ROUTING)
+  public void enableDirectPerformanceRouting(final Scenario scenario) {
+    if (!TigerGlobalConfiguration.readBooleanOptional("allow_deployment_modification").orElse(false)) {
+      throw new AssertionError("Direct routing requires allow_deployment_modification=true.");
+    }
+    var namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
+        .orElseThrow(() -> new AssertionError(
+            "Kubernetes namespace is required for direct performance routing."));
+    performanceRoutingSnapshot.set(performanceIngressRoutingService.enableDirectRouting(namespace));
+    scenario.log("Performance ingress and PEP upstreams temporarily bypass TigerProxy in namespace '"
+        + namespace + "'.");
+  }
+
+  /** Recovers abandoned routing changes before proxy cleanup or scenario requests. */
+  @Before(order = ORDER_RECOVER_PERFORMANCE_ROUTING)
+  public void recoverAbandonedPerformanceRouting() {
+    if (!TigerGlobalConfiguration.readBooleanOptional("allow_deployment_modification").orElse(false)) {
+      return;
+    }
+    TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
+        .filter(namespace -> !namespace.isBlank())
+        .ifPresent(namespace -> {
+          new DeploymentStateRecovery(deploymentModificationService, namespace).recoverAbandoned();
+          performanceIngressRoutingService.recoverAbandonedRouting(namespace);
+        });
   }
 
   /**
@@ -762,6 +845,7 @@ public class Hooks {
   /**
    * Restarts the selected TLS client driver before cache-sensitive revocation scenarios so each scenario starts without revocation state
    * retained by an earlier scenario or test run.
+   * The driver identity comes from the same client configuration as the scenario's request URLs.
    *
    * @param scenario active Cucumber scenario
    */
@@ -783,9 +867,10 @@ public class Hooks {
         .orElseThrow(() -> new AssertionError("Missing configuration zetaDeploymentConfig.namespace."));
     var readinessTimeout = TigerGlobalConfiguration.readIntegerOptional("zetaDeploymentConfig.podReadyTimeout")
         .orElseThrow(() -> new AssertionError("Missing configuration zetaDeploymentConfig.podReadyTimeout."));
-    var deploymentName = scenario.getSourceTagNames().contains(TLS_NATIVE_CLIENT_FACHDIENST_HOOK_TAG)
-        ? "nativedriver"
-        : "testdriver";
+    var pathPrefix = scenario.getSourceTagNames().contains(TLS_NATIVE_CLIENT_FACHDIENST_HOOK_TAG)
+        ? "paths.nativeClient"
+        : "paths.client";
+    var deploymentName = driverConfigurationValue(pathPrefix, "deploymentName");
 
     try {
       deploymentModificationService.restartPod(namespace, deploymentName, true, readinessTimeout);
@@ -800,27 +885,7 @@ public class Hooks {
   }
 
   /**
-   * Append the traceability table after each scenario has finished.
-   *
-   * @param scenario active Cucumber scenario
-   */
-  @After(order = ORDER_APPEND_TRACEABILITY)
-  public void attachTraceability(final Scenario scenario) {
-    if (scenario == null) {
-      return;
-    }
-    TRACEABILITY.buildReport(scenario.getName(), scenario.getSourceTagNames())
-        .ifPresent(markdown -> {
-          log.debug("Adding traceability block to scenario '{}'", scenario.getName());
-          Serenity.recordReportData()
-              .withTitle("Traceability")
-              .andContents(markdown);
-        });
-  }
-
-  /**
-   * Verifies all collected soft assertions at the very end of the scenario lifecycle. Runs after the traceability appendix so the report is
-   * always populated even when soft assertions fail.
+   * Verifies all collected soft assertions for the current scenario.
    */
   @After(order = ORDER_VERIFY_SOFT_ASSERTIONS)
   public void verifySoftAssertions() {
@@ -831,140 +896,61 @@ public class Hooks {
   }
 
   /**
+   * Restores routing state captured for a direct performance scenario.
+   *
+   * @param scenario active Cucumber scenario
+   */
+  @After(value = PERFORMANCE_DIRECT_ROUTING_TAG, order = ORDER_RESTORE_PERFORMANCE_ROUTING)
+  public void restorePerformanceRouting(final Scenario scenario) {
+    var snapshot = performanceRoutingSnapshot.get();
+    if (snapshot == null) {
+      log.debug("Performance ingress restore skipped because no routing snapshot was captured.");
+      return;
+    }
+    if (deploymentCleanupFailed.get()) {
+      performanceIngressRoutingService.deferRestoration();
+      scenario.log("Routing restoration deferred until deployment recovery succeeds; both backups retained.");
+      return;
+    }
+
+    try {
+      performanceIngressRoutingService.restore(snapshot);
+      scenario.log("Original performance routing restored in namespace '"
+          + snapshot.namespace() + "'.");
+    } finally {
+      performanceRoutingSnapshot.remove();
+    }
+  }
+
+  /**
    * Ensures modifications to the Zeta Guard deployment are restored to their original state after scenarios finish.
    *
    * @param scenario active Cucumber scenario
    */
   @After(order = ORDER_RESTORE_DEPLOYMENT_STATE)
   public void restoreDeploymentModifications(final Scenario scenario) {
-    if (scenario == null) {
-      return;
-    }
-
-    if (!scenario.getSourceTagNames().contains(DEPLOYMENT_MODIFICATION_TAG)) {
-      log.debug("Restore deployment modification: skipping because {} tag was not found", DEPLOYMENT_MODIFICATION_TAG);
-      return;
-    }
-
-    if (!TigerGlobalConfiguration.readBooleanOptional("allow_deployment_modification")
-        .orElse(false)) {
-      log.warn("Restore deployment modification: skipping because deployment modification is not allowed");
-      return;
-    }
-
-    String namespace = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.namespace")
-        .orElse("");
-
-    if (namespace.isBlank()) {
-      log.warn("Restore deployment modification: could not restore original Zeta deployment because"
-          + " namespace is not configured");
-      return;
-    }
-
-    String pepNginxConfigMapName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.nginx.configMapName")
-        .orElse("");
-    boolean restoredAnyConfigMap = false;
-    Set<String> capturedConfigMapBackups = getCapturedConfigMapBackups();
-    if (pepNginxConfigMapName.isBlank()) {
-      log.warn("Restore deployment modification: could not restore original Zeta deployment because"
-          + " zetaDeploymentConfig.pep.nginx.configMapName is not configured");
-    } else if (!capturedConfigMapBackups.contains(pepNginxConfigMapName)) {
-      log.debug("Restore deployment modification: skipping nginx restore because no backup was captured for {} in this scenario",
-          pepNginxConfigMapName);
-    } else if (!deploymentModificationService.hasConfigMapBackup(namespace, pepNginxConfigMapName)) {
-      log.debug("Restore deployment modification: skipping nginx restore because no backup exists for {}",
-          pepNginxConfigMapName);
-    } else {
-      try {
-        var restoreResult = deploymentModificationService.restoreConfigMapBackup(namespace, pepNginxConfigMapName);
-        if (restoreResult.exitCode() == 0) {
-          deploymentModificationService.deleteConfigMapBackup(namespace, pepNginxConfigMapName);
-          restoredAnyConfigMap = true;
-        } else {
-          log.warn("Restore deployment modification: could not restore nginx ConfigMap backup for '{}': {}",
-              pepNginxConfigMapName, restoreResult.stderr());
-        }
-      } catch (Exception e) {
-        log.error("Restore deployment modification: could not restore original nginx config in Zeta deployment because "
-            + "an unexpected error occurred", e);
+    var recovery = DeploymentStateRecovery.current();
+    if (recovery == null) {
+      if (!getCapturedConfigMapBackups().isEmpty() || !CAPTURED_DEPLOYMENT_REPLICAS.get().isEmpty()
+          || !CAPTURED_DEPLOYMENT_STRATEGIES.get().isEmpty() || getCapturedPepOriginalImage().isPresent()) {
+        deploymentCleanupFailed.set(true);
+        throw new AssertionError("Deployment changes were recorded without a durable recovery session; backups retained");
       }
-    }
-
-    for (Map.Entry<String, Integer> entry : CAPTURED_DEPLOYMENT_REPLICAS.get().entrySet()) {
-      try {
-        var scaleResult =
-            deploymentModificationService.scaleDeployment(namespace, entry.getKey(), entry.getValue());
-        if (scaleResult.exitCode() != 0) {
-          log.warn("Restore deployment modification: could not restore replica count for deployment '{}' to {}: {}",
-              entry.getKey(), entry.getValue(), scaleResult.stderr());
-        } else {
-          log.info("Restore deployment modification: restored deployment '{}' to {} replicas",
-              entry.getKey(), entry.getValue());
-        }
-      } catch (Exception e) {
-        log.warn("Restore deployment modification: could not restore replica count for deployment '{}' to {}",
-            entry.getKey(), entry.getValue(), e);
-      }
-    }
-
-    for (Map.Entry<String, String> entry : CAPTURED_DEPLOYMENT_STRATEGIES.get().entrySet()) {
-      try {
-        var strategyResult =
-            deploymentModificationService.setDeploymentStrategy(namespace, entry.getKey(), entry.getValue());
-        if (strategyResult.exitCode() != 0) {
-          log.warn("Restore deployment modification: could not restore strategy for deployment '{}': {}",
-              entry.getKey(), strategyResult.stderr());
-        } else {
-          log.info("Restore deployment modification: restored strategy for deployment '{}'",
-              entry.getKey());
-        }
-      } catch (Exception e) {
-        log.warn("Restore deployment modification: could not restore strategy for deployment '{}'",
-            entry.getKey(), e);
-      }
-    }
-
-    boolean restoredPepDeploymentImageWithRollout = false;
-    if (getCapturedPepOriginalImage().isPresent()) {
-      restoredPepDeploymentImageWithRollout = restorePepDeploymentImage(namespace);
-    } else {
-      log.debug("Restore deployment modification: skipping PEP image restore because this scenario did not change the image");
-    }
-
-    // since current modifications are only related to PEP HTTP proxy, it's ok to restart only once for both restores
-    // TODO: requires refactoring once different / more modifications are implemented
-    var podName = TigerGlobalConfiguration.readStringOptional("zetaDeploymentConfig.pep.podName").orElse("");
-
-    if (restoredPepDeploymentImageWithRollout) {
-      log.debug("Restore deployment modification: skipping explicit PEP pod restart because image restore already triggered a rollout");
-    } else if (!restoredAnyConfigMap) {
-      log.debug("Restore deployment modification: skipping PEP pod restart because no ConfigMap backup was restored");
-    } else if (podName.isBlank()) {
-      log.warn("Restore deployment modification: could not restart PEP pod because pod name is not set "
-          + "(expected at: zetaDeploymentConfig.pep.podName)");
-    } else {
-      try {
-        deploymentModificationService.restartPod(namespace, podName, true,
-            deploymentModificationService.getPodReadyTimeoutSeconds());
-      } catch (InterruptedException e) {
-        log.warn("Restore deployment modification: could not restart PEP pod after restoring due to an Interrupted Exception.", e);
-      } catch (TimeoutException e) {
-        log.warn("Restore deployment modification: could not restart PEP pod after restoring due to a Timeout Exception.", e);
-      }
-    }
-
-    String url = TigerGlobalConfiguration.readStringOptional("paths.client.reset").orElse(null);
-    if (url == null) {
-      log.warn("Restore deployment modification: could not issue client reset because "
-          + "client URL not set (expected at: paths.client.reset)");
       return;
     }
-
     try {
-      new HttpGlueCode().sendEmptyRequest(Method.GET, new URI(url));
-    } catch (Exception e) {
-      log.error("Restore deployment modification: could not issue client reset because "
-          + "an unexpected error occurred while sending request", e);
+      recovery.finish();
+    } catch (RuntimeException | AssertionError exception) {
+      deploymentCleanupFailed.set(true);
+      throw exception;
+    }
+    var url = TigerGlobalConfiguration.readStringOptional("paths.client.reset").orElse(null);
+    if (url != null) {
+      try {
+        new HttpGlueCode().sendEmptyRequest(Method.GET, new URI(url));
+      } catch (Exception exception) {
+        throw new AssertionError("Deployment restored, but client reset failed", exception);
+      }
     }
   }
 
@@ -1077,14 +1063,15 @@ public class Hooks {
     }
 
     try {
-      new HttpGlueCode().sendRequestWithMultiLineBody(
-          Method.POST,
-          resolveOcspMockAdminUri(),
-          "application/json",
-          "{\"mode\":\"always_good\",\"thisUpdateOffsetSeconds\":0,"
-              + "\"nextUpdateOffsetSeconds\":43200,\"includeNextUpdate\":true,"
-              + "\"responseVariant\":\"normal\",\"ocspAvailable\":true,"
-              + "\"crlAvailable\":true}");
+      var requestFactory = DirectHttpClients.requestFactory(Duration.ofSeconds(10));
+      var headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      var body = "{\"mode\":\"always_good\",\"thisUpdateOffsetSeconds\":0,"
+          + "\"nextUpdateOffsetSeconds\":43200,\"includeNextUpdate\":true,"
+          + "\"responseVariant\":\"normal\",\"ocspAvailable\":true,"
+          + "\"crlAvailable\":true}";
+      new RestTemplate(requestFactory).exchange(resolveOcspMockAdminUri(), HttpMethod.POST,
+          new HttpEntity<>(body, headers), Void.class);
       log.info("OCSP mock post hook: restored mode 'always_good' after scenario '{}'.", scenario.getName());
     } catch (Exception e) {
       var message = "OCSP mock post hook: could not restore mode 'always_good' after scenario '"
@@ -1095,103 +1082,39 @@ public class Hooks {
   }
 
   /**
-   * Removes every pusher returned for the current client after a tagged scenario.
-   * Cleanup is best effort so an unavailable cleanup endpoint does not mask the original scenario result.
+   * Cleans every pool identity, including secondary identities and partly failed setup attempts.
+   * Runs without a tag so a missing feature tag cannot leak a reserved identity.
    *
-   * @param scenario completed Cucumber scenario
+   * @param scenario completed scenario receiving cleanup diagnostics
    */
-  @After(value = RESET_NOTIFICATION_PUSHERS_TAG, order = ORDER_RESET_NOTIFICATION_PUSHERS)
+  @After(order = ORDER_RESET_NOTIFICATION_PUSHERS)
   public void resetNotificationPushers(final Scenario scenario) {
-    var configuredEndpoint = TigerGlobalConfiguration.readStringOptional(PUSHER_ENDPOINT_CONFIG_KEY)
-        .map(TigerGlobalConfiguration::resolvePlaceholders)
-        .orElse(null);
-    if (configuredEndpoint == null || configuredEndpoint.isBlank()) {
-      var message = "Push notification cleanup: endpoint is not configured at '"
-          + PUSHER_ENDPOINT_CONFIG_KEY + "'.";
-      scenario.log(message);
-      log.warn(message);
+    var identities = OidcScenarioContext.identities();
+    if (identities.isEmpty()) {
       return;
     }
-
-    List<Map<String, Object>> registeredPushers;
-    try {
-      var response = TigerHttpClient.givenDefaultSpec().request(Method.GET, URI.create(configuredEndpoint));
-      if (!isSuccessfulResponse(response.statusCode())) {
-        var message = "Push notification cleanup: listing registered pushers returned HTTP "
-            + response.statusCode() + ".";
-        scenario.log(message);
-        log.warn(message);
-        return;
-      }
-      registeredPushers = response.jsonPath().getList("$");
-    } catch (Exception e) {
-      var message = "Push notification cleanup: could not list registered pushers.";
-      scenario.log(message);
-      log.warn(message, e);
-      return;
-    }
-
-    if (registeredPushers == null) {
-      var message = "Push notification cleanup: registered pusher response is not a JSON array.";
-      scenario.log(message);
-      log.warn(message);
-      return;
-    }
-
-    for (var registeredPusher : registeredPushers) {
-      var pushkeyValue = registeredPusher.get("pushkey");
-      var appIdValue = registeredPusher.get("app_id");
-      if (!(pushkeyValue instanceof String pushkey) || pushkey.isBlank()
-          || !(appIdValue instanceof String appId) || appId.isBlank()) {
-        var message = "Push notification cleanup: skipping a registered pusher without pushkey or app_id.";
-        scenario.log(message);
-        log.warn(message);
-        continue;
-      }
-
+    var failure = new AssertionError("Notification pool cleanup was incomplete.");
+    for (var identity : identities) {
+      boolean clean = false;
       try {
-        var deleteUri = notificationPusherDeleteUri(configuredEndpoint, pushkey, appId);
-        var response = TigerHttpClient.givenDefaultSpec().request(Method.DELETE, deleteUri);
-        if (!isSuccessfulResponse(response.statusCode())) {
-          var message = "Push notification cleanup: deleting pusher '" + pushkey + "' for appId '" + appId
-              + "' returned HTTP " + response.statusCode() + ".";
-          scenario.log(message);
-          log.warn(message);
-        } else {
-          log.info("Push notification cleanup: deleted pusher '{}' for appId '{}'.", pushkey, appId);
-        }
-      } catch (Exception e) {
-        var message = "Push notification cleanup: could not delete pusher '" + pushkey
-            + "' for appId '" + appId + "'.";
-        scenario.log(message);
-        log.warn(message, e);
+        notificationPusherCleanup.clean(identity.reservation());
+        clean = true;
+        scenario.log("Cleaned notification KVNR " + identity.reservation().kvnr());
+      } catch (RuntimeException | AssertionError e) {
+        scenario.log("Notification KVNR remains quarantined: " + identity.reservation().kvnr());
+        failure.addSuppressed(e);
+      } finally {
+        identity.finish(clean);
       }
     }
-  }
-
-  /**
-   * Builds the client pusher deletion URI with encoded identifiers.
-   *
-   * @param endpoint configured pusher collection endpoint
-   * @param pushkey registered pusher key
-   * @param appId registered application identifier
-   * @return deletion URI for the registered pusher
-   */
-  private URI notificationPusherDeleteUri(final String endpoint, final String pushkey, final String appId) {
-    var querySeparator = endpoint.contains("?") ? "&" : "?";
-    return URI.create(endpoint + querySeparator
-        + "pushkey=" + URLEncoder.encode(pushkey, StandardCharsets.UTF_8)
-        + "&appId=" + URLEncoder.encode(appId, StandardCharsets.UTF_8));
-  }
-
-  /**
-   * Checks whether an HTTP response indicates successful cleanup processing.
-   *
-   * @param responseCode HTTP status code
-   * @return {@code true} for a 2xx response
-   */
-  private boolean isSuccessfulResponse(final int responseCode) {
-    return responseCode >= 200 && responseCode < 300;
+    try {
+      testDriverConfigurationService.reset();
+    } catch (RuntimeException | AssertionError e) {
+      failure.addSuppressed(e);
+    }
+    if (failure.getSuppressed().length > 0) {
+      throw failure;
+    }
   }
 
   /**
@@ -1266,13 +1189,16 @@ public class Hooks {
    */
   @After(order = ORDER_CLEAR_SCENARIO_LIFECYCLE_STATE)
   public void clearScenarioLifecycleState() {
+    deploymentCleanupFailed.remove();
     clearCapturedPepOriginalImage();
     clearCapturedDeploymentReplicaCounts();
     clearCapturedDeploymentStrategies();
     clearCapturedConfigMapBackups();
+    performanceRoutingSnapshot.remove();
     clearScenarioAborted();
     SoftAssertionsContext.reset();
     ReportAttachments.clearCurrentScenario();
+    OidcScenarioContext.clear();
   }
 
   /**
@@ -1316,6 +1242,9 @@ public class Hooks {
    * @throws AssertionError if the current configuration is invalid
    */
   private static void verifyGlobalConfiguration() throws AssertionError {
+    AuthenticationProfile.current().verifyConfiguredMode(
+        TigerGlobalConfiguration.readStringOptional("paths.client.authMode")
+            .map(TigerGlobalConfiguration::resolvePlaceholders).orElse(null));
     boolean isModificationAllowed = ZetaDeploymentConfiguration.isDeploymentModificationAllowed();
     boolean isAslEnabled = ZetaDeploymentConfiguration.isAslEnabled();
     boolean isAslDisabled = ZetaDeploymentConfiguration.isAslDisabled();
@@ -1348,6 +1277,7 @@ public class Hooks {
     }
   }
 
+  /** Formats command evidence for a visible hook failure. */
   private static String formatCommandResult(CommandResult result) {
     return String.format("""
               Command execution failed (exit code %d)

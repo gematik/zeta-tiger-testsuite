@@ -24,89 +24,140 @@
 
 package de.gematik.zeta.services;
 
+import java.net.Socket;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import javax.net.ssl.SSLContext;
-import lombok.extern.slf4j.Slf4j;
-import org.glassfish.tyrus.client.ClientManager;
-import org.glassfish.tyrus.client.ClientProperties;
-import org.glassfish.tyrus.client.SslEngineConfigurator;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509ExtendedTrustManager;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
 
-/**
- * Factory for creating configured WebSocket STOMP clients. Uses native WebSocket connections with Tyrus (JSR 356 reference
- * implementation).
- */
-@Slf4j
-public class WebSocketClientFactory {
+/** Owns direct WebSocket transports and Spring STOMP heartbeat resources for a scenario. */
+public class WebSocketClientFactory implements AutoCloseable {
 
-  // Configuration constants
-  private static final int TASK_SCHEDULER_POOL_SIZE = 10;
-  private static final long[] HEARTBEAT_MS = {30000, 30000};
+  static final List<String> STOMP_PROTOCOLS = List.of("v12.stomp", "v11.stomp", "v10.stomp");
+
+  private DirectWebSocketClient transport;
+  private ThreadPoolTaskScheduler scheduler;
 
   /**
-   * Creates a configured WebSocketStompClient with native WebSocket support.
+   * Starts STOMP 1.2 on an existing transport with the shared heartbeat configuration.
    *
-   * @return Configured WebSocketStompClient
+   * @param connection upgraded WebSocket owned by this factory
+   * @param handler session callback handler
+   * @return asynchronous STOMP handshake
    */
-  public WebSocketStompClient create() {
-    return configureStompClient(createRawClient());
+  public CompletableFuture<StompSession> connectStomp(
+      DirectWebSocketClient.Connection connection, StompSessionHandler handler) {
+    var headers = new StompHeaders();
+    headers.setAcceptVersion("1.2");
+    headers.setHost(connection.getUri().getHost());
+    return createRawClient().connectStomp(connection, headers, handler);
   }
 
-  /**
-   * Creates a configured native WebSocket client (without STOMP wrappers).
-   *
-   * @return configured StandardWebSocketClient
-   */
-  public StandardWebSocketClient createRawClient() {
-    try {
-      SSLContext sslContext = SslConfigurationService.getTrustAllSslContext();
-
-      log.info("Creating native WebSocket client with SSL");
-
-      ClientManager clientManager = ClientManager.createClient();
-
-      SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(sslContext);
-      sslEngineConfigurator.setHostnameVerifier((hostname, session) -> true);
-
-      clientManager.getProperties().put(
-          ClientProperties.SSL_ENGINE_CONFIGURATOR,
-          sslEngineConfigurator);
-      return new StandardWebSocketClient(clientManager);
-    } catch (Exception e) {
-      log.error("Failed to create native WebSocket client", e);
-      throw new AssertionError(
-          "Failed to create native WebSocket client: " + e.getMessage(), e);
+  /** Returns the scenario's transport, releasing failed initialization resources before retrying. */
+  public synchronized DirectWebSocketClient createRawClient() {
+    if (transport == null) {
+      try {
+        transport = new DirectWebSocketClient(testTlsContext());
+        configureStomp(transport);
+      } catch (Exception e) {
+        try {
+          close();
+        } catch (Exception cleanupError) {
+          e.addSuppressed(cleanupError);
+        }
+        throw new AssertionError("Could not configure direct WebSocket client", e);
+      }
     }
+    return transport;
   }
 
-  /**
-   * Configures a WebSocketStompClient with common settings.
-   */
-  private WebSocketStompClient configureStompClient(StandardWebSocketClient wsClient) {
+  /** Preserves permissive functional-test TLS locally, without changing JVM TLS defaults. */
+  private static SSLContext testTlsContext() throws GeneralSecurityException {
+    var context = SSLContext.getInstance("TLS");
+    var trust = new X509ExtendedTrustManager() {
+      /** Accepts test client certificates. */
+      @Override
+      public void checkClientTrusted(X509Certificate[] chain, String authType) {
+      }
 
-    WebSocketStompClient stompClient = new WebSocketStompClient(wsClient);
-    stompClient.setMessageConverter(new CompositeMessageConverter(List.of(
-        new StringMessageConverter(),
-        new JacksonJsonMessageConverter()
-    )));
+      /** Accepts test client certificates on sockets. */
+      @Override
+      public void checkClientTrusted(X509Certificate[] chain, String authType,
+          Socket socket) {
+      }
 
-    // Task Scheduler for Heartbeats
-    ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-    taskScheduler.setPoolSize(TASK_SCHEDULER_POOL_SIZE);
-    taskScheduler.setThreadNamePrefix("stomp-");
-    taskScheduler.setDaemon(true);
-    taskScheduler.afterPropertiesSet();
-    stompClient.setTaskScheduler(taskScheduler);
+      /** Accepts test client certificates on TLS engines. */
+      @Override
+      public void checkClientTrusted(X509Certificate[] chain, String authType,
+          SSLEngine engine) {
+      }
 
-    // Heartbeat settings
-    stompClient.setDefaultHeartbeat(HEARTBEAT_MS);
+      /** Accepts test server certificates. */
+      @Override
+      public void checkServerTrusted(X509Certificate[] chain, String authType) {
+      }
 
-    log.info("WebSocket STOMP client configured");
-    return stompClient;
+      /** Accepts test server certificates and names on this functional-test socket only. */
+      @Override
+      public void checkServerTrusted(X509Certificate[] chain, String authType,
+          Socket socket) {
+      }
+
+      /** Accepts test server certificates and names on this functional-test engine only. */
+      @Override
+      public void checkServerTrusted(X509Certificate[] chain, String authType,
+          SSLEngine engine) {
+      }
+
+      /** No issuer restriction applies to functional-test TLS. */
+      @Override
+      public X509Certificate[] getAcceptedIssuers() {
+        return new X509Certificate[0];
+      }
+    };
+    context.init(null, new TrustManager[]{trust}, null);
+    return context;
+  }
+
+  /** Configures Spring message conversion and a shared scenario heartbeat scheduler. */
+  private void configureStomp(DirectWebSocketClient client) {
+    client.setMessageConverter(new CompositeMessageConverter(List.of(
+        new StringMessageConverter(), new JacksonJsonMessageConverter())));
+    if (scheduler == null) {
+      scheduler = new ThreadPoolTaskScheduler();
+      scheduler.setPoolSize(1);
+      scheduler.setThreadNamePrefix("stomp-");
+      scheduler.setDaemon(true);
+      scheduler.initialize();
+    }
+    client.setTaskScheduler(scheduler);
+    client.setDefaultHeartbeat(new long[]{30000, 30000});
+  }
+
+  /** Clears owned resources and releases heartbeat tasks even if transport cleanup fails. */
+  @Override
+  public synchronized void close() {
+    var closingTransport = transport;
+    var closingScheduler = scheduler;
+    transport = null;
+    scheduler = null;
+    try (closingTransport) {
+      // The transport must finish its bounded Close handshake before the scheduler shuts down.
+    } finally {
+      if (closingScheduler != null) {
+        closingScheduler.shutdown();
+      }
+    }
   }
 }

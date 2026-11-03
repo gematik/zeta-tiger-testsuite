@@ -1,0 +1,6 @@
+[#TA_A_29853_01]
+===== TA_A_29853_01 - ZETA Client - Transparentes Durchreichen von Fachdienst-Fehlern bei HTTP 401
+
+"Ist der HTTP-Header **zeta-error-origin** in einer Fehlerantwort (auch bei den Statuscodes **401** oder 403) **nicht enthalten**, MUSS der ZETA Client den Fehler **unverändert und transparent** an den aufrufenden Fach-Client durchreichen.
+
+**[<=]**"

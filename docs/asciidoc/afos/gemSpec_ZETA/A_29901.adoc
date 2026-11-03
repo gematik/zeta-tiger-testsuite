@@ -1,0 +1,4 @@
+[#A_29901]
+==== A_29901 - Authorization Server – Trennung von Identitäts- und Client-Ebene
+
+Der Authorization Server MUSS die gebundene E-Mail (F1) auf Identitätsebene führen sowie den Instanzschlüssel (F2) und die berechtigten Audiences je Client-Instanz auf Client-Ebene führen (Datenhaltung vgl. A_26585-02). [<=]

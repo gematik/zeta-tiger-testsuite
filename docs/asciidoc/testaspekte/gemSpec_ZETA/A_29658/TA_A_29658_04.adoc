@@ -1,0 +1,4 @@
+[#TA_A_29658_04]
+===== TA_A_29658_04 - Mobile Client-Registrierung - Fast-Path mit ZETA Attestation Token
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-DCR-für-mobile-Clients** unterstützen. [<=]"

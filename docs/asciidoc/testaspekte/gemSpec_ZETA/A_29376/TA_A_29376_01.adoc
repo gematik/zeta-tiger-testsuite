@@ -1,0 +1,8 @@
+[#TA_A_29376_01]
+===== TA_A_29376_01 - ZETA, Ablauf Token Exchange mit Attestation - SMC-B-signiertes Subject Token
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 01–03: Der Client erstellt das **Subject Token und lässt es von der +++SM(C)-B+++ signieren**. Es adressiert den Authorization Server und enthält die an den Vorgang gebundenen Client-/DPoP-Schlüssel und die Nonce.

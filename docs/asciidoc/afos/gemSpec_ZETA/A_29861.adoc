@@ -1,0 +1,4 @@
+[#A_29861]
+==== A_29861 - PDP Authorization Server, Token-Ausstellung bei ZETA/ASL Terminierung am Resource Server
+
+Der Authorization Server MUSS, wenn: die Policy Engine die Token-Ausstellung erlaubt hat und der ZETA/ASL Kanal am Resource Server terminiert, ein zusätzliches Access Token für den Zugriff auf den /ASL Endpunkt ausstellen gemäß Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server. Das zusätzliche Access Token wird in der Response auf den Token Request im Parameter asl_access_token gesendet. [<=]

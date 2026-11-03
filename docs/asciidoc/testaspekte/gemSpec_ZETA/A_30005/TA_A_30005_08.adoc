@@ -1,0 +1,6 @@
+[#TA_A_30005_08]
+===== TA_A_30005_08 - Authorization Server – Beschränkung der Metadatenaktualisierung über RFC 7592 - Schlüssel-Rollover ausschließlich über JWS-Pfad
+
+"Der Authorization Server MUSS die Metadatenaktualisierung über PUT /register/{client_id} mit Content-Type: application/json (autorisiert allein durch das Registration Access Token nach [RFC7592]) ausschließlich auf die Umbenennung des Clients (client_name) beschränken. Der Authorization Server DARF NICHT über diesen Pfad eine Änderung des Instanzschlüssels (F2), der gebundenen E‑Mail (F1), der berechtigten Audiences oder von DCR‑Parametern (jwks, redirect_uris, grant_types) zulassen; entsprechende Felder MUSS er ablehnen. **Der Schlüssel‑Rollover erfolgt ausschließlich über Content-Type: application/zeta-rollover+jws (A_29921 ff.)**, die E‑Mail‑Änderung über POST /zeta/identity/email (A_29911).
+
+**[<=]**"

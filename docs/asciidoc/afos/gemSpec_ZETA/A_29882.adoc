@@ -1,0 +1,4 @@
+[#A_29882]
+==== A_29882 - ZG Client, Aktualisierung der Konfiguration
+
+Der ZG Client MUSS Änderungen der von der Policy Engine bereitgestellten Konfiguration zeitnah übernehmen, ohne dass hierfür ein Neustart des ZG Client erforderlich ist. [<=]

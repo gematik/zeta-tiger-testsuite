@@ -1,0 +1,6 @@
+[#TA_A_29849_01]
+===== TA_A_29849_01 - ZETA Client, Reaktion auf terminierte Session - Erneute Authentifizierung des Nutzers
+
+"Der ZETA Client MUSS bei einer **Ablehnung aufgrund terminierter Session** eine **erneute Authentifizierung des Nutzers einleiten**.
++++[...]+++
+**[<=]**"

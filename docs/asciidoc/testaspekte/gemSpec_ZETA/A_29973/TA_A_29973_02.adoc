@@ -1,0 +1,6 @@
+[#TA_A_29973_02]
+===== TA_A_29973_02 - Notification Service – Gerätehistorie über GET /history/device/{pushkey} abrufen
+
+"Das Feature Nachrichten-Historie (Push-Historie) ist in [gemF_PushNotification] als optionales Fachdienst-Feature beschrieben. In der ZETA-Notification-Service-Implementierung ist es als Pflichtfunktion umzusetzen: Der Notification Service MUSS das Feature Nachrichten-Historie implementieren. Dazu MUSS er **die fachdienstseitigen Historien-Endpunkte /history/* für authentisierte Nutzer (ZETA Client Modul / SDK, Authentisierung gemäß A_29975–A_29978) bereitstellen, über die nach dem Versand auf die referenzierten versendeten Push-Nachrichten zugegriffen werden kann**, und den beim Versand an das Push Gateway mitgegebenen, PII-freien identifier (Feld reference, siehe A_29969) so verarbeiten/persistieren, dass eine vollständige, datenschutzkonforme Liste der versendeten Notifications je Nutzer rekonstruierbar ist (kein Personenbezug im identifier, keine Klartext-Inhalte im Push Gateway). Die Persistierung der Historiendaten MUSS den Schutzanforderungen der Pusher und Statusdaten (vgl.. A_29959) genügen.
+
+**[<=]**"

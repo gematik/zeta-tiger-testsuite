@@ -1,0 +1,4 @@
+[#A_29872]
+==== A_29872 - ZETA Guard - IP-Binding bei IPv6
+
+Bei der Validierung gemäß A_28827 und A_28803 MUSS ZETA Guard IPv6-Adressierung berücksichtigen. Der Anbieter MUSS ein Verfahren festlegen und dokumentieren, das Fehlentscheidungen durch wechselnde IPv6-Adresspräfixe minimiert. [<=]

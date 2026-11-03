@@ -29,10 +29,15 @@ import com.google.protobuf.Value;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.perf.LoadDispenserRunTiming;
+import de.gematik.zeta.services.BoundedObservation;
 import de.gematik.zeta.services.LoadDispenserClient;
+import de.gematik.zeta.services.ZetaDeploymentConfiguration;
+import de.gematik.zeta.services.model.CommandResult;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.de.Wenn;
 import io.cucumber.java.en.When;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -72,6 +77,13 @@ public class LoadDispenserSteps {
     var config = toStruct(values);
 
     try (var client = new LoadDispenserClient(endpoint)) {
+      if ("FAILED".equals(client.status())) {
+        var recoveryFailure = new IllegalStateException("Load dispenser is FAILED before the new run");
+        recoverFailedDispenser(client, recoveryFailure);
+        if (recoveryFailure.getSuppressed().length > 0 || !"STOPPED".equals(client.status())) {
+          throw recoveryFailure;
+        }
+      }
       var effective = client.setConfig(config);
       ReportAttachments.addText("Load dispenser effective configuration", effective.toString());
       log.info("Starting load dispenser at {} with {}", endpoint, values);
@@ -83,23 +95,145 @@ public class LoadDispenserSteps {
   }
 
   /**
-   * Starts the run and aborts it if polling fails or the scenario is interrupted.
+   * Starts the run and cleans up failures without aborting an already failed dispenser.
    *
    * @param client connected load-dispenser client
    * @param timeout maximum time allowed for setup, ramp-up, and execution
    * @return observed setup and run timing boundaries
    * @throws InterruptedException if the scenario thread is interrupted while polling
    */
-  private LoadDispenserRunTiming startAndRunToCompletion(
+  LoadDispenserRunTiming startAndRunToCompletion(
       LoadDispenserClient client,
       Duration timeout)
       throws InterruptedException {
     try {
       client.start();
       return waitForCompletion(client, timeout);
-    } catch (InterruptedException | RuntimeException | Error ex) {
+    } catch (InterruptedException ex) {
       abortQuietly(client);
       throw ex;
+    } catch (RuntimeException | Error ex) {
+      if (!Thread.currentThread().isInterrupted() && isFailedBeforeAbort(client, ex)) {
+        recoverFailedDispenser(client, ex);
+      } else {
+        abortQuietly(client);
+      }
+      throw ex;
+    }
+  }
+
+  /**
+   * Checks the terminal state before an abort RPC could change it.
+   *
+   * @param client connected load-dispenser client
+   * @param originalFailure scenario failure to retain, including any status-query failure
+   * @return whether the dispenser is confirmed failed; unavailable or unknown states return false
+   */
+  private boolean isFailedBeforeAbort(LoadDispenserClient client, Throwable originalFailure) {
+    try {
+      return "FAILED".equals(client.status());
+    } catch (RuntimeException | Error statusFailure) {
+      if (statusFailure != originalFailure) {
+        originalFailure.addSuppressed(statusFailure);
+      }
+      log.warn("Could not determine load dispenser status before abort", statusFailure);
+      return false;
+    }
+  }
+
+  /**
+   * Recovers a dispenser confirmed failed before cleanup, when restart and deployment changes are
+   * permitted. Captures diagnostics, rechecks FAILED immediately before restart, and waits for
+   * STOPPED without retrying the scenario. Recovery failures are attached to the original failure;
+   * interruption also restores the thread's interrupt flag.
+   *
+   * @param client connected load-dispenser client whose FAILED state was confirmed without aborting
+   * @param originalFailure scenario failure retained regardless of the recovery result
+   */
+  private void recoverFailedDispenser(LoadDispenserClient client, Throwable originalFailure) {
+    try {
+      if (Thread.currentThread().isInterrupted()
+          || !TigerGlobalConfiguration.readBooleanOptional("load_dispenser_restart_on_failure").orElse(true)
+          || !ZetaDeploymentConfiguration.isDeploymentModificationAllowed()) {
+        return;
+      }
+      var namespace = ZetaDeploymentConfiguration.getNamespace();
+      var deployment = TigerGlobalConfiguration
+          .readStringOptional("zetaDeploymentConfig.loadDispenser.deploymentName")
+          .filter(value -> !value.isBlank())
+          .orElseThrow(() -> new IllegalStateException("Missing load-dispenser deployment name"));
+      var service = ZetaDeploymentConfiguration.getServiceInstance();
+      final var timeout = service.getPodReadyTimeoutSeconds();
+      var target = "deployment/" + deployment;
+      try {
+        var logs = service.executeKubectlCommand(false, "-n", namespace, "logs", target,
+            "--all-containers=true", "--tail=500", "--timestamps=true");
+        ReportAttachments.addText("Load dispenser logs before recovery",
+            logs.stdout() + "\n" + logs.stderr());
+      } catch (RuntimeException | Error logFailure) {
+        log.warn("Could not capture load dispenser logs before recovery", logFailure);
+      }
+      if (!"FAILED".equals(client.status())) {
+        return;
+      }
+      log.warn("Restarting failed load dispenser {}/{}", namespace, deployment);
+      requireRecoverySuccess(service.executeKubectlCommand(
+          "-n", namespace, "rollout", "restart", target), "restart");
+      requireRecoverySuccess(service.waitForDeploymentRollout(namespace, deployment, timeout), "rollout");
+      BoundedObservation.await(
+          () -> statusAfterRestart(client), "STOPPED"::equals,
+          Duration.ofSeconds(timeout), Duration.ofSeconds(1),
+          "Load dispenser gRPC endpoint did not return to STOPPED after restart; "
+              + "check the endpoint and reconnect any pod port-forward");
+      ReportAttachments.addText("Load dispenser recovery",
+          "Restarted " + namespace + "/" + deployment
+              + " and verified STOPPED.");
+    } catch (InterruptedException recoveryFailure) {
+      Thread.currentThread().interrupt();
+      originalFailure.addSuppressed(recoveryFailure);
+      log.warn("Load dispenser recovery interrupted", recoveryFailure);
+    } catch (RuntimeException | Error recoveryFailure) {
+      if (recoveryFailure != originalFailure) {
+        originalFailure.addSuppressed(recoveryFailure);
+      }
+      log.warn("Could not recover failed load dispenser", recoveryFailure);
+    }
+  }
+
+  /**
+   * Observes readiness after restart, allowing only endpoint unavailability to be retried.
+   *
+   * @param client connected load-dispenser client
+   * @return STOPPED when ready, or UNAVAILABLE while the endpoint reconnects
+   * @throws IllegalStateException if the endpoint reports a state other than STOPPED
+   * @throws StatusRuntimeException if the status RPC fails for a reason other than UNAVAILABLE
+   */
+  private static String statusAfterRestart(LoadDispenserClient client) {
+    try {
+      var status = client.status();
+      if (!"STOPPED".equals(status)) {
+        throw new IllegalStateException("Unexpected load dispenser status after restart: " + status);
+      }
+      return status;
+    } catch (StatusRuntimeException ex) {
+      if (ex.getStatus().getCode() != Status.Code.UNAVAILABLE) {
+        throw ex;
+      }
+      return "UNAVAILABLE";
+    }
+  }
+
+  /**
+   * Rejects an unsuccessful Kubernetes recovery operation with its diagnostic output.
+   *
+   * @param result completed command result
+   * @param operation recovery operation name used in the failure message
+   * @throws AssertionError if the command returned a nonzero exit code
+   */
+  private static void requireRecoverySuccess(CommandResult result, String operation) {
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Load dispenser recovery " + operation + " failed: "
+          + result.stdout() + "\n" + result.stderr());
     }
   }
 
@@ -149,7 +283,7 @@ public class LoadDispenserSteps {
   private void abortQuietly(LoadDispenserClient client) {
     try {
       client.abort();
-    } catch (RuntimeException ex) {
+    } catch (RuntimeException | Error ex) {
       log.warn("Could not abort load dispenser run", ex);
     }
   }

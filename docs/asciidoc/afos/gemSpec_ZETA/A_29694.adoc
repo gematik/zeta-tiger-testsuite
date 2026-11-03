@@ -1,0 +1,4 @@
+[#A_29694]
+==== A_29694 - ZETA Guard - Fehlermeldung bei fehlerhaftem Parameter im Token Request
+
+Der ZETA Guard MUSS einen Token Request mit resource für eine nicht unterstützte Zielressource mit dem Fehler invalid_target gemäß [RFC8707] ablehnen. [<=]

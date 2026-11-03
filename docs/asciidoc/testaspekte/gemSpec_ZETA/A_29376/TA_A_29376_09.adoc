@@ -1,0 +1,8 @@
+[#TA_A_29376_09]
+===== TA_A_29376_09 - ZETA, Ablauf Token Exchange mit Attestation - Client Assertion vor Policy-Aufruf prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 07 und 18: Der Authorization Server **validiert die Client Assertion**. Bei fehlgeschlagener Client-Authentisierung antwortet er mit 401 und error=invalid_client, ohne Policy-Aufruf oder Tokenausgabe.

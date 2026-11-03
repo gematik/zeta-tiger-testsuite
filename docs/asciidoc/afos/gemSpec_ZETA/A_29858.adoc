@@ -1,0 +1,4 @@
+[#A_29858]
+==== A_29858 - PDP Authorization Server - Idempotenz der Session-Termination
+
+Die Operation terminateSession MUSS idempotent ausgeführt werden. Wiederholte Aufrufe mit derselben Session-Id DÜRFEN keinen fachlichen Fehler verursachen. [<=]

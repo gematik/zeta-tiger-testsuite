@@ -1,4 +1,4 @@
 [#A_28963]
 ==== A_28963 - ZETA Guard, DPoP Prüfung
 
-Der ZETA Guard MUSS bei der Prüfung von JWT die Prüfschritte gemäß [RFC9449]#name-checking-dpop-proofs durchführen.
+Der ZETA Guard MUSS bei der Prüfung von JWT die Prüfschritte gemäß [RFC9449]#name-checking-dpop-proofs durchführen. [<=]

@@ -40,7 +40,7 @@ Tabelle #: Tab_gemSpec_ZETA_PEP_HTTP_Proxy: Bearbeitungszeitvorgaben
 
 | Ausliefern der .well-known (1)
 | Antwortzeit
-| 7.5ms
+| 7,5ms
 | 10ms
 | 15ms
 | 100ms

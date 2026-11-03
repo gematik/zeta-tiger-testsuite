@@ -1,0 +1,8 @@
+[#TA_A_29376_10]
+===== TA_A_29376_10 - ZETA, Ablauf Token Exchange mit Attestation - DPoP-Proof vor Policy-Aufruf prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 07 und 19: Der Authorization Server **validiert den DPoP-Proof**. Ein ungültiger Proof führt zu 400 mit error=invalid_dpop_proof ohne Policy-Aufruf oder Tokenausgabe. Die im Diagrammhinweis genannte Nonce-Challenge use_dpop_nonce ist davon getrennt.

@@ -31,7 +31,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 302
   @A_27725-01
   @TA_A_26661_17
   @TA_A_27725-01_29
-  @MASVS-RESILIENCE
   Szenario: PEP HTTP Proxy protokolliert 302 Found
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR setze lokale Variable "redirectLocation" auf "https://example.invalid/achelos_testfachdienst/temporaer"

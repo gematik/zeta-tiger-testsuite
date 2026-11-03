@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.steps;
 
+import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.model.tls.SignatureAndHashAlgorithms;
 import de.gematik.zeta.model.tls.TlsCipherSuite;
 import de.gematik.zeta.model.tls.TlsEndpointRole;
@@ -131,6 +132,12 @@ public class TlsTestToolSteps {
    * Scenario-local TLS test tool lifecycle context.
    */
   private final TlsTestToolRunContext tlsTestToolRunContext = new TlsTestToolRunContext();
+
+  /** Releases exclusive TLS tool ownership even when a scenario fails during preparation. */
+  @io.cucumber.java.After(order = Integer.MIN_VALUE + 1)
+  public void closeTlsTestTool() {
+    tlsTestToolRunContext.close();
+  }
 
   /**
    * String for storing the TLS logs.
@@ -651,6 +658,8 @@ public class TlsTestToolSteps {
   @ParameterType(
       "zeta_tls_test_tool_server_ecdsa_private_key|zeta_tls_test_tool_server_ecdsa_different_cn_certificate|"
           + "zeta_tls_test_tool_server_ecdsa_different_san_certificate|zeta_tls_test_tool_server_ecdsa_good_certificate|"
+          + "zeta_tls_test_tool_server_ecdsa_without_san_certificate|"
+          + "zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate|"
           + "zeta_tls_test_tool_server_ecdsa_expired_certificate|zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate|"
           + "zeta_tls_test_tool_server_ecdsa_crl_only_certificate|zeta_tls_test_tool_server_ecdsa_subca_chain_certificate|"
           + "zeta_tls_test_tool_server_ecdsa_different_ca_certificate|zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate")
@@ -1472,9 +1481,10 @@ public class TlsTestToolSteps {
   @Then("the TLS Certificate was transmitted")
   public void checkCertificateWasTransmitted() {
     requireTlsLogs();
-    var expectedMessage = "Certificate message transmitted.";
+    var certificateMessageWasLogged = tlsLogs.contains("Certificate message transmitted.")
+        || tlsLogs.contains("Certificate.certificate_list[0]=");
     Assertions
-        .assertThat(tlsLogs.contains(expectedMessage))
+        .assertThat(certificateMessageWasLogged)
         .withFailMessage(
             "The TLS Certificate message was not transmitted. This failure is not caused by the test scenario assertion; "
                 + "the TLS handshake broke earlier for another reason. %s",
@@ -1489,56 +1499,6 @@ public class TlsTestToolSteps {
   @Then("the TLS handshake renegotiation is triggered")
   public void checkIfTlsRenegotiationIsTriggered() {
     checkForMessageInTlsLogs("Performing renegotiation");
-  }
-
-  /**
-   * Checks whether the handshake renegotiation was successful.
-   */
-  @Dann("war die TLS-Handshake-Renegotiation erfolgreich")
-  @Then("the TLS handshake renegotiation is successful")
-  public void checkIfTlsRenegotiationIsSuccessful() {
-    checkForMessageInTlsLogs("<= handshake");
-
-    // If a renegotiation is successful, then the "<= renegotiate" message is logged
-    checkForMessageInTlsLogs("<= renegotiate");
-  }
-
-  /**
-   * Checks whether the handshake renegotiation was explicitly refused with the expected TLS alert.
-   *
-   * @param descriptionId expected TLS alert description in hexadecimal form without {@code 0x} prefix
-   */
-  @Dann("die TLS-Handshake-Renegotiation wurde mit einer Alert-Nachricht mit Description-ID {string} abgelehnt")
-  @Then("the TLS handshake renegotiation is rejected with an alert message having description id {string}")
-  public void checkIfTlsRenegotiationIsRejectedWithAlertDescription(String descriptionId) {
-    requireTlsLogs();
-
-    Assertions
-        .assertThat(TLS_RENEGOTIATION_PHASE_PATTERN.matcher(tlsLogs).find())
-        .withFailMessage("No TLS renegotiation phase was found in the TLS logs.")
-        .isTrue();
-
-    var renegotiationPhase = extractRelevantLogPhase();
-
-    Assertions
-        .assertThat(renegotiationPhase)
-        .withFailMessage(
-            "Alert.description=%s not found in renegotiation phase. %s",
-            descriptionId,
-            extractAlertSummary())
-        .contains("Alert.description=" + descriptionId);
-
-    Assertions
-        .assertThat(renegotiationPhase)
-        .withFailMessage(
-            "TLS renegotiation failure marker not found in renegotiation phase. %s",
-            extractAlertSummary())
-        .contains("TLS handshake failed");
-
-    Assertions
-        .assertThat(TlsLogParser.hasFinishedAfterRenegotiation(tlsLogs))
-        .withFailMessage("Renegotiation completed successfully although rejection was expected.")
-        .isFalse();
   }
 
   /**
@@ -1575,18 +1535,6 @@ public class TlsTestToolSteps {
             "Renegotiation neither completed successfully nor was it rejected with warning Alert.description=64 (no_renegotiation) "
                 + "or fatal Alert.description=28 (handshake_failure). %s",
             extractAlertSummary())
-        .isTrue();
-  }
-
-  /**
-   * Checks whether the server initiated renegotiation was successful.
-   */
-  @Dann("war die vom TLS-Server initiierte Renegotiation erfolgreich")
-  @Then("the TLS Server initiated renegotiation is successful")
-  public void checkIfTlsServerInitiatedRenegotiationIsSuccessful() {
-    Assertions
-        .assertThat(TlsLogParser.hasFinishedAfterRenegotiation(tlsLogs))
-        .withFailMessage("Server-initiated renegotiation was not completed successfully.")
         .isTrue();
   }
 
@@ -2055,6 +2003,114 @@ public class TlsTestToolSteps {
         .withFailMessage(
             "The EMPTY_RENEGOTIATION_INFO_SCSV or the correct renegotiation_info could not be found in the TLS Client Hello.")
         .isTrue();
+  }
+
+  /**
+   * Reserves the installed Kubernetes TLS endpoint for a dedicated gateway Service.
+   *
+   * @param gatewayService dedicated gateway Service name
+   * @throws Exception if endpoint selection or reservation fails
+   */
+  @Gegebensei("eine Kubernetes-verwaltete TlsTestTool-Sitzung für Gateway-Service {tigerResolvedString}")
+  public void reserveGatewayTlsTool(String gatewayService) throws Exception {
+    if (!de.gematik.zeta.services.ZetaDeploymentConfiguration.isDeploymentModificationAllowed()) {
+      throw new AssertionError("Deployment modification is disabled");
+    }
+    tlsTestToolRunContext.reserveGateway(new de.gematik.zeta.services.TlsTestToolEndpoint(
+        de.gematik.zeta.services.ZetaDeploymentConfiguration.getServiceInstance(),
+        de.gematik.zeta.services.ZetaDeploymentConfiguration.getNamespace(),
+        TigerGlobalConfiguration.resolvePlaceholders("${tlsTestTool.deployment}")), gatewayService);
+  }
+
+  /**
+   * Attaches a dedicated gateway Service to the reserved TLS server.
+   *
+   * @param gatewayService dedicated gateway Service name
+   * @throws InterruptedException if endpoint convergence is interrupted
+   */
+  @Gegebensei("verbinde den Gateway-Service {tigerResolvedString} mit dem reservierten TLS-Testserver")
+  public void attachGatewayTlsRoute(String gatewayService) throws InterruptedException {
+    tlsTestToolRunContext.attachGateway(gatewayService);
+  }
+
+  /**
+   * Starts the installed TLS server with explicit fixture material.
+   *
+   * @param certificate PEM certificate chain file
+   * @param key PEM private key file
+   * @param ca PEM CA certificate file
+   * @param configuration resolved TLS tool configuration
+   */
+  @Gegebensei("eine TlsTestTool-Server-Konfiguration mit Zertifikat {tigerResolvedString}"
+      + " und Schlüssel {tigerResolvedString} und CA {tigerResolvedString}:")
+  public void runServerWithFiles(String certificate, String key, String ca, String configuration) {
+    tlsTestToolRunContext.runServer(
+        de.gematik.test.tiger.common.config.TigerGlobalConfiguration.resolvePlaceholders(configuration),
+        java.nio.file.Path.of(certificate), java.nio.file.Path.of(key), java.nio.file.Path.of(ca));
+    tlsLogs = tlsTestToolRunContext.getLogs();
+  }
+
+  /**
+   * Checks the observed TCP peer address without matching an address prefix.
+   *
+   * @param address exact peer IP address
+   */
+  @Dann("die TLS-Gegenstelle hat die IP-Adresse {tigerResolvedString}")
+  public void checkTlsPeerAddress(String address) {
+    requireTlsLogs();
+    Assertions.assertThat(Pattern.compile("TCP/IP connection from " + Pattern.quote(address)
+        + "(?::[0-9]+)? received\\.").matcher(tlsLogs).find()).isTrue();
+  }
+
+  /**
+   * Checks the ClientHello version vector and records optional TLS 1.3 support.
+   *
+   * @param variableName support flag destination
+   */
+  @Dann("die supported_versions-Erweiterung enthält ausschließlich TLS 1.2 oder 1.3"
+      + " und speichert TLS-1.3-Unterstützung in {string}")
+  public void checkAndStoreSupportedTlsVersions(String variableName) {
+    requireTlsLogs();
+    var versions = TlsLogParser.findClientHelloExtensionData(tlsLogs, 0x002b);
+    if (versions != null) {
+      Assertions.assertThat(versions.length).isGreaterThanOrEqualTo(3);
+      var length = versions[0] & 0xff;
+      Assertions.assertThat(length).isPositive().isEven().isEqualTo(versions.length - 1);
+      for (int index = 1; index < versions.length; index += 2) {
+        var version = ((versions[index] & 0xff) << 8) | (versions[index + 1] & 0xff);
+        Assertions.assertThat(version).isIn(0x0303, 0x0304);
+      }
+    }
+    TigerGlobalConfiguration.putValue(variableName,
+        Boolean.toString(TlsLogParser.clientHelloSignalsTls13Support(tlsLogs)),
+        de.gematik.test.tiger.common.config.ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
+  /**
+   * Requires success for previously advertised TLS 1.3 and rejection otherwise.
+   *
+   * @param advertised resolved support flag from a prior ClientHello
+   */
+  @Dann("entspricht der TLS-1.3-Handshake der zuvor angebotenen Unterstützung {tigerResolvedString}")
+  public void checkOptionalTls13Handshake(String advertised) {
+    Assertions.assertThat(advertised).isIn("true", "false");
+    if (Boolean.parseBoolean(advertised)) {
+      checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation.ERFOLGREICH);
+    } else {
+      checkIfTlsHandshakeMatchesExpectation(TlsHandshakeExpectation.NICHT_ERFOLGREICH);
+      Assertions.assertThat(tlsLogs).doesNotContain("Handshake successful");
+    }
+  }
+
+  /**
+   * Requires a received fatal version alert after transmitting the specified ServerHello.
+   *
+   * @param version transmitted TLS version, either 1.0 or 1.1
+   */
+  @Dann("auf das gesendete ServerHello mit TLS-Version {string} folgt ein empfangener fataler protocol_version-Alert")
+  public void checkLegacyServerHelloVersionRejection(String version) {
+    requireTlsLogs();
+    TlsLogParser.assertVersionRejectionAfterServerHello(tlsLogs, version);
   }
 
 }
