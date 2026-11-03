@@ -24,17 +24,19 @@
 
 package de.gematik.zeta.traceability;
 
+import java.util.Collection;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
 /**
  * One private ticket/owner annotation row.
  *
- * @param matchType     anforderung, testaspekt or scenario; scenario rows are matched by name
+ * @param matchType     anforderung, testaspekt or scenario; scenario rows match feature/name fields
  * @param requirementId optional requirement identifier for non-scenario fallback rows
  * @param testAspectId  optional test aspect identifier for non-scenario fallback rows
  * @param feature       optional feature path
- * @param scenario      optional scenario name
+ * @param scenario      optional scenario name for CSV lookup; required for the scenario audit
  * @param tickets       ticket identifiers or URLs
  * @param owner         responsible party
  */
@@ -61,13 +63,13 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    *
    * @param requirementId requirement identifier
    * @param failures      failure records for the requirement
-   * @param scenarios     executed scenario names for the requirement
+   * @param outcomes      scenario outcomes for the requirement
    * @return true if it applies
    */
   boolean matchesRequirement(String requirementId, Set<FailureRecord> failures,
-      Set<String> scenarios) {
+      Collection<ScenarioOutcome> outcomes) {
     if ("scenario".equals(matchType)) {
-      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
+      return matchesNonPassingScenario(outcomes);
     }
     var normalizedRequirement = RuntimeCoverageIds.normalizeId(requirementId);
     if (!this.requirementId.isBlank()
@@ -88,14 +90,13 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    *
    * @param testAspectId  test aspect identifier
    * @param requirementId requirement identifier
-   * @param failures      failure records for the test aspect
-   * @param scenarios     executed scenario names for the test aspect
+   * @param outcomes      scenario outcomes for the test aspect
    * @return true if it applies
    */
   boolean matchesTestAspect(String testAspectId, String requirementId,
-      Set<FailureRecord> failures, Set<String> scenarios) {
+      Collection<ScenarioOutcome> outcomes) {
     if ("scenario".equals(matchType)) {
-      return matchesFailedScenario(failures) || matchesExecutedScenario(scenarios);
+      return matchesNonPassingScenario(outcomes);
     }
     var normalizedTestAspect = RuntimeCoverageIds.normalizeId(testAspectId);
     var normalizedRequirement = RuntimeCoverageIds.normalizeId(requirementId);
@@ -120,44 +121,55 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
   }
 
   /**
-   * Check scenario-level fields against a failure record.
+   * Check whether this row is a scenario-level mapping.
    *
-   * @param failure failure context
-   * @return true if all populated scenario fields match
+   * @return true for scenario mappings
    */
-  private boolean matchesScenarioFailure(FailureRecord failure) {
-    if (failure == null) {
-      return false;
-    }
-    if (!feature.isBlank() && !RuntimeCoverageIds.pathMatches(feature, failure.feature())) {
-      return false;
-    }
-    return scenario.isBlank() || RuntimeCoverageIds.scenarioNameMatches(scenario, failure.scenario());
+  boolean isScenarioMapping() {
+    return "scenario".equals(matchType);
   }
 
   /**
-   * Check whether this annotation matches any failed scenario.
+   * Check whether this row contains at least one ticket.
    *
-   * @param failures failure context for an output row
-   * @return true if a failed scenario matches
+   * @return true when a ticket is configured
    */
-  private boolean matchesFailedScenario(Set<FailureRecord> failures) {
-    return failures != null && failures.stream().anyMatch(this::matchesScenarioFailure);
+  boolean hasTicket() {
+    return !tickets.isEmpty();
   }
 
   /**
-   * Check whether this annotation matches an executed scenario by name.
+   * Check whether a named runtime scenario matches this annotation for auditing.
    *
-   * @param scenarios executed scenario names
-   * @return true if the scenario name is present
+   * @param outcome runtime scenario outcome
+   * @return true when feature and scenario identify the same scenario
    */
-  private boolean matchesExecutedScenario(Set<String> scenarios) {
-    if (scenario.isBlank() || scenarios == null || scenarios.isEmpty()) {
+  boolean matchesScenario(ScenarioOutcome outcome) {
+    if (!isScenarioMapping() || outcome == null || scenario.isBlank()) {
       return false;
     }
-    return scenarios
+    if (!feature.isBlank() && !RuntimeCoverageIds.pathMatches(feature, outcome.feature())) {
+      return false;
+    }
+    return RuntimeCoverageIds.scenarioNameMatches(scenario, outcome.scenario());
+  }
+
+  /**
+   * Check whether populated feature and name fields match a non-passing scenario.
+   *
+   * @param outcomes scoped scenario outcomes
+   * @return true when a matching non-passing outcome exists
+   */
+  private boolean matchesNonPassingScenario(Collection<ScenarioOutcome> outcomes) {
+    if (outcomes == null) {
+      return false;
+    }
+    return outcomes
         .stream()
-        .anyMatch(candidate -> RuntimeCoverageIds.scenarioNameMatches(scenario, candidate));
+        .filter(outcome -> !outcome.isPassed())
+        .anyMatch(outcome -> scenario.isBlank()
+            ? feature.isBlank() || RuntimeCoverageIds.pathMatches(feature, outcome.feature())
+            : matchesScenario(outcome));
   }
 
   /**
@@ -167,7 +179,7 @@ record FailureAnnotation(String matchType, String requirementId, String testAspe
    * @return normalized match type
    */
   private static String normalizeMatchType(String value) {
-    var normalized = RuntimeCoverageIds.defaultString(value).trim().toLowerCase();
+    var normalized = RuntimeCoverageIds.defaultString(value).trim().toLowerCase(Locale.ROOT);
     if ("szenario".equals(normalized)) {
       return "scenario";
     }

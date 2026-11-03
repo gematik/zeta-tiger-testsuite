@@ -1,0 +1,4 @@
+[#A_29952]
+==== A_29952 - PDP Authorization Server, Parameter audience anstatt resource im Token Request
+
+Der Authorization Server MUSS Token Requests mit dem Parameter audience anstatt resource unterstützen und die audience als resource Parameter interpretieren. [<=]

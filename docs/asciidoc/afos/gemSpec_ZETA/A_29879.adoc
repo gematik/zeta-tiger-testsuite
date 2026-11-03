@@ -1,0 +1,4 @@
+[#A_29879]
+==== A_29879 - ZG Client, Transparenz für Fachkomponente
+
+Der ZG Client MUSS fachliche Requests einer aufrufenden Fachkomponente entgegennehmen, ohne dass diese Token-Beschaffung, Token-Erneuerung oder Schlüsselmaterial selbst verwalten muss. [<=]

@@ -1,0 +1,50 @@
+[#UC_04_03]
+== UseCase_04_03: Ersatzgerät bei verlorenem E-Mail-Zugang vorbereiten
+
+.UseCase_04_03
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Ersatzgerät bei verlorenem E-Mail-Zugang vorbereiten
+
+| Akteur: | Nutzer
+
+| weitere Akteure: | ZETA Client auf Ersatzgerät und weiterem registriertem Gerät
+
+| Auslöser: | Der Nutzer möchte ein Ersatzgerät registrieren, hat aber keinen Zugriff mehr auf F1.
+
+| Kurzbeschreibung: |
+Die Nutzerführung weist auf die notwendige E-Mail-Änderung über das noch registrierte Gerät vor der Ersatzregistrierung hin.
+Dieser Use Case ist ein Prüfentwurf; ausführbare Szenarien sind noch nicht vorhanden.
+
+| Vorbedingung: |
+. Der Nutzer hat eine mobile TOFU-Identität mit gebundener E-Mail E1, kann E1 jedoch nicht mehr verwenden. Auf einem weiteren registrierten Gerät besteht Kontrolle über F2; das Ersatzgerät ist noch nicht registriert.
+. Der tatsächliche Fachclient mit eingebundenem ZETA Client ist für eine manuelle oder automatisierte UI-Prüfung verfügbar. Das Prüfprofil benennt den sichtbaren Einstieg „Ersatzgerät registrieren“ beziehungsweise die entsprechende Wiederherstellungsfunktion und die darin angebotene Hilfe bei verlorenem E-Mail-Zugang.
+
+| Nebenbedingung: |
+Es handelt sich um eine UI-/Anleitungsprüfung mit SOLL-Anforderung. E-Mail-Änderung und Registrierung sind Kontext der Anleitung und werden in eigenen funktionalen Abläufen geprüft.
+
+| Ablauf: |
+. Der Nutzer startet auf dem Ersatzgerät die Registrierungs-/Wiederherstellungsfunktion und wählt den Hinweis auf verlorenen Zugang zur gebundenen E-Mail.
+. Der Client zeigt die zugehörige Nutzerhilfe. Die Testsuite erfasst den sichtbaren Text beziehungsweise den zugänglichen Hilfedialog und prüft die Reihenfolge: zuerst E-Mail vom noch registrierten Gerät nach A_29911 ändern, danach das Ersatzgerät registrieren. Der Hinweis berücksichtigt Nutzerunterstützung nach A_25732.
+. Die Testsuite dokumentiert den angezeigten Inhalt und seine Erreichbarkeit. Eine begründete Abweichung von der SOLL-Vorgabe wird getrennt bewertet.
+
+| Nachbedingung: |
+Die sichtbare Anleitung beschreibt die erforderliche Reihenfolge und behauptet keinen Ersatz gebundener Faktoren allein durch IDP-Login.
+Der Test bewertet die angezeigte Nutzerführung; tatsächliche E-Mail-Änderung, Registrierung und Nutzerverständnis sind damit nicht nachgewiesen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29933_01>>
+
+|===
+
+[mermaid,uc-04-03-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    actor N as Nutzer
+    participant E as Fachclient auf Ersatzgerät
+    N->>E: Registrierungshilfe bei verlorenem E-Mail-Zugang öffnen
+    E-->>N: Zuerst E-Mail am vorhandenen registrierten Gerät ändern
+    E-->>N: Danach Ersatzgerät registrieren
+    Note over N,E: Prüfung endet an der sichtbaren Anleitung
+....

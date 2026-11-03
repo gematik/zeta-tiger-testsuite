@@ -3,23 +3,33 @@ name = "testsuite-docs-tools"
 version = "1.2.0"
 description = "Python utilities supporting the docs toolchain for the testsuite project."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 authors = [
     { name = "Test Suite Team" }
 ]
 dependencies = [
+    "lxml>=6.1.3,<7",
     "pandas>=2.3.3",
     "openpyxl>=3.1.5",
+    "PyYAML>=6.0.2,<7",
     "requests>=2.32.5",
-    "pydowndoc[bin]>=2.1.2",
 ]
+
+[dependency-groups]
+dev = ["pytest>=9,<10"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [project.scripts]
 update-testaspects = "testsuite_docs.update_testaspects:main"
 fetch-youtrack-testaspects = "testsuite_docs.fetch_youtrack_testaspects:main"
 traceability = "testsuite_docs.traceability.__main__:main"
 generate-cucumber-methods = "testsuite_docs.generate_cucumber_methods:main"
+generate-doc-includes = "testsuite_docs.generate_doc_includes:main"
 generate-zeta-afos = "testsuite_docs.zeta_afos:main"
+generate-zeta-catalog-xml = "testsuite_docs.zeta_catalog_xml:main"
+check-zeta-design = "testsuite_docs.design_checks:main"
 gitlab-issue-sync = "testsuite_docs.gitlab_issue_sync:main"
 tag-masvs-scenarios = "testsuite_docs.masvs_tags:main"
 check-zeta-schemas = "testsuite_docs.zeta_schemas:check_main"

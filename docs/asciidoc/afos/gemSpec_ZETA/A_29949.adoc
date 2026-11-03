@@ -1,0 +1,4 @@
+[#A_29949]
+==== A_29949 - ZETA Guard – Absicherung des OOB-Administrationskanals
+
+Der ZETA Guard MUSS den Administrationskanal für OOB-Operationen über gegenseitige TLS-Authentisierung (mTLS nach [RFC8705]) absichern und für die Operatorauthentisierung eine vom sektoralen IDP unabhängige Identitätsquelle verwenden. [<=]

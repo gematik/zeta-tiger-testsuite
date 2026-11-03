@@ -1,0 +1,8 @@
+[#TA_A_29376_22]
+===== TA_A_29376_22 - ZETA, Ablauf Token Exchange mit Attestation - Access Token bei Policy allow ausgeben
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 13, 15–16: Bei **Policy allow wird ein DPoP-gebundenes Access Token mit HTTP 200 ausgegeben**.

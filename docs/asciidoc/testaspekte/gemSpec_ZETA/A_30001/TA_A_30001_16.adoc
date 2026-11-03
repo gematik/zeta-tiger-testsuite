@@ -1,0 +1,8 @@
+[#TA_A_30001_16]
+===== TA_A_30001_16 - ZETA, Ablauf Token Revocation - Authentisierungsfehler mit HTTP 401
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 12: **401 Unauthorized bei fehlerhafter Client-Authentifizierung**.

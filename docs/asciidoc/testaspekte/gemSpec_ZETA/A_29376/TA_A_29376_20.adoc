@@ -1,0 +1,8 @@
+[#TA_A_29376_20]
+===== TA_A_29376_20 - ZETA, Ablauf Token Exchange mit Attestation - TPM-PCRs anhand des Event Logs prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 08: Im Windows-/Linux-TPM-Profil werden die **PCR-Zustände durch Replay des Event Logs nachvollzogen**. Nicht übereinstimmende Evidence verhindert Policy-Aufruf und Tokenausgabe.

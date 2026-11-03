@@ -1,0 +1,4 @@
+[#A_29926]
+==== A_29926 - Authorization Server – Keine Kopplung von Rollover und Faktoränderung
+
+Der Authorization Server DARF NICHT einen Schlüssel-Rollover mit einer Änderung von E-Mail (F1) in einer untrennbaren Operation zusammenfassen. [<=]

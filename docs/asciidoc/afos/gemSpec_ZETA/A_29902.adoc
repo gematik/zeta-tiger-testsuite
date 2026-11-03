@@ -1,0 +1,4 @@
+[#A_29902]
+==== A_29902 - Authorization Server – Verwaltung nur durch eingebuchten Client
+
+Der Authorization Server MUSS für identitäts- und clientbezogene Verwaltungsoperationen (Änderung der E-Mail, Schlüssel-Rollover, Löschung von Clients) den Nachweis eines an diesem Fachdienst eingebuchten, gültigen Clients verlangen. [<=]

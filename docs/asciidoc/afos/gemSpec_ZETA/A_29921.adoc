@@ -1,0 +1,4 @@
+[#A_29921]
+==== A_29921 - Authorization Server - Schlüssel-Rollover mit Proof-of-Possession
+
+Der ZETA Client MUSS seinen Instanzschlüssel regelmäßig wechseln (Intervall durch gematik festgelegt). Der Wechsel MUSS als In-Place-Rollover der bestehenden Registrierung erfolgen und durch eine Signatur mit dem bisherigen (aktiven) Instanzschlüssel autorisiert werden (Proof-of-Possession). Der Authorization Server DARF NICHT einen Schlüsselwechsel allein auf Basis des Registration Access Token nach [RFC7592] zulassen. [<=]

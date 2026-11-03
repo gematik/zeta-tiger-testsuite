@@ -1,0 +1,4 @@
+[#A_29910]
+==== A_29910 - Authorization Server – Verknüpfung weiterer Clients mit bestehender Identität
+
+Der Authorization Server MUSS bei jeder weiteren Registrierung einer bereits bekannten Identität die gebundene E-Mail erneut verifizieren, DARF NICHT eine abweichende E-Mail-Adresse zulassen und MUSS den neuen Client mit dem bestehenden Identitätsdatensatz verknüpfen sowie seinen eigenen Instanzschlüssel (F2) binden. [<=]

@@ -1,0 +1,4 @@
+[#A_29660]
+==== A_29660 - ZETA, Ablauf Authorization Request mit PAR
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR unterstützen. [<=]

@@ -1,0 +1,4 @@
+[#A_29855]
+==== A_29855 - PDP Authorization Server - Entzug der Refresh Token nach Session-Termination
+
+Die Komponente Authorization Server MUSS bei erfolgreicher Session-Termination alle der Session zugeordneten Refresh Token unverzüglich ungültig machen. Die Ungültigmachung MUSS auch rotierte Refresh Token derselben Session umfassen. [<=]

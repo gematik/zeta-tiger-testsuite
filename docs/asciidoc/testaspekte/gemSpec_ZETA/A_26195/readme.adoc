@@ -1,6 +1,0 @@
-==== Testaspekte für die Anforderung A_26195
-
-Folgende Testaspekte testen <<A_26195>>.
-
-include::TA_A_26195_01.adoc[]
-

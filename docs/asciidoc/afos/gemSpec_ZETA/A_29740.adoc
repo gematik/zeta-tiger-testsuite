@@ -1,0 +1,4 @@
+[#A_29740]
+==== A_29740 - PDP Authorization Server, Verwendung Trust Anchor des Provisioning Images
+
+Der ZETA Guard Authorization Server MUSS die im Provisioning Image enthaltenen Trust Anchor für folgende Validierungsschritte nutzen: TI-Zertifikate (TSL): Die Trust Service Status List (TSL) unter /tsl/ sowie die TI-Roots unter /ti-roots/roots.json MÜSSEN zur Validierung von SMC-B-Zertifikatsketten herangezogen werden. Plattform-Attestierung: TPM-Attestierung: Zur Verifikation von hardwarebasierten Attestierungsdaten der Clients MÜSSEN die TPM-Stammzertifikate aus /trusted-tpm/TrustedTpm.cab verwendet werden. Android-Attestierung: Zur Verifikation von Android-Clients MÜSSEN die Trust Anchors aus /android-roots/roots.json verwendet werden. Apple-Attestierung: Zur Verifikation von iOS-/macOS-Clients MÜSSEN die Apple-Wurzelzertifikate aus /apple-roots/apple-root.pem verwendet werden [<=]

@@ -1,8 +1,0 @@
-==== Testaspekte für die Anforderung A_27265
-
-Folgende Testaspekte testen <<A_27265>>.
-
-include::TA_A_27265_01.adoc[]
-
-include::TA_A_27265_02.adoc[]
-

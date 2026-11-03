@@ -27,6 +27,7 @@ Die Resource-Anfrage erfordert einen PoPP Nachweis (``PoPP``-Header).
 
 | Nebenbedingung: |
 Der PoPP Header wird beim Versand der Anfrage unterdrückt oder vom Client nicht übermittelt.
+Ein erfolgreicher SDK-Kontrollaufruf mit PoPP-Header belegt zuvor die erreichbare Route und gültige übrige Nachweise. Tiger entfernt anschließend ausschließlich den PoPP-Header; die tatsächliche Anfrage und ihre zugeordnete Antwort bilden den Nachweis. (<<TA_A_26477-01_04>>)
 
 | Ablauf: |
 . MA startet den Abruf einer geschützten Ressource über den ZETA Client.
@@ -36,15 +37,14 @@ Der PoPP Header wird beim Versand der Anfrage unterdrückt oder vom Client nicht
 - ``Authorization: DPoP ... (Access Token)``
 - **kein** ``PoPP``-Header liegt bei der Anfrage vor.
 . Der PEP HTTP Proxy prüft die übermittelten Header und stellt fest, dass der PoPP Nachweis fehlt, obwohl er zwingend verlangt wird.
-. Der PEP HTTP Proxy antwortet mit ``400 Bad Request`` und erläutert im Fehlertext die fehlende PoP-Information.
+. Der PEP HTTP Proxy antwortet mit ``400 Bad Request``.
 . Der ZETA Client informiert den MA, dass die Anfrage unvollständig war und der PoPP Nachweis ergänzt werden muss.
 
 | Nachbedingung: |
-Der Ressourcenzugriff wurde abgewiesen.
 Der Ressourcenzugriff wurde abgewiesen. Der MA muss die Anfrage mit PoPP-Header erneut senden.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_26477_04>>
+* <<TA_A_26477-01_04>>
 * <<TA_A_26661_18>>
 * <<TA_A_26988_01>>
 * <<TA_A_26988_02>>

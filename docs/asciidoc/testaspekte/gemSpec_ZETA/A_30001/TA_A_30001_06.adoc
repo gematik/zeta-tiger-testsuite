@@ -1,0 +1,8 @@
+[#TA_A_30001_06]
+===== TA_A_30001_06 - ZETA, Ablauf Token Revocation - Client Assertion serverseitig prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 05: **Client-Assertion-Prüfung wie am Token-Endpunkt**.

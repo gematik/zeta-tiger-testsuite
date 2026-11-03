@@ -1,0 +1,6 @@
+[#TA_A_29986_01]
+===== TA_A_29986_01 - Notification Service – Schema-widrige eingehende Requests mit HTTP 400 ablehnen
+
+"**Der Notification Service MUSS alle eingehenden Requests gegen das in der OpenAPI definierte Schema validieren (Pflichtfelder, Formate/Pattern für KVNR und Telematik-ID, id_type) und ungültige Requests mit 400 ablehnen.**
+
+**[<=]**"

@@ -1,0 +1,8 @@
+[#TA_A_30001_19]
+===== TA_A_30001_19 - ZETA, Ablauf Token Revocation - Authentisierungsfehler mit invalid_client
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 12: **error=invalid_client**.

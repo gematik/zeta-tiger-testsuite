@@ -27,7 +27,6 @@ package de.gematik.zeta.services;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -143,14 +142,7 @@ public class JaegerQueryService {
    */
   private HttpClient buildJaegerHttpClient() {
     try {
-      var builder = HttpClient.newBuilder()
-          .connectTimeout(requestTimeout)
-          // Ignore the JVM-wide proxy that Tiger installs (https.proxyHost=localhost). The Tiger
-          // test lib routes all traffic through the local Tiger proxy via system properties, which
-          // java.net.http.HttpClient would otherwise honor and then fail to CONNECT-tunnel HTTPS.
-          // NO_PROXY makes this client connect directly, like curl does.
-          .proxy(ProxySelector.of(null))
-          .version(HttpClient.Version.HTTP_1_1);
+      var builder = DirectHttpClients.httpClientBuilder();
       var baseUrl = TigerGlobalConfiguration.resolvePlaceholders("${paths.jaeger.baseUrl}");
       if (baseUrl.startsWith("https://")) {
         builder.sslContext(SslConfigurationService.getTrustAllSslContext());

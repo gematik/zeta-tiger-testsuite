@@ -29,6 +29,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import de.gematik.zeta.steps.JwtTestHelper;
 import de.gematik.zeta.steps.SignatureVerificationSteps;
 import java.math.BigInteger;
@@ -38,7 +42,15 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
+import java.util.List;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Unit tests for signature validation in {@link SignatureVerificationSteps}.
@@ -46,6 +58,140 @@ import org.junit.jupiter.api.Test;
 class SignatureVerifikationTest {
 
   private final SignatureVerificationSteps verifier = new SignatureVerificationSteps();
+
+  @ParameterizedTest
+  @ValueSource(strings = {"secp256r1", "brainpoolP256r1"})
+  void verifiesFirstCertificateDespiteUnrelatedJwk(String curve) throws Exception {
+    var generator = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+    generator.initialize(new ECGenParameterSpec(curve));
+    var signingKey = generator.generateKeyPair();
+    var unrelatedJwk = new ECKeyGenerator(Curve.P_256).generate().toPublicJWK();
+    var header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+        .x509CertChain(List.of(createX5cCertificate(signingKey))).build();
+    for (var candidate : List.of(header, new JWSHeader.Builder(header).jwk(unrelatedJwk).build())) {
+      var token = JwtTestHelper.createSignedJwt(
+          candidate.toString(), "{\"sub\":\"test-subject\"}", signingKey.getPrivate());
+      assertDoesNotThrow(() -> verifier.verifyJwtSignatureFromX5c(token));
+    }
+  }
+
+  @Test
+  void rejectsSignatureMatchingJwkAndSecondCertificateButNotFirstCertificate() throws Exception {
+    var certificateKey = createP256KeyPair();
+    var signingJwk = new ECKeyGenerator(Curve.P_256).generate();
+    var header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+        .jwk(signingJwk.toPublicJWK())
+        .x509CertChain(List.of(createX5cCertificate(certificateKey),
+            createX5cCertificate(signingJwk.toKeyPair())))
+        .build();
+    var token = JwtTestHelper.createSignedJwt(
+        header.toString(), "{\"sub\":\"test-subject\"}", signingJwk.toECPrivateKey());
+    assertDoesNotThrow(() -> verifier.verifyJwtSignature(token));
+    assertThrows(AssertionError.class, () -> verifier.verifyJwtSignatureFromX5c(token));
+  }
+
+  @Test
+  void rejectsMissingOrInvalidCertificateEvenWithMatchingJwk() throws Exception {
+    var key = new ECKeyGenerator(Curve.P_256).generate();
+    var header = new JWSHeader.Builder(JWSAlgorithm.ES256).jwk(key.toPublicJWK()).build();
+    for (var candidate : List.of(header,
+        new JWSHeader.Builder(header).x509CertChain(List.of()).build(),
+        new JWSHeader.Builder(header).x509CertChain(
+            List.of(com.nimbusds.jose.util.Base64.encode("invalid certificate"))).build())) {
+      var token = JwtTestHelper.createSignedJwt(
+          candidate.toString(), "{\"sub\":\"test-subject\"}", key.toECPrivateKey());
+      assertThrows(AssertionError.class, () -> verifier.verifyJwtSignatureFromX5c(token));
+    }
+  }
+
+  /**
+   * Encodes a self-signed EC certificate for one key pair as an x5c entry.
+   *
+   * @param key certificate public key and signing private key
+   * @return Base64 DER certificate
+   * @throws Exception if certificate construction or signing fails
+   */
+  private static com.nimbusds.jose.util.Base64 createX5cCertificate(KeyPair key) throws Exception {
+    var name = new X500Name("CN=JWT unit test");
+    var certificate = new JcaX509v3CertificateBuilder(name, BigInteger.ONE,
+        new Date(0), new Date(4102444800000L), name, key.getPublic())
+        .build(new JcaContentSignerBuilder("SHA256withECDSA")
+            .setProvider(new BouncyCastleProvider()).build(key.getPrivate()));
+    return com.nimbusds.jose.util.Base64.encode(certificate.getEncoded());
+  }
+
+  @Test
+  void verifiesEveryPresentJwtFieldAgainstTrustedKeys() throws Exception {
+    var trusted = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(
+        com.nimbusds.jose.jwk.Curve.P_256).keyID("trusted").generate();
+    var foreign = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(
+        com.nimbusds.jose.jwk.Curve.P_256).keyID("trusted").generate();
+    var header = new com.nimbusds.jose.JWSHeader.Builder(com.nimbusds.jose.JWSAlgorithm.ES256)
+        .keyID("trusted").build();
+    var valid = new com.nimbusds.jose.JWSObject(header, new com.nimbusds.jose.Payload("{}"));
+    valid.sign(new com.nimbusds.jose.crypto.ECDSASigner(trusted));
+    var invalid = new com.nimbusds.jose.JWSObject(header, new com.nimbusds.jose.Payload("{}"));
+    invalid.sign(new com.nimbusds.jose.crypto.ECDSASigner(foreign));
+    var jwks = new com.nimbusds.jose.jwk.JWKSet(trusted.toPublicJWK()).toString();
+    var json = new tools.jackson.databind.ObjectMapper();
+    var response = json.createObjectNode().put("access_token", valid.serialize())
+        .put("refresh_token", valid.serialize());
+    assertDoesNotThrow(() -> verifier.verifyPresentJwtSignatures(
+        "access_token,refresh_token", response.toString(), jwks));
+    for (var field : java.util.List.of("access_token", "refresh_token")) {
+      var changed = response.deepCopy().put(field, invalid.serialize());
+      assertThrows(AssertionError.class, () -> verifier.verifyPresentJwtSignatures(
+          "access_token,refresh_token", changed.toString(), jwks));
+    }
+  }
+
+  @Test
+  void permitsAbsentJwtFields() {
+    assertDoesNotThrow(() -> verifier.verifyPresentJwtSignatures(
+        "access_token,refresh_token", "{}", "{}"));
+  }
+
+  @Test
+  void rejectsMalformedPresentJwtField() {
+    assertThrows(AssertionError.class, () -> verifier.verifyPresentJwtSignatures(
+        "access_token,refresh_token", "{\"refresh_token\":\"malformed\"}", "{}"));
+  }
+
+  /** A second invalid claim or a changed header cannot masquerade as an isolated iat fault. */
+  @Test
+  void onlyDeclaredClaimMayChangeOrDisappear() throws Exception {
+    var key = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(
+        com.nimbusds.jose.jwk.Curve.P_256).generate();
+    var header = new com.nimbusds.jose.JWSHeader.Builder(com.nimbusds.jose.JWSAlgorithm.ES256)
+        .keyID("popp-control").build();
+    var claims = new com.nimbusds.jwt.JWTClaimsSet.Builder().issuer("popp")
+        .claim("actorId", "own").issueTime(new java.util.Date(1790000000000L)).build();
+    var original = new com.nimbusds.jwt.SignedJWT(header, claims);
+    original.sign(new com.nimbusds.jose.crypto.ECDSASigner(key));
+    for (var defect : java.util.List.of("old", "missing", "unchanged", "actor", "header", "other")) {
+      var changed = new com.nimbusds.jwt.JWTClaimsSet.Builder(claims);
+      if (!defect.equals("unchanged")) {
+        changed.issueTime(defect.equals("missing") ? null : new java.util.Date(1789999940000L));
+      }
+      if (defect.equals("actor")) {
+        changed.claim("actorId", "foreign");
+      }
+      if (defect.equals("other")) {
+        changed.claim("extra", true);
+      }
+      var variant = new com.nimbusds.jwt.SignedJWT(defect.equals("header")
+          ? new com.nimbusds.jose.JWSHeader.Builder(header).keyID("foreign").build() : header,
+          changed.build());
+      variant.sign(new com.nimbusds.jose.crypto.ECDSASigner(key));
+      if (defect.equals("old") || defect.equals("missing")) {
+        assertDoesNotThrow(() -> verifier.verifyOnlyClaimChanged(
+            original.serialize(), variant.serialize(), "iat"));
+      } else {
+        assertThrows(AssertionError.class, () -> verifier.verifyOnlyClaimChanged(
+            original.serialize(), variant.serialize(), "iat"));
+      }
+    }
+  }
 
   /**
    * Tests the verification of an elliptic curve JWK signature with a referenced public key.

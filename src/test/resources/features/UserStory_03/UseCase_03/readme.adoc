@@ -1,0 +1,84 @@
+[#UC_03_03]
+== UseCase_03_03: Mobilen Client mit Attestierung registrieren
+
+.UseCase_03_03
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* |
+Mobilen Client mit Attestierung registrieren
+
+| Akteur: |
+Nutzer eines mobilen ZETA Clients
+
+| weitere Akteure: |
+ZETA Client, PDP Authorization Server, E-Mail-Dienst
+
+| Auslöser: |
+Der Client benötigt eine Registrierung am ZETA Guard.
+
+| Kurzbeschreibung: |
+Ohne ZETA Attestation Token erfolgt die Registrierung mit Apple-, Android- oder Software-Nachweisen und E-Mail-OTP. Mit vorhandenem Token verwendet der Client den Fast-Path.
+
+| Vorbedingung: |
+. Client-Instanzschlüssel und die zum gewählten Pfad gehörenden gültigen Nachweise sind vorhanden. Die App-Redirect-URIs sind registriert.
+. Für den regulären Pfad besitzt der Nutzer Zugriff auf user_email; für Apple beziehungsweise Android liegen die zugehörigen Hardwareartefakte und der Besitznachweis vor.
+. Für den Fast-Path liegt ein gültiges vertrauenswürdiges ZETA Attestation Token vor. Der Client verfügt über den darin gebundenen AK und den frischen plattformspezifischen attestation_pop.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Ohne ZETA Attestation Token wählt der Client genau einen regulären Pfad:
+* Apple: POST /register mit attestation_type=apple, client_name, jwks einschließlich PuK.Client.Sig, apple_attestation_object, signed_hash_puk_client_sig, redirect_uris und user_email.
+* Android: POST /register mit attestation_type=android, client_name, jwks einschließlich PuK.Client.Sig, android_key_attestation_certificate_chain, signed_hash_puk_client_sig, play_integrity_token, redirect_uris und user_email.
+* Software: POST /register mit client_name, grant_types für Token Exchange, Refresh Token und JWT Bearer, jwks, token_endpoint_auth_method=private_key_jwt, user_email und den zwei Redirect-URIs oidc_redirect_uri (/cb/<app>/oidc) und app_redirect_uri (/cb/<app>/app).
+. In den Hardwarepfaden verarbeitet der Authorization Server die plattformspezifischen Nachweise und den Besitznachweis. Beim Android-Pfad berücksichtigt er die aktivierte optionale Play-Integrity-Prüfung. In allen drei regulären Pfaden legt er den Client-Platzhalter im Zustand pending_verification sowie OTP und transaction_id an.
+. Der Server sendet die E-Mail mit OTP an den Nutzer und antwortet dem Client mit 202 Accepted, transaction_id und message_id=otp_verification.
+. Der Nutzer gibt den erhaltenen Code ein. Der Client sendet POST /register/verify mit transaction_id und code. Der Server verifiziert den Code.
+. Im alternativen Fast-Path sendet der Client stattdessen POST /register mit attestation_type=zeta_attestation_token, client_name, zeta_attestation_token, jwks einschließlich PuK.Client.Sig, signed_hash_puk_client_sig und attestation_pop. Für Apple enthält attestation_pop die CBOR-Assertion, für Android beziehungsweise TPM die AK-Signatur über SHA-256(PuK.Client.Sig). Die serverinternen plattformspezifischen Verarbeitungszweige führen zur selben Antwort.
+. Nach erfolgreicher OTP-Verifikation beziehungsweise erfolgreichem Fast-Path antwortet der Authorization Server mit 201 Created und client_id.
+
+| Nachbedingung: |
+Der Client besitzt die zurückgegebene client_id. Die drei regulären Pfade umfassen E-Mail-Zustellung und OTP-Verifikation; der Fast-Path erreicht dieselbe Erfolgsantwort ohne diese Interaktionen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29658_01>>
+* <<TA_A_29658_02>>
+* <<TA_A_29658_03>>
+* <<TA_A_29658_04>>
+
+|===
+
+[mermaid,uc-03-03-ablauf,svg]
+....
+sequenceDiagram
+actor U as Nutzer
+    participant C as ZETA Client
+    participant A as Authorization Server
+    alt Kein ZETA Attestation Token
+        alt Apple
+            C->>A: POST /register mit Apple-Evidence und user_email
+        else Android
+            C->>A: POST /register mit Android-Evidence und user_email
+        else Software
+            C->>A: POST /register mit JWKS, Grants, Redirect-URIs und user_email
+        end
+        A->>A: Nachweise verarbeiten, Platzhalter und OTP anlegen
+        A-->>U: E-Mail mit OTP
+        A-->>C: 202 Accepted, transaction_id, otp_verification
+        U->>C: OTP eingeben
+        C->>A: POST /register/verify mit transaction_id und code
+        A->>A: OTP verifizieren
+    else ZETA Attestation Token vorhanden
+        C->>A: POST /register mit Token, JWKS und Besitznachweisen
+        A->>A: Token und plattformspezifische Besitznachweise verarbeiten
+    end
+    A-->>C: 201 Created, client_id
+....
+
+ifdef::render_features[]
+[source]
+----
+include::mobile_client_registrierung.feature[]
+----
+endif::[]

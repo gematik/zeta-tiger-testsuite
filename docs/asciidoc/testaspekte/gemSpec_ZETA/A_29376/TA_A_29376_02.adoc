@@ -1,0 +1,8 @@
+[#TA_A_29376_02]
+===== TA_A_29376_02 - ZETA, Ablauf Token Exchange mit Attestation - Token-Exchange-Request übertragen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 06: Der Client sendet **POST /token** mit DPoP-Header, signierter client_assertion, SMC-B-signiertem subject_token samt Nonce, grant_type, subject_token_type, scope und resource beziehungsweise der zulässigen Legacy-Alternative audience. Die Evidence entspricht dem Attestierungsprofil.

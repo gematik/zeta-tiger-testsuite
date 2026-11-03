@@ -35,8 +35,9 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
   @TA_A_25782_05
   @TA_A_26662_01
   @TA_A_27725-01_15
+  @MASVS-CRYPTO
+  @MASVS-STORAGE
   @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: Refresh Token Reuse wird vom Authorization Server abgelehnt (Negativtest)
     Gegeben sei TGR setze lokale Variable "accessTokenTtl" auf "5"
     # expires_in Manipulation aktivieren BEVOR der erste HelloZeta Request
@@ -76,7 +77,7 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     # Hinweis: Token Request Body ist application/x-www-form-urlencoded (Form-Data), nicht JSON
     # TigerProxy hat keinen RbelHttpFormDataWriter, daher muss Regex auf $.body verwendet werden
     Wenn TGR setze lokale Variable "replayCondition" auf "isRequest && request.path =~ '.*${paths.guard.tokenEndpointPath}'"
-    Dann Setze im TigerProxy für die Nachricht "${replayCondition}" die Regex-Manipulation auf Feld "$.body" mit Regex "refresh_token=[^&]*" und Wert "refresh_token=${usedRefreshToken}"
+    Dann Setze im TigerProxy für die Nachricht "${replayCondition}" die Regex-Manipulation auf Feld "$.body" mit Regex "refresh_token=[^&]*" und Wert "refresh_token=${usedRefreshToken}" und 1 Ausführungen
 
     Und TGR lösche aufgezeichnete Nachrichten
 
@@ -101,7 +102,7 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "invalid_grant"
     # Zusätzliche Schema-Validierung
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "errorBody"
-    Und validiere "${errorBody}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${errorBody}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
     Und warte "${testdata.telemetry_wait_seconds}" Sekunden
     Und speichere den aktuellen Unix-Zeitstempel in der Variable "END"
     Und TGR setze lokale Variable "END_MICROS" auf "!{${END} * 1000000}"
@@ -112,9 +113,11 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"
 
-  @A_27802-02
-  @TA_A_27802-02_01
-  @TA_A_27802-02_02
+  @A_27802-03
+  @TA_A_27802-03_01
+  @TA_A_27802-03_02
+  @MASVS-AUTH
+  @MASVS-CODE
   @MASVS-CRYPTO
   @require_signing_key
   Szenariogrundriss: ZETA Guard verwirft fehlerhafte Refresh Token JWT Varianten (<Variante>)
@@ -138,93 +141,93 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR lösche aufgezeichnete Nachrichten
     Und TGR setze lokale Variable "refreshRequestCondition" auf ".*${paths.guard.tokenEndpointPath}"
-    Und Setze im TigerProxy für JWT in "$.body.refresh_token" das Feld "variant.name" auf Wert "<Variante>" mit privatem Schlüssel "${signingKey}" für Pfad "${refreshRequestCondition}" und 1 Ausführungen
+    Und Setze im TigerProxy für JWT in "$.body.refresh_token" die Variante <Variante> mit Parameter '<Parameter>' mit privatem Schlüssel "${signingKey}" für Pfad "${refreshRequestCondition}" und 1 Ausführungen
 
     Wenn warte "${accessTokenTtl}" Sekunden
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "${oauth_parameters.grant_type.refreshToken}" übereinstimmt
     Und TGR speichere Wert des Knotens "$.body.refresh_token" der aktuellen Anfrage in der Variable "malformedRefreshToken"
-    Und prüfe die JWT-Variante <Variante> in "${malformedRefreshToken}" ist lokal strukturell angewendet
+    Und prüfe die JWT-Variante <Variante> in "${malformedRefreshToken}" mit Parameter '<Parameter>' ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${malformedRefreshToken}" hat lokal mit KeyStore "${KEY_STORE}" die erwartete Signaturintegritaet
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "invalid_grant"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.access_token"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.refresh_token"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "errorBody"
+    Und validiere "${errorBody}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     @normal
     Beispiele: two_segments
-      | Variante                           |
-      | two_segments                       |
+      | Variante     | Parameter |
+      | two_segments |           |
 
     @normal
     Beispiele: invalid_header_base64url
-      | Variante                           |
-      | invalid_header_base64url           |
+      | Variante                 | Parameter |
+      | invalid_header_base64url |           |
 
     @normal
     Beispiele: invalid_payload_base64url
-      | Variante                           |
-      | invalid_payload_base64url          |
+      | Variante                  | Parameter |
+      | invalid_payload_base64url |           |
 
     @normal
     Beispiele: invalid_signature_base64url
-      | Variante                           |
-      | invalid_signature_base64url        |
+      | Variante                    | Parameter |
+      | invalid_signature_base64url |           |
 
     @normal
     Beispiele: invalid_header_json
-      | Variante                           |
-      | invalid_header_json                |
+      | Variante            | Parameter |
+      | invalid_header_json |           |
 
     @normal
     Beispiele: invalid_payload_json
-      | Variante                           |
-      | invalid_payload_json               |
+      | Variante             | Parameter |
+      | invalid_payload_json |           |
 
     @normal
     Beispiele: invalid_signature
-      | Variante                           |
-      | invalid_signature                  |
+      | Variante          | Parameter |
+      | invalid_signature |           |
 
     @normal
     Beispiele: jwe_like_five_segments
-      | Variante                           |
-      | jwe_like_five_segments             |
+      | Variante               | Parameter |
+      | jwe_like_five_segments |           |
 
     @normal
     Beispiele: invalid_header_json_unquoted_keys
-      | Variante                           |
-      | invalid_header_json_unquoted_keys  |
+      | Variante                          | Parameter |
+      | invalid_header_json_unquoted_keys |           |
 
     @normal
     Beispiele: invalid_payload_json_unquoted_keys
-      | Variante                           |
-      | invalid_payload_json_unquoted_keys |
-
-    @normal
-    Beispiele: unknown_header_parameter
-      | Variante                           |
-      | unknown_header_parameter           |
+      | Variante                           | Parameter |
+      | invalid_payload_json_unquoted_keys |           |
 
     @normal
     Beispiele: unsupported_crit
-      | Variante                           |
-      | unsupported_crit                   |
+      | Variante         | Parameter |
+      | unsupported_crit |           |
 
     @normal
     Beispiele: unsupported_alg
-      | Variante                           |
-      | unsupported_alg                    |
+      | Variante        | Parameter |
+      | unsupported_alg |           |
 
     @normal
     Beispiele: missing_alg
-      | Variante                           |
-      | missing_alg                        |
+      | Variante    | Parameter |
+      | missing_alg |           |
 
     @normal
     Beispiele: duplicate_alg_headers
-      | Variante                           |
-      | duplicate_alg_headers              |
+      | Variante              | Parameter         |
+      | duplicate_alg_headers | ["ES256","RS999"] |
 
     @normal
     Beispiele: nested_cty_jwt_invalid_inner
-      | Variante                           |
-      | nested_cty_jwt_invalid_inner       |
+      | Variante                     | Parameter |
+      | nested_cty_jwt_invalid_inner |           |

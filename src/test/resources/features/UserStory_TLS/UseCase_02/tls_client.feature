@@ -54,8 +54,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_13
+  @A_27379-02
+  @TA_A_27379-02_13
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -85,8 +86,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_01
+  @A_27379-02
+  @TA_A_27379-02_01
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -114,10 +116,11 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_02
-  @A_25340-01
-  @TA_A_25340-01_05
+  @A_27379-02
+  @TA_A_27379-02_02
+  @A_25340-02
+  @TA_A_25340-02_05
+  @MASVS-CODE
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -128,6 +131,13 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
     Gegeben sei der Zertifikatsvalidierungs-Mock verwendet den Modus "always_revoked"
     Und der TLS-Test-Tool-Server verwendet eine OCSP-Stapling-Antwort für das Zertifikat zeta_tls_test_tool_server_ecdsa_good_certificate
     # Die widerrufene OCSP-Antwort wurde bereits erzeugt und im TLS-Test-Tool hinterlegt.
+    # Wähle die Anfrage zur vorbereiteten Stapling-Antwort aus
+    Und TGR finde die erste Anfrage mit Pfad "^/ocsp/tls.*"
+    # Prüfe den Bezug zum verwendeten Serverzertifikat
+    Und die aktuelle OCSP-Anfrage fragt das Zertifikat zeta_tls_test_tool_server_ecdsa_good_certificate ab
+    # Belege den Widerrufsstatus
+    Und die aktuelle OCSP-Antwort meldet das angefragte Zertifikat als widerrufen
+    # Schließe einen widerrufenen Live-Status als Ablehnungsursache aus
     # Der Mock liefert für nachfolgende Live-Abfragen "good", damit allein die Stapling-Antwort die Ablehnung verursacht.
     Und der Zertifikatsvalidierungs-Mock verwendet den Modus "always_good"
     Und TGR lösche aufgezeichnete Nachrichten
@@ -149,8 +159,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_03
+  @A_27379-02
+  @TA_A_27379-02_03
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -182,8 +193,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_04
+  @A_27379-02
+  @TA_A_27379-02_04
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -215,8 +227,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_05
+  @A_27379-02
+  @TA_A_27379-02_05
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -248,8 +261,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_06
+  @A_27379-02
+  @TA_A_27379-02_06
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -281,10 +295,11 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_07
-  @A_25340-01
-  @TA_A_25340-01_05
+  @A_27379-02
+  @TA_A_27379-02_07
+  @A_25340-02
+  @TA_A_25340-02_05
+  @MASVS-CODE
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -331,51 +346,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | tls_version | client_name        | hello_path                      |
       | 1.2         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_10
-  @MASVS-CRYPTO
-  @ocsp_mock_mode_modified
-  @require_kubectl
-  @deployment_modification
-  @reset_tls_revocation_cache
-  Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - speichert OCSP ohne NextUpdate bis ThisUpdate plus 24 Stunden
-    Gegeben sei der Zertifikatsvalidierungs-Mock verwendet den Modus "always_good" ohne NextUpdate mit ThisUpdate-Offset -86370 Sekunden
-    Und TGR lösche aufgezeichnete Nachrichten
-    Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit zeta_tls_test_tool_server_ecdsa_good_certificate
-    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
-    Dann werden die Tls-Test-Tool-Protokolle abgerufen
-    Und die TCP-IP-Verbindung wurde hergestellt
-    Und wurde die TLS-Certificate-Nachricht übertragen
-    Und TGR finde die erste Anfrage mit Pfad "^/ocsp/tls.*" und Knoten "${headers.host}" der mit "tiger-proxy(:80)?" übereinstimmt
-    Und die aktuelle OCSP-Anfrage fragt das Zertifikat zeta_tls_test_tool_server_ecdsa_good_certificate ab
-    Und enthält die aktuelle OCSP-Antwort kein NextUpdate und ein vergangenes ThisUpdate
-    Und ist der TLS-Handshake erfolgreich
-    Und TGR lösche aufgezeichnete Nachrichten
-    Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit zeta_tls_test_tool_server_ecdsa_good_certificate
-    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
-    Dann werden die Tls-Test-Tool-Protokolle abgerufen
-    Und ist der TLS-Handshake erfolgreich
-    Und prüfe, dass keine aufgezeichnete Anfrage den Pfad "^/ocsp/tls.*" hat
-    Und warte 35 Sekunden
-    Und TGR lösche aufgezeichnete Nachrichten
-    Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit zeta_tls_test_tool_server_ecdsa_good_certificate
-    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
-    Dann werden die Tls-Test-Tool-Protokolle abgerufen
-    Und TGR finde die erste Anfrage mit Pfad "^/ocsp/tls.*" und Knoten "${headers.host}" der mit "tiger-proxy(:80)?" übereinstimmt
-    Und die aktuelle OCSP-Anfrage fragt das Zertifikat zeta_tls_test_tool_server_ecdsa_good_certificate ab
-
-    @tls_client_fachdienst_hook
-    Beispiele: ZETA Client
-      | client_name | hello_path                |
-      | ZETA Client | ${paths.client.helloZeta} |
-
-    @tls_native_client_fachdienst_hook
-    Beispiele: ZETA Native Client
-      | client_name        | hello_path                      |
-      | ZETA Native Client | ${paths.nativeClient.helloZeta} |
-
-  @A_25340-01
-  @TA_A_25340-01_05
+  @A_25340-02
+  @TA_A_25340-02_05
+  @MASVS-CODE
   @MASVS-NETWORK
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -755,7 +728,8 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
   @no_proxy
-  @A_25340-01
+  @A_25340-02
+  @MASVS-CODE
   @MASVS-NETWORK
   Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - Zertifikatsprüfung
     Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
@@ -775,60 +749,111 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | zertifikat                                       | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_good_certificate | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_01
+    @TA_A_25340-02_01
     @tls_client_fachdienst_hook
-    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Client
-      | zertifikat                                                   | handshake_erwartung | client_name | hello_path                |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate     | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_san_certificate    | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Client
+      | zertifikat                                                      | handshake_erwartung | client_name | hello_path                |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate        | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_01
+    @TA_A_25340-02_01
     @tls_native_client_fachdienst_hook
-    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Native Client
-      | zertifikat                                                   | handshake_erwartung | client_name        | hello_path                      |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate     | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_san_certificate    | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Native Client
+      | zertifikat                                                      | handshake_erwartung | client_name        | hello_path                      |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate        | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_02
+    @TA_A_25340-02_02
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht vor" - ZETA Client
       | zertifikat                                                | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_02
+    @TA_A_25340-02_02
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht vor" - ZETA Native Client
       | zertifikat                                                | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_03
+    @TA_A_25340-02_03
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht nach" - ZETA Client
       | zertifikat                                          | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_expired_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_03
+    @TA_A_25340-02_03
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht nach" - ZETA Native Client
       | zertifikat                                          | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_expired_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_04
+    @TA_A_25340-02_04
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit basiert auf Zertifikatsvertrauenspfad - ZETA Client
       | zertifikat                                               | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_different_ca_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_04
+    @TA_A_25340-02_04
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit basiert auf Zertifikatsvertrauenspfad - ZETA Native Client
       | zertifikat                                               | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_different_ca_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
   @no_proxy
-  @A_25340-01
+  @A_25340-02
+  @MASVS-CODE
+  @MASVS-NETWORK
+  Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - Zertifikatsprüfung - CN fallback
+    Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
+    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
+    Dann werden die Tls-Test-Tool-Protokolle abgerufen
+    Und die TCP-IP-Verbindung wurde hergestellt
+    Und wurde die TLS-Certificate-Nachricht übertragen
+    Und ist der TLS-Handshake <handshake_erwartung>
+
+    @TA_A_25340-02_01
+    @tls_client_fachdienst_hook
+    Beispiele: Erfolgsfall - ZETA Client
+      | zertifikat                                              | handshake_erwartung | client_name | hello_path                |
+      | zeta_tls_test_tool_server_ecdsa_without_san_certificate | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
+
+    @TA_A_25340-02_01
+    @tls_native_client_fachdienst_hook
+    Beispiele: Erfolgsfall - ZETA Native Client
+      | zertifikat                                              | handshake_erwartung | client_name        | hello_path                      |
+      | zeta_tls_test_tool_server_ecdsa_without_san_certificate | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
+
+  @no_proxy
+  @A_25340-02
+  @MASVS-CODE
+  @MASVS-NETWORK
+  Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - Zertifikatsprüfung - SAN und CN falsch
+    Gegeben sei eine TLS-1.2-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
+    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "<request_path>"
+    Dann TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "500"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "<fehler_pfad>" überein mit "<fehler_muster>"
+    Dann werden die Tls-Test-Tool-Protokolle abgerufen
+    Und die TCP-IP-Verbindung wurde hergestellt
+    Und wurde die TLS-Certificate-Nachricht übertragen
+
+    @TA_A_25340-02_01
+    @tls_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Client - SAN und CN falsch
+      | zertifikat                                                      | client_name        | hello_path                      | request_path                  | fehler_pfad | fehler_muster                                  |
+      | zeta_tls_test_tool_server_ecdsa_different_san_certificate       | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate    | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+      | zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+
+    @TA_A_25340-02_01
+    @tls_native_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Native Client - SAN und CN falsch
+      | zertifikat                                                      | client_name        | hello_path                      | request_path                        | fehler_pfad  | fehler_muster |
+      | zeta_tls_test_tool_server_ecdsa_different_san_certificate       | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate    | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
+      | zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
+
+  @no_proxy
+  @A_25340-02
+  @MASVS-CODE
   @MASVS-NETWORK
   Szenariogrundriss: TLS-1.3-Verbindungen - <client_name> - Zertifikatsprüfung
     Gegeben sei eine TLS-1.3-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
@@ -838,67 +863,119 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
     Und wurde die TLS-Certificate-Nachricht übertragen
     Und ist der TLS-Handshake <handshake_erwartung>
 
+    @TA_A_25340-02_01
     @tls_client_fachdienst_hook
     Beispiele: Erfolgsfall - ZETA Client
       | zertifikat                                       | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_good_certificate | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
 
+    @TA_A_25340-02_01
     @tls_native_client_fachdienst_hook
     Beispiele: Erfolgsfall - ZETA Native Client
       | zertifikat                                       | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_good_certificate | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_01
+    @TA_A_25340-02_01
     @tls_client_fachdienst_hook
-    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Client
-      | zertifikat                                                   | handshake_erwartung | client_name | hello_path                |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate     | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_san_certificate    | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Client
+      | zertifikat                                                        | handshake_erwartung | client_name | hello_path                |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate          | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_01
+    @TA_A_25340-02_01
     @tls_native_client_fachdienst_hook
-    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Native Client
-      | zertifikat                                                   | handshake_erwartung | client_name        | hello_path                      |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate     | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_san_certificate    | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
-      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Native Client
+      | zertifikat                                                      | handshake_erwartung | client_name        | hello_path                      |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_certificate        | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_02
+    @TA_A_25340-02_02
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht vor" - ZETA Client
       | zertifikat                                                | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_02
+    @TA_A_25340-02_02
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht vor" - ZETA Native Client
       | zertifikat                                                | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_not_yet_valid_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_03
+    @TA_A_25340-02_03
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht nach" - ZETA Client
       | zertifikat                                          | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_expired_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_03
+    @TA_A_25340-02_03
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit Zertifikat "nicht nach" - ZETA Native Client
       | zertifikat                                          | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_expired_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-    @TA_A_25340-01_04
+    @TA_A_25340-02_04
     @tls_client_fachdienst_hook
     Beispiele: Gültigkeit basiert auf Zertifikatsvertrauenspfad - ZETA Client
       | zertifikat                                               | handshake_erwartung | client_name | hello_path                |
       | zeta_tls_test_tool_server_ecdsa_different_ca_certificate | nicht erfolgreich   | ZETA Client | ${paths.client.helloZeta} |
 
-    @TA_A_25340-01_04
+    @TA_A_25340-02_04
     @tls_native_client_fachdienst_hook
     Beispiele: Gültigkeit basiert auf Zertifikatsvertrauenspfad - ZETA Native Client
       | zertifikat                                               | handshake_erwartung | client_name        | hello_path                      |
       | zeta_tls_test_tool_server_ecdsa_different_ca_certificate | nicht erfolgreich   | ZETA Native Client | ${paths.nativeClient.helloZeta} |
+
+  @no_proxy
+  @A_25340-02
+  @MASVS-CODE
+  @MASVS-NETWORK
+  Szenariogrundriss: TLS-1.3-Verbindungen - <client_name> - Zertifikatsprüfung - CN fallback
+    Gegeben sei eine TLS-1.3-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
+    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
+    Dann werden die Tls-Test-Tool-Protokolle abgerufen
+    Und die TCP-IP-Verbindung wurde hergestellt
+    Und wurde die TLS-Certificate-Nachricht übertragen
+    Und ist der TLS-Handshake <handshake_erwartung>
+
+    @TA_A_25340-02_01
+    @tls_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Client
+      | zertifikat                                              | handshake_erwartung | client_name | hello_path                |
+      | zeta_tls_test_tool_server_ecdsa_without_san_certificate | erfolgreich         | ZETA Client | ${paths.client.helloZeta} |
+
+    @TA_A_25340-02_01
+    @tls_native_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: SAN dNSName und CN-Fallback - ZETA Native Client
+      | zertifikat                                              | handshake_erwartung | client_name        | hello_path                      |
+      | zeta_tls_test_tool_server_ecdsa_without_san_certificate | erfolgreich         | ZETA Native Client | ${paths.nativeClient.helloZeta} |
+
+  @no_proxy
+  @A_25340-02
+  @MASVS-CODE
+  @MASVS-NETWORK
+  Szenariogrundriss: TLS-1.3-Verbindungen - <client_name> - Zertifikatsprüfung - SAN und CN falsch
+    Gegeben sei eine TLS-1.3-TlsTestTool-Server-Konfiguration für die unterstützten Cipher-Suiten mit <zertifikat>
+    Wenn TGR sende eine leere GET Anfrage an "<hello_path>"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "<request_path>"
+    Dann TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "500"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "<fehler_pfad>" überein mit "<fehler_muster>"
+    Dann werden die Tls-Test-Tool-Protokolle abgerufen
+    Und die TCP-IP-Verbindung wurde hergestellt
+    Und wurde die TLS-Certificate-Nachricht übertragen
+
+    @TA_A_25340-02_01
+    @tls_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Client - SAN und CN falsch
+      | zertifikat                                                      | client_name        | hello_path                      | request_path                  | fehler_pfad | fehler_muster                                  |
+      | zeta_tls_test_tool_server_ecdsa_different_san_certificate       | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate    | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+      | zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate | ZETA Client        | ${paths.client.helloZeta}       | ${paths.client.helloZetaPath} | $.body      | (?s)^[(]certificate_unknown[)].* |
+
+    @TA_A_25340-02_01
+    @tls_native_client_fachdienst_hook
+    Beispiele: Hostname-Prüfung: Vergleich CN oder SAN mit Hostname - ZETA Native Client - SAN und CN falsch
+      | zertifikat                                                      | client_name        | hello_path                      | request_path                        | fehler_pfad  | fehler_muster                              |
+      | zeta_tls_test_tool_server_ecdsa_different_san_certificate       | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
+      | zeta_tls_test_tool_server_ecdsa_different_cn_san_certificate    | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
+      | zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate | ZETA Native Client | ${paths.nativeClient.helloZeta} | ${paths.nativeClient.helloZetaPath} | $.body.error | (?s)^TLS verification failed for request.* |
 
   @no_proxy
   @GS-A_5542
@@ -922,8 +999,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_11
+  @A_27379-02
+  @TA_A_27379-02_11
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -931,7 +1009,8 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
   @reset_tls_revocation_cache
   @tls_subca_root
   Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - lädt und cached die CRL ohne OCSP Stapling
-    Gegeben sei TGR sende eine PUT Anfrage an "${paths.tigerProxy.baseUrl}/route" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
+    # Konfiguriert die CRL-Weiterleitung ohne aufgezeichnete Verwaltungsanfrage.
+    Gegeben sei im TigerProxy wird folgende Route eingerichtet:
       """
       {
         "from": "/crl",
@@ -967,8 +1046,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_25340-01
-  @TA_A_25340-01_06
+  @A_25340-02
+  @TA_A_25340-02_06
+  @MASVS-CODE
   @MASVS-NETWORK
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -997,8 +1077,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_25340-01
-  @TA_A_25340-01_06
+  @A_25340-02
+  @TA_A_25340-02_06
+  @MASVS-CODE
   @MASVS-NETWORK
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -1006,7 +1087,8 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
   @reset_tls_revocation_cache
   @tls_subca_root
   Szenariogrundriss: TLS-1.2-Verbindungen - <client_name> - cached die OCSP-Antwort der Sub-CA bis NextUpdate
-    Gegeben sei TGR sende eine PUT Anfrage an "${paths.tigerProxy.baseUrl}/route" mit ContentType "application/json" und folgenden mehrzeiligen Daten:
+    # Konfiguriert die CRL-Weiterleitung ohne aufgezeichnete Verwaltungsanfrage.
+    Gegeben sei im TigerProxy wird folgende Route eingerichtet:
       """
       {
         "from": "/crl",
@@ -1050,8 +1132,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_12
+  @A_27379-02
+  @TA_A_27379-02_12
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl
@@ -1081,8 +1164,9 @@ Funktionalität: TLS-Konformität ZETA Client und ZETA Native Client
       | client_name        | hello_path                      |
       | ZETA Native Client | ${paths.nativeClient.helloZeta} |
 
-  @A_27379-01
-  @TA_A_27379-01_12
+  @A_27379-02
+  @TA_A_27379-02_12
+  @MASVS-NETWORK
   @MASVS-CRYPTO
   @ocsp_mock_mode_modified
   @require_kubectl

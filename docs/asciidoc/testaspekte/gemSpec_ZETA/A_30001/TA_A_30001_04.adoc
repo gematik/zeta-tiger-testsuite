@@ -1,0 +1,8 @@
+[#TA_A_30001_04]
+===== TA_A_30001_04 - ZETA, Ablauf Token Revocation - Client Assertion ohne Attestierung erzeugen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 03: **Client Assertion JWT ohne Attestation**.

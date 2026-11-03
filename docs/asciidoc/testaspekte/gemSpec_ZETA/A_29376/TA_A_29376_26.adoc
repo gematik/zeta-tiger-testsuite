@@ -1,0 +1,8 @@
+[#TA_A_29376_26]
+===== TA_A_29376_26 - ZETA, Ablauf Token Exchange mit Attestation - Kein Attestierungstoken im Software-Fallback
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 16: Im erlaubten **Software-Fallback fehlt zeta_attestation_token** in der ansonsten erfolgreichen Tokenantwort.

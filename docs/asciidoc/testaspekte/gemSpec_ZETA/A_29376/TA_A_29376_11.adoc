@@ -1,0 +1,8 @@
+[#TA_A_29376_11]
+===== TA_A_29376_11 - ZETA, Ablauf Token Exchange mit Attestation - Subject Token und SMC-B-Signatur prüfen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 07 und 20: Der Authorization Server prüft das **Subject Token mit seiner SMC-B-Signatur**. Ein ungültiger Nachweis führt zu 400 mit error=invalid_grant ohne Policy-Aufruf oder Tokenausgabe.

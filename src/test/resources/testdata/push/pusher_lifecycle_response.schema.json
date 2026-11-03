@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Hard lifecycle content checks; the following custom step validates the full API contract softly.",
+  "type": "object",
+  "required": [
+    "pushers"
+  ],
+  "properties": {
+    "pushers": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "required": [
+          "pushkey",
+          "app_id"
+        ],
+        "properties": {
+          "pushkey": {
+            "const": "${testdata.notificationService.pusher.pushkey}"
+          },
+          "app_id": {
+            "const": "${testdata.notificationService.pusher.appId}"
+          }
+        }
+      },
+      "minContains": 1,
+      "maxContains": 1,
+      "items": {
+        "type": "object",
+        "required": ["pushkey", "app_id"],
+        "properties": {
+          "pushkey": {"type": "string"},
+          "app_id": {"type": "string"}
+        },
+        "if": {
+          "type": "object",
+          "required": [
+            "pushkey",
+            "app_id"
+          ],
+          "properties": {
+            "pushkey": {
+              "const": "${testdata.notificationService.pusher.pushkey}"
+            },
+            "app_id": {
+              "const": "${testdata.notificationService.pusher.appId}"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "required": ["kind", "app_display_name", "device_display_name", "lang", "profile_tag", "data"],
+          "properties": {
+            "app_display_name": {
+              "const": "${testdata.notificationService.pusher.appDisplayName}"
+            },
+            "device_display_name": {
+              "const": "${testdata.notificationService.pusher.deviceDisplayName}"
+            },
+            "profile_tag": {"const": "${testdata.notificationService.pusher.profileTag}"},
+            "lang": {
+              "const": "${testdata.notificationService.pusher.lang}"
+            },
+            "kind": {
+              "const": "http"
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "url", "format"
+              ],
+              "properties": {
+                "format": {"const": "${testdata.notificationService.pusher.format}"},
+                "url": {
+                  "const": "${testdata.notificationService.pusher.url}"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

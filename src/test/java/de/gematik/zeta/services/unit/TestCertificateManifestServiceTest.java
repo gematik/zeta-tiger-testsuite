@@ -49,6 +49,35 @@ class TestCertificateManifestServiceTest {
   @TempDir
   Path tempDir;
 
+  /** Verifies unique selections across service instances using the same canonical manifest. */
+  @Test
+  void choosesDifferentStemsAcrossServiceInstancesAndReportsExhaustion() throws IOException {
+    var manifest = createTestRepo().resolve("manifest/cert-manifest.tsv");
+    var first = service.chooseUnusedStem(manifest, "stem-000[12]");
+    var second = new TestCertificateManifestService().chooseUnusedStem(
+        manifest.getParent().resolve("../manifest/cert-manifest.tsv"), "stem-000[12]");
+    assertThat(java.util.Set.of(first, second)).containsExactlyInAnyOrder("stem-0001", "stem-0002");
+    assertThrows(IllegalArgumentException.class,
+        () -> service.chooseUnusedStem(manifest, "stem-000[12]"));
+  }
+
+  /** Verifies that unrelated stems are excluded from a random selection. */
+  @Test
+  void selectsOnlyMatchingStems() throws IOException {
+    var manifest = createTestRepo().resolve("manifest/cert-manifest.tsv");
+    assertThat(service.chooseUnusedStem(manifest, "stem-0002")).isEqualTo("stem-0002");
+    assertThat(service.chooseUnusedStem(manifest, "stem-000[12]")).isEqualTo("stem-0001");
+  }
+
+  /** Verifies invalid and unmatched patterns fail without substituting another identity. */
+  @Test
+  void rejectsInvalidOrUnmatchedStemPatterns() throws IOException {
+    var manifest = createTestRepo().resolve("manifest/cert-manifest.tsv");
+    for (var pattern : java.util.List.of("", "[", "foreign-.*")) {
+      assertThrows(IllegalArgumentException.class, () -> service.chooseUnusedStem(manifest, pattern));
+    }
+  }
+
   /**
    * Clear certificate manifest configuration overrides after each test.
    */

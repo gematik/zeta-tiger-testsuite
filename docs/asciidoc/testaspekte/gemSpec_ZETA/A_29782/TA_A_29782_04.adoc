@@ -1,0 +1,4 @@
+[#TA_A_29782_04]
+===== TA_A_29782_04 - Apple-Schlüsselgenerierung - Software-Fallback
+
+"Der ZETA Client für Apple Betriebssysteme MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Schlüsselgenerierung-Apple** unterstützen. [<=]"

@@ -2,6 +2,37 @@
 
 # Release Notes ZETA Tiger Testsuite
 
+## Version: 2.0.0
+
+Release date: 2026-10-27
+
+Tiger Testsuite 2.0.0
+
+This version migrates the ZETA Testsuite to the pinned ZETA V2.0.0 CC draft specification and extends the test scope since 1.3.0.
+It adds SDK-driven authentication and Notification Service scenarios and improves test isolation, runtime evidence, reporting, and delivery.
+
+#### Test Focus:
+
+- Migrated AFOs, TestAspects, UseCases, feature tags, and schema validation to the ZETA V2.0.0 CC draft; retired superseded requirements from the maintained test scope
+- Extended SMC-B, DPoP, PoPP, client assertion, token exchange, refresh-token, session, scope, audience, and authorization-policy scenarios
+- Added Android Key Attestation and Apple App Attest client-credentials scenarios, including proof-of-possession checks
+- Extended OIDC PAR and federation, identity-provider authentication, step-up scopes, public instance-key, identity-binding, logout, client-deletion, and e-mail notification scenarios
+- Expanded Notification Service coverage for pusher registration and lifecycle, discovery, rejected pushkeys, retention, notification tokens, KVNR indexing, and Android push delivery
+- Migrated TLS and OCSP checks and extended certificate validation and deployed Notification Service TLS scenarios
+- Improved correlated OPA and OTLP telemetry checks, collector discovery, and sampling configuration evidence
+- Stabilized WebSocket/STOMP performance execution, configurable measurement windows, and temporary routing with state recovery
+- Refined SDK test flows and authentication-profile selection; isolated proxy message history and Mailcatcher state between scenarios
+- Added reproducible draft-catalog conversion, source and document checks, active-scenario traceability, MASVS mapping checks, and scenario-specific runtime failure annotations
+- Removed obsolete specification snapshots, unused historical schemas and implicit legacy schema lookup, and migration-only files; retained their ongoing consistency checks in the regular documentation tests
+- Updated Docker and quality-gate packaging, bundled OIDC configuration and certificate fixtures, and added timestamped image tags for default-branch builds
+
+### Known issues:
+
+- The test basis remains the pinned ZETA V2.0.0 CC draft, revision 1658346 dated 2026-07-09. Reconciliation with a final published specification and official requirement catalog remains pending.
+- SDK scenarios require matching platform-driver APIs and test identities; Android and Apple attestation and Android push delivery require their respective platform prerequisites.
+- Deployment, Notification Service TLS, performance, TPM, and long-running scenarios require the corresponding services, permissions, configuration, and explicit runtime opt-ins. Tests sharing mutable deployment resources must run exclusively.
+- Telemetry scenarios depend on accessible OpenSearch, Jaeger, Prometheus, and collector services. OIDC scenarios additionally require a configured identity provider, Mailcatcher, and matching keys.
+
 ## Version: 1.3.0
 
 Release date: 2026-08-27

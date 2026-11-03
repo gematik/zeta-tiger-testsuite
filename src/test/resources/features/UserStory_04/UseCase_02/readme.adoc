@@ -1,0 +1,95 @@
+[#UC_04_02]
+== UseCase_04_02: Bestehende Registrierung und Faktoren gegen IDP-only-Zugriffe schützen
+
+.UseCase_04_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Bestehende Registrierung und Faktoren gegen IDP-only-Zugriffe schützen
+
+| Akteur: | Nutzer / kontrollierter Angreifer
+
+| weitere Akteure: | ZETA Client, Authorization Server, sektoraler IDP, gebundene E-Mail F1, Instanzschlüssel F2
+
+| Auslöser: | Eine bestehende Registrierung soll übernommen, verändert, wiederhergestellt oder ein Faktor geändert/neu gebunden werden.
+
+| Kurzbeschreibung: |
+Für jede Operation werden gültige IDP-Authentisierung ohne bestehenden Faktor und eine zulässige faktorautorisierte Kontrolle verglichen.
+Die Folgeregistrierung ohne ursprünglichen Faktor ist in `idp_allein_keine_wiederherstellung.feature` ausführbar. Die übrigen Operationen und Testaspekte bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Eine mobile TOFU-Testidentität I1 besitzt die verifizierte E-Mail E1 (F1) und den Instanzschlüssel K1 (F2) des registrierten Clients C1. Unabhängige Bestandsabfrage und eine erfolgreiche, faktorbestätigte Erstregistrierung belegen die Bindungen.
+. Ein separater Angreifer-/Neugerätekontext C2 kann sich beim sektoralen IDP gültig als I1 authentisieren, kontrolliert aber weder E1 noch K1. Er verwendet einen frischen eigenen Schlüssel K2 und eine neue E-Mail E2; SDK-Speicher, Cookies und Signierzugänge sind strikt von C1 getrennt.
+. Geprüfte Operationen sind Übernahme durch Ersetzen von F2 via PUT /register/{client_id} mit application/zeta-rollover+jws, Veränderung von F1 via POST /zeta/identity/email und Wiederherstellung/Folgeregistrierung des Neugeräts via POST /register mit dem Verifikationspfad nach A_29910. Die konkreten Requestschemas und Verifikationsschritte werden vor dem Lauf im versionsgebundenen Schnittstellenprofil fixiert.
+. Für jede Operation existieren syntaktisch gültige Testdaten und eine positive Kontrolle mit dem bisher gebundenen Faktor samt allen weiteren Operationsvoraussetzungen: Rollover mit altem/neuem Schlüssel, Nonce und Zielbindung; E-Mail-Änderung mit Step-Up, überlebendem Faktor und Verifikation der neuen Adresse; Folgeregistrierung mit erneuter Verifikation von E1.
+
+. Für die ergänzende Einbuchungsprüfung werden je Verwaltungsoperation ein gültig an diesem Fachdienst eingebuchter Client, ein nur registrierter Client, ein ungültig gewordener Kontext und ein ausschließlich an einem anderen Fachdienst eingebuchter Client bereitgestellt. Alle übrigen Faktor-, Eigentums- und Step-Up-Bedingungen werden jeweils korrekt erfüllt.
+. Der Testdriver stimuliert die Verwaltungsoperation über das SDK; Tiger verändert gezielt den Einbuchungsnachweis am entstehenden Request. Verhindert das SDK bereits den erforderlichen Negativrequest, darf ein protokollkonformer Prüfclient ausschließlich die AS-Prüfung ergänzen; dies belegt dann keine SDK-Operation.
+
+| Nebenbedingung: |
+Der Ablauf gilt für mobile TOFU-Identitäten. Die ausgewählten Operationen konkretisieren Übernahme, Änderung und Wiederherstellung; zusätzliche operationsspezifische Nachweise bleiben erforderlich.
+Jeder destruktive Kontrolllauf erhält eine eigene Testidentität. Schnittstellen verschiedener Spezifikationsstände werden nicht vermischt.
+Das ausführbare Folgeregistrierungsprofil verwendet die unveränderten installierten SDK-JARs mit öffentlichen APIs, drei getrennten Speichern und expliziten OTP-Callbacks. Die Testdriver-HTTP-API bietet diese getrennte OTP-Steuerung nicht an.
+Erzeugung, Discovery, Registrierung, Authentisierung und OTP-Bestätigung jedes Kontexts werden separat im Feature ausgelöst. Die Beobachtung der unerfüllten C2-Challenge, die Prüfung jedes Kontroll-Grants und die Vorbereitung des unabhängigen Prüfclients sind eigene Schritte. Der auf 120 Sekunden begrenzte Adapterprozess erhält die drei SDK-Kontexte zwischen den Befehlen; sein Cleanup greift auch nach Fehlern. Beide Negativvarianten bleiben als vollständige Szenarien sichtbar.
+Der unabhängige Prüfclient ist für das absichtliche Überspringen der SDK-OTP-Sperre erforderlich. Er besitzt ausschließlich C2s eigene Software-Testschlüssel; keine Schlüssel von C1/C3 oder E1-OTP werden übertragen. Temporäre Dateien und Prozess werden entfernt, der bestehende Testdriver bleibt unverändert.
+Das lokale Schnittstellenprofil wird durch erfolgreiche echte SDK-Aufrufe belegt: formularcodiertes `email` beziehungsweise `code`, DPoP-Binding-Token und Tokenaustausch. Es wird nicht aus dem späteren OpenAPI-Entwurf abgeleitet. Das Tokenprofil (`sub` als Realm-Nutzer, `azp` als Client) wird über den unabhängigen Identitätsbestand dem signierten IDP-Nachweis zugeordnet.
+Für den E2-Versuch bestätigt ein autorisierter Resend mit demselben C2-Token die Gültigkeit des Prüfclients; die erneut an E1 zugestellte Nachricht bleibt ungelesen. Eine 401/403-Ablehnung des Bindens allein ist kein ausreichender Nachweis. Der abschließende Austausch muss den unbestätigten Grant ablehnen, ohne Token auszustellen; der Bestandsvergleich schließt Faktorersetzung und abgeschlossene Neubindung aus.
+
+| Ablauf: |
+*Übernahme einer bestehenden Registrierung über F2-Rollover*
+
+. C2 führt den gültigen IDP-Login durch und versucht, K1 in der bestehenden Registrierung von C1 durch K2 zu ersetzen. Die äußere Rollover-Autorisierung weist keinen Besitz von K1 nach; neue Schlüsselkontrolle allein genügt nicht. Der AS lehnt ab, K1 und die bestehende Registrierung bleiben erhalten.
+. Die Testsuite wiederholt den syntaktisch gleichen Rollover in einem eigenen Ausgangszustand mit gültigem Besitznachweis von K1 und allen weiteren Rollover-Voraussetzungen; die erlaubte Kontrolle gelingt.
+
+*Änderung der gebundenen E-Mail*
+
+. C2 fordert nach erfolgreichem IDP-Login die Änderung von E1 zu E2 über POST /zeta/identity/email an. Ohne überlebenden gebundenen Faktor darf der AS die Änderung nicht abschließen. Eine unabhängige Bestandsabfrage bestätigt E1. Anschließend gelingt eine separate Kontrolle mit erforderlichem Step-Up, gebundenem Faktor und Verifikation von E2.
+
+*Wiederherstellung und Neubindung auf C2*
+
+. C2 beginnt nach gültigem IDP-Login die Folgeregistrierung für I1 mit K2. Er versucht sowohl die Einbuchung ohne Verifikation von E1 als auch die Verwendung von E2 als neuem ungebundenem Ersatz. Die Testsuite führt die F2- und F1-Neubindungsversuche aus jeweils eigenem Ausgangszustand aus.
+. Der AS schließt keine kontrollübertragende Bindung allein aus dem IDP-Nachweis ab. Ein gegebenenfalls vorläufiger Registrierungszustand besitzt keine abgeschlossene Bindung/Berechtigung; E1 und C1/K1 bleiben unverändert. Eine getrennte Kontrolle mit erneuter Verifikation des bestehenden E1 und allen Registrierungsvoraussetzungen gelingt.
+
+*Fachdienstbezogene Einbuchung bei Verwaltungsoperationen*
+
+. Für die E-Mail-Änderung führt die Testsuite zunächst den berechtigten SDK-Ablauf mit gültiger Einbuchung am betroffenen Fachdienst und allen weiteren Faktor-/Step-Up-Nachweisen aus. Danach variiert sie jeweils nur den Einbuchungsnachweis: nur registrierter, ungültig gewordener oder ausschließlich an einem fremden Fachdienst eingebuchter Kontext. Die Änderung wird abgelehnt und F1 bleibt unverändert; Registrierung oder IDP-Authentisierung allein genügt nicht.
+. Dieselbe Einbuchungsmatrix wird mit korrekten alten/neuen Schlüssel- und weiteren Rollover-Nachweisen ausgeführt. Nur gültige Einbuchung an diesem Fachdienst erlaubt zusammen mit allen übrigen Bedingungen den Rollover; Schlüsselbesitz allein ersetzt sie nicht. Fehlende, fremde oder ungültige Einbuchung verändert die Schlüsselbindung nicht.
+. Für Client-Löschung werden Eigentum und alle weiteren Nachweise gültig gehalten. Die positive Kontrolle mit gültiger Einbuchung am betroffenen Fachdienst löscht den berechtigt adressierten Testclient; fehlende, ungültige oder fremde Einbuchung löscht keinen Zielclient und wird nicht als abgeschlossene Operation quittiert.
+
+| Nachbedingung: |
+Die IDP-only-Versuche übertragen weder Kontrolle über C1 noch ändern/ersetzen sie F1 oder F2. Die unabhängige Bestandsprüfung bestätigt die ursprünglichen Bindungen.
+Die jeweils passende faktorautorisierte Kontrolle gelingt und belegt, dass die Operation selbst unterstützt und korrekt gebildet ist.
+
+E-Mail-, Schlüssel- und Clientbestände zeigen bei unzureichender Einbuchung keine Änderung. Die neuen Einbuchungsvarianten sind Prüfentwürfe; vorhandene IDP-/Faktorszenarien ersetzen ihren Nachweis nicht.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29902_01>>
+* <<TA_A_29902_02>>
+* <<TA_A_29902_03>>
+* <<TA_A_29896_01>>
+* <<TA_A_29896_02>>
+* <<TA_A_29896_03>>
+* <<TA_A_29897_01>>
+* <<TA_A_29897_02>>
+
+|===
+
+[mermaid,uc-04-02-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Client / Testsuite
+    participant I as Sektoraler IDP
+    participant A as Authorization Server
+    C->>I: Erfolgreich authentisieren
+    I-->>C: Gültiger Identitätsnachweis
+    C->>A: Bestehende Registrierung oder Faktor ändern
+    alt Kein erforderlicher gebundener Faktor nachgewiesen
+    A-->>C: Operation abgelehnt, Bindung unverändert
+    else Für Operation erforderlicher Faktor nachgewiesen
+        alt Gültiger Client an diesem Fachdienst eingebucht
+            A-->>C: Zulässige Kontrolloperation
+        else Einbuchungsnachweis fehlt, ist ungültig oder fremd
+            A-->>C: Verwaltungsoperation abgelehnt, Bestand unverändert
+        end
+    end
+....

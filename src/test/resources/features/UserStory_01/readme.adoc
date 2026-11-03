@@ -114,6 +114,7 @@ Wenn der Zugriff erlaubt ist, stellt der ZETA Guard ein Zugriffstoken aus.
 - <<UC_01_25>>
 - <<UC_01_27>>
 - <<UC_01_28>>
+- <<UC_01_32>>
 
 === Schritt 3: Abfrage Ressource
 
@@ -234,5 +235,11 @@ include::UseCase_27/readme.adoc[]
 include::UseCase_28/readme.adoc[]
 
 include::UseCase_29/readme.adoc[]
+
+include::UseCase_31/readme.adoc[]
+
+include::UseCase_32/readme.adoc[]
+
+include::UseCase_33/readme.adoc[]
 
 :leveloffset: -2

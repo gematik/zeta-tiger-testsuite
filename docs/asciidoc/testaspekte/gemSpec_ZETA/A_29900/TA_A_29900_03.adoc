@@ -1,0 +1,6 @@
+[#TA_A_29900_03]
+===== TA_A_29900_03 - Authorization Server – Bindung an die TI-Identität - F1-Bindung an den Identitätsanker
+
+"Ergänzend zu A_25650 (Bindung des registrierten Clients an eine TI-Identität) MUSS der Authorization Server diese Identität (KVNR oder Telematik-ID) als Ankerpunkt des TOFU-Identitätsdatensatzes führen, **an den Faktor F1 auf Identitätsebene gebunden werden** (vgl. A_29901). Die Ableitung der Identität aus der Nutzerauthentisierung regelt A_29903.
+
+**[<=]**"

@@ -38,6 +38,11 @@ public enum TlsServerCertificates {
       "ecdsa/zeta-tls-test-tool-server_evil_cn_san.pem"),
   ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_SAN_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_different_san_certificate",
       "ecdsa/zeta-tls-test-tool-server_evil_san.pem"),
+  ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_without_san_certificate",
+      "ecdsa/zeta-tls-test-tool-server_without_san.pem"),
+  ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_EVIL_CN_CERTIFICATE(
+      "zeta_tls_test_tool_server_ecdsa_without_san_evil_cn_certificate",
+      "ecdsa/zeta-tls-test-tool-server_without_san_evil_cn.pem"),
   ZETA_TLS_TEST_TOOL_SERVER_ECDSA_GOOD_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_good_certificate",
       "ecdsa/zeta-tls-test-tool-server_good.pem"),
   ZETA_TLS_TEST_TOOL_SERVER_ECDSA_EXPIRED_CERTIFICATE("zeta_tls_test_tool_server_ecdsa_expired_certificate",

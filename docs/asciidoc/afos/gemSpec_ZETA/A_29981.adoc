@@ -1,0 +1,4 @@
+[#A_29981]
+==== A_29981 - Notification Service – mTLS-Terminierung innerhalb der VAU
+
+Der Betreiber des Notification Service MUSS die für die mTLS-Authentisierung verwendeten Client-/Server-Zertifikate gemeinsam mit dem Betreiber des Resource Servers ausstellen und verwalten sowie eine Sperrung/Rotation kompromittierter Zertifikate ermöglichen. [<=]

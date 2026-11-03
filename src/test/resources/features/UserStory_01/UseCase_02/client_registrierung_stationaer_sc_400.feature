@@ -32,8 +32,6 @@ Funktionalität: Client-Registrierung stationär SC 400
   @TA_A_26661_11
   @TA_A_27725-01_21
   @normal
-  @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: Client-Registrierung liefert 400 Bad Request
     Gegeben sei TGR setze lokale Variable "badRequestCondition" auf "isRequest && request.path =~ '.*${paths.guard.registerEndpointPath}'"
     Und Setze im TigerProxy für die Nachricht "${badRequestCondition}" die Manipulation auf Feld "$.body.jwks.keys.0.kty" und Wert "INVALID" und 4 Ausführungen
@@ -44,7 +42,7 @@ Funktionalität: Client-Registrierung stationär SC 400
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.registerEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.client_id"

@@ -1,0 +1,4 @@
+[#A_29912]
+==== A_29912 - Authorization Server – Identitätsweite Wirkung der E-Mail-Änderung
+
+Der Authorization Server MUSS eine erfolgreiche E-Mail-Änderung identitätsweit für alle Clients dieser Identität an diesem Fachdienst wirksam machen. [<=]

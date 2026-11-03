@@ -1,0 +1,9 @@
+{
+  "headless": true,
+  "pipe": true,
+  "args": [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-background-networking"
+  ]
+}

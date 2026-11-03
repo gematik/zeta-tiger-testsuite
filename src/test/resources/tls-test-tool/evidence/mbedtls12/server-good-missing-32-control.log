@@ -1,0 +1,3 @@
+2026-10-03T20:57:19.909Z	HIGH	Network(TlsTestTool.cpp:325)	TCP/IP connection from 127.0.0.1:52302 received.
+2026-10-03T20:57:19.910Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:19.910Z	HIGH	TLS(TlsTestTool.cpp:235)	TLS handshake failed: mbedtls_ssl_handshake_step failed: SSL - None of the common ciphersuites is usable (eg, no suitable certificate, see debug messages)

@@ -13,6 +13,7 @@
 - *ZETA Client*
 - *PEP HTTP Proxy*
 - *Resource Server*
+- *Betreiber*
 
 | Auslöser: |
 Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
@@ -27,11 +28,16 @@ die Anfrage nach einer angemessenen Wartezeit erneut zu versuchen oder auf ein S
 
 | Vorbedingung: |
 Der ZETA Client ist registriert, authentisiert und autorisiert.
+Der Betreiber kann externe Request-URLs im PEP HTTP Proxy statisch internen Ziel-URLs zuordnen und je Route eine erwartete logische Audience hinterlegen.
+Die erwartete Audience entspricht der von der Policy Engine für die Zielressource vergebenen Audience.
 
 | Nebenbedingung: |
 Der Resource Server liefert eine Fehlerantwort mit ``zeta-cause: Proxy``.
+Für die Variante zur transparenten Fehlerweitergabe enthält die beim ZETA Client eintreffende HTTP-500-Antwort keinen Header ``zeta-error-origin``.
 
 | Ablauf: |
+. Der Betreiber konfiguriert eine statische Zuordnung der externen Request-URL zur internen Ziel-URL des Resource Servers.
+. Ein Ressourcenabruf über eine gültige Route liefert HTTP 200.
 . MA startet den Abruf einer geschützten Ressource über den ZETA Client.
 . Der ZETA Client erstellt einen *DPoP Nachweis*.
 . Der ZETA Client ruft die Ressource am PEP HTTP Proxy auf:
@@ -43,14 +49,23 @@ Der Resource Server liefert eine Fehlerantwort mit ``zeta-cause: Proxy``.
 . Der PEP HTTP Proxy leitet die Anfrage an den Resource Server weiter.
 . Der Resource Server antwortet mit einer Fehlerantwort und setzt ``zeta-cause: Proxy``.
 . Der PEP HTTP Proxy verwirft die Antwort vom Resource Server und antwortet mit ``500 Internal Server Error``.
+. Der ZETA Client gibt HTTP 500, Body und Content-Type der PEP-Antwort unverändert an den Fachclient weiter, ohne zeta-error-origin. Bei einer Wiederholung liefert der Resource Server erneut den Proxy-Fehler.
 . Der ZETA Client weist auf einen allgemeinen Serverfehler hin und informiert den MA, dass der Vorgang möglicherweise zu einem späteren Zeitpunkt wiederholt werden sollte oder ein Problem auf dem Server vorliegt.
+
+Als Variante ändert der Betreiber bei unveränderter externer Request-URL und Token-Audience das statische Weiterleitungsziel von einer erfolgreichen Ressource auf die Ressource mit Proxy-Fehler.
+Der PEP HTTP Proxy verwendet das geänderte Ziel und antwortet mit HTTP 500 statt HTTP 200.
+Eine weitere Variante beschränkt die Weiterleitung auf eine explizite Route. Ein Aufruf derselben Ressource mit zusätzlichem, nicht zugeordnetem Pfadsuffix darf trotz passender Token-Audience keinen internen Resource Server erreichen.
+Wird anschließend für die wiederhergestellte Erfolgsroute eine andere erwartete Audience konfiguriert, erfolgt keine Weiterleitung des weiterhin für die ursprüngliche Audience ausgestellten Tokens.
 
 | Nachbedingung: |
 Die Ressource wurde nicht geliefert.
 Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit erneut stellen.
+Die Weiterleitung folgt der statischen URL-Zuordnung und erfolgt nur mit einer passenden logischen Audience.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_26560_01>>
+* <<TA_A_26560-01_01>>
+* <<TA_A_26560-01_02>>
+* <<TA_A_26560-01_03>>
 * <<TA_A_26661_26>>
 * <<TA_A_26662_01>>
 * <<TA_A_26974-01_01>>
@@ -58,6 +73,7 @@ Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit ern
 * <<TA_A_27007_26>>
 * <<TA_A_27725-01_36>>
 * <<TA_A_28796_01>>
+* <<TA_A_29853_03>>
 |===
 
 [#usecase_01_26_sequence]
@@ -66,20 +82,23 @@ Der MA ist informiert und kann die Anfrage nach einer angemessenen Wartezeit ern
 sequenceDiagram
     autonumber
 
+    actor Betreiber
     actor MA as MA einer LEI
     participant ZC as ZETA Client
     participant PEP-HP as PEP HTTP Proxy
     participant RS as Resource Server
 
+    Betreiber->>PEP-HP: Statische URL-Zuordnung und erwartete Audience konfigurieren
     MA->>+ZC: Abruf geschützter Ressource
     ZC->>ZC: Erstellen von DPoP Nachweis
     ZC->>+PEP-HP: GET /resource
     PEP-HP->>PEP-HP: Verifiziere Access Token
     PEP-HP->>PEP-HP: Verifiziere DPoP Nachweis
-    PEP-HP->>+RS: Weiterleiten GET /resource
+    PEP-HP->>PEP-HP: Route und erwartete Audience prüfen
+    PEP-HP->>+RS: Weiterleiten an statisch zugeordnete Ziel-URL
     RS-->>-PEP-HP: Fehlerantwort<br>zeta-cause: Proxy
     PEP-HP-->>-ZC: 500 Internal Server Error
-    ZC-->>-MA: Hinweis auf Serverfehler
+    ZC-->>-MA: HTTP 500 mit unverändertem Body und Content-Type, ohne zeta-error-origin
 ....
 
 ifdef::render_features[]
@@ -88,6 +107,11 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_fachdienst_SC_500.feature[]
+include::client_ressource_anfrage_fachdienst_sc_500.feature[]
+----
+
+[source]
+----
+include::statische_weiterleitung.feature[]
 ----
 endif::[]

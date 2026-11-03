@@ -1,0 +1,6 @@
+[#TA_A_29848_01]
+===== TA_A_29848_01 - PDP Authorization Server, Prüfung Session-Status bei Verwendung des Refresh Token - Session-Status vor Tokenausstellung prüfen
+
+"Der Authorization Server MUSS bei Token Requests mit grant_type=refresh_token **vor der Ausstellung eines neuen Token-Sets prüfen, ob die referenzierte Session terminiert wurde**. Ist die Session terminiert, MUSS der Authorization Server den Request ablehnen.
+
+**[<=]**"

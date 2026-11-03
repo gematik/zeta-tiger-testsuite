@@ -1,0 +1,8 @@
+[#TA_A_29376_24]
+===== TA_A_29376_24 - ZETA, Ablauf Token Exchange mit Attestation - Audience aus Policy-Entscheidung im resource-Vertrag
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Erläuterung zu Schritt 13: Beim **resource-Vertrag übernimmt aud die Policy-Entscheidung und ver ist 2**.

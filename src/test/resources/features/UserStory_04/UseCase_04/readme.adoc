@@ -1,0 +1,120 @@
+[#UC_04_04]
+== UseCase_04_04: Andere Clients derselben Identität löschen
+
+.UseCase_04_04
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Andere Clients derselben Identität löschen
+
+| Akteur: | Nutzer mit eingebuchtem Client
+
+| weitere Akteure: | Authorization Server je Fachdienst, weiterer eigener Client, fremde Identität, E-Mail-Empfänger
+
+| Auslöser: | Ein eingebuchter Client löscht gezielt einen anderen Client.
+
+| Kurzbeschreibung: |
+Eigentümerprüfung, Erhalt von F1, E-Mail-Benachrichtigung und Begrenzung auf den eigenen Fachdienst werden mit getrennten Identitäten/Guards geprüft.
+Die Serverfälle zum Löschen eines anderen eigenen Clients und zur Ablehnung fremder Zielclients sowie die E-Mail-Benachrichtigungsvariante sind als Szenarien umgesetzt. UI-Auswahl und Guard-Grenze bleiben eigenständige Prüfentwürfe.
+
+| Vorbedingung: |
+. Am Guard G1 besitzt die mobile TOFU-Identität I1 die eingebuchten Clients C1/C2 und die verifizierte E-Mail E1. C1 verfügt über ein gültiges RAT; C2 ist der andere eigene Zielclient. Für den Fremdfall besitzt I2 die eingebuchten Clients C3/C4 und die verifizierte E-Mail E2. Dadurch ist weder C2 noch C3 der letzte Client seiner Identität.
+. Clientliste, Identitäts-/F1-Zuordnung und Registrierungszustand sind vor und nach DELETE unabhängig lesbar. Die Testumgebung erfasst E-Mails an E1 mit Zeit und Löschkorrelation; SDK-Kontexte und Signiermaterial von C1/C2/C3/C4 sind getrennt.
+. Für die Guard-Grenze ist dieselbe Identität zusätzlich unabhängig bei G2 für einen anderen Fachdienst registriert. Beide Bestände sind getrennt lesbar; client_id-Werte sind Guard-bezogen und werden nicht verwechselt.
+. Die ausführbaren Serverfälle verwenden den primären OIDC-Testdriver als C1 und dessen öffentliche Load-API für zusätzliche SDK-Kontexte mit getrenntem Speicher und Schlüsseln. Das Profil `testdata.ccSdkInstances` muss zur Testumgebung passen. Der lesende Datenbankadapter benötigt das konfigurierte Keycloak/PostgreSQL-Profil; er korreliert die tatsächlichen Client-IDs mit ihren Identitäten und bestätigtem F1.
+. Die Benachrichtigungsvariante benötigt den unverändert lesbaren MailCatcher-Bestand und dessen dekodierte Textansicht. `testdata.ccDeletionNotification` legt Beobachtungsgrenze und Textadapter fest. Der mitgelieferte Adapter erkennt eine ausdrückliche englische/deutsche Bestätigung einer ausgeführten Client-Löschung; eine optionale Client-ID muss zum gelöschten Client passen. Für andere reale Vorlagen ist der Ausdruck fachlich gegen die tatsächliche Nachricht anzupassen. Die CC-Spezifikation verlangt weder diesen Wortlaut noch eine Client-ID im Nachrichtentext oder eine feste Zustellfrist. Synthetische Unit-Nachrichten belegen nur den Adapter, keinen Produktversand.
+. Die Mailbeobachtung verwendet den gemeinsamen MailCatcher-Pfad und den Tiger Proxy. Vor der Löschung wird die erfolgreiche Bestandsantwort im Szenario geprüft und gespeichert; auch spätere Bestands- und Textabrufe sind über Tiger sichtbar. Ein fehlerhafter Mailabruf wird nicht als fehlender Produktversand gewertet.
+
+| Nebenbedingung: |
+Testdaten und kontrollierte Konfigurationsänderungen sind auf die jeweilige Prüfvariante begrenzt. Die ausführbaren Serverfälle verwenden neue synthetische Identitäten und entfernen ihre zusätzlichen lokalen SDK-Kontexte in umgekehrter Erstellungsreihenfolge auch bei Fehlschlag. Ein einzelner Bereinigungsfehler verhindert die übrigen Bereinigungsversuche nicht; bereits vorhandene SDK-Kontexte bleiben bestehen. Verbleibende synthetische AS-Registrierungen unterliegen der Testumgebungsbereinigung. Die Szenarien ändern keine gemeinsame Deployment-Konfiguration.
+
+Der unabhängige Registrierungsbestand umfasst vorhandene Clients mit ihrer ZETA-Identitätszuordnung im ausgewählten Realm. Metadatensätze ohne zugehörigen Client werden separat als Diagnose gezählt; ihre physische Entfernung ist keine zusätzliche CC-Anforderung dieses Prüffalls. Nach erfolgreicher Löschung muss der eigentliche Zielclient fehlen, während ausschließlich C1 mit derselben Identität und demselben bestätigten F1 registriert bleibt. Die Diagnose allein belegt keine fortbestehende Client-Berechtigung und keinen Produktfehler.
+
+| Ablauf: |
+*Ausführbarer Serverfall mit zwei echten SDK-Kontexten*
+
+. C1 durchläuft die initiale OIDC-Einbuchung einschließlich E-Mail-Verifikation. Ein zusätzlicher SDK-Kontext registriert und authentisiert C2 mit derselben KVNR und E-Mail. Die Testsuite korreliert beide AS-Tokenantworten und liest genau diese zwei Clientregistrierungen derselben Identität unabhängig zurück.
+. C1 greift weiterhin mit seinem ursprünglichen Access Token erfolgreich zu. Ein GET seiner tatsächlichen RFC-7592-Verwaltungs-URI bestätigt das gültige RAT; eine gemeldete RAT-Rotation wird übernommen.
+. Weil das verfügbare SDK/Testdriver-API keinen Client-Verwaltungs-DELETE anbietet, sendet die Testsuite ausschließlich diesen Serveraufruf unabhängig: DELETE auf `paths.guard.clientsManagementPath/{C2}` mit dem RAT von C1. Eine Client-Assertion aus späteren Entwürfen ersetzt das RAT nicht.
+. Nach erfolgreicher Antwort muss innerhalb der zehnsekündigen Beobachtungsgrenze nur C2 aus dem unabhängigen Bestand verschwunden sein; C1, Identität und bestätigtes F1 bestehen unverändert fort. C1 greift erneut mit exakt seinem ursprünglichen Access Token zu, sodass eine neue Einbuchung einen Sitzungsverlust nicht verdeckt.
+
+*Anderen eigenen Client löschen*
+
+. Der Nutzer öffnet auf C1 die Clientübersicht nach A_25733. Die Testsuite vergleicht die sichtbare Liste mit dem Bestand von I1 und wählt C2 eindeutig aus.
+. C1 sendet DELETE /zeta/clients/{target_client_id} mit seinem gültigen RAT und der ID von C2. Der AS entfernt nur C2; C1 bleibt eingebucht.
+. Die Testsuite liest die Zuordnung von I1, E1 und C1 erneut. Wert und Bindung von F1 sind unverändert und weiterhin vorhanden.
+. Sie ordnet die zugestellte E-Mail an E1 der tatsächlichen Löschung von C2 zu. Eine Nachricht über eine nur geplante Löschung erfüllt diesen Nachweis nicht.
+
+*Ausführbare Benachrichtigungsvariante: Selbstlöschung von C2 mit verbleibendem C1*
+
+. Zwei echte SDK-Kontexte buchen dieselbe neue synthetische Identität ein. C1 liest die öffentliche Clientübersicht über GET /zeta/clients; sie enthält genau C1 und C2. Die erfolgreiche E-Mail-Verifikation und beide durch die Einbuchung zugestellten OTP-Mails belegen das gebundene F1 und den tatsächlichen Mailweg.
+. Der vorhandene Mailbestand dient zur Abgrenzung bereits zugestellter Nachrichten.
+. C2 löst aus seinem eigenen SDK-Kontext DELETE /zeta/clients/{client_id} mit einem für die Clientverwaltung ausgestellten DPoP-gebundenen Access Token aus. Der Authorization Server entfernt ausschließlich C2. C1 greift weiterhin mit seinem ursprünglichen Access Token zu und liest GET /zeta/clients erneut mit einem eigenen Clientverwaltungs-Token; die Übersicht enthält nur noch C1. Die Selbstlöschung löst die allgemeine Benachrichtigungspflicht aus.
+. Innerhalb der konfigurierten Beobachtungsgrenze muss eine neue Nachricht an das exakt gebundene F1 eintreffen, deren Text die ausgeführte Löschung bestätigt. Neue Nachrichten-IDs, unveränderter vorheriger Mailbestand, die frische Identität und deren einzige Löschoperation korrelieren das Ereignis. Alte Nachrichten, neue OTP-Mails, andere Empfänger sowie Ankündigungen, Verneinungen und bloße Löschanträge genügen nicht. Es werden keine Testmails eingespeist und keine Nachrichten gelöscht.
+. Fehlende Zustellung innerhalb der Profilgrenze lässt den Test fehlschlagen; daraus allein folgt keine Aussage über einen beliebig späteren Versand. Ein abweichender echter Nachrichtentext muss zunächst gegen die Spezifikation und den Textadapter geprüft werden.
+
+*Fremder Zielclient*
+
+. Im ausführbaren Fremdfall erzeugt die Testsuite C1/C2 unter I1 und C3/C4 unter einer neuen I2 über vier echte SDK-Kontexte. Alle durchlaufen Registrierung und OIDC-Einbuchung. Tokenantworten und unabhängige Bestandsabfragen belegen zwei unterschiedliche Identitäten mit je genau zwei bekannten Clients; Last-Client-Schutz ist damit kein Ersatz für die Eigentümerprüfung.
+. Nach erfolgreicher Ressourcennutzung durch C1 und erfolgreichem RAT-Verwaltungs-GET sendet C1 die bekannte existierende client_id von C3 an denselben DELETE-Endpunkt. Die Testsuite speichert den Status, bestätigt unmittelbar den unveränderten Bestand beider Identitäten und aller vier Registrierungen und lässt C3 mit exakt seinem ursprünglichen Access Token erneut zugreifen.
+. Die eigene C2-Löschung mit demselben RAT bildet die positive Kontrolle. Beide Statuswerte werden gemeinsam geprüft: fremdes Ziel genau 403, eigener anderer Client erfolgreich. Eine pauschale 403-Antwort genügt nicht. C2 muss tatsächlich entfernt sein; C1 und die fremde Identität mit C3/C4 bleiben erhalten. C1 verwendet weiter seinen ursprünglichen Grant. Das ausführbare Szenario ist der Ablehnung fremder Zielclients zugeordnet; die weiteren Eigentümer-/Referenzvarianten bleiben gesondert zu prüfen.
+
+*Fachdienstgrenze*
+
+. Für den Guard-Vergleich löscht C1 den eigenen Zielclient bei G1. Die Testsuite bestätigt die Entfernung dort und liest unabhängig den unveränderten Bestand derselben Identität bei G2 zurück.
+
+| Nachbedingung: |
+Bei eigener Löschung ist ausschließlich der gewählte Zielclient im angesprochenen Fachdienst entfernt; der aufrufende Client und F1 bleiben erhalten und die tatsächliche Löschung ist per E-Mail gemeldet.
+Bei fremdem Ziel bleibt der gesamte Bestand unverändert. Der zweite Guard bleibt unbeeinflusst.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29934_01>>
+* <<TA_A_29934_02>>
+* <<TA_A_29934_03>>
+* <<TA_A_25733_01>>
+* <<TA_A_25733_02>>
+* <<TA_A_29935_01>>
+* <<TA_A_29937_01>>
+* <<TA_A_29939_01>>
+* <<TA_A_29939_02>>
+* <<TA_A_29939_03>>
+
+|===
+
+[mermaid,uc-04-04-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Eingebuchter Client
+    participant A as Authorization Server
+    participant M as Gebundene E-Mail F1
+    C->>A: DELETE mit RAT und target_client_id
+    A->>A: Zugehörigkeit zur RAT-Identität prüfen
+    alt Eigener anderer Client
+    A->>A: Zielclient löschen, F1 erhalten
+    A->>M: Löschung benachrichtigen
+    A-->>C: Löschung bestätigt
+    else Fremder Client
+    A-->>C: 403, keine Löschung
+    end
+    Note over C,A: Zweiter Fachdienst bleibt unverändert
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::anderen_eigenen_client_loeschen.feature[]
+----
+
+[source]
+----
+include::fremden_client_nicht_loeschen.feature[]
+----
+
+[source]
+----
+include::client_loeschung_benachrichtigung.feature[]
+----
+endif::[]

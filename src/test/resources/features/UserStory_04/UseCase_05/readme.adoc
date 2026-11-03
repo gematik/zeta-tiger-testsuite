@@ -1,0 +1,125 @@
+[#UC_04_05]
+== UseCase_04_05: Letzten Client oder mehrere Clients sicher löschen
+
+.UseCase_04_05
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Letzten Client oder mehrere Clients sicher löschen
+
+| Akteur: | Nutzer
+
+| weitere Akteure: | ZETA Client, Authorization Server, gebundene E-Mail F1, überlebender Faktor für Veto
+
+| Auslöser: | Eine Einzellöschung oder clientseitige Sammellöschung würde den letzten Client entfernen.
+
+| Kurzbeschreibung: |
+Die gewählte Schutzalternative Step-Up oder Veto wird einschließlich Abbruch geprüft; nach tatsächlicher Löschung bleiben Identität/F1 erhalten und eine Wiederregistrierung erfordert die bestehende E-Mail.
+Das Erhaltungsszenario betrachtet eine frische Identität mit genau einem eingebuchten Client und bestätigtem F1. Nach dessen tatsächlicher Selbstlöschung beginnt eine neue Clientinstanz die Einbuchung für dieselbe Identität. Der AS erkennt die Folgeregistrierung und verlangt die erneute Verifikation des bereits gebundenen F1, statt eine neue E-Mail-Bindung anzulegen. Die übrigen Varianten bleiben getrennte Prüfentwürfe.
+
+| Vorbedingung: |
+. Jede Variante verwendet eine eigene mobile TOFU-Testidentität mit bekanntem F1, öffentlich beobachtbarem Registrierungszustand und kontrolliertem E-Mail-Empfang. Die Einzelvariante besitzt genau einen Client; die Sammelvariante mindestens drei mit getrennten SDK-Kontexten.
+. Für die Schutzvarianten wird vor dem Lauf die implementierte Alternative Step-Up oder Veto festgelegt. Nur diese Alternative ist verpflichtend ausführbar; die andere wird als nicht anwendbar dokumentiert.
+. Für Step-Up sind benötigtes acr-Niveau, gegebenenfalls Authentisierungsalter, sektoraler IDP und regulärer Authorization Code Flow verfügbar. Das ursprüngliche Verwaltungsniveau liegt darunter; der frische DPoP-gebundene AS-Nachweis ist demselben Client zuordenbar.
+. Für Veto sind Policy-Frist D, geplante deletion_id, Start-/Endzeit, gebundene Benachrichtigungskanäle und ein kontrollierbarer AS-Zeit-/Scheduleradapter bekannt. Alle beteiligten Zeitprüfungen werden konsistent fortgeschrieben; nach Zeitänderung werden sonstige zeitabhängige Nachweise frisch erzeugt.
+. Die Veto-Fälle haben getrennte Ausgangszustände: eingebuchter Client mit F2; kein aktuell eingebuchter Client, aber weiterhin registrierter Zielclient und Kontrolle über F1; ungenutzter Fristablauf. „Nicht eingebucht“ bedeutet während der Planung nicht, dass die Registrierung bereits gelöscht ist.
+. Für die Wiederregistrierungsvarianten ist Folgeregistrierung nach A_29910 mit erneuter Verifikation der bestehenden E-Mail für eine neue Clientinstanz verfügbar. Die Einbuchung nach der letzten Löschung erfolgt vor Ablauf der für das Ausführungsprofil geltenden Inaktivitäts-Löschfrist.
+
+| Nebenbedingung: |
+Destruktive Varianten teilen keine Ausgangsidentität. Zeitsteuerung, öffentlich auswertbarer Planungszustand und Bestandsbeobachtung sind für die betreffenden Schutzvarianten vor der Ausführung bereitzustellen.
+Step-Up und Veto sind zulässige Alternativen; es wird keine zusätzliche Sammeloperation des Servers vorausgesetzt.
+Der Erhaltungsnachweis setzt die tatsächlich abgeschlossene Löschung des letzten Clients voraus. Ein weiter vorhandener oder nur zur Löschung vorgemerkter Client erfüllt diese Voraussetzung nicht. Ein erforderlicher Step-Up- oder Veto-Ablauf muss zuvor abgeschlossen sein; eine geschützte Ablehnung allein belegt keine Verletzung der Erhaltungspflicht.
+Der Fortbestand von Identität und F1 wird am Verhalten der Folgeregistrierung beobachtet. Ein neu angelegter Identitätsdatensatz mit erneut angebotener E-Mail darf diesen Nachweis nicht erfüllen. Eine abgelaufene Identität oder zwischenzeitlich geänderte Inaktivitäts-Löschfrist erlaubt keinen Erhaltungsnachweis.
+
+| Ablauf: |
+*Step-Up-Alternative*
+
+. Der letzte Client fordert seine Löschung mit regulärem, noch unzureichendem Verwaltungsnachweis an. Der AS behält die Registrierung und antwortet mit 401, insufficient_user_authentication und den tatsächlich erforderlichen acr_values.
+. Der Client führt einmal den regulären Authorization Code Flow nach A_29911 mit diesen Parametern aus und wiederholt DELETE mit dem vom AS ausgestellten DPoP-gebundenen Access Token. Der AS prüft Niveau und Bindung und erlaubt dann die letzte Löschung. Ein frischer Gegenfall mit unpassendem Besitznachweis bleibt ohne Löschung.
+
+*Veto-Alternative: Planung und Ablauf ohne Einspruch*
+
+. Der Client fordert die letzte Löschung an. Der AS plant sie mit deletion_id und Frist. Die Testsuite vergleicht die wirksame Dauer mit der Policy und bestätigt, dass die Registrierung unmittelbar vor Fristende noch nicht endgültig entfernt ist.
+. Sie prüft getrennt, dass die zu diesem Ausführungsprofil gehörende Dokumentation die Dauer der Einspruchsfrist oder deren Bestimmung aus der Policy nachvollziehbar benennt und mit der beobachteten Frist übereinstimmt. Eine korrekt konfigurierte Frist allein belegt ihre Dokumentation nicht.
+. Sie korreliert die Planungsnachrichten an alle überlebenden gebundenen Kanäle mit deletion_id und Frist. Empfangszeit und verbleibendes Fenster erlauben den im Prüfprofil festgelegten berechtigten Veto-Ablauf nach A_29942.
+. Ohne Veto lässt sie die Frist kontrolliert verstreichen und beobachtet die endgültige Löschung innerhalb der dokumentierten Scheduler-/Beobachtungsgrenze.
+
+*Veto-Alternative: Abbruch*
+
+. In einem eigenen geplanten Löschfall sendet ein noch eingebuchter Client mit gültigem F2-Besitznachweis vor Fristende POST /zeta/deletions/{deletion_id}/veto. Ein vorheriger unberechtigter F2-Versuch verändert die Planung nicht. Der berechtigte Aufruf bricht genau diese Planung ab; auch nach der ursprünglichen Frist wird sie nicht ausgeführt.
+. In einem weiteren Fall mit derzeit keinem eingebuchten Client versucht der Nutzer zunächst ein Veto allein mit F1-Kontrolle; dies gelingt nicht. Er registriert dann ein neues Gerät über die Folgeregistrierung, verifiziert das bestehende F1 erneut und legt mit dessen F2 rechtzeitig Veto ein. Die Planung bleibt danach abgebrochen.
+
+*Clientseitige Sammellöschung*
+
+. Der Nutzer wählt mehrere Clients aus. Das SDK sendet wiederholte Einzel-DELETEs an /zeta/clients/{target_client_id} für genau diese Auswahl. Die Testsuite korreliert Auswahl, Aufrufe und Zwischenbestände.
+. Sobald der nächste DELETE den letzten Client entfernen würde, greift die implementierte Step-Up- oder Veto-Alternative. Bereits vorher zusätzlich angewendeter Schutz ist zulässig.
+
+*Ausgeführte Löschung und spätere Einbuchung*
+
+. Nach jeder tatsächlich ausgeführten letzten Löschung korreliert die Testsuite die zugestellte Benachrichtigung an das bestehende F1 mit der ausgeführten Operation; die Planungsnachricht allein genügt nicht.
+. Nach Entfernung des letzten Clients erkennt der AS dieselbe Identität bei der nächsten Einbuchung wieder und verlangt die Verifikation des bestehenden F1. Die Beobachtung liegt vor einer anwendbaren Inaktivitätslöschung nach A_28808.
+. Eine neue Clientinstanz beginnt die Einbuchung für diese Identität. Der AS verwendet den Folgeregistrierungspfad. Fehlende oder falsche Verifikation der bestehenden E-Mail schließt ihn nicht ab; ein eigener gültiger Lauf mit erneuter F1-Verifikation gelingt.
+. Die ursprüngliche Adresse erhält eine neue Verifikationsnachricht. Der zur Bestätigung verwendete Code stammt aus genau dieser Nachricht. Nach erfolgreicher Verifikation ist ausschließlich die neue Clientinstanz registriert; der gelöschte Client bleibt entfernt.
+
+| Nachbedingung: |
+Ohne ausreichendes Step-Up bleibt der letzte Client erhalten; mit gültigem Step-Up wird er gelöscht. Im Veto-Zweig bleibt die Löschung bis Fristablauf geplant, wird bei berechtigtem Einspruch dauerhaft abgebrochen oder nach ungenutztem Ablauf ausgeführt.
+Nur tatsächliche Löschung erzeugt den entsprechenden Lösch-/Benachrichtigungsnachweis. Nach Entfernung aller Clients bleiben Identität und F1 bis zu anwendbaren Inaktivitätsfristen erhalten; spätere Einbuchung erfordert erneute Verifikation dieses F1.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29935_01>>
+* <<TA_A_29936_01>>
+* <<TA_A_29936_02>>
+* <<TA_A_29936_03>>
+* <<TA_A_29936_04>>
+* <<TA_A_29936_05>>
+* <<TA_A_29936_06>>
+* <<TA_A_29936_07>>
+* <<TA_A_29936_08>>
+* <<TA_A_29936_09>>
+* <<TA_A_29936_10>>
+* <<TA_A_29936_11>>
+* <<TA_A_29936_12>>
+* <<TA_A_29936_13>>
+* <<TA_A_29936_14>>
+* <<TA_A_29936_15>>
+* <<TA_A_29936_16>>
+* <<TA_A_29938_01>>
+* <<TA_A_29938_02>>
+* <<TA_A_29938_03>>
+
+|===
+
+[mermaid,uc-04-05-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Client / Nutzer
+    participant A as Authorization Server
+    participant F as Gebundene Faktoren
+    loop Einzel-DELETE der ausgewählten Clients
+    C->>A: DELETE target_client_id
+    alt Weitere Clients bleiben vorhanden
+    A->>A: Zielclient löschen, F1 erhalten
+    else Letzter verbleibender Client
+    alt Step-Up-Verfahren
+    A-->>C: 401, insufficient_user_authentication, acr_values
+    C->>A: Regulärer Authorization Code Flow, danach DELETE mit DPoP-Token
+    A->>A: Bei gültigem Step-Up letzten Client löschen
+    else Veto-Verfahren
+    A->>F: Löschung planen und benachrichtigen
+    alt Rechtzeitiges Veto mit gebundenem F2
+    F->>A: POST /zeta/deletions/{deletion_id}/veto
+    A->>A: Löschung abbrechen
+    else Einspruchsfrist ohne Veto abgelaufen
+    A->>A: Letzten Client löschen, Identität und F1 erhalten
+    end
+    end
+    end
+    opt Zielclient tatsächlich gelöscht
+    A->>F: Ausgeführte Löschung per E-Mail melden
+    end
+    end
+    opt Spätere Einbuchung nach letzter Löschung
+    C->>A: Folgeregistrierung
+    A-->>C: Bestehende E-Mail erneut verifizieren
+    end
+....

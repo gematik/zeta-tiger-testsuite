@@ -25,41 +25,45 @@ Der ZETA Client und der ZETA Native Client können das TLS-Testtool erreichen.
 Das TLS-Testtool, der Tiger Proxy und der Certificate Validation Mock können miteinander kommunizieren.
 
 | Nebenbedingung: |
-Die Domäne "tlsTestToolServer" muss zu der IP-Adresse aufgelöst werden, unter der die Tests ausgeführt werden.
+Die Zertifikatskette und der Hostname des TLS-Servers passen zum Verbindungsziel.
+OCSP-Stapling, OCSP-Responder und CRL sind je nach angebotener Variante verfügbar oder nicht verfügbar.
 
 | Ablauf: |
-. Der TLS Test Server bietet gezielt Protokollversionen, Hashfunktionen, Ciphersuites und Kurven an.
+. Der TLS-Server bietet Protokollversionen, Hashfunktionen, Ciphersuites, Kurven und seine Zertifikatskette an.
 . Der ZETA Client oder ZETA Native Client akzeptiert zulässige Konfigurationen und lehnt unzulässige Konfigurationen mit TLS Alerts ab.
-. Der Certificate Validation Mock liefert eine deterministische gültige oder widerrufene OCSP-Antwort für das End-Entity-Zertifikat.
-. Die Testsuite korreliert OCSP-Anfrage und OCSP-Antwort mit dem angefragten Zertifikat und prüft das beobachtbare Ergebnis des TLS-Handshakes.
-. Bei der Cache-Prüfung führt die Testsuite einen zweiten TLS-Handshake mit demselben Zertifikat durch und prüft, dass keine weitere OCSP-Anfrage gesendet wird.
+. Beim TLS-Verbindungsaufbau fordert der Client OCSP Stapling an und nutzt eine angebotene Antwort.
+. Der Client prüft Signatur, Signierer, Gültigkeitsdauer und Zuordnung der OCSP-Antwort zum angefragten Zertifikat. Ein widerrufenes Zertifikat oder ein ungültiger Nachweis führt zum Abbruch des Handshakes.
+. Der Client speichert OCSP-Antworten bis NextUpdate und nutzt sie bei weiteren Verbindungen mit demselben Zertifikat. Nach dem Ablauf erneuert er den Widerrufsnachweis.
+. Die Dauer der Speicherung ist konfigurierbar und beträgt mindestens eine Stunde.
+. Ohne angebotenes OCSP Stapling lädt der Client entweder eine CRL oder fragt den OCSP-Responder des Zertifikats ab. Die CRL-Variante umfasst auch die Berücksichtigung von Sub-CA-Zertifikaten.
+. Ist weder eine OCSP-Antwort noch eine CRL verfügbar, bricht der Client den Verbindungsaufbau ab.
 
 | Nachbedingung: |
-Die TLS-Konformität des ZETA Client und des ZETA Native Client ist verifiziert.
+Zulässige TLS-Verbindungen mit gültigen Widerrufsnachweisen sind hergestellt; unzulässige Konfigurationen, widerrufene Zertifikate und ungültige oder fehlende Nachweise führen zum Verbindungsabbruch.
+Gültige OCSP-Antworten werden innerhalb ihres Cache-Zeitfensters wiederverwendet und nach NextUpdate erneuert.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_18464_02>>
 * <<TA_A_21275-01_05>>
 * <<TA_A_21275-01_07>>
 * <<TA_A_21275-01_08>>
-* <<TA_A_25340-01_01>>
-* <<TA_A_25340-01_02>>
-* <<TA_A_25340-01_03>>
-* <<TA_A_25340-01_04>>
-* <<TA_A_25340-01_05>>
-* <<TA_A_25340-01_06>>
+* <<TA_A_25340-02_01>>
+* <<TA_A_25340-02_02>>
+* <<TA_A_25340-02_03>>
+* <<TA_A_25340-02_04>>
+* <<TA_A_25340-02_05>>
+* <<TA_A_25340-02_06>>
 * <<TA_A_25766_03>>
-* <<TA_A_27379-01_01>>
-* <<TA_A_27379-01_02>>
-* <<TA_A_27379-01_03>>
-* <<TA_A_27379-01_04>>
-* <<TA_A_27379-01_05>>
-* <<TA_A_27379-01_06>>
-* <<TA_A_27379-01_07>>
-* <<TA_A_27379-01_10>>
-* <<TA_A_27379-01_11>>
-* <<TA_A_27379-01_12>>
-* <<TA_A_27379-01_13>>
+* <<TA_A_27379-02_01>>
+* <<TA_A_27379-02_02>>
+* <<TA_A_27379-02_03>>
+* <<TA_A_27379-02_04>>
+* <<TA_A_27379-02_05>>
+* <<TA_A_27379-02_06>>
+* <<TA_A_27379-02_07>>
+* <<TA_A_27379-02_11>>
+* <<TA_A_27379-02_12>>
+* <<TA_A_27379-02_13>>
 * <<TA_A_28868_06>>
 * <<TA_A_28868_07>>
 * <<TA_A_28868_08>>
@@ -70,6 +74,30 @@ Die TLS-Konformität des ZETA Client und des ZETA Native Client ist verifiziert.
 
 |===
 
+[#usecase_tls_02_sequence]
+[mermaid,usecase-tls-02-sequence,svg]
+....
+sequenceDiagram
+    participant Client as ZETA Client / Native Client
+    participant Server as TLS-Server
+    participant Status as OCSP-Responder / CRL
+    Client->>Server: TLS ClientHello mit status_request
+    Server-->>Client: ServerHello und Zertifikatskette
+    alt OCSP Stapling angeboten
+        Server-->>Client: OCSP-Antwort
+        Client->>Client: Signatur, Signierer, Gültigkeit und Zertifikatszuordnung prüfen
+    else Kein OCSP Stapling
+        Client->>Status: Widerrufsnachweis abrufen
+        Status-->>Client: OCSP-Antwort oder CRL / nicht verfügbar
+    end
+    alt Nachweis gültig
+        Client->>Client: OCSP-Antwort bis NextUpdate speichern
+        Client->>Server: TLS-Handshake abschließen
+    else Nachweis ungültig oder nicht verfügbar
+        Client->>Server: Verbindung abbrechen
+    end
+....
+
 ifdef::render_features[]
 [.lead]
 Feature-Datei zu diesem Use Case
@@ -79,10 +107,3 @@ Feature-Datei zu diesem Use Case
 include::tls_client.feature[]
 ----
 endif::[]
-
-[.lead]
-Szenariohinweise zu TLS-1.3-Kurven (`TA_A_28868_07`, `TA_A_28868_10`)
-
-Für die Prüfung der TLS-1.3-Kurven wird das `supported_groups`-Profil aus `TlsSupportedGroup.Tls13Policy` abgeleitet.
-Das reguläre Profil enthält `secp256r1`, `secp384r1`, `brainpoolP256r1`, `brainpoolP384r1` und `brainpoolP512r1`.
-Die separaten NamedGroup-Einträge `brainpoolP256r1tls13`, `brainpoolP384r1tls13` und `brainpoolP512r1tls13` sind in diesem Profil verboten und werden nur in negativen Kurvenprüfungen verwendet.

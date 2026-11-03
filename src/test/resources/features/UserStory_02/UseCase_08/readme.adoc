@@ -1,0 +1,90 @@
+[#UC_02_08]
+== UseCase_02_08: RS-Zertifikate und Fachdienstberechtigungen am Notification Service prüfen
+
+.UseCase_02_08
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | RS-Zertifikate und Fachdienstberechtigungen am Notification Service prüfen
+
+| Akteur: | Resource Server beziehungsweise technischer Nutzer
+
+| weitere Akteure: | Notification Service, Zertifikatsverwaltung, Testsuite
+
+| Auslöser: | getActiveChannels oder submitNotification wird aufgerufen.
+
+| Kurzbeschreibung: |
+Die Testsuite trennt Zertifikatsauthentisierung von der anschließenden Autorisierung für Fachdienste, Channels und Geräteinformationen.
+Die Authentisierung beider RS-Operationen ist als ausführbares Szenario umgesetzt. Die weiteren Zertifikats- und Fachdienstberechtigungsaspekte bleiben Prüfentwürfe.
+Das Szenario registriert einen frischen Empfänger und aktiviert dessen Channel über das SDK. Der TLS-Testtool-Service ruft anschließend beide RS-Operationen über TLS 1.2 mit mbed TLS mit unabhängigen TLS-Verbindungen direkt am über die Produkt-Helm-Charts deployten NS auf.
+Am bestehenden RS-Deployment sind der TLS-Endpunkt, das Serverzertifikat, die Vertrauensanker und die technische RS-Nutzerzuordnung konfigurierbar. Das RS-Clientzertifikat ist dieser Rolle unabhängig zugeordnet. Tatsächlich verwendete Zertifikate, deployter NS-Peer, korrelierte NS-Nutzeridentität sowie fachliche Erfolgsantworten werden geprüft. Eine lediglich konfigurierte Zertifikatsdatei genügt nicht.
+
+| Vorbedingung: |
+. Für die Autorisierungsentwürfe sind zwei Fachdienste mit getrennten Channels, Geräten und technischen Nutzern angelegt. Ihre Zuordnung ist unabhängig von den Abfrageantworten dokumentiert.
+. Für beide RS-Operationen liegen gültige Kontrollrequests vor. Ein berechtigter RS kann sie mit frischen TLS-Verbindungen und austauschbaren Clientzertifikaten ausführen.
+. Für die weiteren Zertifikatsentwürfe enthält die Zertifikatsmatrix gültige, fehlende, abgelaufene, unvertrauenswürdige und fehlerhaft signierte Nachweise. Transport- und HTTP-Ergebnisse sowie fachliche Nebenwirkungen sind getrennt sichtbar.
+. Ein echter RS oder ein authentisierter TLS-Testtool-Client stellt die technische Nutzerrolle bereit; Endpunkt und Methoden werden aus dem für das Produkt geltenden Schnittstellenprofil übernommen.
+
+| Nebenbedingung: |
+Diese Aufrufe stammen vom RS, nicht vom Client-SDK. Daher wird die technische RS-Schnittstelle direkt über den RS beziehungsweise TLS-Testtool-Client stimuliert. Tiger darf fachliche Parameter verändern, aber die mTLS-Gegenstelle nicht ersetzen. Eine TLS-Ablehnung vor HTTP beweist keinen HTTP-Status 401; dieser Nachweis bleibt dann offen.
+
+| Ablauf: |
+*Authentisierung beider Operationen*
+
+. Ein gültiges, vertrauenswürdiges und dem technischen Nutzer zugeordnetes RS-Zertifikat wird als positive Kontrolle verwendet. Die Zertifikatsprüfung wird am tatsächlichen TLS-Terminierer belegt. Die Testsuite prüft dabei tatsächlichen TLS-Peer und technische Nutzerzuordnung.
+. getActiveChannels und submitNotification werden getrennt über mTLS als zugeordneter technischer Nutzer ausgeführt. Die tatsächliche RS-Verbindung, nicht eine SDK-Client-Modul-Verbindung, ist die Nachweisgrenze. Beide positiven Kontrollen müssen fachlich gelingen.
+. Beide Operationen ohne Clientzertifikat werden abgelehnt und nicht fachlich ausgeführt. Die AFO nennt HTTP 401; ein vorgelagerter TLS-Abbruch ist als eigener Befund zu erfassen und beweist allein nicht den geforderten HTTP-Status. Datenfreigabe und Versand bleiben aus.
+. Abgelaufene, nicht vertrauenswürdige und fehlerhaft signierte Clientzertifikate werden getrennt mit sonst gleichem gültigem Request geprüft. Keine fachliche Ausführung; HTTP 401 gemäß AFO wird nur bei beobachteter HTTP-Antwort als nachgewiesen gewertet. Jede Zertifikatsvariante wird für beide Operationen ausgeführt.
+
+*Autorisierung nach erfolgreicher Authentisierung*
+
+. Ein authentisierter RS beziehungsweise technischer Nutzer sendet erfolgreich nur innerhalb der vorab zugeordneten Fachdienst-/Channel-Menge.
+. Erfolgreiche Abfragen werden mit einem unabhängig angelegten Bestand verglichen. Weder Channel- noch Geräteinformationen eines zweiten Mandanten dürfen im Ergebnis erscheinen.
+. Ein gültig authentisierter Nutzer adressiert gezielt einen fremden Fachdienst und einen fremden Channel. Beide Varianten ergeben 403, keine Enqueue-/Versandwirkung und keine Änderung des fremden Bestands. Die Varianten sind getrennte Requests desselben Nutzers; Queue und Gateway werden als Beobachtungsgrenzen geprüft.
+. Ein gültig authentisierter Nutzer fordert ausdrücklich fremde Channel-/Geräteinformationen an. 403 darf nicht durch 200 mit leerer Liste ersetzt werden. Eine erlaubte Listenabfrage enthält ausschließlich eigene Daten. Keine abgelehnte Antwort enthält fremde Daten.
+
+| Nachbedingung: |
+Im ausführbaren Szenario müssen beide RS-Operationen mit zugeordnetem Zertifikat fachlich gelingen. Nicht aktivierbare Produkt-mTLS-Unterstützung führt zu einem Testfehler. Die temporären Ressourcen werden entfernt und der unveränderte ursprüngliche NS-Prozess wird geprüft.
+In den weiteren Prüfentwürfen sind Zertifikats- und Berechtigungsfehler unterscheidbar. Fremde Daten und Versandwirkungen sind ausgeschlossen. Nicht beobachtbare HTTP-Statusnachweise werden nicht als bestanden ausgegeben.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29980_01>>
+* <<TA_A_29980_02>>
+* <<TA_A_29980_03>>
+* <<TA_A_29980_04>>
+* <<TA_A_29983_01>>
+* <<TA_A_29983_02>>
+* <<TA_A_29983_03>>
+* <<TA_A_29983_04>>
+
+|===
+
+[mermaid,uc-02-08-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant R as RS / technischer Nutzer
+    participant N as Notification Service
+    participant P as Push Gateway
+    R->>N: Frische mTLS-Verbindung und RS-Operation
+    alt Zertifikat fehlt oder ist ungültig
+        N-->>R: Ablehnung, HTTP 401 gesondert nachweisen
+    else Authentisierung erfolgreich
+        N->>N: Fachdienst-/Channel-Zuordnung prüfen
+        alt Zugriff erlaubt
+            N-->>R: Nur eigene Informationen / Versandannahme
+            opt submitNotification
+                N->>P: Berechtigter Versand
+            end
+        else Zugriff fremd
+            N-->>R: 403 ohne fremde Daten oder Versand
+        end
+    end
+....
+
+[.lead]
+Ausführbares Szenario für die Authentisierung beider RS-Operationen:
+
+[source,gherkin]
+----
+include::rs_operationen_mtls.feature[]
+----

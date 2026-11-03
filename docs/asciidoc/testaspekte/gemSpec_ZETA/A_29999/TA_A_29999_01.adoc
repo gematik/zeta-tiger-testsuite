@@ -1,0 +1,6 @@
+[#TA_A_29999_01]
+===== TA_A_29999_01 - PDP Authorization Server - Antwortverhalten ohne Token-Enumeration - HTTP 200 unabhängig vom Tokenzustand
+
+"**Der Authorization Server MUSS auf einen erfolgreich client-authentifizierten Revocation-Request unabhängig davon, ob das übergebene Token gültig, bereits ungültig oder unbekannt ist, mit 200 OK antworten** (RFC 7009 §2.2), um Rückschlüsse auf die Existenz von Token zu verhindern.
+
+**[<=]**"

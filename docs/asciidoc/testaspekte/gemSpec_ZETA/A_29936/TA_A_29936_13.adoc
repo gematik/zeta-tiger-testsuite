@@ -1,0 +1,8 @@
+[#TA_A_29936_13]
+===== TA_A_29936_13 - Authorization Server – Erhöhte Anforderung bei Löschung des letzten/aller Clients - Vor Veto ohne verbliebenen Client folgeregistrieren
+
+"Der Authorization Server MUSS für die Löschung des letzten verbleibenden Clients einer Identität eine Step-up-Authentisierung verlangen ODER die Löschung mit einer Einspruchsfrist (Veto-Fenster) ausführen. Das Veto-Fenster wird analog A_29942 ausgestaltet (geplante Löschung mit Benachrichtigung, **Abbruch durch einen überlebenden Faktor gemäß A_29943**); die Einlegung des Vetos erfolgt über POST /zeta/deletions/{deletion_id}/veto. Eine Sammellöschung mehrerer Clients ist KEINE eigene Serveroperation; sie erfolgt clientseitig als wiederholte Einzel-Löschung (DELETE /zeta/clients/{target_client_id}). Die erhöhte Anforderung greift, sobald dabei der letzte verbleibende Client gelöscht würde. Die Step-up-Authentisierung erfolgt nach demselben Mechanismus wie bei der E-Mail-Änderung (A_29911, [RFC9470]): 401 mit error="insufficient_user_authentication" und geforderten acr_values, einmaliger regulärer Authorization Code Flow, Nachweis durch das vom Authorization Server ausgestellte, DPoP-gebundene Access Token.
+
+**[<=]**"
+
+A_29943 verlangt bei fehlendem eingebuchten Client **zunächst Folgeregistrierung mit erneuter E-Mail-Verifikation und anschließend Veto über diesen Client**.

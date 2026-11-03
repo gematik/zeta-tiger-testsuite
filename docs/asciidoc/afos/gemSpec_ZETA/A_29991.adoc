@@ -1,0 +1,4 @@
+[#A_29991]
+==== A_29991 - Notification Service – TLS-/Krypto-Konformität
+
+Der Notification Service MUSS für alle TLS-/mTLS-Verbindungen (RS-Schnittstelle sowie Push Gateway) die in [gemSpec_Krypt] zugelassenen TLS-Versionen, Cipher-Suiten und Schlüssellängen verwenden. Für die Verbindung zum Push Gateway gilt ergänzend A_29982 (EV-Zertifikat). [<=]

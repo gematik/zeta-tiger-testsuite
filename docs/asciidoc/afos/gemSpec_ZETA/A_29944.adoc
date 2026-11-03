@@ -1,0 +1,4 @@
+[#A_29944]
+==== A_29944 - Authorization Server – Wirkung der Ausführung: Tombstone, kein Zugriff
+
+Der Authorization Server MUSS bei Ausführung der OOB-Löschung den Identitätsdatensatz in einen Tombstone-Zustand überführen und alle zugehörigen Client-Registrierungen entfernen. Die OOB-Löschung DARF NICHT Zugriff gewähren oder einen Faktor neu binden. [<=]

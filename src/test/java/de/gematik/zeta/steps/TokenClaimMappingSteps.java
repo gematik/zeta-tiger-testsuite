@@ -24,526 +24,337 @@
 
 package de.gematik.zeta.steps;
 
+import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import io.cucumber.java.ParameterType;
 import io.cucumber.java.de.Dann;
-import io.cucumber.java.en.Then;
+import java.math.BigInteger;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Cucumber steps for comparing token claims with the Policy Engine input that led to token issuance.
+ * Compares access-token claims with the correlated CC policy transaction and a scope reference
+ * independent of the observed token.
  */
-@Slf4j
 public class TokenClaimMappingSteps {
-
   private static final ObjectMapper JSON = new ObjectMapper();
 
   /**
-   * Result of one token claim mapping evaluation.
+   * Result of the claim comparison.
    *
-   * @param report       human-readable comparison report
-   * @param troubleFound whether one or more mapped claims differ from the Policy Engine input
+   * @param report readable comparison result
+   * @param troubleFound whether any claim differs from its reference
    */
-  public record ClaimReport(String report, boolean troubleFound) {
-  }
+  public record ClaimReport(String report, boolean troubleFound) {}
 
-  private enum Status {
-    OK,
-    TROUBLE,
-    SKIPPED
-  }
-
-  private record ClaimCheck(Status status, String claim, String message) {
+  /**
+   * Stores the exact audience value from a scalar or singleton-array aud member.
+   *
+   * @param json JSON object containing aud
+   * @param variableName scenario-local variable receiving the audience string
+   * @throws AssertionError if aud is missing, blank, nontextual or contains multiple entries
+   */
+  @Dann("speichere die einzelne Audience aus JSON {tigerResolvedString} in Variable {string}")
+  public void storeSingleAudience(String json, String variableName) {
+    var aud = object(json).path("aud");
+    if (aud.isArray() && aud.size() == 1) {
+      aud = aud.get(0);
+    }
+    if (!aud.isTextual() || aud.asString().isBlank()) {
+      throw new AssertionError("Expected exactly one nonempty audience string");
+    }
+    TigerGlobalConfiguration.putValue(variableName, aud.asString(), ConfigurationValuePrecedence.TEST_CONTEXT);
   }
 
   /**
-   * Token variants supported by the token claim mapping step.
-   */
-  public enum TokenType {
-    Access, Refresh
-  }
-
-  /**
-   * Converts the Cucumber token type parameter to the matching enum value.
+   * Checks newly issued legacy tokens; acceptance of older tokens without ver is a PEP duty.
    *
-   * @param tokenType token type from the Gherkin step
-   * @return matching token type enum value
+   * @param claimsJson independently signature-verified access-token payload
+   * @param requestedAudience decoded audience from the correlated SDK request
    */
-  @ParameterType("Access|Refresh|access|refresh")
-  public TokenType tokenType(String tokenType) {
-    for (TokenType type : TokenType.values()) {
-      if (type.name().equalsIgnoreCase(tokenType)) {
-        return type;
-      }
-    }
-
-    throw new AssertionError("Unknown token type: " + tokenType);
-  }
-
-  /**
-   * Verifies that a token contains claims matching the corresponding Policy Engine input.
-   *
-   * @param tokenClaimsJson token payload as JSON
-   * @param policyInputJson Policy Engine input as JSON
-   */
-  @Dann("prüfe {tokenType} Token Claims {tigerResolvedString} passen zum Policy-Engine-Input {tigerResolvedString} und nutze soft assert")
-  @Then("check {tokenType} token claims {tigerResolvedString} match policy engine input {tigerResolvedString} with soft assert")
-  public void checkTokenClaimsAgainstPolicyInput(TokenType tokenType, String tokenClaimsJson, String policyInputJson) {
-    switch (tokenType) {
-      case Access -> {
-        var report = evaluateAccessTokenClaims(tokenClaimsJson, policyInputJson);
-        attachAndRecord("Access Token Claim Mapping", report);
-      }
-      case Refresh -> {
-        var report = evaluateRefreshTokenClaims(tokenClaimsJson, policyInputJson);
-        attachAndRecord("Refresh Token Claim Mapping", report);
-      }
-      case null, default -> throw new AssertionError("Unknown TokenType: " + tokenType + " to validate!");
-    }
-  }
-
-  /**
-   * Builds a comparison report for an access token without recording a Cucumber assertion.
-   *
-   * @param tokenClaimsJson token payload as JSON
-   * @param policyInputJson Policy Engine input as JSON
-   * @return comparison report
-   */
-  public ClaimReport evaluateAccessTokenClaims(String tokenClaimsJson, String policyInputJson) {
-    var tokenClaims = parseObject(tokenClaimsJson, "access token claims");
-    var policyInput = normalizePolicyInput(parseObject(policyInputJson, "policy engine input"));
-    var checks = new ArrayList<ClaimCheck>();
-
-    addCommonClaimChecks(checks, tokenClaims, policyInput);
-    addScopeChecks(checks, tokenClaims, policyInput);
-    addAccessAudienceChecks(checks, tokenClaims, policyInput);
-
-    return toReport("Access Token", checks);
-  }
-
-  /**
-   * Builds a comparison report for a refresh token without recording a Cucumber assertion.
-   *
-   * @param tokenClaimsJson token payload as JSON
-   * @param policyInputJson Policy Engine input as JSON
-   * @return comparison report
-   */
-  public ClaimReport evaluateRefreshTokenClaims(String tokenClaimsJson, String policyInputJson) {
-    var tokenClaims = parseObject(tokenClaimsJson, "refresh token claims");
-    var policyInput = normalizePolicyInput(parseObject(policyInputJson, "policy engine input"));
-    var checks = new ArrayList<ClaimCheck>();
-
-    addCommonClaimChecks(checks, tokenClaims, policyInput);
-    addScopeChecks(checks, tokenClaims, policyInput);
-    addRefreshAudienceChecks(checks, tokenClaims);
-
-    return toReport("Refresh Token", checks);
-  }
-
-  /**
-   * Adds all direct user and client data claim mappings shared by access and refresh tokens.
-   *
-   * @param checks      mutable check list
-   * @param tokenClaims token claim JSON object
-   * @param policyInput normalized Policy Engine input object
-   */
-  private void addCommonClaimChecks(List<ClaimCheck> checks, JsonNode tokenClaims, JsonNode policyInput) {
-    addEqualityCheck(checks, "sub", tokenClaims, policyInput, "/user_info/identifier");
-    addEqualityCheck(checks, "profession_oid", tokenClaims, policyInput, "/user_info/professionOID");
-    addEqualityCheck(checks, "client_id", tokenClaims, policyInput, "/client_registration_data/client_id");
-    addEqualityCheck(checks, "azp", tokenClaims, policyInput, "/client_registration_data/client_id");
-    addEqualityCheck(checks, "product_id", tokenClaims, policyInput, "/client_registration_data/product_id");
-    addEqualityCheck(checks, "product_version", tokenClaims, policyInput, "/client_registration_data/product_version");
-    addEqualityCheck(checks, "platform", tokenClaims, policyInput, "/client_registration_data/platform");
-    addEqualityCheck(checks, "ip_address", tokenClaims, policyInput, "/authorization_request/ip_address");
-  }
-
-  /**
-   * Adds scope checks: requested scopes must be present and no additional scopes may appear.
-   *
-   * @param checks      mutable check list
-   * @param tokenClaims token claim JSON object
-   * @param policyInput normalized Policy Engine input object
-   */
-  private void addScopeChecks(List<ClaimCheck> checks, JsonNode tokenClaims, JsonNode policyInput) {
-    var expectedScopesNode = policyInput.at("/authorization_request/scopes");
-    if (containsNonScalarValue(expectedScopesNode)) {
-      checks.add(new ClaimCheck(Status.TROUBLE, "scope",
-          "policy input path /authorization_request/scopes contains non-scalar scope values"));
-      return;
-    }
-    var expectedScopes = stringSet(expectedScopesNode);
-    if (expectedScopes.isEmpty()) {
-      checks.add(new ClaimCheck(Status.SKIPPED, "scope", "no requested scopes in policy input"));
-      return;
-    }
-
-    var actualScopeNode = tokenClaims.get("scope");
-    if (isAbsent(actualScopeNode)) {
-      checks.add(new ClaimCheck(Status.TROUBLE, "scope", "missing token claim; expected " + expectedScopes));
-      return;
-    }
-
-    var actualScopeValue = textValue(actualScopeNode);
-    if (actualScopeValue == null) {
-      checks.add(new ClaimCheck(Status.TROUBLE, "scope",
-          "token claim is not a scalar value; expected " + expectedScopes));
-      return;
-    }
-
-    var actualScopes = Arrays.stream(actualScopeValue.trim().split("\\s+"))
-        .filter(scope -> !scope.isBlank())
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-    var missing = expectedScopes.stream()
-        .filter(expected -> !actualScopes.contains(expected))
-        .toList();
-    var extras = actualScopes.stream()
-        .filter(actual -> !expectedScopes.contains(actual))
-        .toList();
-
-    checks.add(missing.isEmpty()
-        ? new ClaimCheck(Status.OK, "scope.requested", "all requested scopes are present: " + expectedScopes)
-        : new ClaimCheck(Status.TROUBLE, "scope.requested",
-            "missing requested scopes " + missing + "; actual " + actualScopes));
-    checks.add(extras.isEmpty()
-        ? new ClaimCheck(Status.OK, "scope.extra", "no additional scopes found")
-        : new ClaimCheck(Status.TROUBLE, "scope.extra",
-            "additional scopes " + extras + "; requested only " + expectedScopes));
-  }
-
-  /**
-   * Adds access token audience checks against the resource audience requested from the Policy Engine.
-   *
-   * @param checks      mutable check list
-   * @param tokenClaims token claim JSON object
-   * @param policyInput normalized Policy Engine input object
-   */
-  private void addAccessAudienceChecks(List<ClaimCheck> checks, JsonNode tokenClaims, JsonNode policyInput) {
-    var expectedAudienceNode = policyInput.at("/authorization_request/audience");
-    if (containsNonScalarValue(expectedAudienceNode)) {
-      checks.add(new ClaimCheck(Status.TROUBLE, "aud",
-          "policy input path /authorization_request/audience contains non-scalar audience values"));
-      return;
-    }
-    var expectedAudiences = stringSet(expectedAudienceNode);
-    addAudienceCheck(checks, "aud", tokenClaims.get("aud"), expectedAudiences, "requested audience");
-  }
-
-  /**
-   * Adds refresh token audience checks against the Authorization Server issuer.
-   *
-   * @param checks      mutable check list
-   * @param tokenClaims token claim JSON object
-   */
-  private void addRefreshAudienceChecks(List<ClaimCheck> checks, JsonNode tokenClaims) {
-    var expectedAudience = expectedAuthorizationServerAudience();
-    if (expectedAudience == null) {
-      checks.add(new ClaimCheck(Status.TROUBLE, "aud",
-          "authorization server audience could not be derived from zeta_base_url and paths.guard.tokenEndpointPath"));
-      return;
-    }
-    addAudienceCheck(checks, "aud", tokenClaims.get("aud"), Set.of(expectedAudience),
-        "authorization server audience");
-  }
-
-  /**
-   * Adds an exact audience check.
-   *
-   * @param checks             mutable check list
-   * @param claim              audience claim name
-   * @param actualAudienceNode actual token audience value
-   * @param expectedAudiences  expected audience values
-   * @param expectationLabel   diagnostic label for the expected values
-   */
-  private void addAudienceCheck(List<ClaimCheck> checks, String claim, JsonNode actualAudienceNode,
-      Set<String> expectedAudiences, String expectationLabel) {
-    if (expectedAudiences.isEmpty()) {
-      checks.add(new ClaimCheck(Status.SKIPPED, claim, "no " + expectationLabel + " available"));
-      return;
-    }
-    if (isAbsent(actualAudienceNode)) {
-      checks.add(new ClaimCheck(Status.TROUBLE, claim, "missing token claim; expected " + expectedAudiences));
-      return;
-    }
-    var actualAudiences = stringSet(actualAudienceNode);
-    if (actualAudiences.isEmpty()) {
-      if (containsNonScalarValue(actualAudienceNode)) {
-        checks.add(new ClaimCheck(Status.TROUBLE, claim,
-            "token claim contains no scalar " + expectationLabel + " values; expected " + expectedAudiences));
-        return;
-      }
-      checks.add(new ClaimCheck(Status.TROUBLE, claim, "missing token claim; expected " + expectedAudiences));
-      return;
-    }
-
-    var missing = expectedAudiences.stream()
-        .filter(expected -> !actualAudiences.contains(expected))
-        .toList();
-    var extras = actualAudiences.stream()
-        .filter(actual -> !expectedAudiences.contains(actual))
-        .toList();
-
-    checks.add(missing.isEmpty()
-        ? new ClaimCheck(Status.OK, claim + ".requested", "all " + expectationLabel
-                                                          + " values are present: " + expectedAudiences)
-        : new ClaimCheck(Status.TROUBLE, claim + ".requested",
-            "missing " + expectationLabel + " values " + missing + "; actual " + actualAudiences));
-    checks.add(extras.isEmpty()
-        ? new ClaimCheck(Status.OK, claim + ".extra", "no additional " + expectationLabel + " values found")
-        : new ClaimCheck(Status.TROUBLE, claim + ".extra",
-            "additional " + expectationLabel + " values " + extras + "; expected only " + expectedAudiences));
-  }
-
-  /**
-   * Derives the Authorization Server audience from {@code zeta_base_url} and the configured token endpoint path.
-   *
-   * @return expected Authorization Server audience or {@code null} when required config is missing
-   */
-  private String expectedAuthorizationServerAudience() {
-    var zetaBaseUrl = TigerGlobalConfiguration.readStringOptional("zeta_base_url")
-        .map(String::trim)
-        .filter(value -> !value.isBlank())
-        .orElse(null);
-    var tokenEndpointPath = TigerGlobalConfiguration.readStringOptional("paths.guard.tokenEndpointPath")
-        .map(String::trim)
-        .filter(value -> !value.isBlank())
-        .orElse(null);
-    if (zetaBaseUrl == null || tokenEndpointPath == null) {
-      return null;
-    }
-    var tokenSuffix = "/protocol/openid-connect/token";
-    if (!tokenEndpointPath.endsWith(tokenSuffix)) {
-      return null;
-    }
-    var baseUrl = zetaBaseUrl.startsWith("http://") || zetaBaseUrl.startsWith("https://")
-        ? zetaBaseUrl
-        : "https://" + zetaBaseUrl;
-    return baseUrl + tokenEndpointPath.substring(0, tokenEndpointPath.length() - tokenSuffix.length());
-  }
-
-  /**
-   * Adds one scalar equality check when the expected Policy Engine input path is present.
-   *
-   * @param checks         mutable check list
-   * @param tokenClaimName token claim name
-   * @param tokenClaims    token claim JSON object
-   * @param policyInput    normalized Policy Engine input object
-   * @param policyJsonPath JSON pointer to the expected value in the Policy Engine input
-   */
-  private void addEqualityCheck(List<ClaimCheck> checks, String tokenClaimName, JsonNode tokenClaims,
-      JsonNode policyInput, String policyJsonPath) {
-    var expectedNode = policyInput.at(policyJsonPath);
-    if (isAbsent(expectedNode)) {
-      checks.add(new ClaimCheck(Status.SKIPPED, tokenClaimName,
-          "policy input path " + policyJsonPath + " is absent"));
-      return;
-    }
-
-    var expected = textValue(expectedNode);
-    if (expected == null) {
-      checks.add(new ClaimCheck(Status.TROUBLE, tokenClaimName,
-          "policy input path " + policyJsonPath + " is not a scalar value"));
-      return;
-    }
-
-    var actualNode = tokenClaims.get(tokenClaimName);
-    if (isAbsent(actualNode)) {
-      checks.add(new ClaimCheck(Status.TROUBLE, tokenClaimName,
-          "missing token claim; expected '" + expected + "' from " + policyJsonPath));
-      return;
-    }
-
-    var actual = textValue(actualNode);
-    if (actual == null) {
-      checks.add(new ClaimCheck(Status.TROUBLE, tokenClaimName,
-          "token claim is not a scalar value; expected '" + expected + "' from " + policyJsonPath));
-      return;
-    }
-
-    checks.add(expected.equals(actual)
-        ? new ClaimCheck(Status.OK, tokenClaimName, "matches '" + expected + "'")
-        : new ClaimCheck(Status.TROUBLE, tokenClaimName,
-            "expected '" + expected + "' from " + policyJsonPath + " but was '" + actual + "'"));
-  }
-
-  /**
-   * Parses a JSON object from a resolved Cucumber argument.
-   *
-   * @param json  JSON text
-   * @param label diagnostic label
-   * @return parsed JSON object
-   */
-  private JsonNode parseObject(String json, String label) {
-    try {
-      var node = JSON.readTree(json);
-      if (node == null || !node.isObject()) {
-        throw new AssertionError(label + " must be a JSON object but was " + node);
-      }
-      return node;
-    } catch (JacksonException e) {
-      throw new AssertionError("Failed to parse " + label + " as JSON: " + e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Accepts either the raw Policy Engine input object or a wrapper containing an {@code input} node.
-   *
-   * @param policyInput parsed policy input or wrapper object
-   * @return normalized policy input object
-   */
-  private JsonNode normalizePolicyInput(JsonNode policyInput) {
-    if (policyInput.has("input") && policyInput.get("input").isObject()) {
-      return policyInput.get("input");
-    }
-    return policyInput;
-  }
-
-  /**
-   * Formats all checks into one report and marks whether trouble was found.
-   *
-   * @param tokenName token label
-   * @param checks    collected claim checks
-   * @return formatted report
-   */
-  private ClaimReport toReport(String tokenName, List<ClaimCheck> checks) {
-    var report = new StringBuilder(tokenName)
-        .append(" claim mapping against Policy Engine input\n");
-    appendSection(report, "OK", checks, Status.OK);
-    appendSection(report, "TROUBLE", checks, Status.TROUBLE);
-    appendSection(report, "SKIPPED", checks, Status.SKIPPED);
-    var troubleFound = checks.stream().anyMatch(check -> check.status() == Status.TROUBLE);
-    return new ClaimReport(report.toString().trim(), troubleFound);
-  }
-
-  /**
-   * Appends one status section to the report when it contains entries.
-   *
-   * @param report mutable report builder
-   * @param title  section title
-   * @param checks all collected checks
-   * @param status section status
-   */
-  private void appendSection(StringBuilder report, String title, List<ClaimCheck> checks, Status status) {
-    var entries = checks.stream()
-        .filter(check -> check.status() == status)
-        .toList();
-    if (entries.isEmpty()) {
-      return;
-    }
-
-    report.append("\n\n").append(title).append(":\n");
-    entries.forEach(check -> report
-        .append("- ")
-        .append(check.claim())
-        .append(": ")
-        .append(check.message())
-        .append('\n'));
-  }
-
-  /**
-   * Attaches the report and records a soft failure if any claim mapping differs.
-   *
-   * @param title  attachment title
-   * @param report claim comparison report
-   */
-  private void attachAndRecord(String title, ClaimReport report) {
-    ReportAttachments.addText(title, report.report());
-    log.info("{}\n{}", title, report.report());
+  @Dann(
+      "prüfe neu ausgestellte Legacy-Token-Claims {tigerResolvedString} auf unveränderte Audience"
+          + " {tigerResolvedString} und ver 1 mit soft assert")
+  public void checkLegacyIssuanceClaims(String claimsJson, String requestedAudience) {
+    var report = evaluateLegacyIssuanceClaims(claimsJson, requestedAudience);
+    ReportAttachments.addText("Legacy Token Issuance", report.report());
     if (report.troubleFound()) {
-      SoftAssertionsContext.recordSoftFailure(title + " contains differing requested claims",
-          new AssertionError(report.report()));
+      SoftAssertionsContext.recordSoftFailure(
+          "Legacy Token Issuance", new AssertionError(report.report()));
     }
   }
 
   /**
-   * Converts a JSON node into a string set.
+   * Distinguishes the AS issuance requirement from backward-compatible PEP interpretation.
    *
-   * @param node scalar or array node
-   * @return set of textual values
+   * @param claimsJson access-token payload
+   * @param requestedAudience one independently observed, decoded legacy audience
+   * @return all audience and explicit-version deviations without disclosing token contents
    */
-  private static Set<String> stringSet(JsonNode node) {
-    var values = new LinkedHashSet<String>();
-    if (node == null || node.isMissingNode() || node.isNull()) {
-      return values;
+  public ClaimReport evaluateLegacyIssuanceClaims(String claimsJson, String requestedAudience) {
+    if (requestedAudience == null
+        || requestedAudience.isBlank()
+        || requestedAudience.contains("${")) {
+      throw new AssertionError("Correlated legacy request audience is missing or unresolved");
     }
-    if (node.isArray()) {
-      node.forEach(item -> addTextValue(values, item));
-      return values;
+    var token = object(claimsJson);
+    var aud = token.path("aud");
+    List<String> errors = new ArrayList<>();
+    boolean exactAudience = aud.isTextual() && requestedAudience.equals(aud.textValue());
+    if (aud.isArray() && aud.size() == 1) {
+      exactAudience = aud.get(0).isTextual() && requestedAudience.equals(aud.get(0).textValue());
     }
-    addTextValue(values, node);
-    return values;
+    if (!exactAudience) {
+      errors.add(
+          "aud: newly issued legacy token must preserve the single requested audience exactly");
+    }
+    var version = token.path("ver");
+    if (!version.isIntegralNumber() || !BigInteger.ONE.equals(version.bigIntegerValue())) {
+      errors.add("ver: newly issued legacy token must explicitly contain integer 1");
+    }
+    return new ClaimReport(
+        errors.isEmpty()
+            ? "Legacy audience preserved and explicit ver=1 present"
+            : String.join("\n", errors),
+        !errors.isEmpty());
   }
 
   /**
-   * Adds a scalar node value to a set when it is not blank.
+   * Checks the token using the observed decision and the supplied scope reference.
    *
-   * @param values target set
-   * @param node   source node
+   * @param claimsJson access-token payload
+   * @param inputJson correlated policy input
+   * @param decisionJson correlated policy response
+   * @param grantedScopes space-separated reference scopes
    */
-  private static void addTextValue(Set<String> values, JsonNode node) {
-    var value = textValue(node);
-    if (value != null && !value.isBlank()) {
-      values.add(value);
+  @Dann(
+      "prüfe Access-Token-Claims {tigerResolvedString} gegen Policy-Input {tigerResolvedString},"
+          + " Entscheidung {tigerResolvedString} und gewährte Scopes {tigerResolvedString} mit soft"
+          + " assert")
+  public void checkAccessTokenClaims(
+      String claimsJson, String inputJson, String decisionJson, String grantedScopes) {
+    var report = evaluateAccessTokenClaims(claimsJson, inputJson, decisionJson, grantedScopes);
+    ReportAttachments.addText("Access Token Claim Mapping", report.report());
+    if (report.troubleFound()) {
+      SoftAssertionsContext.recordSoftFailure(
+          "Access Token Claim Mapping", new AssertionError(report.report()));
     }
   }
 
   /**
-   * Checks whether a JSON node is absent or explicitly null.
+   * Checks claims against the scopes observed in the correlated form-encoded token request.
    *
-   * @param node source node
-   * @return {@code true} when the node cannot provide a value
+   * @param claimsJson access-token payload
+   * @param inputJson correlated policy input
+   * @param decisionJson correlated policy response
+   * @param requestScopes URL-encoded scope value from the token request
    */
-  private static boolean isAbsent(JsonNode node) {
-    return node == null || node.isMissingNode() || node.isNull();
+  @Dann(
+      "prüfe Access-Token-Claims {tigerResolvedString} gegen Policy-Input {tigerResolvedString},"
+          + " Entscheidung {tigerResolvedString} und Scopes aus Token-Request {tigerResolvedString}"
+          + " mit soft assert")
+  public void checkAccessTokenClaimsWithRequestScopes(
+      String claimsJson, String inputJson, String decisionJson, String requestScopes) {
+    if (requestScopes == null || requestScopes.isBlank() || requestScopes.contains("${")) {
+      throw new AssertionError("Correlated token-request scopes are missing or unresolved");
+    }
+    var decodedScopes = URLDecoder.decode(requestScopes, StandardCharsets.UTF_8);
+    if (decodedScopes.isBlank()) {
+      throw new AssertionError("Correlated token-request scopes are missing or unresolved");
+    }
+    checkAccessTokenClaims(claimsJson, inputJson, decisionJson, decodedScopes);
   }
 
   /**
-   * Checks whether a node or any direct array item is an object or array instead of a scalar value.
+   * Evaluates CC claims without scenario/reporting side effects.
    *
-   * @param node source node
-   * @return {@code true} when the node contains a non-scalar value
+   * @param claimsJson access-token payload
+   * @param inputJson policy input, optionally wrapped in input
+   * @param decisionJson policy response containing result
+   * @param grantedScopes scope reference, never copied from the observed token
+   * @return comparison report
    */
-  private static boolean containsNonScalarValue(JsonNode node) {
-    if (isAbsent(node)) {
-      return false;
+  public ClaimReport evaluateAccessTokenClaims(
+      String claimsJson, String inputJson, String decisionJson, String grantedScopes) {
+    final var token = object(claimsJson);
+    var input = object(inputJson);
+    if (input.has("input")) {
+      input = input.get("input");
     }
-    if (node.isArray()) {
+    var decision = object(decisionJson).path("result");
+    List<String> errors = new ArrayList<>();
+    if (!input.isObject()) {
+      throw new AssertionError("Policy input must be an object");
+    }
+    if (!decision.path("allow").isBoolean() || !decision.path("allow").booleanValue()) {
+      errors.add("allow: token issuance requires a positive policy decision");
+    }
+    compareClaim(errors, token, "sub", input.at("/user_info/identifier"));
+    compareClaim(errors, token, "profession_oid", input.at("/user_info/professionOID"));
+    // Policy user_info and JWT claims have different names in their upstream schemas.
+    for (var mapping : new String[][] {{"common_name", "commonName"},
+        {"organization_name", "organizationName"}, {"birthdate", "birthdate"}}) {
+      if (token.has(mapping[0])) {
+        compareClaim(errors, token, mapping[0], input.at("/user_info/" + mapping[1]));
+      }
+    }
+    for (var claim : List.of("client_id", "product_id", "product_version")) {
+      compareClaim(errors, token, claim, input.at("/client_registration_data/" + claim));
+    }
+    compareClaim(errors, token, "ip_address", input.at("/authorization_request/ip_address"));
+    compareClaim(errors, token, "acr", input.at("/authorization_request/acr"));
+    if (token.has("platform")) {
+      compareClaim(errors, token, "platform", input.at("/client_registration_data/platform"));
+    }
+
+    var resource = input.at("/authorization_request/resource");
+    boolean contractV2 = !resource.isMissingNode() && !resource.isNull();
+    if (contractV2 && input.path("authorization_request").has("audience")) {
+      errors.add(
+          "audience: a resource-based request must not also use the legacy audience parameter");
+    }
+    if (input.has("version")
+        && !(contractV2 ? "1.1" : "1.0").equals(input.path("version").asText())) {
+      errors.add("version: policy input version does not match its audience/resource contract");
+    }
+    var expectedAudience =
+        contractV2 ? decision.path("aud") : input.at("/authorization_request/audience");
+    var expected = audience(expectedAudience, "expected aud", errors);
+    var actual = audience(token.path("aud"), "token aud", errors);
+    if (!expected.equals(actual)) {
+      errors.add("aud: expected " + expected + " but was " + actual);
+    }
+    if (contractV2 && (!resource.isTextual() || resource.textValue().isBlank())) {
+      errors.add("resource: expected a nonempty resource indicator");
+    }
+    if (contractV2
+        && (!token.path("ver").isIntegralNumber()
+            || !BigInteger.TWO.equals(token.path("ver").bigIntegerValue()))) {
+      errors.add("ver: a resource-based request requires token contract version 2");
+    }
+    if (!contractV2
+        && token.has("ver")
+        && (!token.path("ver").isIntegralNumber()
+            || !BigInteger.ONE.equals(token.path("ver").bigIntegerValue()))) {
+      errors.add("ver: a legacy audience request requires version 1 or an absent version");
+    }
+    if (contractV2 && expected.contains(resource.asText())) {
+      errors.add("aud: logical audience must not be the resource URL");
+    }
+    if (grantedScopes == null || grantedScopes.contains("${")) {
+      throw new AssertionError("Scope reference is missing or unresolved");
+    }
+    var expectedScopes = scopes(grantedScopes);
+    if (!token.path("scope").isTextual()) {
+      errors.add("scope: token claim must be a string");
+    } else if (!scopes(token.get("scope").textValue()).containsAll(expectedScopes)) {
+      errors.add(
+          "scope: must contain expected granted scopes " + expectedScopes + " but was " + token.get("scope"));
+    }
+    return new ClaimReport(
+        errors.isEmpty()
+            ? "Access Token claims match the policy transaction and scope reference"
+            : String.join("\n", errors),
+        !errors.isEmpty());
+  }
+
+  /** Checks only the AS-owned audience/version obligation against an independent resource grant. */
+  public ClaimReport evaluateResourceIssuanceClaims(
+      String claimsJson, String decisionJson, String requestedResource) {
+    if (requestedResource == null
+        || requestedResource.isBlank()
+        || requestedResource.contains("${")) {
+      throw new AssertionError("Missing independent resource indicator");
+    }
+    final java.net.URI resource;
+    try {
+      resource = java.net.URI.create(requestedResource);
+    } catch (IllegalArgumentException error) {
+      throw new AssertionError("Invalid independent resource indicator");
+    }
+    if (!resource.isAbsolute() || resource.getRawFragment() != null) {
+      throw new AssertionError("Invalid independent resource indicator");
+    }
+    var decision = object(decisionJson).path("result");
+    var fixtureErrors = new ArrayList<String>();
+    var expected = audience(decision.path("aud"), "policy aud", fixtureErrors);
+    if (!decision.path("allow").isBoolean()
+        || !decision.path("allow").booleanValue()
+        || !fixtureErrors.isEmpty()
+        || expected.contains(requestedResource)) {
+      throw new AssertionError("Expected a valid allow decision with independent logical audience");
+    }
+    var token = object(claimsJson);
+    var errors = new ArrayList<String>();
+    if (!expected.equals(audience(token.path("aud"), "token aud", errors))) {
+      errors.add("aud: token differs from its own policy decision");
+    }
+    var version = token.path("ver");
+    if (!version.isIntegralNumber() || !BigInteger.TWO.equals(version.bigIntegerValue())) {
+      errors.add("ver: resource issuance must contain exact integer 2");
+    }
+    return new ClaimReport(
+        errors.isEmpty()
+            ? "Resource audience and ver=2 match the own policy"
+            : String.join("\n", errors),
+        !errors.isEmpty());
+  }
+
+  private static Set<String> scopes(String text) {
+    var result = new LinkedHashSet<String>();
+    Arrays.stream(text.trim().split("\\s+")).filter(s -> !s.isBlank()).forEach(result::add);
+    return result;
+  }
+
+  private static Set<String> audience(JsonNode node, String label, List<String> errors) {
+    Set<String> result = new LinkedHashSet<>();
+    if (node.isTextual() && !node.textValue().isBlank()) {
+      result.add(node.textValue());
+    } else if (node.isArray() && !node.isEmpty()) {
       for (var item : node) {
-        if (!isAbsent(item) && !(item.isString() || item.isNumber() || item.isBoolean())) {
-          return true;
+        if (!item.isTextual() || item.textValue().isBlank()) {
+          errors.add(label + ": expected nonempty string values");
+        } else {
+          result.add(item.textValue());
         }
       }
-      return false;
+    } else {
+      errors.add(label + ": missing or malformed audience");
     }
-    return !(node.isString() || node.isNumber() || node.isBoolean());
+    return result;
   }
 
-  /**
-   * Returns a compact textual value for scalar JSON nodes.
-   *
-   * @param node source node
-   * @return textual value or {@code null}
-   */
-  private static String textValue(JsonNode node) {
-    if (node == null || node.isMissingNode() || node.isNull()) {
-      return null;
+  private static void compareClaim(
+      List<String> errors, JsonNode token, String claim, JsonNode expected) {
+    if (expected.isMissingNode() || expected.isNull()) {
+      if (token.has(claim)) {
+        errors.add(claim + ": token claim has no value in its upstream policy source field");
+      }
+      return;
     }
-    if (node.isString()) {
-      return node.asString();
+    if (!expected.isTextual()
+        || !token.path(claim).isTextual()
+        || !expected.equals(token.get(claim))) {
+      errors.add(claim + ": expected " + expected + " but was " + token.path(claim));
     }
-    if (node.isNumber() || node.isBoolean()) {
-      return node.asString();
-    }
-    return null;
   }
 
+  private static JsonNode object(String value) {
+    try {
+      var node = JSON.readTree(value);
+      if (node == null || !node.isObject()) {
+        throw new AssertionError("Expected JSON object");
+      }
+      return node;
+    } catch (JacksonException ex) {
+      throw new AssertionError("Invalid JSON object", ex);
+    }
+  }
 }

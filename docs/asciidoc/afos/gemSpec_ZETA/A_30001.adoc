@@ -1,0 +1,4 @@
+[#A_30001]
+==== A_30001 - ZETA, Ablauf Token Revocation
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen. [<=]

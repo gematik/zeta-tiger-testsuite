@@ -1,0 +1,98 @@
+[#UC_04_08]
+== UseCase_04_08: Refresh auf den Status der referenzierten Session begrenzen
+
+.UseCase_04_08
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Refresh auf den Status der referenzierten Session begrenzen
+
+| Akteur: | ZETA Client
+
+| weitere Akteure: | Authorization Server, Sitzungsspeicher, Policy Engine
+
+| Auslöser: | Ein Client fordert mit vorhandenem Refresh Token ein neues Token-Set an.
+
+| Kurzbeschreibung: |
+Aktive und terminierte Sitzungen werden bei ansonsten gültigem Refresh verglichen, einschließlich geändertem Resource-/Scope-Ziel.
+`refresh_terminierte_session.feature` setzt den funktionalen Ablehnungsfall mit unverändertem Resource-/Scope-Ziel und den Antwortvertrag für eine beendete Session um.
+Der interne Entscheidungs-/Ausgabenachweis zur Prüfung des Session-Status vor Tokenausstellung und die Resource-/Scope-Wechselvariante bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Zwei getrennte registrierte Client-/Sitzungskontexte besitzen jeweils ein frisches, unbenutztes Refresh Token mit ausreichender Restlaufzeit; Client Assertion, DPoP-Bindung und Policy sind gültig. Die Testsuite kennt die unabhängigen Session-IDs und ihre Tokenzuordnung.
+. Die Ressourcen R1 und R2 unterstützen S1 und S2 am selben Guard wie in UseCase_01_11. Für jede Variante wird eine eigene aktive Ausgangssitzung mit R1/S1 provisioniert; untersucht werden unverändert R1/S1 sowie geändert R2/S2.
+. Für den internen Nachweis kann ein instrumentierter AS-Komponententest den Session-Zustand gezielt auf terminiert setzen, während Tokenablauf, Tokenverbrauch und separate Widerrufsmarkierung unverändert bleiben. Der Adapter protokolliert pro Request die Session-Statusentscheidung und den Aufruf beziehungsweise das Ausbleiben der Tokenausgabe.
+. Falls die Implementierung Session-Terminierung und Tokenwiderruf untrennbar koppelt, erfasst derselbe Komponentenadapter stattdessen die tatsächliche Session-Statusbedingung und ihre Entscheidung vor Ausgabe. Diese Implementierungsvariante wird vor dem Lauf festgelegt; alleinige Ablehnung am HTTP-Endpunkt genügt für den internen Nachweis nicht.
+
+| Nebenbedingung: |
+Der Komponentenadapter für den internen Nachweis ist eine noch bereitzustellende Ausführungsvoraussetzung und schreibt keine bestimmte Datenbankabfrage vor. Ein gleichwertiger instrumentierter Nachweis der Session-Zustandsbedingung ist zulässig.
+Reale Logout-/Revocation-Wirkung wird separat in UseCase_04_07 geprüft. Testzustände und Schlüssel werden nach jeder Variante verworfen.
+
+Das ausführbare Ablehnungsszenario nutzt zwei echte OIDC-SDK-Kontexte derselben frischen synthetischen Identität mit unterschiedlichen Client- und Session-IDs.
+Ein erfolgreicher SDK-Refresh in der Zielsession liefert das neueste, noch unbenutzte Refresh Token; die zweite SDK-Instanz bleibt als unabhängige aktive Kontrolle erhalten.
+Die Signaturen der zugehörigen Access und Refresh Token beider Kontexte werden vor der Terminierung gegen den AS-JWKS geprüft. Damit kann eine ungültige Signatur des zu verwendenden Ziel-Refresh-Tokens die spätere Ablehnung nicht erklären. Tokenzuordnung, ausreichende Restlaufzeit und aktive Sessions müssen vor der Beendigung feststehen.
+
+Der Testdriver besitzt keine Operation zur administrativen Fremdterminierung. Der Adapter `SessionTerminationSteps` verwendet deshalb die installierte Keycloak-Admin-CLI,
+um ausschließlich die zugeordnete Zielsession zu beenden. Das Profil `zetaDeploymentConfig.keycloak.sessionAdmin` benennt Deployment, Container und die Loopback-URL des AS.
+Admin-Zugangsdaten verbleiben im AS-Container; die private temporäre CLI-Konfiguration wird nach jedem Aufruf entfernt.
+Der Adapter prüft Session-/Client-/Identitätszuordnung sowohl über die Admin-API als auch über lesende Transaktionen im konfigurierten PostgreSQL-Profil.
+Die KVNR stammt aus der gespeicherten Session-Notiz; sie wird nicht mit dem internen pseudonymen Benutzernamen gleichgesetzt.
+Zielsession-Abwesenheit, Fortbestand beider Clientregistrierungen und aktive Kontrollsession werden unabhängig von der Tokenantwort nachgewiesen.
+
+Alle Refresh-Requests erzeugt das SDK. Eine einmalige kontrollierte Ressourcen-401 löst jeweils den Refresh aus; Tokenrequest und AS-Antwort werden nicht manipuliert.
+Tiger ersetzt dafür genau eine vollständige GET-Ressourcenantwort einschließlich PEP-Origin, WWW-Authenticate, JSON-Fehlerbody und korrekter Content-Length.
+Der gesamte Auslöser wird in einem Schritt eingerichtet; die bestehende Manipulationsbereinigung bleibt nach jedem Aufruf und im Fehlerfall aktiv.
+Der Zielrequest muss genau das neueste Ziel-Refresh-Token und den zugehörigen Client enthalten. Die direkte Ablehnung darf keine neuen Tokens ausgeben und muss den Grant betreffen;
+Client-Authentisierungs-/DPoP-Fehler gelten nicht als Nachweis. Die bestehende funktionale Prüfung akzeptiert invalid_grant, refresh_token_revoked und session_terminated als grantbezogene Ablehnung.
+Der zusätzliche Antwortvertrag verlangt davon unabhängig exakt HTTP 403/session_terminated, das zeta-error-Schema und die Abwesenheit von Access-, Refresh-, ID- und ZETA-Attestation-Token.
+Vorher sichert `SessionRefreshContractSteps` den erfolgreichen SDK-Kontrollrefresh und das öffentliche JWKS seiner tatsächlich erfolgreichen Clientregistrierung.
+Für sämtliche aufgezeichneten Refresh-Versuche desselben Zielclients prüft der Adapter das neueste unbenutzte Zieltoken, unveränderte Grantparameter,
+Client-Assertion-Signatur und -Ziel, DPoP-Signatur und -Bindung an das signierte Access Token, frische eindeutige Nachweise sowie die zuvor vom AS ausgegebene Nonce.
+Die Software-Attestation muss bis auf ihren frischen Zeitstempel und die erneuerte Nonce-Bindung mit der erfolgreichen Kontrolle übereinstimmen.
+Dieser Nachweis verwendet das stationäre Software-Attestationsprofil des OIDC-Testdrivers und beansprucht keine Hardware-/Mobilplattformprüfung.
+Die aktive Kontrollsession muss danach mit ihrem eigenen unbenutzten Refresh Token ein neues signiertes Token derselben Session erhalten.
+Erst danach wertet der Adapter alle zuvor gesicherten Zielantworten einschließlich früher SDK-Wiederholungen auf den genauen Fehlervertrag aus.
+Eine automatische neue Anmeldung des Ziel-SDK darf die ursprüngliche terminierte Session nicht wiederbeleben und ersetzt keinen erfolgreichen Refresh dieser Session.
+Dieser funktionale Zustandsnachweis beansprucht keine instrumentierte Prüfung der internen Aufrufreihenfolge vor Tokenausstellung.
+Response-Manipulationen und zusätzliche SDK-Kontexte werden auch bei einem Fehler entfernt. Die absichtlich beendete synthetische Testsitzung wird nicht wiederhergestellt;
+verbleibende synthetische Registrierungen unterliegen der Testumgebungsbereinigung.
+
+| Ablauf: |
+*Aktive Kontrolle*
+
+. Die Testsuite liest den aktiven Zustand der Kontrollsitzung über den Komponentenadapter und sendet einen gültigen Refresh an den AS-Token-Endpunkt. Sie korreliert Request, Session-ID, erfolgreiche Statusentscheidung und neues Token-Set. Das verbrauchte Refresh Token wird nicht erneut verwendet.
+
+*Terminierte Sitzung — je ein frischer Ausgangszustand für R1/S1 und R2/S2*
+
+. Die Testsuite dokumentiert Gültigkeit und Unverbrauchtheit des Ziel-Refresh-Tokens und terminiert die zugehörige Sitzung über den vereinbarten Komponentenadapter. Die unveränderten übrigen Gültigkeitsbedingungen werden aus dem Testzustand nachgewiesen.
+. Der Testclient sendet das vorhandene Token mit frischer Client Assertion und passendem frischen DPoP Proof; resource und scope stammen aus der gewählten Variante.
+. Die Testsuite beobachtet die Session-Statusentscheidung des AS und das Ausbleiben eines Tokenausgabeaufrufs für genau diesen Request. Im gekoppelten Implementierungszweig muss die instrumentierte Entscheidung dieselbe Session-Terminierung als Ursache belegen; eine unabhängige Tokenprüfung allein ersetzt diesen Nachweis nicht.
+. Der AS lehnt ab; die direkte Antwort enthält kein neues Token-Set. Die Zielsession bleibt terminiert, die unabhängige aktive Kontrollsitzung funktioniert weiterhin mit ihrem neuesten Refresh Token.
+. Nach der aktiven Kontrolle erfüllt jede gesicherte Antwort auf die unverändert gültigen SDK-Refresh-Anfragen der beendeten Zielsession HTTP 403/session_terminated, das Fehlerschema und Tokenfreiheit.
+
+| Nachbedingung: |
+Aktive zulässige Sitzungen erhalten Tokens. Für beide Varianten der terminierten Sitzung sind Statusentscheidung und ausbleibende Ausgabe korreliert belegt; kein Request belebt die Sitzung wieder.
+Eine Ablehnung wegen ungültiger Client-Nachweise, Ablauf, Wiederverwendung oder ausschließlich unabhängiger Tokenwiderrufsprüfung erfüllt den internen Session-Nachweis nicht.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29848_01>>
+* <<TA_A_29848_02>>
+* <<TA_A_25661-01_11>>
+
+|===
+
+[mermaid,uc-04-08-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as ZETA Client
+    participant A as Authorization Server
+    participant S as Sitzungsspeicher
+    C->>A: Refresh mit vorhandenen gültigen Credentials
+    A->>S: Status der referenzierten Session prüfen
+    S-->>A: Aktiv oder terminiert
+    alt Aktiv und übrige Prüfungen erfolgreich
+    A-->>C: Neues Token-Set
+    else Terminiert
+    A-->>C: Ablehnung ohne Tokenausgabe
+    end
+....

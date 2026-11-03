@@ -1,0 +1,4 @@
+[#A_25752-01]
+==== A_25752-01 - PDP Policy Engine - Client über Hintergrund der Ablehnung informieren
+
+Falls ein Client beim Token Request nicht die geforderten Parameter der Policy unterstützt bzw. das geforderte Niveau nicht erreicht, MUSS der Authorization Server die von der Policy Engine in der Decision-Response aufgeführten Gründe (Attribut reasons) in der Response an den Client übergeben. [<=]

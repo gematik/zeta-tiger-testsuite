@@ -1,0 +1,77 @@
+[#UC_04_01]
+== UseCase_04_01: Client-Schlüssel auf Apple-Betriebssystemen initialisieren
+
+.UseCase_04_01
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* |
+Client-Schlüssel auf Apple-Betriebssystemen initialisieren
+
+| Akteur: |
+ZETA Client auf Apple OS
+
+| weitere Akteure: |
+Apple OS, Secure Enclave, Apple App Attest
+
+| Auslöser: |
+Der Nutzer installiert eine Client-Instanz, die ihr Instanzschlüsselpaar benötigt.
+
+| Kurzbeschreibung: |
+Auf die Installation im User Space folgen entweder der Secure-Enclave-Pfad mit Attestierungsobjekt und Besitznachweis oder die Software-Schlüsselgenerierung des Fallback-Pfads.
+
+| Vorbedingung: |
+. Die Client-Instanz besitzt noch keinen Instanzschlüssel.
+. Im Hardwarepfad stehen Secure Enclave und App Attest bereit. Der Fallback-Pfad ist für Geräte ohne Secure Enclave oder mit nicht verfügbarem App Attest vorgesehen; in beiden Varianten wird dasselbe Software-Schlüsselerzeugungsverfahren verwendet.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der Nutzer installiert den ZETA Client im User Space von macOS, iOS beziehungsweise iPadOS.
+. Im Secure-Enclave-Pfad ruft der Client SecKeyCreateRandomKey auf. Apple OS veranlasst die Erzeugung von Client.Sig in der Secure Enclave und gibt keyId als Referenz auf PrK.Client.Sig zurück.
+. Der Client ruft DCAppAttestService.shared.generateKey() auf. Apple OS erzeugt das separate AK-Schlüsselpaar in der Secure Enclave und liefert keyId_AK an den Client zurück.
+. Der Client berechnet challenge = SHA-256(PuK.Client.Sig) und ruft DCAppAttestService.shared.attestKey(keyId_AK, clientDataHash = challenge) auf. Die Secure Enclave erstellt die Hardware-Signatur; Apple OS übermittelt sie zur Verifikation und CBOR-Erstellung an Apple. Apple liefert das Attestierungsobjekt mit X.509-Kette und Receipt; Apple OS gibt apple_attestation_object an den Client zurück.
+. Für den expliziten Besitznachweis ruft der Client SecKeyCreateSignature(PrK.Client.Sig, SHA-256(PuK.Client.Sig)) auf. Die Secure Enclave liefert die ECDSA-Signatur über Apple OS als signed_hash_puk_client_sig an den Client.
+. Im alternativen Fallback-Pfad erzeugt der Client PrK.Client.Sig und PuK.Client.Sig in Software.
+
+| Nachbedingung: |
+Im Hardwarepfad liegen Client-Schlüsselreferenz, separates AK-Handle, Apple-Attestierungsobjekt und Besitzsignatur für denselben Client-Schlüssel vor. Im Fallback-Pfad liegt das Software-Client-Schlüsselpaar vor.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29782_01>>
+* <<TA_A_29782_04>>
+
+|===
+
+[mermaid,uc-04-01-ablauf,svg]
+....
+sequenceDiagram
+participant C as ZETA Client
+    participant O as Apple OS
+    participant S as Secure Enclave
+    participant A as Apple
+    C->>C: Installation im User Space
+    alt Secure Enclave
+        C->>O: SecKeyCreateRandomKey
+        O->>S: Client.Sig erzeugen
+        S-->>O: keyId
+        O-->>C: keyId
+        C->>O: App Attest generateKey
+        O->>S: AK-Schlüsselpaar erzeugen
+        S-->>O: keyId_AK
+        O-->>C: keyId_AK
+        C->>C: challenge = SHA-256(PuK.Client.Sig)
+        C->>O: attestKey(keyId_AK, clientDataHash = challenge)
+        O->>S: Hardware-Signatur über challenge
+        S-->>O: Hardware-Signatur
+        O->>A: Signatur verifizieren und CBOR erstellen
+        A-->>O: apple_attestation_object
+        O-->>C: apple_attestation_object
+        C->>O: SecKeyCreateSignature mit Client-Schlüssel und Hash
+        O->>S: Hash signieren
+        S-->>O: ECDSA-Signatur
+        O-->>C: signed_hash_puk_client_sig
+    else Fallback
+        C->>C: Software-Client-Schlüsselpaar erzeugen
+    end
+....

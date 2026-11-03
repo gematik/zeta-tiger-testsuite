@@ -24,6 +24,8 @@
 
 package de.gematik.zeta.traceability;
 
+import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import io.cucumber.plugin.event.Status;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -33,9 +35,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -61,7 +65,6 @@ final class RuntimeCoverageCsvRepository {
   private static final String[] CSV_HEADERS = {
       "Anforderung",
       "Titel",
-      "Produkt umgesetzt",
       "Laufzeit-Status",
       "Szenarien gesamt",
       "Szenarien bestanden",
@@ -70,7 +73,7 @@ final class RuntimeCoverageCsvRepository {
       "Testaspekte gesamt",
       "Testaspekte bestanden",
       "Testaspekte Quote",
-      "Testaspekte implementiert",
+      "Testaspekte mit Laufzeitergebnis",
       "Fehler Testrun",
       "Tickets",
       "Verantwortlich",
@@ -115,19 +118,24 @@ final class RuntimeCoverageCsvRepository {
       "feature",
       "szenario"
   };
-  private static final String[] STRING_SET_STATE_HEADERS = {
-      "id",
-      "values"
+  private static final String[] SCENARIO_OUTCOME_STATE_HEADERS = {
+      "key",
+      "feature",
+      "scenario",
+      "line",
+      "status",
+      "anforderungen",
+      "testaspekte"
   };
 
   private final RuntimeCoverageCatalog catalog;
   private final FailureAnnotations failureAnnotations;
 
   /**
-   * Create a repository for the current catalog and annotations.
+   * Create a repository for the current catalog and its coverage annotations.
    *
-   * @param catalog            product and test-aspect catalog
-   * @param failureAnnotations annotation catalog
+   * @param catalog            requirement and test-aspect catalog
+   * @param failureAnnotations annotation catalog for coverage CSV columns
    */
   RuntimeCoverageCsvRepository(RuntimeCoverageCatalog catalog,
       FailureAnnotations failureAnnotations) {
@@ -259,11 +267,16 @@ final class RuntimeCoverageCsvRepository {
   /**
    * Format executed scenario names for CSV output.
    *
-   * @param scenarios scenario names
+   * @param outcomes scoped scenario outcomes
    * @return rendered scenario list
    */
-  private static String formatScenarios(Set<String> scenarios) {
-    return String.join(" | ", sortedValues(scenarios));
+  private static String formatScenarios(Collection<ScenarioOutcome> outcomes) {
+    return outcomes.stream()
+        .map(ScenarioOutcome::scenario)
+        .filter(name -> !name.isBlank())
+        .distinct()
+        .sorted()
+        .collect(Collectors.joining(" | "));
   }
 
   /**
@@ -431,16 +444,16 @@ final class RuntimeCoverageCsvRepository {
   }
 
   /**
-   * Read persisted string-set state from disk.
+   * Read persisted scenario outcomes from disk.
    *
-   * @param stateFile state file path
-   * @return string values by identifier
+   * @param stateFile scenario outcome state file
+   * @return outcomes by stable scenario identity
    */
-  Map<String, Set<String>> readStringSetState(Path stateFile) {
+  Map<String, ScenarioOutcome> readScenarioOutcomes(Path stateFile) {
     if (!Files.exists(stateFile)) {
       return new LinkedHashMap<>();
     }
-    Map<String, Set<String>> state = new LinkedHashMap<>();
+    var outcomes = new LinkedHashMap<String, ScenarioOutcome>();
     try (var reader = Files.newBufferedReader(stateFile, StandardCharsets.UTF_8);
         var parser = CSVFormat.DEFAULT.builder()
             .setHeader()
@@ -448,37 +461,86 @@ final class RuntimeCoverageCsvRepository {
             .get()
             .parse(reader)) {
       for (var record : parser) {
-        if (record.size() < 2) {
+        if (record.size() < 5) {
           continue;
         }
-        var id = RuntimeCoverageIds.defaultString(getField(record, 0)).trim();
-        if (!id.isBlank()) {
-          state.put(id, parseMultiValue(getField(record, 1)));
+        var feature = RuntimeCoverageIds.defaultString(getField(record, 1)).trim();
+        var scenario = RuntimeCoverageIds.defaultString(getField(record, 2)).trim();
+        if (feature.isBlank() && scenario.isBlank()) {
+          continue;
         }
+        var outcome = new ScenarioOutcome(feature, scenario,
+            parseLine(getField(record, 3)), parseStatus(getField(record, 4)),
+            parseMultiValue(getField(record, 5)), parseMultiValue(getField(record, 6)));
+        outcomes.merge(outcome.key(), outcome, ScenarioOutcome::merge);
       }
     } catch (IOException exception) {
-      throw new UncheckedIOException("Unable to read runtime coverage string state", exception);
+      throw new UncheckedIOException("Unable to read runtime scenario outcomes", exception);
     }
-    return state;
+    return outcomes;
   }
 
   /**
-   * Persist string-set state to disk.
+   * Persist scenario outcomes for the final run aggregation.
    *
-   * @param stateFile state file path
-   * @param state     string values by identifier
+   * @param stateFile scenario outcome state file
+   * @param outcomes  outcomes by stable scenario identity
    */
-  void writeStringSetState(Path stateFile, Map<String, Set<String>> state) {
+  void writeScenarioOutcomes(Path stateFile, Map<String, ScenarioOutcome> outcomes) {
     try {
       Files.createDirectories(stateFile.toAbsolutePath().getParent());
-      try (var writer = Files.newBufferedWriter(stateFile, StandardCharsets.UTF_8);
-          var printer = csvFormat(STRING_SET_STATE_HEADERS).print(writer)) {
-        for (var entry : state.entrySet()) {
-          printer.printRecord(entry.getKey(), String.join(";", sortedValues(entry.getValue())));
-        }
+      var temporaryFile = stateFile.resolveSibling(stateFile.getFileName() + ".tmp");
+      try (var writer = Files.newBufferedWriter(temporaryFile, StandardCharsets.UTF_8);
+          var printer = csvFormat(SCENARIO_OUTCOME_STATE_HEADERS).print(writer)) {
+        outcomes.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .forEach(entry -> {
+              var outcome = entry.getValue();
+              try {
+                printer.printRecord(entry.getKey(), outcome.feature(), outcome.scenario(),
+                    outcome.line() == null ? "" : outcome.line(), outcome.status().name(),
+                    String.join(";", sortedValues(outcome.requirementIds())),
+                    String.join(";", sortedValues(outcome.testAspectIds())));
+              } catch (IOException exception) {
+                throw new UncheckedIOException(exception);
+              }
+            });
       }
+      Files.move(temporaryFile, stateFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException exception) {
-      throw new UncheckedIOException("Unable to write runtime coverage string state", exception);
+      throw new UncheckedIOException("Unable to write runtime scenario outcomes", exception);
+    }
+  }
+
+  /**
+   * Parse an optional scenario line number.
+   *
+   * @param value line value
+   * @return parsed line or null
+   */
+  private static Integer parseLine(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      return Integer.valueOf(value.trim());
+    } catch (NumberFormatException exception) {
+      return null;
+    }
+  }
+
+  /**
+   * Parse a persisted Cucumber status.
+   *
+   * @param value status value
+   * @return parsed status or unknown
+   */
+  private static Status parseStatus(String value) {
+    try {
+      return Status.valueOf(RuntimeCoverageIds.defaultString(value).trim()
+          .toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException exception) {
+      return Status.UNDEFINED;
     }
   }
 
@@ -496,7 +558,7 @@ final class RuntimeCoverageCsvRepository {
     var timestamp = META_TIME_FORMAT.format(Instant.now());
     var profile = Optional.ofNullable(System.getProperty("PROFILE"))
         .orElse(System.getenv("PROFILE"));
-    var proxyId = Optional.ofNullable(System.getProperty("tiger.tigerProxy.proxyId"))
+    var proxyId = TigerGlobalConfiguration.readStringOptional("tiger.tigerProxy.proxyId")
         .orElse(System.getenv("TIGER_PROXY_ID"));
     var cucumberFilter = Optional.ofNullable(System.getProperty("cucumber.filter.tags"))
         .orElse(System.getenv("CUCUMBER_FILTER_TAGS"));
@@ -517,22 +579,21 @@ final class RuntimeCoverageCsvRepository {
    * @param mergedRequirements merged AFO state
    * @param mergedTestAspects  merged test aspect state
    * @param mergedErrors       merged failure records
-   * @param mergedScenarios    merged scenario names by AFO
    * @param mergedMeta         merged meta counters
+   * @param outcomes           merged scenario outcomes with traceability identifiers
    * @throws IOException when the file cannot be written
    */
   void writeCsv(Path outputFile,
       Map<String, Rollup> mergedRequirements,
       Map<String, Rollup> mergedTestAspects,
       Map<String, Set<FailureRecord>> mergedErrors,
-      Map<String, Set<String>> mergedScenarios,
-      Map<String, Rollup> mergedMeta) throws IOException {
+      Map<String, Rollup> mergedMeta, Collection<ScenarioOutcome> outcomes) throws IOException {
     var tempFile = outputFile.resolveSibling(outputFile.getFileName() + ".tmp");
     try (var writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8)) {
       writer.write('\ufeff');
       try (var printer = csvFormat(CSV_HEADERS).print(writer)) {
         writeRequirements(printer, mergedRequirements, mergedTestAspects, mergedErrors,
-            mergedScenarios, mergedMeta);
+            mergedMeta, outcomes);
       }
     }
     Files.move(tempFile, outputFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
@@ -544,13 +605,14 @@ final class RuntimeCoverageCsvRepository {
    * @param outputFile        target file
    * @param mergedTestAspects merged test aspect state
    * @param mergedErrors      merged failure records
-   * @param mergedScenarios   merged scenario names by test aspect
+   * @param outcomes         merged scenario outcomes with traceability identifiers
    * @throws IOException when the file cannot be written
    */
   void writeTestAspectCsv(Path outputFile,
       Map<String, Rollup> mergedTestAspects,
       Map<String, Set<FailureRecord>> mergedErrors,
-      Map<String, Set<String>> mergedScenarios) throws IOException {
+      Collection<ScenarioOutcome> outcomes)
+      throws IOException {
     var tempFile = outputFile.resolveSibling(outputFile.getFileName() + ".tmp");
     try (var writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8)) {
       writer.write('\ufeff');
@@ -562,7 +624,7 @@ final class RuntimeCoverageCsvRepository {
             .forEach(ids::add);
 
         for (var id : ids) {
-          writeTestAspectRow(printer, id, mergedTestAspects, mergedErrors, mergedScenarios);
+          writeTestAspectRow(printer, id, mergedTestAspects, mergedErrors, outcomes);
         }
       }
     }
@@ -576,28 +638,31 @@ final class RuntimeCoverageCsvRepository {
    * @param id                test aspect id
    * @param mergedTestAspects merged test aspect state
    * @param mergedErrors      merged failure records
-   * @param mergedScenarios   merged scenario names by test aspect
+   * @param outcomes         merged scenario outcomes with traceability identifiers
    * @throws IOException when the row cannot be written
    */
   private void writeTestAspectRow(CSVPrinter printer,
       String id,
       Map<String, Rollup> mergedTestAspects,
       Map<String, Set<FailureRecord>> mergedErrors,
-      Map<String, Set<String>> mergedScenarios) throws IOException {
+      Collection<ScenarioOutcome> outcomes)
+      throws IOException {
     var info = catalog.testAspectInfo(id);
     var requirementId = info != null ? info.requirementId()
         : RuntimeCoverageIds.resolveRequirementFromTestAspect(id).orElse("");
     var title = info == null ? "" : info.title();
     var rollup = mergedTestAspects.getOrDefault(id, Rollup.empty());
     var failures = failureRecordsForTestAspect(id, requirementId, mergedErrors);
-    var scenarios = mergedScenarios.get(id);
+    var scopedOutcomes = outcomes.stream()
+        .filter(outcome -> outcome.testAspectIds().contains(id))
+        .toList();
     var annotationSummary = hasReportableAnnotationStatus(rollup)
-        ? failureAnnotations.findForTestAspect(id, requirementId, failures, scenarios)
+        ? failureAnnotations.findForTestAspect(id, requirementId, scopedOutcomes)
         : AnnotationSummary.empty();
     printer.printRecord(id, requirementId.isBlank() ? NA_VALUE : requirementId,
         title.isBlank() ? NA_VALUE : title, rollup.status(), rollup.total(), rollup.passed(),
         rollup.failed(), rollup.skipped(), annotationSummary.tickets(),
-        annotationSummary.owners(), formatErrors(failures), formatScenarios(scenarios));
+        annotationSummary.owners(), formatErrors(failures), formatScenarios(scopedOutcomes));
   }
 
   /**
@@ -629,37 +694,38 @@ final class RuntimeCoverageCsvRepository {
    * @param mergedRequirements merged AFO state
    * @param mergedTestAspects  merged test aspect state
    * @param mergedErrors       merged failure records
-   * @param mergedScenarios    merged scenario names by AFO
    * @param mergedMeta         merged meta counters
+   * @param outcomes           merged scenario outcomes with traceability identifiers
    * @throws IOException when a row cannot be written
    */
   private void writeRequirements(CSVPrinter printer,
       Map<String, Rollup> mergedRequirements,
       Map<String, Rollup> mergedTestAspects,
       Map<String, Set<FailureRecord>> mergedErrors,
-      Map<String, Set<String>> mergedScenarios,
-      Map<String, Rollup> mergedMeta) throws IOException {
-    Set<String> ids = new LinkedHashSet<>(catalog.productIds());
+      Map<String, Rollup> mergedMeta, Collection<ScenarioOutcome> outcomes) throws IOException {
+    Set<String> ids = new LinkedHashSet<>(catalog.requirementIds());
     mergedRequirements.keySet().stream()
         .filter(id -> !ids.contains(id))
         .sorted()
         .forEach(ids::add);
 
     for (var id : ids) {
-      var info = catalog.productInfo(id);
       var rollup = mergedRequirements.getOrDefault(id, Rollup.empty());
       var testAspectCoverage = catalog.computeTestAspectCoverage(id, mergedTestAspects);
-      var testAspectImplemented = catalog.computeTestAspectImplementedCount(id, mergedTestAspects);
+      var testAspectReported = catalog.computeTestAspectReportedCount(id, mergedTestAspects);
       var failures = mergedErrors.get(id);
+      var scopedOutcomes = outcomes.stream()
+          .filter(outcome -> outcome.requirementIds().contains(id))
+          .toList();
       var annotationSummary = hasReportableAnnotationStatus(rollup)
-          ? failureAnnotations.findForRequirement(id, failures, mergedScenarios.get(id))
+          ? failureAnnotations.findForRequirement(id, failures, scopedOutcomes)
           : AnnotationSummary.empty();
-      writeRow(printer, id, info == null ? NA_VALUE : info.title(),
-          info == null ? NA_VALUE : info.implemented(), rollup.status(), rollup.total(),
+      writeRow(printer, id, catalog.requirementTitle(id).orElse(NA_VALUE),
+          rollup.status(), rollup.total(),
           rollup.passed(), rollup.failed(), rollup.skipped(), testAspectCoverage[0],
-          testAspectCoverage[1], renderCoverage(testAspectCoverage), testAspectImplemented,
+          testAspectCoverage[1], renderCoverage(testAspectCoverage), testAspectReported,
           formatErrors(failures), annotationSummary.tickets(), annotationSummary.owners(),
-          formatScenarios(mergedScenarios.get(id)));
+          formatScenarios(scopedOutcomes));
     }
 
     writeSummaryRows(printer, mergedMeta);
@@ -671,7 +737,6 @@ final class RuntimeCoverageCsvRepository {
    * @param printer               CSV output sink
    * @param id                    requirement id
    * @param title                 requirement title
-   * @param productImplemented    implementation status
    * @param runtimeStatus         runtime status
    * @param total                 total scenarios
    * @param passed                passed scenarios
@@ -680,7 +745,7 @@ final class RuntimeCoverageCsvRepository {
    * @param testAspectTotal       total test aspects
    * @param testAspectPassed      passed test aspects
    * @param testAspectCoverage    test aspect coverage
-   * @param testAspectImplemented implemented test aspects
+   * @param testAspectReported    test aspects with a recorded scenario result
    * @param errorSummary          runtime error summary
    * @param tickets               annotation tickets
    * @param owner                 annotation owner
@@ -690,7 +755,6 @@ final class RuntimeCoverageCsvRepository {
   private void writeRow(CSVPrinter printer,
       String id,
       String title,
-      String productImplemented,
       String runtimeStatus,
       int total,
       int passed,
@@ -699,15 +763,15 @@ final class RuntimeCoverageCsvRepository {
       Integer testAspectTotal,
       Integer testAspectPassed,
       String testAspectCoverage,
-      Integer testAspectImplemented,
+      Integer testAspectReported,
       String errorSummary,
       String tickets,
       String owner,
       String scenarios) throws IOException {
-    printer.printRecord(id, title, productImplemented, runtimeStatus, total, passed, failed,
+    printer.printRecord(id, title, runtimeStatus, total, passed, failed,
         skipped, testAspectTotal == null ? "" : testAspectTotal,
         testAspectPassed == null ? "" : testAspectPassed, testAspectCoverage,
-        testAspectImplemented == null ? "" : testAspectImplemented, errorSummary, tickets,
+        testAspectReported == null ? "" : testAspectReported, errorSummary, tickets,
         owner, scenarios);
   }
 
@@ -723,11 +787,11 @@ final class RuntimeCoverageCsvRepository {
     var total = mergedMeta.getOrDefault(META_TOTAL_ID, Rollup.empty());
     var untagged = mergedMeta.getOrDefault(META_UNTAGGED_ID, Rollup.empty());
 
-    writeRow(printer, SUMMARY_ID, "Szenarien gesamt (alle)", NA_VALUE, total.status(),
+    writeRow(printer, SUMMARY_ID, "Szenarien gesamt (alle)", total.status(),
         total.total(), total.passed(), total.failed(), total.skipped(), null, null, NA_VALUE, null,
         "", "", "", "");
 
-    writeRow(printer, META_UNTAGGED_ID, "Szenarien ohne AFO/TA Tags", NA_VALUE, untagged.status(),
+    writeRow(printer, META_UNTAGGED_ID, "Szenarien ohne AFO/TA Tags", untagged.status(),
         untagged.total(), untagged.passed(), untagged.failed(), untagged.skipped(), null, null,
         NA_VALUE, null, "", "", "", "");
   }

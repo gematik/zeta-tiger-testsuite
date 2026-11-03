@@ -1,0 +1,4 @@
+[#A_29847]
+==== A_29847 - ZETA Guard, Session-Beendigung in Mindestvariante
+
+Die Komponenten des ZETA Guard MÜSSEN eine Session-Beendigung durch den TI 2.0-Dienstanbieter unterstützen. Die Session-Beendigung MUSS den Entzug der zur Session gehörenden Refresh Token bewirken. Bereits ausgestellte Access Token KÖNNEN bis zum Ablauf ihrer Gültigkeit weiterverwendet werden. Hinweis: In dieser Umsetzung wirkt die Session-Beendigung unmittelbar auf die Nutzung von Refresh Token. Die maximale Restwirkdauer entspricht der Gültigkeitsdauer bereits ausgestellter Access Token. [<=]

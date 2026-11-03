@@ -21,9 +21,11 @@ Der ZETA Client versucht, ein bereits verwendetes Refresh Token erneut am Token-
 
 Der PDP Authorization Server erkennt die Wiederverwendung des durch Refresh Token Rotation invalidierten Refresh Tokens und lehnt den Token Request mit ``400 Bad Request`` ab.
 Gemäß RFC6749 wird der Fehler als ``invalid_grant`` zurückgegeben.
+Eine weitere Variante betrifft ein fehlerhaftes Refresh-Token-JWT, das der Authorization Server bei der JWT-Validierung zurückweist.
 
 | Vorbedingung: |
 Der ZETA Client verfügt über ein Refresh Token, das bereits erfolgreich für eine Token-Erneuerung verwendet wurde und dadurch invalidiert ist.
+Für die JWT-Fehlervariante liegt stattdessen ein Refresh-Token-JWT mit fehlerhafter Syntax, Kodierung oder Struktur (einschließlich fehlerhafter verschachtelter JWTs), ungültiger Signatur, fehlendem oder nicht unterstütztem Signaturalgorithmus, doppeltem ``alg``-Header oder einem nicht unterstützten kritischen Header-Parameter vor; die übrigen Client- und DPoP-Nachweise sind gültig.
 
 | Nebenbedingung: |
 Der Request erfolgt am Token-Endpunkt mit ``grant_type=refresh_token``.
@@ -35,20 +37,24 @@ Das Refresh Token wurde bereits verwendet und darf aufgrund der Refresh Token Ro
 3. Der ZETA Client verwendet dieses Refresh Token erfolgreich für eine Token-Erneuerung.
 4. Der PDP Authorization Server stellt ein neues Access Token und ein neues Refresh Token aus.
 5. Der PDP Authorization Server invalidiert das zuvor verwendete Refresh Token.
-6. Der ZETA Client bzw. der Test sendet erneut einen Token Request mit dem bereits verwendeten Refresh Token.
+6. Der ZETA Client sendet erneut einen Token Request mit dem bereits verwendeten Refresh Token.
 7. Der PDP Authorization Server erkennt die Wiederverwendung des invalidierten Refresh Tokens.
 8. Der PDP Authorization Server lehnt den Token Request mit ``400 Bad Request`` und dem OAuth2-Fehler ``invalid_grant`` ab.
 9. Der PDP Authorization Server stellt keine neuen Tokens aus.
 
+In der JWT-Fehlervariante übermittelt der ZETA Client das fehlerhafte Refresh-Token-JWT am Token-Endpunkt. Der PDP Authorization Server validiert es gemäß RFC7519 und RFC7515, erkennt den Fehler und antwortet mit ``400 Bad Request`` und ``invalid_grant`` im Fehlerantwortformat gemäß ``zeta-error.yaml``, ohne neue Tokens auszustellen.
+
 | Nachbedingung: |
 Der ZETA Client erhält kein neues Access Token und kein neues Refresh Token.
-Das wiederverwendete Refresh Token bleibt ungültig.
+Das wiederverwendete Refresh Token bleibt ungültig. Ein fehlerhaftes Refresh-Token-JWT wird nicht akzeptiert.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25662_02>>
 * <<TA_A_25782_05>>
 * <<TA_A_26662_01>>
 * <<TA_A_27725-01_15>>
+* <<TA_A_27802-03_01>>
+* <<TA_A_27802-03_02>>
 
 |===
 
@@ -63,10 +69,16 @@ sequenceDiagram
     participant PDP-AS as PDP Authorization<br>Server
 
     MA->>+ZC: Starte Zugriff auf Resource Server
-    ZC->>+PDP-AS: POST /token grant_type=refresh_token
-    PDP-AS->>-ZC: 200 OK (neues Access/Refresh Token)
-    ZC->>+PDP-AS: POST /token mit bereits verwendetem Refresh Token
-    PDP-AS->>-ZC: 400 Bad Request (invalid_grant)
+    alt Wiederverwendung nach Token Rotation
+        ZC->>+PDP-AS: POST /token grant_type=refresh_token
+        PDP-AS->>-ZC: 200 OK (neues Access/Refresh Token)
+        ZC->>+PDP-AS: POST /token mit bereits verwendetem Refresh Token
+        PDP-AS->>-ZC: 400 Bad Request (invalid_grant)
+    else Fehlerhaftes Refresh-Token-JWT
+        ZC->>+PDP-AS: POST /token mit fehlerhaftem Refresh-Token-JWT
+        PDP-AS->>PDP-AS: JWT validieren und Fehler erkennen
+        PDP-AS->>-ZC: 400 Bad Request (invalid_grant)
+    end
     ZC->>-MA: "Zugriff nicht gestattet"
 ....
 

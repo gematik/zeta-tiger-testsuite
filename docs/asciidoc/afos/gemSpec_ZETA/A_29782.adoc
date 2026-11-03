@@ -1,0 +1,4 @@
+[#A_29782]
+==== A_29782 - ZETA Client, Ablauf Apple OS Schlüsselgenerierung
+
+Der ZETA Client für Apple Betriebssysteme MUSS den Ablauf gemäß Abbildung Abb-ZETA-Schlüsselgenerierung-Apple unterstützen. [<=]

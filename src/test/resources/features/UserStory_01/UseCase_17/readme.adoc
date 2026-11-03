@@ -23,6 +23,7 @@ Ressource ist jeweils ein Anwesenheitsnachweis des betroffenen Patienten notwend
 Tokens erbracht wird. +
 Die Überprüfung dieser PoPP Tokens im PEP HTTP Proxy ist nicht erfolgreich, daher lehnt dieser beide Zugriffe auf die
 angefragten Ressourcen mit dem Statuscode 403 (Forbidden) ab.
+Eine eigenständige CC-Variante prüft Strict Audience-Matching: Ein korrekt signiertes und DPoP-gebundenes Access Token mit einer zur Route unpassenden aud führt ebenfalls zu 403, ohne Weiterleitung an den Fachdienst.
 
 | Vorbedingung: |
 Der ZETA Client ist bereits registriert, d.h. verfügt bereits über eine ``client_id``. Service Discovery wurde bereits
@@ -31,6 +32,8 @@ autorisiert. +
 Die jeweils zum Nachweis der Anwesenheit des Patienten notwendigen PoPP Token liegen dem ZETA Client vor.
 
 | Nebenbedingung: |
+Für die PoPP-Varianten gilt:
+
 - Der *PEP HTTP Proxy* ist so konfiguriert, dass
 * für die Endpunkte der beiden Resource Server der Request Header ``PoPP`` verlangt wird,
 * das jeweilige PoPP Token validiert wird und
@@ -39,6 +42,10 @@ eingestellt sind.
 - Die eingesetzten PoPP Token sind ungültig:
 * ein PoPP Token verfügt über eine ungültige Signatur
 * weitere PoPP Token verletzen entweder die claim-Prüfung oder einen Zeitparameter bzgl. Gültigkeit, Ausstellungs- oder Prüfzeitpunkt.
+
+Für den Quartals-Negativfall liegt iat im vorletzten Quartal und damit sicher außerhalb der fünfminütigen Kulanz am Quartalswechsel. Die Kulanz selbst ist als gesonderter positiver Testaspekt modelliert.
+
+Für die Audience-Variante sind alle übrigen Nachweise gültig. Für ver 1 und ver 2 wird jeweils ein echter SDK-Aufruf über Tiger mit expliziter numerischer Tokenversion, gültiger Signatur und passendem DPoP-ath ausgeführt. Ein Kontrollaufruf mit passender logischer Audience liefert 200. Danach wird ausschließlich die erwartete Audience der Route geändert; das unveränderte Token-Claims-Set muss mit frischem DPoP-Proof 403 ohne Weiterleitung erhalten.
 
 | Ablauf: |
 Der Ablauf für beide PoPP Token ist gleich, nur mit jeweils unterschiedlichen PoPP Token und Endpunkten:
@@ -54,30 +61,59 @@ Der Ablauf für beide PoPP Token ist gleich, nur mit jeweils unterschiedlichen P
 5. Der Zugriff auf die Resource des Fachdienstes wird mit dem Statuscode 403 (Forbidden) abgewiesen.
 6. MA wird vom ZETA Client über den verweigerten Zugriff informiert.
 
+In den actorId-Varianten fehlt der Claim im ansonsten gültigen PoPP Token oder die Akteursidentität stimmt nicht mit der authentifizierten Telematik-ID der vorlegenden LEI überein. Der PEP HTTP Proxy lehnt die Anfrage mit 403 ab. Bei abweichender actorId erfasst der Telemetriedaten Service den HTTP-Statuscode 403 für diesen Zugriff.
+
+In der Audience-Variante prüft die Testsuite nach dem Kontrollaufruf die manipulierte Anfrage, deren Signatur, DPoP-Bindung, die 403-Antwort und das Ausbleiben der Weiterleitung an den Fachdienst. Die Route wird nach dem Szenario wiederhergestellt.
+Für jede der beiden Tokenversionen belegt die positive Kontrolle zusätzlich den aufgezeichneten Fachdienst-Aufruf mit Antwort 200. Nach dem isolierten Audience-Fehler umfasst die Abwesenheitsprüfung den gesamten Negativverlauf einschließlich eines zusätzlichen Recorder-Fensters von drei Sekunden; damit werden auch aufgezeichnete SDK-Wiederholungen erfasst.
+
+Der bestehende Fachdienst-Fehlerfall prüft die unveränderte Weitergabe von HTTP 403 ohne zeta-error-origin über den PEP bis zum Fachclient. Vor der Negativphase werden die erfolgreiche Kontrollantwort des PEP und die des Resource Servers im Recorder bestätigt; damit kann eine verspätet eingelesene Kontrollantwort nicht als Referenz des Negativfalls ausgewählt werden. Anschließend werden Status, Fehlerbytes und Marker-Header an allen drei Stellen verglichen. Die vorhandenen Kontrollen auf genau einen Ressourcenaufruf und ausbleibenden Token-Refresh bleiben erhalten.
+
+*Sicherheitsprüfungen vor der Weiterleitung*
+
+. Die bestehende Audience-Matrix führt beide Versionen getrennt aus. Eine positive Kontrolle akzeptiert das gültig signierte SDK-Token mit explizitem numerischem ver. Danach wechselt ausschließlich die erwartete logische Audience der Route; dasselbe Claims-Set mit frischem gebundenem DPoP-Proof muss mit 403 ohne Weiterleitung abgewiesen werden.
+. Für aktiviertes Strict-acr-Matching werden bei gültigem Token, passender Audience und richtigem Scope die LoA-Grenze und ein darüber liegendes Niveau akzeptiert; ein darunter liegendes Niveau muss nach A_29676 mit 403 ohne Weiterleitung abgewiesen werden. Vor der Ausführung ist die Anwendbarkeit gegenüber dem spezifischen, durch erneute Authentisierung behebbaren Step-up-Fall A_28525-02 abzugrenzen. Die Quelle enthält keine ausdrückliche Prioritätsregel für die Überschneidung; ohne belastbare Abgrenzung darf dieser Fall weder als bestanden gelten noch auf 401 umgeschrieben werden.
+. Nach erfolgreichem SDK-Kontrollaufruf ändert Tiger allein htu im frischen Proof auf eine andere externe URL und signiert mit dem unveränderten SDK-DPoP-Schlüssel. Signatur, ath, Methode, Zeit, Tokenbindung, Audience und Scope bleiben gültig. Der PEP muss mit 403 ablehnen und darf den Request nicht an den Resource Server weiterleiten. Der Kontrollfall mit exakt aufgerufener URL bleibt erfolgreich.
+Das Szenario unterscheidet Schema, Host und Pfad als URL-Varianten. Automatische SDK-Refreshs dürfen Tokens rotieren; alle aufgezeichneten Ressourcenrequests müssen dennoch dieselbe Identität, Sitzung und Routenberechtigung wie die Kontrolle haben. Für jede Wiederholung werden Signaturen, ath, Schlüsselbindung, Frische, eigener jti, die gezielt falsche Zieladresse und die zugehörige 403-Antwort geprüft. Das Weiterleitungsverbot wird über den gesamten aufgezeichneten Negativverlauf nach einem zusätzlichen Recorder-Fenster von drei Sekunden geprüft.
+
+Der Quartals-Negativfall verwendet ein Token aus dem vorletzten Quartal; es fällt auch unmittelbar nach dem Quartalswechsel nicht unter die fünfminütige Kulanz.
+Zuvor muss derselbe SDK-Ablauf mit der unveränderten PoPP-Fixture erfolgreich sein; der beobachtete Ausstellungszeitpunkt liegt im aktuellen Quartal und die Signatur wird unabhängig geprüft. Erst danach wird ausschließlich iat auf das vorletzte Quartal geändert. Fehlt die gültige positive Kontrolle, ist die Quartalsprüfung blockiert.
+Der bestehende Fall stellt die Quartalsgültigkeit global ein und prüft eine Route. Er belegt die Quartalsablehnung als Teilnachweis, aber nicht die geforderte getrennte Konfiguration pro Endpunkt. Dafür wären unabhängig unterschiedlich konfigurierte Routen und deren Kontrollen erforderlich; der vollständige Entwurf steht in <<UC_01_22>>. Der bestehende Negativfall trägt deshalb keinen vollständigen Abdeckungstag für die getrennte Quartalskonfiguration pro Endpunkt. Alle bisherigen 19 Schritte, die positive Kontrolle und die übrigen gültigen Zuordnungen bleiben erhalten; keine neue Variante wird ergänzt.
+
+Der Schlüsselbezug für die PoPP-Signaturprüfung ist eine gemeinsame Pflicht mit zwei erlaubten Wegen: gültiges vorhandenes JWKS oder erneuter Download. Ein gültiger vorhandener Satz begründet kein Download-Verbot. Der unbekannte-kid-Fall behält seine eigenständige Downloadpflicht unter A_26493-01 und beide bisherigen Kontrollen (erfolgreicher Download sowie Downloadfehler mit 403). Der positive Schlüsselbezugsfall prüft weiterhin beobachtete Cache-Control und das Zeitfenster, erlaubt aber den erneuten Download. Eine zusätzliche isolierte fremde Signatur bei unverändertem kid, iss, iat und actorId muss 403 liefern; die ausdrücklich konfigurierte Gültigkeit von 300 Sekunden wird unabhängig geprüft.
+
 | Hinweis: |
 Gemäß Fachaustausch vom 02.07.2026 prüft der PoPP-Verifier des ZETA Guard ausschließlich die Claims ``iss``, ``iat`` und ``actorId``.
 Alle weiteren Claims werden durch den Fachdienst geprüft.
 
-| Nachbedingung:  |
+| Nachbedingung: |
 Der Abruf der geschützten Ressource vom MA über den ZETA Client war nicht erfolgreich.
+Bei abweichender actorId ist der HTTP-Statuscode 403 in den Telemetriedaten des HTTP Proxy erfasst.
 
 | Abgedeckte Testaspekte: |
-* <<TA_A_25660_03>>
-* <<TA_A_26477_02>>
-* <<TA_A_26477_03>>
-* <<TA_A_26477_08>>
+* <<TA_A_29676_02>>
+* <<TA_A_29676_03>>
+* <<TA_A_29676_04>>
+* <<TA_A_29676_01>>
+* <<TA_A_29849_01>>
+* <<TA_A_29849_02>>
+* <<TA_A_26477-01_02>>
+* <<TA_A_26477-01_03>> (nur Teilnachweis der Quartalsablehnung; vollständiger Entwurf in <<UC_01_22>>)
+* <<TA_A_26477-01_06>>
+* <<TA_A_26477-01_08>>
 * <<TA_A_26450_01>>
 * <<TA_A_26450_02>>
 * <<TA_A_26450_03>>
 * <<TA_A_26452_01>>
 * <<TA_A_26452_02>>
 * <<TA_A_26452_03>>
-* <<TA_A_26477_09>>
-* <<TA_A_26477_10>>
-* <<TA_A_26477_13>>
+* <<TA_A_26477-01_09>>
+* <<TA_A_26477-01_10>>
+* <<TA_A_26477-01_12>>
 * <<TA_A_26493-01_01>>
 * <<TA_A_26661_20>>
 * <<TA_A_27725-01_32>>
+* <<TA_A_29850_02>>
+* <<TA_A_29853_02>>
 
 |===
 
@@ -92,9 +128,9 @@ sequenceDiagram
     MA->>+ZC: Abruf geschützter Ressource
     ZC->>ZC: Erstellen von DPoP Nachweis
     ZC->>+PHP: GET /resource Authorization: <br> DPoP... (Access Token), <br> DPoP .... (DPoP Token), <br> PoPP Token (Header)
-    PHP->>PHP: Verifiziere Access Token, <br>DPoP Nachweis und PoPP Token / <br>Ergebnis: PoPP Token ungültig
+    PHP->>PHP: Verifiziere Access Token, <br>DPoP Nachweis und PoPP Token / <br>Ergebnis: PoPP Token ungültig oder aud unpassend
     PHP-->>-ZC: 403 Forbidden
-    ZC-->>-MA: Zugriff auf die angefragte Resource wurde aufgrund <br>ungültigem PoPP Tokens verweigert.
+    ZC-->>-MA: Zugriff auf die angefragte Resource wurde aufgrund <br>ungültigem PoPP Token oder unpassender aud verweigert.
 ....
 
 '''
@@ -105,6 +141,11 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_fachdienst_PoPP-Header_SC_403.feature[]
+include::client_ressource_anfrage_fachdienst_popp_header_sc_403.feature[]
+----
+
+[source,gherkin]
+----
+include::dpop_zieladresse.feature[]
 ----
 endif::[]

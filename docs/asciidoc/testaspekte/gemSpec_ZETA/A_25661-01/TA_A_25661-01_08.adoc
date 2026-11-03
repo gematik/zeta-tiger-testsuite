@@ -1,0 +1,6 @@
+[#TA_A_25661-01_08]
+===== TA_A_25661-01_08 - Ungültiger Grant
+
+Die Komponente Authorization Server MUSS die positive Zugriffs-Entscheidung eines PDP mittels Ausstellung eines Access- und Refresh-Token (200 OK) umsetzen. Fehler- und Ablehnungsfälle MUSS der Authorization Server gemäß [RFC6749]#section-5.2 (für Token Exchange [RFC8693] und Refresh) mit dem zutreffenden HTTP-Statuscode und error-Code beantworten, wobei der Response-Body dem Schema [zeta-error.yaml] entspricht: **400** bei fehlerhaftem Request oder **ungültigem**/abgelaufenem/wiederverwendetem Grant (invalid_request, **invalid_grant**, invalid_scope, invalid_target) sowie DPoP-Fehlern (invalid_dpop_proof, use_dpop_nonce gemäß [RFC9449]); 401 bei fehlgeschlagener Client-Authentifizierung (invalid_client) sowie bei Step-up-Bedarf (insufficient_user_authentication gemäß [RFC9470], siehe A_28525-02); 403 ausschließlich bei einer negativen Policy-Entscheidung trotz technisch gültiger Credentials (access_denied) sowie bei session_terminated / refresh_token_revoked. Die Claims im Access Token MUSS zur Entscheidung der Policy Engine passen.
+
+Ein ungültiger Grant wird bei ansonsten gültiger Client-Authentisierung mit HTTP 400 und error=invalid_grant gemäß [zeta-error.yaml] abgelehnt. Eine fehlerhafte Subject-Token-Bindung ist eine mögliche Ursache. Ablauf und Wiederverwendung sind eigene Prüffokusse.

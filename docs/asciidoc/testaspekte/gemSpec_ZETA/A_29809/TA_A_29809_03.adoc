@@ -1,0 +1,4 @@
+[#TA_A_29809_03]
+===== TA_A_29809_03 - Android-Attestierung - Software-Fallback
+
+"Der ZETA Client MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Android-Attestation** unterstützen. [<=]"

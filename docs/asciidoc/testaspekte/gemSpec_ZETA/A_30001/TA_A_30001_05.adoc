@@ -1,0 +1,8 @@
+[#TA_A_30001_05]
+===== TA_A_30001_05 - ZETA, Ablauf Token Revocation - Vollständigen Widerrufsrequest senden
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt Schritt 04: **POST an den veröffentlichten Revocation-Endpunkt mit dem eigenen Refresh Token im Parameter token, token_type_hint=refresh_token und client_assertion im Body sowie dem DPoP Proof im Header**.

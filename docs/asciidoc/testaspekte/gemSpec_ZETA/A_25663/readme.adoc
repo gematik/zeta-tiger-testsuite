@@ -1,8 +1,0 @@
-==== Testaspekte für die Anforderung A_25663
-
-Folgende Testaspekte testen <<A_25663>>.
-
-include::TA_A_25663_01.adoc[]
-
-include::TA_A_25663_02.adoc[]
-

@@ -1,0 +1,4 @@
+[#TA_A_29809_01]
+===== TA_A_29809_01 - Android-Attestierung - Hardwarepfad ohne Play Integrity
+
+"Der ZETA Client MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Android-Attestation** unterstützen. [<=]"

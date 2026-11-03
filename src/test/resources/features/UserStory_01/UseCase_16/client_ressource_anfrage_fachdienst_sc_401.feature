@@ -68,10 +68,10 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Und berechne JKT aus JWT Header JWK "${resourceDpopJwt}" und speichere in Variable "resourceDpopJkt"
     Und TGR prüfe aktueller Request enthält Knoten "${headers.dpop.body.ath}"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.cnf.jkt}" überein mit "${previousSessionDpopJkt}"
-    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.cnf.jkt}" nicht überein mit "${resourceDpopJkt}"
+    Und TGR prüfe aktueller Request im Knoten "${headers.authorization.dpopToken.body.cnf.jkt}" stimmt nicht überein mit "\Q${resourceDpopJkt}\E"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_25767
   @A_28963
@@ -86,7 +86,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
   @normal
   @MASVS-CRYPTO
   @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: DPoP Resource Request - Guard lehnt fremdes JWK (Binding) ab
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -192,8 +191,11 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
       | body.htu   | https://wrong.url/resource |
 
   @A_28963
+  @A_29850
   @TA_A_28963_01
+  @TA_A_29850_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenario: ZETA Guard verwirft einen DPoP Proof mit Header-Algorithmus none beim Ressourcenzugriff
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -208,10 +210,13 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
     Und prüfe die JWT-Variante alg_none in "${manipulatedDpopJwt}" ist lokal strukturell angewendet
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    # Der Antwortheader weist die von TA_A_29850_01 geforderte Kennzeichnung des PEP-Fehlers nach
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "${headers.zeta.errorOrigin.root}" überein mit "pep"
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenariogrundriss: ZETA Guard verwirft einen DPoP Proof ohne Pflicht-Claim <Claim> beim Ressourcenzugriff
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -245,6 +250,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenariogrundriss: ZETA Guard verwirft einen fehlerhaften oder nicht akzeptierten DPoP Proof beim Ressourcenzugriff (<Variante>)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -257,37 +263,37 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Und TGR speichere Wert des Knotens "${body.client.storage.dpop_private_key}" der aktuellen Antwort in der Variable "dpopKey"
     Und TGR setze lokale Variable "pathCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
 
-    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "variant.name" auf Wert "<Variante>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" die Variante <Variante> mit Parameter '<Parameter>' mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen
     Und TGR lösche aufgezeichnete Nachrichten
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
-    Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" ist lokal strukturell angewendet
+    Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" mit Parameter '<Parameter>' ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" hat lokal die erwartete Signaturintegrität
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
 
     Beispiele: manipulierte JWT-Varianten
-      | Variante                           |
-      | two_segments                       |
-      | invalid_header_base64url           |
-      | invalid_payload_base64url          |
-      | invalid_signature_base64url        |
-      | invalid_header_json                |
-      | invalid_header_json_unquoted_keys  |
-      | invalid_payload_json               |
-      | invalid_payload_json_unquoted_keys |
-      | unknown_header_parameter           |
-      | unsupported_crit                   |
-      | unsupported_alg                    |
-      | missing_alg                        |
-      | duplicate_alg_headers              |
-      | invalid_signature                  |
-      | jwe_like_five_segments             |
-      | nested_cty_jwt_invalid_inner       |
+      | Variante                           | Parameter         |
+      | two_segments                       |                   |
+      | invalid_header_base64url           |                   |
+      | invalid_payload_base64url          |                   |
+      | invalid_signature_base64url        |                   |
+      | invalid_header_json                |                   |
+      | invalid_header_json_unquoted_keys  |                   |
+      | invalid_payload_json               |                   |
+      | invalid_payload_json_unquoted_keys |                   |
+      | unsupported_crit                   |                   |
+      | unsupported_alg                    |                   |
+      | missing_alg                        |                   |
+      | duplicate_alg_headers              | ["ES256","RS999"] |
+      | invalid_signature                  |                   |
+      | jwe_like_five_segments             |                   |
+      | nested_cty_jwt_invalid_inner       |                   |
 
   @A_28963
   @TA_A_28963_01
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenario: ZETA Guard verwirft doppelte DPoP Header beim Ressourcenzugriff
     Wenn TGR setze lokale Variable "pathCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
@@ -301,6 +307,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
 
   @A_28963
   @TA_A_28963_01
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenario: ZETA Guard verwirft einen DPoP Proof mit privatem JWK Anteil beim Ressourcenzugriff
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -356,6 +363,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
 
     # Pfad und geänderter Feldwert identifizieren den tatsächlich beim Guard eingegangenen Request.
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}" und Knoten "${headers.authorization.dpopToken.root}.<JwtField>" der mit "<NeuerWert>" übereinstimmt
+    Und TGR prüfe aktueller Request enthält nicht Knoten "${headers.authorization.dpopToken.root}.header.crit"
 
     # Die lokale Prüfung gegen den Live-JWKS schließt eine unbeabsichtigt falsche Access-Token-Signatur aus.
     Und TGR speichere Wert des Knotens "${headers.authorization.root}" der aktuellen Anfrage in der Variable "authorizationHeader"
@@ -371,30 +379,27 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     # Erst nach den Vorbedingungen wird die fachlich erwartete Guard-Antwort geprüft.
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
 
-    @A_27802-02
-    @TA_A_27802-02_01
-    @TA_A_27802-02_02
+    @A_27802-03
+    @TA_A_27802-03_01
+    @TA_A_27802-03_02
+    @MASVS-AUTH
+    @MASVS-CODE
     @MASVS-CRYPTO
     Beispiele: Manipulationen (JWT)
-      | JwtField   | NeuerWert        | ResponseCode | AccessTokenKey     | Signaturvariante  |
-      | header.alg | ES256            | 200          | ${signingKey}      | resign_correct_key |
-      | header.alg | ES256            | 401          | ${wrongSigningKey} | invalid_signature  |
-      | header.alg | RS1              | 401          | ${signingKey}      | resign_correct_key |
-      | header.typ | dpop             | 401          | ${signingKey}      | resign_correct_key |
-      | body.exp   | 1758719276       | 401          | ${signingKey}      | resign_correct_key |
-      | body.iss   | someone          | 401          | ${signingKey}      | resign_correct_key |
+      | JwtField                       | NeuerWert   | ResponseCode | AccessTokenKey     | Signaturvariante         |
+      | header.alg                     | ES256       | 200          | ${signingKey}      | resign_correct_key       |
+      | header.unknown_guard_parameter | unsupported | 200          | ${signingKey}      | unknown_header_parameter |
+      | header.alg                     | ES256       | 401          | ${wrongSigningKey} | invalid_signature        |
+      | header.alg                     | RS1         | 401          | ${signingKey}      | resign_correct_key       |
+      | header.typ                     | dpop        | 401          | ${signingKey}      | resign_correct_key       |
+      | body.exp                       | 1758719276  | 401          | ${signingKey}      | resign_correct_key       |
+      | body.iss                       | someone     | 401          | ${signingKey}      | resign_correct_key       |
 
-    @A_28525-01
-    @TA_A_28525-01_02
-    Beispiele: Step-up-Bedingung bei nicht passender Audience
-      | JwtField | NeuerWert                                                    | ResponseCode | AccessTokenKey | Signaturvariante  |
-      | body.aud | unknown                                                      | 401          | ${signingKey}  | resign_correct_key |
-      | body.aud | ${paths.guard.baseUrl}${paths.guard.helloZetaProxyErrorPath} | 401          | ${signingKey}  | resign_correct_key |
-
-  @A_28525-01
-  @TA_A_28525-01_01
+  @A_28525-02
+  @TA_A_28525-02_01
   @deployment_modification
   @require_signing_key
+  @MASVS-AUTH
   Szenario: Fehlender Scope löst HTTP 401 aus
     # Deployment-Modification: Der gültige Access Token enthält den erforderlichen Scope "email".
     Gegeben sei setze die erforderlichen Scopes "email" für die Route "${paths.guard.helloZetaPath}" im ZETA Deployment
@@ -432,12 +437,22 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Und extrahiere DPoP Access Token aus Authorization Header "${authorizationHeader}" und speichere in Variable "manipulatedAccessToken"
     Und prüfe die JWT-Variante resign_correct_key in "${manipulatedAccessToken}" hat lokal mit KeyStore "${KEY_STORE}" die erwartete Signaturintegritaet
 
+    # Auch der tatsächlich empfangene DPoP-Proof muss nach der Scope-Manipulation gültig bleiben.
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
+    Und berechne SHA256 Hash von "${manipulatedAccessToken}" und speichere in Variable "expectedDpopAth"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.ath}" überein mit "${expectedDpopAth}"
+    Und verifiziere ES256 Signatur von DPoP JWT "${manipulatedDpopJwt}"
+
     # Nachweis: Die Anfrage mit gültiger Signatur und fehlendem Scope wird mit HTTP 401 abgelehnt.
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'www-authenticate']" überein mit ".*error=\x22insufficient_scope\x22.*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'www-authenticate']" überein mit ".*scope=\x22email\x22.*"
 
-  @A_27802-02
-  @TA_A_27802-02_01
-  @TA_A_27802-02_02
+  @A_27802-03
+  @TA_A_27802-03_01
+  @TA_A_27802-03_02
+  @MASVS-AUTH
+  @MASVS-CODE
   @MASVS-CRYPTO
   @require_signing_key
   Szenariogrundriss: ZETA Guard verwirft fehlerhafte oder nicht akzeptierte Access Token JWT Varianten (<Variante>)
@@ -459,7 +474,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
     Und TGR speichere Wert des Knotens "${body.client.storage.dpop_private_key}" der aktuellen Antwort in der Variable "dpopKey"
 
-    Dann Setze im TigerProxy für Access Token das Feld "variant.name" auf Wert "<Variante>" mit Access Token Key "${signingKey}" und DPoP Key "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen
+    Dann Setze im TigerProxy für Access Token die Variante <Variante> mit Parameter '<Parameter>' mit Access Token Key "${signingKey}" und DPoP Key "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen
     Und TGR lösche aufgezeichnete Nachrichten
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
@@ -467,7 +482,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
     Und TGR speichere Wert des Knotens "${headers.authorization.root}" der aktuellen Anfrage in der Variable "authorizationHeader"
     Und extrahiere DPoP Access Token aus Authorization Header "${authorizationHeader}" und speichere in Variable "manipulatedAccessToken"
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
-    Und prüfe die JWT-Variante <Variante> in "${manipulatedAccessToken}" ist lokal strukturell angewendet
+    Und prüfe die JWT-Variante <Variante> in "${manipulatedAccessToken}" mit Parameter '<Parameter>' ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${manipulatedAccessToken}" hat lokal mit KeyStore "${KEY_STORE}" die erwartete Signaturintegritaet
     Und berechne SHA256 Hash von "${manipulatedAccessToken}" und speichere in Variable "expectedDpopAth"
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.ath}" überein mit "${expectedDpopAth}"
@@ -476,80 +491,129 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 401
 
     @normal
     Beispiele: two_segments
-      | Variante                           |
-      | two_segments                       |
+      | Variante     | Parameter |
+      | two_segments |           |
 
     @normal
     Beispiele: invalid_header_base64url
-      | Variante                           |
-      | invalid_header_base64url           |
+      | Variante                 | Parameter |
+      | invalid_header_base64url |           |
 
     @normal
     Beispiele: invalid_payload_base64url
-      | Variante                           |
-      | invalid_payload_base64url          |
+      | Variante                  | Parameter |
+      | invalid_payload_base64url |           |
 
     @normal
     Beispiele: invalid_signature_base64url
-      | Variante                           |
-      | invalid_signature_base64url        |
+      | Variante                    | Parameter |
+      | invalid_signature_base64url |           |
 
     @normal
     Beispiele: invalid_header_json
-      | Variante                           |
-      | invalid_header_json                |
+      | Variante            | Parameter |
+      | invalid_header_json |           |
 
     @normal
     Beispiele: invalid_header_json_unquoted_keys
-      | Variante                           |
-      | invalid_header_json_unquoted_keys  |
+      | Variante                          | Parameter |
+      | invalid_header_json_unquoted_keys |           |
 
     @normal
     Beispiele: invalid_payload_json
-      | Variante                           |
-      | invalid_payload_json               |
+      | Variante             | Parameter |
+      | invalid_payload_json |           |
 
     @normal
     Beispiele: invalid_payload_json_unquoted_keys
-      | Variante                           |
-      | invalid_payload_json_unquoted_keys |
-
-    @normal
-    Beispiele: unknown_header_parameter
-      | Variante                           |
-      | unknown_header_parameter           |
+      | Variante                           | Parameter |
+      | invalid_payload_json_unquoted_keys |           |
 
     @normal
     Beispiele: unsupported_crit
-      | Variante                           |
-      | unsupported_crit                   |
+      | Variante         | Parameter |
+      | unsupported_crit |           |
 
     @normal
     Beispiele: unsupported_alg
-      | Variante                           |
-      | unsupported_alg                    |
+      | Variante        | Parameter |
+      | unsupported_alg |           |
 
     @normal
     Beispiele: missing_alg
-      | Variante                           |
-      | missing_alg                        |
+      | Variante    | Parameter |
+      | missing_alg |           |
 
     @normal
     Beispiele: duplicate_alg_headers
-      | Variante                           |
-      | duplicate_alg_headers              |
+      | Variante              | Parameter         |
+      | duplicate_alg_headers | ["ES256","RS999"] |
 
     @normal
     Beispiele: invalid_signature
-      | Variante                           |
-      | invalid_signature                  |
+      | Variante          | Parameter |
+      | invalid_signature |           |
 
     @normal
     Beispiele: jwe_like_five_segments
-      | Variante                           |
-      | jwe_like_five_segments             |
+      | Variante               | Parameter |
+      | jwe_like_five_segments |           |
 
     @normal
     Beispiele: nested_cty_jwt_invalid_inner
-      | Variante                           |
-      | nested_cty_jwt_invalid_inner       |
+      | Variante                     | Parameter |
+      | nested_cty_jwt_invalid_inner |           |
+
+  @A_29853
+  @TA_A_29853_01
+  @normal
+  Szenario: Client reicht einen Fachdienst-Fehler mit HTTP 401 ohne PEP-Fehler-Header transparent durch
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+
+    # Ausgangslage: erfolgreicher Zugriff, damit ein gueltiges Access Token vorliegt.
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    # Beide Kontroll-Hops müssen im Recorder abgeschlossen sein, bevor die Negativphase beginnt.
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.fachdienst.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    Und TGR lösche aufgezeichnete Nachrichten
+
+    # Der Fehler entsteht im Fachdienst (hinter dem PEP) und wird vom PEP lediglich durchgereicht.
+    Und TGR setze lokale Variable "fachdienstErrorCondition" auf "isResponse && request.path =~ '.*${paths.fachdienst.helloZetaPath}'"
+    Und TGR setze lokale Variable "fachdienstErrorBody" auf "fachdienst-fehlerbody-401"
+    # Derselbe eindeutige Testmarker ermöglicht den korrelierten Nachweis der unveränderten Weitergabe für TA_A_29853_01.
+    Und TGR setze lokale Variable "fachdienstErrorMarker" auf "fachdienst-fehler-401"
+    Und Setze im TigerProxy für die Nachricht "${fachdienstErrorCondition}" die Manipulation auf Feld "$.responseCode" und Wert "401" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${fachdienstErrorCondition}" die Manipulation auf Feld "$.body" und Wert "${fachdienstErrorBody}" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${fachdienstErrorCondition}" die Manipulation auf Feld "$.header.['x-zeta-test-error']" und Wert "${fachdienstErrorMarker}" und 1 Ausführungen
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.fachdienst.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" überein mit "${fachdienstErrorBody}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'x-zeta-test-error']" überein mit "${fachdienstErrorMarker}"
+
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" überein mit "${fachdienstErrorBody}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'x-zeta-test-error']" überein mit "${fachdienstErrorMarker}"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "${headers.zeta.errorOrigin.root}"
+
+    # TA_A_29853_01 - Statuscode, Body und Marker-Header erreichen den aufrufenden Fach-Client unverändert.
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "401"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body" überein mit "${fachdienstErrorBody}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.header.[~'x-zeta-test-error']" überein mit "${fachdienstErrorMarker}"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "${headers.zeta.errorOrigin.root}"
+
+    # Ohne PEP-Fehler-Header leitet der Client weder Token-Erneuerung noch Ressourcen-Retry ein.
+    Und prüfe, dass genau 1 aufgezeichnete Anfragen den Pfad "${paths.guard.helloZetaPath}" haben
+    Und prüfe, dass keine aufgezeichnete Anfrage den Pfad "${paths.guard.tokenEndpointPath}" hat
+
+    Und Alle Manipulationen im TigerProxy werden gestoppt

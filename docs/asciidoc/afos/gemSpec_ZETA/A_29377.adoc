@@ -1,0 +1,4 @@
+[#A_29377]
+==== A_29377 - ZETA, Ablauf Token Exchange mit Refresh Token
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Request-mit-Refresh-Token unterstützen. [<=]

@@ -1,0 +1,4 @@
+[#A_29927]
+==== A_29927 - Authorization Server – Abgrenzung zum Schlüsselverlust
+
+Der In-Place-Rollover setzt den Besitz des bisherigen Instanzschlüssels voraus. Bei Verlust DARF der Rollover-Pfad NICHT verwendet werden; verfügt der Nutzer noch über ein weiteres eingebuchtes Gerät (F2) oder die Kontrolle über die gebundene E-Mail (F1), erfolgt die (Neu-)Einbuchung als Folgeregistrierung mit erneuter E-Mail-Verifikation (A_29910). Sind alle Faktoren {F1, F2} verloren, ist keine Selbst-Wiederherstellung möglich; die Identität kann nur über die außerordentliche Löschung (OOB, A_29940 ff.) mit anschließender Erstnutzung neu etabliert werden. [<=]

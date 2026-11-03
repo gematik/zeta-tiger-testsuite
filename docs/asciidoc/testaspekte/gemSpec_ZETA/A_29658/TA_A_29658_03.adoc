@@ -1,0 +1,4 @@
+[#TA_A_29658_03]
+===== TA_A_29658_03 - Mobile Client-Registrierung - Softwareattestierung mit E-Mail-OTP
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-DCR-für-mobile-Clients** unterstützen. [<=]"

@@ -1,0 +1,4 @@
+[#A_29659]
+==== A_29659 - ZETA, Ablauf OIDC Authentifizierung für mobile Clients
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients unterstützen. [<=]

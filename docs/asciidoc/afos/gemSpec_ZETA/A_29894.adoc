@@ -1,0 +1,4 @@
+[#A_29894]
+==== A_29894 - Authorization Server – Identitätslose Clients: reduziertes Vertrauensmodell
+
+Der Authorization Server MUSS einen ohne TI-Identität registrierten Client (vgl. A_29733) ausschließlich über den Instanzschlüssel (F2, Proof-of-Possession via JWT-Bearer Assertion nach [RFC7523]) und die plattformabhängige Attestierung (Posture) absichern. Für solche Clients DARF NICHT eine identitätsgebundene E-Mail (F1) erzeugt oder verlangt werden; und es findet KEINE identitätsbezogene außerordentliche Löschung (A_29940 ff.) statt. [<=]

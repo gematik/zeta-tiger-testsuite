@@ -7,7 +7,7 @@
 | *Titel:* | Client authentisierung und autorisierung refresh token without attest SC 200
 
 | Akteur: |
-*MA einer LEI*
+*MA einer LEI; im ausführbaren OIDC-Scope-Wechsel ein mobiler Nutzer*
 
 | weitere Akteure: |
 - *ZETA Client*
@@ -22,17 +22,37 @@ Ein MA einer LEI möchte auf einen Resource Server zugreifen.
 | Kurzbeschreibung: |
 Ein MA einer LEI möchte auf einen Resource Server zugreifen und muss sich dafür authentisieren
 und autorisieren, wobei bereits ein gültiges Refresh Token vorliegt.
+Das zusätzliche OIDC-Szenario `refresh_scope_wechsel.feature` prüft den Wechsel zu einem anderen erlaubten Scope bei unveränderter Resource und bestehender Sitzung.
 
 | Vorbedingung: |
 Der ZETA Client verfügt über ein gültiges Refresh-Token.
+Für jede Variante wird vor dem eigentlichen Prüfschritt eine eigene aktive Sitzung mit einem frischen, unbenutzten Refresh Token aus einem Grant für R1/S1 provisioniert. Client-, DPoP- und Session-Kontexte sind voneinander getrennt.
+R1 und R2 sind verschiedene Ressourcen-URLs am selben Guard; beide unterstützen S1 und S2. Das Prüfprofil enthält die konkreten URLs, Scope-Werte und die je Ressource erwartete logische Audience aus der Policy.
+Die Policy erlaubt R1/S1 als Kontrolle sowie R2/S2, R2/S1 und R1/S2. Innerhalb einer Variante erfolgt der Wechsel ausschließlich durch Refresh, ohne Reset oder erneute initiale Authentisierung.
+Eine zusätzliche Scope-Variante fordert bei R1 die Menge S1 S2 an; die Policy gewährt gezielt nur S1. Sie nutzt eine weitere unabhängig vorbereitete Sitzung. Verbrauchte Refresh Token werden nicht wiederverwendet; weitere Kontrollrequests nutzen jeweils den neuesten rotierten Nachfolger.
+Tokenrequest, Policy-Entscheidung und direkte Tokenantwort sind korrelierbar.
+Die ausführbaren Token-/Policy-Prüfungen verwenden das vollständige Laufzeit-Bundle schemas/v_2_0. Für user_info gilt unverändert schemas/v_2_0/schemas/zeta-user-info.yaml mit commonName, professionOID und organizationName. Bei widersprechenden Feldnamen oder Wertebereichen in der Spec ist das gepinnte Schema maßgeblich.
+Die Testsuite zeichnet Requestbeginn t0 und Antwortende t1 auf; die maximale Uhrabweichung epsilon zum AS ist unabhängig bekannt. Für Lebensdauer L und signiertes exp muss exp-L im Ausgabezeitfenster [t0-epsilon-1s, t1+epsilon+1s] liegen. Dies berücksichtigt Transport und Sekundenrundung, ohne externe Messzeit und internen Ausgabezeitpunkt gleichzusetzen.
 
 | Nebenbedingung: |
-Keine zusätzlichen Nebenbedingungen.
+Der vorhandene SMC-B-Fall „Session Management - Ausgabe und Verwaltung von Refresh Token“ prüft zusätzlich zur Policy-Weitergabe die gespeicherten Zertifikatsdaten nach dem tatsächlichen SDK-Refresh. Die Referenzwerte stammen aus dem signaturgeprüften initialen Subject-Token; dessen Client-ID und Telematik-ID werden mit dem Tokenrequest und Zertifikat abgeglichen. Der neue Access Token muss Client und Session unverändert enthalten; seine AS-Signatur wird über den unabhängig gelesenen JWKS geprüft. Der vorhandene lesende Persistenzadapter selektiert genau diese aktive Session (`offline_flag=0`) im konfigurierten Realm mit Nutzer-/Client-Zuordnung und vergleicht identifier, commonName, professionOID und die gegebenenfalls vorhandene organizationName aus dem gespeicherten SMC-B-Kontext ohne Ersatzwerte. Fehlt die Organisation im Zertifikat, muss sie auch im Speicher fehlen. Das Szenario benötigt das dokumentierte Keycloak-Persistenzprofil und `@require_kubectl`, weil der Testdriver keine lesende SDK-Operation für den AS-Speicher bereitstellt. Die bisherigen Token-, Rotations- und Policy-Assertions bleiben erhalten; ein Refresh ohne erneutes Subject-Token allein gilt nicht als vollständiger Speichernachweis. Der Nachweis umfasst das verfügbare Zertifikatsprofil, keine zusätzliche Organisationsvariante.
+
+Der bestehende SMC-B-Fall weist außerdem den Policy-Aufruf mit Nutzerdaten nach, prüft aber dessen zeitliche Lage vor der Tokenausstellung nicht unabhängig. Er bleibt A_28837 zugeordnet, trägt dafür jedoch keinen vollständigen Abdeckungstag für die Reihenfolge von Policy-Prüfung und Tokenausstellung. Für einen vollständigen Nachweis wäre zusätzlich eine an den konkreten Refresh gebundene Reihenfolgeprüfung nötig. Die vorhandenen Policy-Assertions bleiben erhalten.
+
+Das ausführbare Scope-Wechsel-Profil verwendet einen frisch eingebuchten OIDC-Softwareclient am lokalen Guard. R1 ist die bereits erfolgreich verwendete PEP-Resource; S1 ist `testdata.ccRefresh.initialScope` (`zero:audience`). S2 ergänzt den unabhängig festgelegten `testdata.ccRefresh.additionalScope` (`notification.pusher.read`). Die aktive Policy muss beide Scope-Mengen für R1 erlauben; der zusätzliche Scope muss im Realm und für den Testclient verfügbar sein. Die erwarteten effektiven Scopes enthalten zusätzlich die unabhängig bekannten OIDC-Realm-Defaults `profile email`. Die Defaults und Testpolicy sind vor Verwendung eines anderen Profils zu prüfen; erwartete Scopes werden nicht aus der Tokenantwort abgeleitet.
+
+Anmeldung, beide Refreshes und Ressourcenzugriffe werden über den Testdriver mit dessen SDK ausgelöst. Tiger setzt die Access-Token-TTL in den ersten beiden erlaubenden Policy-Antworten auf fünf Sekunden; der AS stellt entsprechend kurzlebige, unverändert signierte Tokens aus. Nach Ablauf löst jeweils ein Ressourcenzugriff den nächsten SDK-Refresh aus. Die dritte Policy-Antwort behält ihre reguläre TTL.
+
+Beim ersten Refresh ersetzt Tiger den vom SDK gesendeten Audience-Parameter durch die explizite identische Resource R1. Ein bereits resource-basierter SDK-Request bleibt unverändert. Der aufgezeichnete Request muss R1/S1 und das initial ausgegebene Refresh Token enthalten und darf keinen Audience-Parameter mehr enthalten. Damit ist die Herkunft des rotierten Kontrolltokens aus R1/S1 belegt, auch wenn der initiale OIDC-Austausch optionale Resource-/Scope-Parameter weglässt. Beim zweiten SDK-Refresh erfolgt dieselbe Umstellung auf Resource; gegenüber dem Kontrollgrant ändert sich ausschließlich der Scope zu S2. Nonce, Client Assertion und DPoP Proof erzeugt das SDK. Der aufgezeichnete Request muss das neueste Kontroll-Refresh-Token und denselben Client verwenden. Es erfolgt kein Reset und keine neue initiale Authentisierung zwischen den Refreshes. Der korrelierte Policy-Input muss die Version `1.1`, `authorization_request.resource=R1` und die vollständige angeforderte Scope-Menge enthalten; das Legacy-Feld `authorization_request.audience` darf nicht vorkommen.
+
+Die Antwort muss neue Access-/Refresh-Token mit den erwarteten Scopes enthalten; Identität, Client, Session, Audience und DPoP-Bindung bleiben erhalten. Die Testsuite prüft unabhängig die vollständigen Formparameter, AS-Signaturen, den zugehörigen erlaubenden Policy-Aufruf und den erfolgreichen SDK-Ressourcenzugriff mit genau dem neuen Access Token. Nach abgeschlossener Prüfung des OIDC-Bootstraps löscht sie nur die Nachrichtenaufzeichnung. Genau zwei AS-Tokenrequests in der anschließenden Refresh-Phase schließen einen verdeckten erneuten Token Exchange aus. Direkte GETs lesen lediglich den AS-JWKS zur unabhängigen Signaturprüfung. Das Profil prüft die Serverpflicht zum Scope-Wechsel; die durch Tiger erzeugte Scope-Auswahl belegt keine SDK-Funktion zur Scope-Änderung. Resource-Wechsel und abweichende Teilgewährung bleiben eigene Varianten.
 
 | Ablauf: |
-1. MA startet *Authentisierung/Autorisierung-Prozess (Token-Erneuerung)* über den ZETA Client.
-2. Der ZETA Client erstellt eine Client Assertion ohne Attestierung auf Basis des vorhandenen Refresh Tokens.
-3. Der ZETA Client erzeugt ein *DPoP Proof JWT* für den Token Request.
+Die folgenden JWT-Darstellungen sind Ausschnitte des CC-Profils gemäß `schemas/v_2_0`; sie ersetzen keine vollständige Schemaprüfung. Auslassungen und Platzhalter werden vor dem Signieren typgerecht ergänzt: `exp` und `iat` sind ganzzahlige NumericDate-Werte in Sekunden, `aud` ist das dargestellte String-Array. Header, Pflichtclaims und die im jeweiligen Flow erforderlichen frischen AS-Nonces und Schlüsselbindungen müssen vollständig und gültig sein. Bei einer Negativvariante wird anschließend ausschließlich der ausdrücklich benannte Fehlergrund verändert.
+
+. MA startet *Authentisierung/Autorisierung-Prozess (Token-Erneuerung)* über den ZETA Client.
+. Der ZETA Client erstellt eine Client Assertion ohne Attestierung auf Basis des vorhandenen Refresh Tokens.
+. Der ZETA Client erzeugt ein *DPoP Proof JWT* für den Token Request.
 +
 .Client Assertion für Refresh-Token-Nutzung:
 [source,json]
@@ -40,76 +60,96 @@ Keine zusätzlichen Nebenbedingungen.
 {
   "iss": "< client_id >",
   "sub": "< client_id >",
-  "aud": "< AS_Token_Endpoint_URL >",
+  "aud": ["<AS_Token_Endpoint_URL>"],
   "exp": ...,
   "jti": "..."
 }
 ----
 +
 
-4. Der ZETA Client sendet den Token Request inklusive Refresh Token und Client Assertion an den PDP Authorization Server.
+. Der ZETA Client sendet den Token Request inklusive Refresh Token und Client Assertion an den PDP Authorization Server.
 +
 .Token Exchange Request Body:
 [source,txt]
 ----
 grant_type=refresh_token
 &refresh_token=<Refresh_Token>
+&resource=<Resource_der_Pruefvariante>
+&scope=<Scope_der_Pruefvariante>
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<Client_Assertion_JWT_without_Attestation>
 ----
 +
+Die Parameter werden in getrennten Varianten gegenüber R1/S1 gewählt:
 
-5. PDP Authorization Server validiert den Request:
+- Kontrolle: resource=R1 und scope=S1; Ausgangsgrant unverändert.
+- Andere Resource und anderer Scope: resource=R2 und scope=S2.
+- Nur andere Resource: resource=R2 und scope=S1.
+- Nur anderer Scope: resource=R1 und scope=S2.
+- Abweichende Gewährung: resource=R1 und scope=S1 S2; die Policy gewährt nur S1.
+
+Jede Zeile startet mit ihrem eigenen R1/S1-Ausgangsgrant. Die Testsuite korreliert Request, Policy-Entscheidung und direkte Tokenantwort über dieselbe Transaktion.
+
+. PDP Authorization Server validiert den Request:
 - Client Assertion
 - DPoP Proof
 - Refresh Token
-6. Bei einer erfolgreichen Validierung des Requests invalidiert der PDP Authorization Server das alte Refresh Token.
-7. PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
-- ``POST /v1/data/authz`` mit Input-Parametern.
-8. PDP-PE antwortet mit ``200 OK``, z. B.
+. Bei einer erfolgreichen Validierung des Requests invalidiert der PDP Authorization Server das alte Refresh Token.
+. PDP Authorization Server ruft die Policy Engine (PDP-PE) auf:
+- ``POST /v1/data/authz`` mit den gespeicherten Session-Daten einschließlich der Client-, User- und Request-Daten gemäß ``policy-engine-input.yaml``.
+. PDP-PE antwortet mit ``200 OK``, beispielsweise mit folgender Freigabe und Token-Laufzeiten in Sekunden:
 +
-[source,txt]
-----
-{
-status: 200 OK,
-    body {
-    "allow": true,
-    "access_token_ttl": "360",
-    "refresh_token_ttl": "43200",
-    "scope": "RS specific scopes"
-    }
-}
-----
-+
-9. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*.
-10. Der PDP Authorization Server aktualisiert die Client-, Session- und Nutzerdaten in der PDP Datenbank.
-11. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
-12. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
-+
-.Token Response Body:
 [source,json]
 ----
 {
-"access_token": "<AS_Access_Token>",
-"token_type": "DPoP", // Indicate DPoP is required
-"expires_in": 300,
-"refresh_token": "<AS_Refresh_Token>"
-// ... other parameters
+  "result": {
+    "allow": true,
+    "ttl": {
+      "access_token": 360,
+      "refresh_token": 43200
+    }
+  }
+}
+----
++
+. Der PDP Authorization Server generiert ein *AS Access Token (AT)* sowie ein *Refresh Token (RT)*.
+. Der PDP Authorization Server aktualisiert die Client-, Session- und Nutzerdaten in der PDP Datenbank.
+. Die PDP Datenbank bestätigt Aktualisierung des Datensatzes.
+. Der PDP Authorization Server liefert ``200 OK`` mit den neuen Tokens an ZETA Client zurück.
++
+.Token Response Body (Auszug):
+[source,json]
+----
+{
+  "access_token": "<AS_Access_Token>",
+  "token_type": "DPoP",
+  "expires_in": 360,
+  "refresh_token": "<AS_Refresh_Token>",
+  "refresh_expires_in": 43200
 }
 ----
 +
 
-13. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
+. Die Testsuite prüft an derselben direkten Erfolgsantwort zusammenhängend die folgenden Felder:
+* Bei positiver Policy-Entscheidung die Erfolgsantwort als JSON-Objekt prüfen; das erforderliche access_token ist ein signiertes, DPoP-gebundenes JWT gemäß access-token.yaml und gehört zu dieser Transaktion.
+* Das erforderliche String-Feld token_type der Erfolgsantwort hat genau den erlaubten Wert DPoP.
+* Das erforderliche Integer-Feld expires_in in Sekunden gegen exp des Access Tokens und das festgelegte Ausgabezeitfenster prüfen.
+* Falls refresh_token ausgegeben wird, String-Typ und signiertes JWT zum selben Authorization Grant prüfen. Das im Schema optionale Feld nicht pauschal erzwingen; strengere Anforderungen des konkreten Flows bleiben anwendbar.
+* Falls refresh_expires_in ausgegeben wird, Integer-Typ und Lebensdauer des zugehörigen Refresh Tokens in Sekunden anhand derselben Zeitregel prüfen; das optionale Feld nicht pauschal erzwingen.
+* Bei vom angefragten Scope abweichendem gewährtem Scope das erforderliche String-Feld scope als leerzeichengetrennte Liste der tatsächlich gewährten Werte prüfen.
+. Der ZETA Client informiert den MA über die erfolgreiche Zugriffrechtserteilung.
 
 | Nachbedingung: |
 Der MA ist authentisiert und autorisiert.
+Die Policy Engine hat die Session-Daten einschließlich der Client-, User- und Request-Daten im Request erhalten.
+Die Testsuite hat im signaturgeprüften Access Token die logische aud aus der korrelierten Policy-Entscheidung und die tatsächlich gewährte Scope-Menge geprüft. Die Ressourcen-URL wird nicht ungeprüft als aud erwartet; das Token-Set gehört zur Ausgangssitzung der jeweiligen Variante.
+Die Tokenantwort ist schemakonform; ein abweichend gewährter Scope wird im Feld scope ausgegeben.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_25660_01>>
 * <<TA_A_25660_02>>
 * <<TA_A_25660_04>>
 * <<TA_A_25660_05>>
-* <<TA_A_25661_05>>
 * <<TA_A_25662_01>>
 * <<TA_A_25662_02>>
 * <<TA_A_25663_01>>
@@ -122,19 +162,19 @@ Der MA ist authentisiert und autorisiert.
 * <<TA_A_25782_04>>
 * <<TA_A_25782_05>>
 * <<TA_A_26281-01_01>>
-* <<TA_A_26586_02>>
-* <<TA_A_26972-02_01>>
-* <<TA_A_26972-02_02>>
-* <<TA_A_26972-02_03>>
-* <<TA_A_26972-02_04>>
+* <<TA_A_26586-01_02>>
+* <<TA_A_26972-03_01>>
+* <<TA_A_26972-03_02>>
+* <<TA_A_26972-03_03>>
+* <<TA_A_26972-03_04>>
 * <<TA_A_26587-01_01>>
 * <<TA_A_27725-01_14>>
-* <<TA_A_27867-01_01>>
-* <<TA_A_27867-01_02>>
-* <<TA_A_27867-01_03>>
-* <<TA_A_27867-01_04>>
 * <<TA_A_28837_01>>
 * <<TA_A_25766_02>>
+* <<TA_A_29843_01>>
+* <<TA_A_29843_02>>
+* <<TA_A_29843_03>>
+* <<TA_A_29951_01>>
 
 |===
 
@@ -154,12 +194,12 @@ sequenceDiagram
     ZC->>ZC: Erzeuge Client Assertion<br>(JWT) (ohne Attestierung)
 
     ZC->>ZC: Erstellen von DPoP Proof JWT<br>für Token Exchange
-    ZC->>+PDP-AS: POST /token DPoP: <signed_dpop_jwt>
+    ZC->>+PDP-AS: POST /token DPoP: <signed_dpop_jwt><br>Vorhandenes Refresh Token, resource und scope der Variante
 
     PDP-AS->>PDP-AS: Validiere Request
     PDP-AS->>PDP-AS: Invalidiere Refresh Token
 
-    PDP-AS->>+PDP-PE: POST /v1/data/authz
+    PDP-AS->>+PDP-PE: POST /v1/data/authz<br>Client-, User- und Request-Daten<br>Gewählte Resource-/Scope-Variante
     PDP-PE->>-PDP-AS: 200 OK
 
     PDP-AS->>PDP-AS: Erzeuge AS Access Token (AT)<br>und Refresh Token (RT)
@@ -167,7 +207,7 @@ sequenceDiagram
     PDP-AS->>+PDP-DB: Aktualisiere Client, Session & Nutzer-Daten
     PDP-DB->>-PDP-AS: OK
 
-    PDP-AS->>-ZC: 200 OK
+    PDP-AS->>-ZC: 200 OK mit schemakonformen Tokens<br>Gegebenenfalls abweichend gewährter scope
 
     ZC->>-MA: "Zugriff gestattet"
 ....
@@ -178,6 +218,11 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_authentisierung_und_autorisierung_refresh_token_without_attest_SC_200.feature[]
+include::client_authentisierung_und_autorisierung_refresh_token_without_attest_sc_200.feature[]
+----
+
+[source]
+----
+include::refresh_scope_wechsel.feature[]
 ----
 endif::[]

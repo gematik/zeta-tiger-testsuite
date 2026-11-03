@@ -1,0 +1,4 @@
+[#A_29884]
+==== A_29884 - ZG Client, Fehlerbehandlung
+
+Lehnt der Secure Token Service des Zieldienstes den Token Exchange ab oder schlägt die Validierung des Subject Tokens fehl, so MUSS der ZG Client den Fehler unverändert (inkl. HTTP-Statuscode) an die aufrufende Fachkomponente weiterleiten. [<=]

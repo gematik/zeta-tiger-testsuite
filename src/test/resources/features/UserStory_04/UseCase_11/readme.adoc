@@ -1,0 +1,83 @@
+[#UC_04_11]
+== UseCase_04_11: Android-Instanzschlüssel erzeugen und Client-Credentials attestieren
+
+.UseCase_04_11
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* |
+Android-Instanzschlüssel erzeugen und Client-Credentials attestieren
+
+| Akteur: |
+ZETA Client auf Android
+
+| weitere Akteure: |
+Android OS, KeyStore, TEE oder StrongBox, optional Google Play Integrity, PDP Client-Registrierung im ZETA Guard
+
+| Auslöser: |
+Eine neue Client-Instanz benötigt Instanzschlüssel und Registrierungsnachweise.
+
+| Kurzbeschreibung: |
+Der Client erzeugt seinen Instanzschlüssel, den daran gebundenen separaten Attestierungsschlüssel und den Besitznachweis. Bei aktivierter Play-Integrity-Integration erhält er zusätzlich das Integritätstoken. Anschließend bestätigt er seine Client-Credentials gegenüber der PDP Client-Registrierung mit den erzeugten Nachweisen.
+
+| Vorbedingung: |
+. Die Client-Instanz besitzt noch keine Schlüssel für diesen Ablauf. Android OS und TEE beziehungsweise StrongBox sind verfügbar.
+. Die Varianten unterscheiden sich durch die aktivierte beziehungsweise nicht verwendete optionale Play-Integrity-Integration.
+. Der ZETA Guard unterstützt die Android-Registrierung und vertraut den vorgesehenen Android-Attestierungswurzeln.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der Client ruft KeyStore.generateKey(Alias_Client_Sig) auf. Android veranlasst die Erzeugung des Client-Schlüsselpaars in TEE beziehungsweise StrongBox; der private Schlüssel verbleibt dort. Der Client erhält den Alias als Referenz.
+. Der Client bildet hash_puk_client_sig = SHA-256(PuK.Client.Sig).
+. Er ruft KeyStore.generateKey(Alias_AK, AttestationChallenge = hash_puk_client_sig) auf. Android veranlasst die Erzeugung des separaten Attestierungsschlüsselpaars und seiner Kette. Die Hardware liefert die Zertifikatskette einschließlich PuK.AK.Sig an Android; der Client erhält android_key_attestation_certificate_chain.
+. Der Client ruft Signature.sign(KeyStore.getKey(Alias_Client_Sig), hash_puk_client_sig) auf. Android lässt den Hash in der Hardware mit PrK.Client.Sig signieren und gibt das Ergebnis als signed_hash_puk_client_sig an den Client zurück.
+. In der Variante mit Play Integrity ruft der Client requestIntegrityToken(nonce = hash_puk_client_sig) auf und erhält das zugehörige Base64-kodierte play_integrity_token. Ohne diese optionale Integration endet der Schlüsselgenerierungsablauf nach dem Besitznachweis.
+. Bei der anschließenden Registrierung übermittelt der Client mit attestation_type="android" seinen öffentlichen Instanzschlüssel in jwks, die android_key_attestation_certificate_chain und signed_hash_puk_client_sig an die PDP Client-Registrierung. Ein vorhandenes play_integrity_token wird mitgesendet. Zertifikatskette, Attestierungs-Challenge und Besitzsignatur sind an denselben Client-Schlüssel gebunden.
+. Der ZETA Guard nimmt die Registrierung an und antwortet mit HTTP 201 und der zugewiesenen client_id.
+
+| Nachbedingung: |
+Client-Schlüsselreferenz, AK-Zertifikatskette und Besitzsignatur gehören zum selben Initialisierungsvorgang. Im Play-Integrity-Pfad liegt außerdem das zugehörige Token vor. Nach der Registrierung sind die so bestätigten Client-Credentials der zugewiesenen client_id zugeordnet.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29781_01>>
+* <<TA_A_29781_05>>
+* <<TA_A_25434_01>>
+
+|===
+
+[mermaid,uc-04-11-ablauf,svg]
+....
+sequenceDiagram
+participant C as ZETA Client
+    participant O as Android OS
+    participant H as TEE / StrongBox
+    participant P as Play Integrity
+    participant G as PDP Client-Registrierung
+    C->>O: KeyStore.generateKey(Alias_Client_Sig)
+    O->>H: Client-Schlüsselpaar erzeugen
+    H-->>O: Privater Schlüssel verbleibt in Hardware
+    O-->>C: Client-Schlüsselreferenz
+    C->>C: SHA-256(PuK.Client.Sig)
+    C->>O: KeyStore.generateKey(Alias_AK, AttestationChallenge)
+    O->>H: Attestierungsschlüssel und Kette erzeugen
+    H-->>O: Zertifikatskette mit PuK.AK.Sig
+    O-->>C: android_key_attestation_certificate_chain
+    C->>O: Signature.sign mit Client-Schlüssel und Hash
+    O->>H: Hash mit PrK.Client.Sig signieren
+    H-->>O: ECDSA-Signatur
+    O-->>C: signed_hash_puk_client_sig
+    opt Play Integrity aktiviert
+        C->>P: requestIntegrityToken(nonce = Client-Key-Hash)
+        P-->>C: play_integrity_token (Base64)
+    end
+    C->>G: Registrierung mit Android-Attestierung, jwks und Besitzsignatur
+    G-->>C: HTTP 201 mit client_id
+....
+
+ifdef::render_features[]
+[source]
+----
+include::android_client_credentials.feature[]
+----
+endif::[]

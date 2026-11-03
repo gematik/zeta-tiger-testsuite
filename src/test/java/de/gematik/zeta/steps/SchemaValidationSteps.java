@@ -31,10 +31,12 @@ import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import com.nimbusds.jwt.SignedJWT;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.OpenApiSchemaLoader;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.JacksonException;
@@ -90,7 +92,7 @@ public class SchemaValidationSteps {
   /**
    * Loads a YAML schema file from the classpath (resources directory).
    *
-   * @param schemaName name or relative path of the schema on the classpath
+   * @param schemaName relative path of the schema on the classpath
    * @return {@link Schema} configured with the schema's base location
    */
   private Schema loadYamlSchema(String schemaName) {
@@ -100,16 +102,13 @@ public class SchemaValidationSteps {
   /**
    * Loads a YAML schema file from the classpath and optionally makes every object schema strict.
    *
-   * @param schemaName name or relative path of the schema on the classpath
+   * @param schemaName relative path of the schema on the classpath
    * @param strict     if true, object schemas without an explicit {@code additionalProperties} declaration are copied with
    *                   {@code additionalProperties: false}
    * @return {@link Schema} configured with the schema's base location
    */
   private Schema loadYamlSchema(String schemaName, boolean strict) {
     var normalizedPath = schemaName.startsWith("/") ? schemaName.substring(1) : schemaName;
-    if (!normalizedPath.startsWith("schemas/")) {
-      normalizedPath = "schemas/v_1_0/" + normalizedPath;
-    }
 
     var resource = SchemaValidationSteps.class.getClassLoader().getResource(normalizedPath);
     if (resource == null) {
@@ -232,6 +231,20 @@ public class SchemaValidationSteps {
   }
 
   /**
+   * Validates a payload against an unchanged OpenAPI contract with its declared dialect.
+   *
+   * @param jsonString recorded request or response body
+   * @param schemaPath owning OpenAPI document and JSON Pointer to its Schema Object
+   */
+  @Dann("validiere {tigerResolvedString} gegen OpenAPI-Schema {string}")
+  @Then("validate {tigerResolvedString} against OpenAPI schema {string}")
+  public void validateJsonAgainstOpenApiSchema(String jsonString, String schemaPath) {
+    var schema = OpenApiSchemaLoader.load(schemaPath);
+    var jsonNode = CheckMessageSteps.parseJsonString(jsonString, false);
+    assertValid(schema, jsonNode, schemaPath, isSoftAssertActive());
+  }
+
+  /**
    * Cucumber step definition for validating a Base64 coded JSON string against a schema loaded from the resources directory.
    *
    * <p>The encoded token is expected to consist of at least two parts separated by dots:
@@ -275,4 +288,28 @@ public class SchemaValidationSteps {
     }
   }
 
+
+  /**
+   * Checks the complete set and location of formal validation errors in one JSON input.
+   *
+   * @param jsonString recorded JSON input
+   * @param schemaPath owning OpenAPI document and schema pointer
+   * @param location expected JSON instance location
+   * @param keywords comma-separated validation keywords, including repeated occurrences
+   * @throws AssertionError if the input is valid or has different errors
+   */
+  @Dann("validiere {tigerResolvedString} gegen OpenAPI-Schema {string} mit Fehlern"
+      + " {string} ausschließlich bei {string}")
+  public void validateIsolatedOpenApiFault(String jsonString, String schemaPath,
+      String keywords, String location) {
+    var schema = OpenApiSchemaLoader.load(schemaPath);
+    var errors = schema.validate(CheckMessageSteps.parseJsonString(jsonString, false));
+    var expected = Arrays.stream(keywords.split(",")).map(String::trim).sorted().toList();
+    var actual = errors.stream().map(Error::getKeyword).sorted().toList();
+    if (!actual.equals(expected) || errors.isEmpty()
+        || errors.stream().anyMatch(error -> !location.equals(error.getInstanceLocation().toString()))) {
+      throw new AssertionError("Expected only " + expected + " at " + location + "; observed "
+          + errors.stream().map(Error::toString).toList());
+    }
+  }
 }

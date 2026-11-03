@@ -39,6 +39,7 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.Enumeration;
@@ -69,20 +70,38 @@ public class TestCertificateSteps {
   }
 
   /**
-   * Load one certificate entry by one-based index and publish its metadata, file paths, and
-   * Base64-safe inline values into Tiger variables under the given prefix.
+   * Publishes one random matching manifest stem not previously selected in this JVM.
    *
-   * @param oneBasedIndex one-based manifest row index excluding the header
-   * @param variablePrefix Tiger variable prefix
-   * @throws IOException on I/O errors
+   * @param stemPattern regular expression matching eligible certificate stems
+   * @param variable variable receiving the selected stem
+   * @throws IOException if the manifest cannot be read
    */
-  @Dann("lade Zertifikat-Eintrag Nummer {int} aus dem Testzertifikat-Manifest in Variablen mit Präfix {tigerResolvedString}")
-  @Then("load certificate entry number {int} from the test certificate manifest into variables with prefix {tigerResolvedString}")
-  public void loadCertificateEntryByIndex(int oneBasedIndex, String variablePrefix)
-      throws IOException {
-    var manifestPath = manifestService.resolveManifestPath(null);
-    var entry = manifestService.findByIndex(manifestPath, oneBasedIndex);
-    publishEntry(variablePrefix, entry);
+  @Dann("wähle einen zufälligen Zertifikat-Stem mit Muster {tigerResolvedString}"
+      + " aus dem Testzertifikat-Manifest in Variable {tigerResolvedString}")
+  @Then("choose a random certificate stem matching {tigerResolvedString}"
+      + " from the test certificate manifest into variable {tigerResolvedString}")
+  public void chooseCertificateStem(String stemPattern, String variable) throws IOException {
+    var manifest = manifestService.resolveManifestPath(null);
+    put(variable, manifestService.chooseUnusedStem(manifest, stemPattern));
+  }
+
+  /**
+   * Reads one PEM or DER X.509 certificate and publishes its canonical Base64 DER encoding.
+   *
+   * @param file certificate file path
+   * @param variable variable receiving the public certificate
+   * @throws IOException if the file cannot be read
+   * @throws GeneralSecurityException if the certificate cannot be decoded
+   */
+  @Dann("lade X.509-Zertifikat aus Datei {tigerResolvedString} in Variable {tigerResolvedString}")
+  @Then("load X.509 certificate from file {tigerResolvedString} into variable {tigerResolvedString}")
+  public void loadCertificateFile(String file, String variable)
+      throws IOException, GeneralSecurityException {
+    try (var input = Files.newInputStream(Path.of(file))) {
+      var certificate = requireX509Certificate(
+          CertificateFactory.getInstance("X.509").generateCertificate(input), file);
+      put(variable, Base64.getEncoder().encodeToString(certificate.getEncoded()));
+    }
   }
 
   /**
@@ -148,29 +167,6 @@ public class TestCertificateSteps {
 
     log.info("Loaded {} test certificate entries from {} into Tiger variable prefix '{}'", count,
         manifestPath, variablePrefix);
-  }
-
-  /**
-   * Export a one-based manifest slice as TSV with resolved absolute paths and inline keystore
-   * values. This is intended for external tooling configured with a tab delimiter.
-   *
-   * @param startOneBased one-based start index excluding the header
-   * @param count number of entries to export
-   * @param outputPath output file path
-   * @throws IOException on I/O errors
-   */
-  @Dann("exportiere {int} Zertifikat-Einträge ab Nummer {int} aus dem Testzertifikat-Manifest nach {tigerResolvedString}")
-  @Then("export {int} certificate entries starting at number {int} from the test certificate manifest to {tigerResolvedString}")
-  public void exportCertificateEntries(int count, int startOneBased, String outputPath)
-      throws IOException {
-    var manifestPath = manifestService.resolveManifestPath(null);
-    var writtenPath = manifestService.exportTsvSlice(manifestPath, startOneBased, count,
-        Path.of(outputPath));
-
-    TigerGlobalConfiguration.putValue("test_certificates.last_export_path", writtenPath.toString(),
-        ConfigurationValuePrecedence.TEST_CONTEXT);
-    log.info("Exported {} test certificate entries from {} to {}", count, manifestPath,
-        writtenPath);
   }
 
   /**

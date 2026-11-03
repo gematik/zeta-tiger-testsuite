@@ -1,0 +1,4 @@
+[#A_29977]
+==== A_29977 - Notification Service – Sender-Constrained Token (Token-Binding)
+
+Der Notification Service MUSS sicherstellen, dass das ZETA-Zugriffstoken sender-constrained ist (z. B. via DPoP oder mTLS-gebundenem Token gemäß den ZETA-Vorgaben) und DARF ein Token NICHT akzeptieren, dessen Nachweis der Besitzbindung (Proof-of-Possession) fehlt oder ungültig ist. Damit werden Token-Replay und Bearer-Token-Missbrauch verhindert. [<=]

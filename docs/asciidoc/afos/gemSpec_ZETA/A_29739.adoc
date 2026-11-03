@@ -1,0 +1,4 @@
+[#A_29739]
+==== A_29739 - ZETA Guard, Verifikation des Provisioning Images
+
+Der ZETA Guard MUSS vor dem Laden und Verarbeiten der Inhalte des Provisioning Images folgende Prüfschritte erfolgreich durchführen: Verifikation der Image-Signatur: Die Signatur des OCI-Images MUSS gegen das für die jeweilige Umgebung (prod/test) gültige Signaturzertifikat der gematik erfolgreich validiert werden. [<=]

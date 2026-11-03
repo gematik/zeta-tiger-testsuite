@@ -1,0 +1,6 @@
+[#TA_A_29983_01]
+===== TA_A_29983_01 - Notification Service – Mandantentrennung / Autorisierung je Fachdienst - Versand auf zugeordnete Fachdienste und Channels begrenzen
+
+"Der Notification Service MUSS nach erfolgreicher Authentisierung autorisieren, dass ein Resource Server bzw. ein technischer Nutzer **ausschließlich Notifications für die ihm zugeordneten Fachdienste/Channels versenden** und ausschließlich die Channel-/Geräteinformationen dieser Fachdienste abfragen darf. Nicht autorisierte Zugriffe MUSS er mit 403 ablehnen.
+
+**[<=]**"

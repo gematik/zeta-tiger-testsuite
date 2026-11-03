@@ -1,0 +1,200 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.1.0"
+title: ZETA Guard Attestation Token
+type: object
+description: >-
+  Ein signiertes JWT, das der ZETA Guard nach erfolgreicher
+  Hardware-Attestierung ausstellt ("Fast-Path"). Signiert wird der Token
+  mit PrK.AuthS.Sig des ausstellenden ZETA Guards; der zugehörige
+  PuK.AuthS.Sig wird über das JWKS (jwks_uri gemäß Well-Known-Metadaten)
+  des Ausstellers (iss) veröffentlicht. Ein Ziel-Guard prüft die Signatur
+  gegen dieses JWKS und die Zulassung des Ausstellers über das Entity
+  Statement des Federation Master (A_29914, A_29915).
+
+  Änderungen 1.0.0 → 1.1.0 (Angleichung an A_29914): `aud` ist neuer
+  Pflicht-Claim (Einschränkung des Empfängerkreises auf ZETA Guards),
+  `email_verified` ist neuer Claim und Pflicht, sobald `user_email` gesetzt
+  ist; `sub` ist beschrieben (KVNR bzw. Telematik-ID). Ein nach 1.0.0
+  ausgestellter Token ohne `aud` war nie A_29914-konform und wird vom
+  Ziel-Guard nach A_29915 (b) abgelehnt; der Client fällt dann auf eine
+  erneute Plattform-Attestierung zurück.
+# oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen.
+# Die Zuordnung erfolgt eindeutig über den `const`-Wert von `attestation_type`
+# (tpm | apple | android) im jeweiligen Zweig; die Validierung unter draft-07 ist
+# damit deterministisch und unabhängig vom nachfolgenden `discriminator`.
+oneOf:
+  - $ref: "#/definitions/TpmAttestationToken"
+  - $ref: "#/definitions/AppleAttestationToken"
+  - $ref: "#/definitions/AndroidAttestationToken"
+# `discriminator` ist ein OpenAPI-3-Konstrukt (kein draft-07-Keyword) und wird von
+# JSON-Schema-Validatoren ignoriert; es dient ausschließlich als Hinweis für den
+# Code-Generator, welches Feld die Klassen unterscheidet.
+discriminator:
+  propertyName: attestation_type
+
+definitions:
+  # -------------------------------------------------------------
+  # 1. Gemeinsame Basis-Felder (verhindert Code-Duplizierung)
+  # -------------------------------------------------------------
+  BaseTokenProperties:
+    type: object
+    required: [iss, aud, sub, iat, exp, jti, cnf, platform]
+    # draft-07 `dependencies`: Ist user_email gesetzt, MUSS email_verified
+    # vorhanden sein (A_29914: "verifizierte E-Mail nebst Verifikationsstatus").
+    dependencies:
+      user_email: [email_verified]
+    properties:
+      iss:
+        type: string
+        format: uri
+        description: >-
+          Issuer-URL des ausstellenden ZETA Guards (Wert von `issuer` in dessen
+          Well-Known-Metadaten). Über diese URL ermittelt der Ziel-Guard das JWKS
+          mit PuK.AuthS.Sig zur Signaturprüfung.
+      aud:
+        type: string
+        const: zeta-guard
+        description: >-
+          Empfängerkreis nach RFC 7519. Der Token ist an mehreren ZETA Guards
+          einlösbar und benennt deshalb keinen konkreten Guard, sondern die
+          Empfängerklasse. Ein Ziel-Guard MUSS den Token ablehnen, wenn `aud`
+          nicht exakt diesem Wert entspricht (A_29915 (b)); damit ist der Token
+          nicht als Access Token oder Client Assertion verwendbar.
+      sub:
+        type: string
+        description: >-
+          Identitätssubjekt, für das die Attestierung erfolgte: die KVNR bei
+          Versicherten (mobile Clients) bzw. die Telematik-ID der Institution
+          bei stationären Clients (A_29914).
+      iat: 
+        type: integer 
+      exp: 
+        type: integer 
+      jti: 
+        type: string
+        format: uuid 
+      platform:
+        type: string
+        enum: [windows, linux, apple, android]
+      user_email:
+        type: string
+        format: email
+        description: >-
+          Die bei der ursprünglichen Registrierung per Trust-On-First-Use (TOFU)
+          verifizierte E-Mail-Adresse des Nutzers (mobile Clients: Android, Apple).
+          Wird in den Token aufgenommen, damit sie bei einer erneuten Registrierung
+          im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut
+          übertragen und per OTP verifiziert werden muss; der AuthS übernimmt sie
+          aus dem Token. Für stationäre Clients i. d. R. nicht gesetzt.
+      email_verified:
+        type: boolean
+        description: >-
+          Verifikationsstatus (F1) der in `user_email` enthaltenen Adresse
+          (A_29914). `true`, wenn die Adresse bei der ursprünglichen Registrierung
+          per OTP bestätigt wurde. Pflicht, sobald `user_email` gesetzt ist. Bei
+          `false` DARF der Ziel-Guard die E-Mail nicht als verifiziert übernehmen
+          und MUSS eine OTP-Verifikation nachholen.
+      redirect_uris:
+        type: array
+        description: >-
+          Die bei der ursprünglichen Registrierung verifizierten Redirection-Endpunkte
+          des Clients (claimed-HTTPS Universal-/App-Links auf der App-Hersteller-Domain).
+          Werden in den Token aufgenommen, damit sie bei einer erneuten Registrierung
+          im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut übertragen
+          werden müssen; der AuthS übernimmt sie aus dem Token. Der letzte Pfad-Abschnitt
+          bestimmt den Flow: ".../oidc" = oidc_redirect_uri (SekIDP Auth Code Flow),
+          ".../app" = app_redirect_uri (ZETA Guard Auth Code Flow). Für stationäre
+          Clients i. d. R. nicht gesetzt.
+        items:
+          type: string
+          format: uri
+          pattern: '^https://.+/(oidc|app)$'
+      cnf:
+        type: object
+        description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).
+        required: [jwk]
+        properties:
+          jwk:
+            description: Der verifizierte Public Key (PuK.AK.Sig) als JSON Web Key.
+            type: object
+            required: [kty]
+            properties:
+              kty: { type: string }
+              crv: { type: string }
+              x: { type: string }
+              y: { type: string }
+              n: { type: string }
+              e: { type: string }
+
+  # -------------------------------------------------------------
+  # 2. Die spezifischen Klassen (Sub-Schemas)
+  # -------------------------------------------------------------
+  TpmAttestationToken:
+    type: object
+    # allOf bedeutet hier klassische Vererbung: Erbe von BaseTokenProperties
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, tpm]
+        properties:
+          attestation_type:
+            type: string
+            const: tpm
+          tpm:
+            type: object
+            required: [pcrs, quote_verified]
+            properties:
+              pcrs:
+                type: object
+                additionalProperties: { type: string }
+              quote_verified: 
+                type: boolean
+
+  AppleAttestationToken:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, apple]
+        properties:
+          attestation_type:
+            type: string
+            const: apple
+          apple:
+            type: object
+            required: [app_id, environment, assertion_verified]
+            properties:
+              app_id: 
+                type: string
+              environment:
+                type: string
+                enum: [development, production]
+              assertion_verified: 
+                type: boolean
+
+  AndroidAttestationToken:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, android]
+        properties:
+          attestation_type:
+            type: string
+            const: android
+          android:
+            type: object
+            required: [key_attestation_verified, security_level]
+            properties:
+              key_attestation_verified: 
+                type: boolean
+              security_level:
+                type: string
+                # Hier in snake_case umgewandelt!
+                enum: [software, trusted_environment, strong_box]
+              meets_basic_integrity: 
+                type: boolean
+              meets_device_integrity: 
+                type: boolean
+              meets_strong_integrity: 
+                type: boolean

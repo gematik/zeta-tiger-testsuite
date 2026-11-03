@@ -1,0 +1,4 @@
+[#A_29738]
+==== A_29738 - ZETA Guard, Dynamische Dateinamenerkennung in Unterverzeichnissen des Provisioning Images
+
+Die Komponenten des ZETA Guard DÜRFEN NICHT auf fest vorgegebene (hardcodierte) Dateinamen für die Nutzdaten in den Unterverzeichnissen des Provisioning Images vertrauen, da sich diese im Rahmen von Aktualisierungen ändern können. [<=]

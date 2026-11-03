@@ -1,0 +1,6 @@
+[#TA_A_29849_02]
+===== TA_A_29849_02 - ZETA Client, Reaktion auf terminierte Session - Kein weiterer Refresh-Request mit demselben Session-Kontext
+
+"+++[...]+++
+Der ZETA Client DARF **keinen weiteren Refresh-Request mit demselben Session-Kontext durchführen**.
+**[<=]**"

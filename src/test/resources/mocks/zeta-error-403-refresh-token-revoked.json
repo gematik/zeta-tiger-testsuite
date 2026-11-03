@@ -1,0 +1,4 @@
+{
+  "error": "refresh_token_revoked",
+  "error_description": "The refresh token has been revoked."
+}

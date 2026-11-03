@@ -1,0 +1,4 @@
+[#A_29742]
+==== A_29742 - HTTP Proxy - Verwendung von Trust Anchors und TSL beim ZETA/ASL-Verbindungsaufbau
+
+Der ZETA Guard HTTP-Proxy MUSS für die Etablierung des ZETA/ASL-Kanals die im Provisioning Image bereitgestellten TI-Root-Zertifikate (/ti-roots/roots.json) sowie die Trust Service Status List (/tsl/*.xml) verwenden. Diese Daten MÜSSEN genutzt werden, um die aktuellen Status- und Sperrinformationen der beteiligten Zertifikate im Zuge des Handshakes zu ermitteln. [<=]

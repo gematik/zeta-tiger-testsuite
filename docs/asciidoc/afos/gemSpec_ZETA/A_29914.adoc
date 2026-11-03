@@ -1,0 +1,4 @@
+[#A_29914]
+==== A_29914 - Authorization Server – ZETA Attestation Token als Cross-Guard-Credential: Inhalt und Vertrauensanker
+
+Der Authorization Server MUSS für die fachdienstübergreifende Fast-Path-Registrierung (A_29913) einen ZETA Attestation Token (attestation_type=zeta_attestation_token) als Credential akzeptieren, der von einem von der gematik zugelassenen ZETA Guard signiert ist und für diesen Anwendungsfall mindestens enthält: das Identitätssubjekt (KVNR/Telematik-ID), die verifizierte E‑Mail nebst Verifikationsstatus (F1), die Bestätigung des attestierten Schlüssels (cnf nach [RFC7800]/[RFC7638]), eine eindeutige Kennung (jti), eine Gültigkeitsdauer (exp) sowie eine Einschränkung des Empfängerkreises (aud) auf ZETA Guards. [<=]

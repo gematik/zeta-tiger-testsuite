@@ -1,0 +1,83 @@
+[#UC_02_04]
+== UseCase_02_04: Push-Nachrichten verschlüsseln und Monatsschlüssel fortschreiben
+
+.UseCase_02_04
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Push-Nachrichten verschlüsseln und Monatsschlüssel fortschreiben
+
+| Akteur: | Resource Server
+
+| weitere Akteure: | Notification Service, Push Gateway, registrierte Client-Apps, Testdriver/SDK, Testsuite
+
+| Auslöser: | Eine Notification soll bei aktiviertem verschlüsseltem Versand zugestellt werden.
+
+| Kurzbeschreibung: |
+Die initiale und monatliche Schlüsselableitung wird mit unabhängigen Testvektoren geprüft; Gateway-Ausgaben werden authentifiziert, entschlüsselt und bytegenau mit den Nachrichten verglichen.
+Dieser Use Case ist ein Prüfentwurf; ausführbare Szenarien sind noch nicht vorhanden.
+
+| Vorbedingung: |
+. Verschlüsselter Versand ist aktiviert. Zwei frische App-Registrierungen A/B werden über die regulären SDK-/Testdriver-Operationen mit unterschiedlichen bekannten iss und time_iss_created angelegt. Vorher sind für diese Registrierungen weder Pusher noch Monatsmaterial vorhanden. Registrierung, Aktivierung der Channels und erster Versand sind getrennt auslösbar; bis zum Nachweis der initialen Ableitung wird keine Notification ausgelöst. Der kontrollierte Gateway-Empfänger zeichnet später die zugeordnete NS-Ausgabe vollständig auf.
+. Ein unabhängiger Referenzableiter verwendet die Formeln aus gemF_PushNotification (A_27157, A_27158-01, A_27160); er übernimmt keine berechneten Schlüssel aus der NS-Implementierung.
+. Eine isolierte NS-Prüfuhr steuert Erstellungsmonat, Folgemonat, Jahreswechsel und mehrere übersprungene Monate. Ausgangszeiten und UTC-Monatszuordnung sind im Prüfprofil festgehalten. Für Rotationsfälle enthält der Speicher nachweislich bereits altes Monatsmaterial aus einem vorherigen Versand.
+. Ein geschützter Komponentenadapter beobachtet je Registrierung Ableitungsschritte und Bestand des shared-secret-/AES-Monatsmaterials vor und nach jedem Schritt. Uhrenadapter, Speicherzugang und konkrete NS-/Gateway-Routen werden im Ausführungsprofil benannt.
+. Testnachrichten sind eine kurze ASCII-Nachricht, UTF-8-Mehrbytezeichen und ein Inhalt von genau 1018 UTF-8-Nutzbytes. Mit sechs Byte Framing passen sie in 1024 Bytes; alle sonstigen Payloadlimits bleiben eingehalten.
+
+| Nebenbedingung: |
+Die Prüfung endet an der beobachteten Gateway-Ausgabe und behauptet keine Zustellung an ein reales Mobilgerät.
+Kontrollierte NS-Zeit und geschützter Speicheradapter sind vor Ausführung der Rotations-/Löschvarianten bereitzustellen; reine Entschlüsselung belegt keine Schlüsselvernichtung.
+
+| Ablauf: |
+*Registrierung und initiale Ableitung vor dem ersten Versand*
+
+. Der Testdriver legt A und B getrennt über den regulären SDK-Registrierungsvorgang an. Die Testsuite beobachtet den jeweiligen POST /pushers/set und die zugehörige Antwort. Noch vor einer Notification bestätigt der geschützte Komponentenadapter die bei diesem Aufruf erfolgte initiale Ableitung sowie die Speicherung von shared-secret-Jahr-Monat und AES/GCM-Schlüssel-Jahr-Monat zur richtigen App-Registrierung nach A_27157.
+. Der Referenzableiter berechnet aus dem jeweiligen iss und Erstellungsmonat die initiale HKDF-SHA256-Ableitung einschließlich info yyyy-MM und 64 abgeleiteten Bytes nach den referenzierten Formeln. Der Adapter vergleicht das bereits gespeicherte Material unabhängig mit den Referenzwerten und der Zuordnung zu A beziehungsweise B. Eine erst beim späteren Versand vorgenommene Ableitung erfüllt diese Prüfung nicht.
+
+*Erster Versand im Erstellungsmonat*
+
+. Nach dem Registrierungsnachweis und der Channel-Aktivierung sendet der Resource Server über die NS-RS-Schnittstelle eine Notification mit eindeutiger Korrelations-ID an A und B. Die Testsuite ordnet die erfassten Gateway-Ausgaben jeweils Nutzer, Channel und App-Registrierung zu.
+. Die Testsuite dekodiert ciphertext aus Base64 und prüft IV, Ciphertext und Authentication Code in dieser Reihenfolge. Mit dem unabhängig abgeleiteten aktuellen AES/GCM-Schlüssel authentifiziert und entschlüsselt sie die Ausgabe; der Schlüssel der anderen Registrierung ist eine getrennte negative Kontrolle.
+. Sie prüft 1024 entschlüsselte Bytes mit PNM1, zwei Byte Big-Endian-Paddinglänge, Paddingwert 0x20 und unveränderten Nutzbytes. Sie wiederholt dies für kurze, maximal passende und Mehrbyte-Nachrichten; die Nutzlänge wird in UTF-8-Bytes gemessen.
+
+*Monatsfortschreibung*
+
+. Für getrennte Speicherstände verschiebt die Testsuite die Prüfuhr in den Folgemonat, über den Jahreswechsel und über mehrere ausgelassene Monate. Vorher dokumentiert sie vorhandenes altes Schlüsselmaterial; eine bloß zurückdatierte Neuregistrierung ersetzt diese Ausgangslage nicht.
+. Der Resource Server sendet eine neue korrelierte Notification. Die Testsuite rechnet ab dem jüngsten gespeicherten Monatsgeheimnis jeden fehlenden Monat mit HKDF-SHA256, info yyyy-MM und 64 Bytes nach. Ein weiterer Versand im selben Monat verwendet dasselbe aktuelle Material.
+. Der geschützte Adapter belegt nach jedem Ableitungsschritt das Löschen älterer shared-secret-Jahr-Monat und AES/GCM-Schlüssel-Jahr-Monat dieser Registrierung; die andere Registrierung bleibt unbeeinflusst.
+. Die Testsuite entschlüsselt jede Ausgabe unabhängig und vergleicht time_message_encrypted im Format yyyy-MM mit dem tatsächlich verwendeten Ableitungsmonat, insbesondere beim Monats-/Jahreswechsel.
+
+| Nachbedingung: |
+Jede Gateway-Ausgabe authentifiziert und entschlüsselt sich mit dem korrekten Registrierungsschlüssel und enthält unveränderte UTF-8-Daten im vorgeschriebenen Paddingformat.
+Monatsangabe und Ableitung stimmen überein; altes Material ist nach jedem Schritt nachweislich entfernt. Prüfuhr und Testregistrierungen sind bereinigt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29970_01>>
+* <<TA_A_29970_02>>
+* <<TA_A_29970_03>>
+* <<TA_A_29970_04>>
+* <<TA_A_29970_05>>
+* <<TA_A_29970_06>>
+* <<TA_A_29970_07>>
+* <<TA_A_29970_08>>
+* <<TA_A_29970_09>>
+
+|===
+
+[mermaid,uc-02-04-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant R as Resource Server
+    participant N as Notification Service
+    participant G as Push Gateway
+    participant T as Testsuite / Prüfempfänger
+    T->>N: Reguläre SDK-Registrierung A/B ohne Versand
+    N->>N: Initiales Monatsmaterial ableiten und speichern
+    T->>N: Material vor erstem Versand mit Referenzvektor prüfen
+    R->>N: Notification für aktive registrierte Apps
+    N->>N: Aktuelles Monatsmaterial verwenden, bei Bedarf fortschreiben
+    N->>N: UTF-8, Padding, AES/GCM und Base64
+    N->>G: ciphertext und time_message_encrypted
+    G-->>T: Beobachtete Ausgabe
+    T->>T: Authentifizieren, entschlüsseln und Bytefolge prüfen
+....

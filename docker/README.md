@@ -11,10 +11,13 @@ Dieses Repo liefert zwei Docker-Images:
 
 CI baut beide Images via Buildx:
 
--
-`docker buildx build --build-arg GITLAB_BASE_URL=${GITLAB_BASE_URL} --build-arg TESTPROXY_PROJECT_ID=${TESTPROXY_PROJECT_ID} -f docker/frontend/Dockerfile -t ${CI_REGISTRY_IMAGE}:frontend .`
--
-`docker buildx build --build-arg GITLAB_BASE_URL=${GITLAB_BASE_URL} --build-arg TESTPROXY_PROJECT_ID=${TESTPROXY_PROJECT_ID} -f docker/quality_gate/Dockerfile -t ${CI_REGISTRY_IMAGE}:quality_gate .`
+- `docker buildx build --build-arg GITLAB_BASE_URL=${GITLAB_BASE_URL} --build-arg TESTPROXY_PROJECT_ID=${TESTPROXY_PROJECT_ID} -f docker/frontend/Dockerfile -t ${CI_REGISTRY_IMAGE}:frontend .`
+- `docker buildx build --build-arg GITLAB_BASE_URL=${GITLAB_BASE_URL} --build-arg TESTPROXY_PROJECT_ID=${TESTPROXY_PROJECT_ID} -f docker/quality_gate/Dockerfile -t ${CI_REGISTRY_IMAGE}:quality_gate .`
+
+Erfolgreiche Builds auf dem Default-Branch veröffentlichen zusätzlich `<UTC-Zeitstempel>-<kurzer Commit-SHA>-<Job-ID>`,
+zum Beispiel `20260925T143012Z-a1b2c3d4-123456789`.
+Vorhandene Tags bleiben verfügbar.
+Dies gilt für beide Images (`frontend` und `quality_gate`), jeweils mit eigener Job-ID.
 
 ## Lokal bauen und ausführen
 
@@ -44,16 +47,18 @@ Ausführen (EntryPoint ruft `/app/run-tests.sh` auf):
 # Maven-basiert (führt mvn verify im Container aus)
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
-  -e CUCUMBER_TAGS="@blocker" \
+  -e CUCUMBER_TAGS="not @Ignore and not @oidc and @blocker" \
   -e ZETA_BASE_URL="zeta-kind.local" \
   testsuite:frontend
+```
 
+```sh
 # Runtime-only (nutzt gepackte Artefakte + run-tests.sh)
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
   -e CUCUMBER_TAGS="@blocker" \
   -e ZETA_BASE_URL="zeta-kind.local" \
@@ -65,17 +70,20 @@ Ausführen mit gemounteten Report-Verzeichnissen:
 ```sh
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
-  -e CUCUMBER_TAGS="@blocker" \
+  -e CUCUMBER_TAGS="not @Ignore and not @oidc and @blocker" \
   -v "$PWD/docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv:/app/docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv:ro" \
   -v "$PWD/target/site/serenity:/app/target/site/serenity" \
   -v "$PWD/target/failsafe-reports:/app/target/failsafe-reports" \
   -v "$PWD/target/allure-results:/app/target/allure-results" \
   testsuite:frontend
+```
+
+```sh
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
   -e CUCUMBER_TAGS="@blocker" \
   -v "$PWD/docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv:/app/docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv:ro" \
@@ -89,21 +97,25 @@ Umgebungsvariablen (beide Images, außer angegeben):
 
 | Variable                               | Pflicht | Default                                                                              | Beschreibung                                                                                                                                                               |
 |----------------------------------------|---------|--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `CUCUMBER_TAGS`                        | nein    | (leer)                                                                               | Tag-Filter für die Szenario-Auswahl. Ein leerer Wert startet im Docker-/CI-Pfad keinen festen Tag-Filter.                                                                  |
+| `CUCUMBER_TAGS`                        | nein    | (leer)                                                                               | Optionaler Tag-Filter. Leer: Profilauswahl. Frontend: ersetzt den Profilfilter. Quality-Gate: zusätzliche Einschränkung der Profilauswahl.                                 |
 | `ZETA_BASE_URL`                        | nein    | `zeta-kind.local`                                                                    | Ziel-Base-URL für Guard/Client (Host ohne Scheme).                                                                                                                         |
-| `ZETA_PROXY_URL`                       | nein    | `${zeta_base_url}:9999`                                                              | Proxy-URL (Host:Port, ohne Scheme).                                                                                                                                        |
+| `ZETA_PORT_FORWARD_HOST`               | nein    | `localhost`                                                                          | Gemeinsamer Host für alle lokalen Port-Forwards. Im Docker-Bridge-Netzwerk einmalig auf `host.docker.internal` setzen.                                                     |
+| `ZETA_PROXY_URL`                       | nein    | `${zeta_port_forward_host}:9999`                                                     | Individueller Override für Tiger Proxy (Host:Port, ohne Scheme).                                                                                                           |
 | `ZETA_K8S_NAMESPACE`                   | nein    | `zeta-local`                                                                         | Kubernetes-Namespace für Telemetrie-Log-Abfragen (`resource.k8s.namespace.name`) sowie kubectl-/Deployment-bezogene Prüfungen (als `-Dzeta_k8s_namespace` weitergereicht). |
 | `ALLOW_DEPLOYMENT_MODIFICATION`        | nein    | (leer)                                                                               | Setzt `-Dallow_deployment_modification=true\|false` für Szenarien mit `@deployment_modification`.                                                                          |
 | `ALLOW_PERFORMANCE_TESTS`              | nein    | (leer)                                                                               | Setzt `-Dallow_performance_tests=true\|false` für Szenarien mit `@performance`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                         |
 | `ALLOW_LONGRUNNING_TESTS`              | nein    | (leer)                                                                               | Setzt `-Dallow_longrunning_tests=true\|false` für Szenarien mit `@longrunning`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                         |
 | `TPM_ENVIRONMENT`                      | nein    | (leer)                                                                               | Setzt `-Dtpm_environment=true\|false` für Szenarien mit `@tpm_environment`. Ohne gesetzten Wert werden diese Szenarien als `skipped` markiert.                             |
-| `OPENSEARCH_URL`                       | nein    | `${zeta_base_url}:9200`                                                              | OpenSearch-URL (Telemetry-Logs), ohne Scheme.                                                                                                                              |
-| `PROMETHEUS_URL`                       | nein    | `${zeta_base_url}:9090`                                                              | Prometheus-Host (Telemtry Metriken), ohne Scheme.                                                                                                                          |
-| `ZETA_TLS_TEST_TOOL_SERVICE_URL`       | nein    | `${zeta_base_url}:9012`                                                              | Service-URL des TLS-Test-Tools, ohne Scheme; z. B. `zeta-tls-test-tool-service.zeta-staging.svc:9012`.                                                                     |
+| `OPENSEARCH_URL`                       | nein    | `${zeta_port_forward_host}:9200`                                                     | Individueller Override für OpenSearch (Telemetry-Logs), ohne Scheme.                                                                                                       |
+| `PROMETHEUS_URL`                       | nein    | `${zeta_port_forward_host}:9090`                                                     | Individueller Override für Prometheus (Telemetry-Metriken), ohne Scheme.                                                                                                   |
+| `JAEGER_URL`                           | nein    | `${zeta_port_forward_host}:16686`                                                    | Individueller Override für die direkte Jaeger Query-API, ohne Scheme.                                                                                                      |
+| `ZETA_TLS_TEST_TOOL_SERVICE_URL`       | nein    | `${zeta_port_forward_host}:9012`                                                     | Individueller Override für das TLS-Test-Tool, ohne Scheme.                                                                                                                 |
+| `ZETA_CERT_VALIDATION_MOCK_URL`        | nein    | `${zeta_port_forward_host}:9013`                                                     | Individueller Override für den Zertifikatsvalidierungs-Mock, ohne Scheme.                                                                                                  |
+| `LOAD_DISPENSER_URL`                   | nein    | `${zeta_port_forward_host}:50051`                                                    | Individueller Override für den Load Dispenser (gRPC), ohne Scheme.                                                                                                         |
 | `ZETA_TEST_CERTIFICATES_DIR`           | nein    | `/app/zeta-test-certificates` im Quality-Gate-Image, sonst aus `tiger/defaults.yaml` | Verzeichnis des `zeta-test-certificates` Checkouts; wird als `-DtestCertificates.dir=...` weitergereicht.                                                                  |
 | `SMB_KEYSTORE_FILE_B64`                | nein    | aus `tiger/defaults.yaml`                                                            | Pfad zur Base64-codierten SMC-B PKCS#12-Datei; wird als `-Dzeta_k8s_smb_keystore_file=...` weitergereicht.                                                                 |
 | `SMB_KEYSTORE_PW_FILE`                 | nein    | aus `tiger/defaults.yaml`                                                            | Pfad zur Passwortdatei der SMC-B PKCS#12-Datei; wird als `-Dzeta_k8s_smb_keystore_password_file=...` weitergereicht.                                                       |
-| `PROFILE`                              | nein    | (leer)                                                                               | Optionales Tiger-Profil (z. B. `proxy`).                                                                                                                                   |
+| `PROFILE`                              | nein    | (leer)                                                                               | Authentisierungsprofil: leer/`proxy` für SMC-B, `oidc`/`oidc-proxy` für OIDC. Frontend aktiviert das passende Maven-Profil.                                                |
 | `SERENITY_EXPORT_DIR`                  | nein    | (leer)                                                                               | Optionaler Ausgabeordner für Serenity-Reports.                                                                                                                             |
 | `CUCUMBER_EXPORT_DIR`                  | nein    | (leer)                                                                               | Optionaler Ausgabeordner für Cucumber-JSON.                                                                                                                                |
 | `ALLURE_RESULTS_DIR`                   | nein    | (leer)                                                                               | Optionaler Ausgabeordner für Allure-Ergebnisse (Quality-Gate-Image; Maven nutzt `/app/target/allure-results` oder `MAVEN_OPTS=-Dallure.results.directory=...`).            |
@@ -111,7 +123,7 @@ Umgebungsvariablen (beide Images, außer angegeben):
 
 Wichtig:
 
-- `ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` werden nur dann als `-D...`
+- `ZETA_BASE_URL`/`ZETA_PORT_FORWARD_HOST` und die einzelnen Service-URL-Overrides werden nur dann als `-D...`
   durchgereicht, wenn sie nicht leer sind.
 - `ZETA_TEST_CERTIFICATES_DIR` wird, falls gesetzt, als `-DtestCertificates.dir=...`
   weitergereicht.
@@ -132,16 +144,19 @@ Wichtig:
   `-Dallow_longrunning_tests=...` weitergereicht.
 - `TPM_ENVIRONMENT` wird, falls gesetzt, als
   `-Dtpm_environment=...` weitergereicht.
-- `CUCUMBER_TAGS` wird bei leerem Wert bewusst leer weitergereicht.
-  Dadurch wird im Docker-/CI-Pfad nicht implizit auf `@blocker` oder `@critical` eingeschränkt.
+- Das Profil wählt die Szenarien aus: `@oidc` nur für OIDC, `@smb` nur für SMC-B,
+  Szenarien ohne Authentisierungstag für beide. `@Ignore` ist standardmäßig ausgeschlossen.
+- Zusätzliche `CUCUMBER_TAGS` sind für einen vollständigen Profillauf nicht erforderlich.
+  Im Frontend ersetzt ein gesetzter Wert den nativen Maven-Profilfilter vollständig;
+  behalten Sie deshalb `not @Ignore and not @oidc` für SMC-B beziehungsweise
+  `not @Ignore and not @smb` für OIDC bei. Das Quality-Gate verknüpft zusätzliche Tags
+  mit der Profilauswahl.
 - Szenarien mit `@performance`, `@longrunning` oder `@tpm_environment` werden ohne die jeweiligen Opt-in-Flags weiterhin entdeckt,
   aber im Report als `skipped` markiert.
-- Leere oder nicht gesetzte Werte fallen auf die Defaults aus `tiger/defaults.yaml` zurück
-  (typisch `zeta-local`), was in Staging-Umgebungen zu falschen Telemetrie-Ergebnissen führen kann.
-- `OPENSEARCH_URL` steuert Telemetrie-Log-Abfragen.
-- Telemetrie-Metrik-Abfragen laufen über `https://${ZETA_BASE_URL}/prometheus`.
-- `ZETA_TLS_TEST_TOOL_SERVICE_URL` überschreibt `zeta_tls_test_tool_service_url`, z. B. mit
-  `zeta-tls-test-tool-service.zeta-staging.svc:9012`.
+- Leere oder nicht gesetzte Werte fallen auf die Defaults aus `tiger/defaults.yaml` zurück.
+  Der Namespace bleibt dabei `zeta-local`, während die Infrastruktur-APIs über `localhost` laufen.
+- `OPENSEARCH_URL`, `PROMETHEUS_URL`, `JAEGER_URL`, `ZETA_TLS_TEST_TOOL_SERVICE_URL`,
+  `ZETA_CERT_VALIDATION_MOCK_URL` und `LOAD_DISPENSER_URL` überschreiben nur den jeweiligen Dienst.
 - Für Cluster-Zugriff im Container `-v "$HOME/.kube:/home/zeta/.kube:ro"` setzen (Windows analog:
   `-v %USERPROFILE%\\.kube:/home/zeta/.kube:ro`).
 - Für schreibbare Bind-Mounts die Images mit passender Host-UID/GID bauen, z. B.
@@ -153,10 +168,10 @@ Frontend-Image mit Proxy und @critical:
 ```bash
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
   -e PROFILE=proxy \
-  -e CUCUMBER_TAGS="@critical" \
+  -e CUCUMBER_TAGS="not @Ignore and not @oidc and @critical" \
   -e ZETA_BASE_URL="zeta-kind.local" \
   -e ZETA_PROXY_URL="zeta-kind.local:9999" \
   testsuite:frontend
@@ -167,7 +182,7 @@ Quality-Gate-Image mit Proxy und @critical:
 ```bash
 docker run --rm \
   --network=host \
-  --add-host zeta-kind.local:<host-ip> \
+  --add-host "zeta-kind.local:<host-ip>" \
   -v "$HOME/.kube:/home/zeta/.kube:ro" \
   -e PROFILE=proxy \
   -e CUCUMBER_TAGS="@critical" \
@@ -181,6 +196,96 @@ docker run --rm \
 Die Images laufen zur Laufzeit als User `zeta`.
 Für schreibbare Host-Mounts sollte der Container mit derselben UID/GID wie der Host-Benutzer gebaut werden, damit Report-Verzeichnisse ohne
 Root-Rechte beschrieben werden können.
+
+### Profilauswahl und zusätzliche Tags im Quality-Gate
+
+Das Quality-Gate-Image kombiniert die Profilauswahl mit `CUCUMBER_TAGS` durch `and`.
+Zusätzliche Tags ändern weder das Authentisierungsprofil noch die Routen; sie schränken
+nur die bereits zum Profil passenden Szenarien weiter ein. Ohne zusätzliche Tags laufen
+alle zum Profil passenden Szenarien einschließlich der gemeinsamen Fälle.
+
+| `PROFILE`    | `CUCUMBER_TAGS`         | Auswahl                                                                                    |
+|--------------|-------------------------|--------------------------------------------------------------------------------------------|
+| `proxy`      | leer                    | SMC-B und gemeinsame Szenarien                                                             |
+| `oidc-proxy` | leer                    | OIDC und gemeinsame Szenarien                                                              |
+| `proxy`      | `@critical`             | Kritische SMC-B- und gemeinsame Szenarien                                                  |
+| `oidc-proxy` | `@blocker or @critical` | OIDC und gemeinsame Szenarien mit mindestens einem dieser Tags                             |
+| `oidc-proxy` | `@oidc`                 | Nur OIDC-spezifische Szenarien, ohne gemeinsame Fälle                                      |
+| `oidc-proxy` | `@smb`                  | Keine Szenarien; der Lauf endet mit Fehler, weil Profil und Zusatzfilter sich ausschließen |
+
+Der Basisfilter des Quality-Gate-Images enthält bereits `not @Ignore` und die
+Authentisierungsabgrenzung. In `CUCUMBER_TAGS` beziehungsweise im Pipeline-Input
+`cucumber-tags` werden diese Bedingungen nicht wiederholt; beispielsweise reicht
+`@blocker`. Die Gherkin-Markierung `@Ignore` allein verhindert die Ausführung von
+Cucumber-Szenarien und Hooks nicht zuverlässig; dafür sorgt der Basisfilter.
+Ohne Proxy gelten dieselben Auswahlregeln mit `PROFILE=oidc` für OIDC und leerem
+`PROFILE` für SMC-B. Die Laufzeitvoraussetzungen und Opt-in-Flags gelten weiterhin.
+
+Beispiel für einen OIDC-Lauf mit Proxy und zusätzlichen Prioritätstags:
+
+```bash
+docker run --rm \
+  --network=host \
+  --add-host "zeta-kind.local:<host-ip>" \
+  -v "$HOME/.kube:/home/zeta/.kube:ro" \
+  -e PROFILE=oidc-proxy \
+  -e 'CUCUMBER_TAGS=@blocker or @critical' \
+  -e ZETA_BASE_URL=zeta-kind.local \
+  testsuite:quality_gate
+```
+
+Der effektive Cucumber-Filter ist:
+
+```text
+(not @Ignore and not @smb) and (@blocker or @critical)
+```
+
+Im `testsuite-ci`-Pipeline-Aufruf mit `testsuite-variant=quality_gate` wird der Input
+`cucumber-tags` als `CUCUMBER_TAGS` weitergereicht. Beispielsweise schränkt
+`cucumber-tags=@blocker or @critical` beide Läufe einer `smb-and-oidc`-Pipeline auf die
+jeweils passenden Prioritätstags ein; die Profilauswahl bleibt erhalten.
+Diese Regeln gelten für ein Image, das die hier dokumentierte Testsuite-Version enthält.
+
+Beim Frontend-Image ersetzt `CUCUMBER_TAGS` dagegen den nativen Maven-Profilfilter.
+Für dasselbe OIDC-Beispiel muss dort der vollständige Ausdruck
+`not @Ignore and not @smb and (@blocker or @critical)` gesetzt werden.
+Das konfigurierte Authentisierungsprofil und die Routen bleiben auch dabei unverändert.
+
+### Vollständiger Docker-Lauf mit lokalen Port-Forwards
+
+Starten Sie die Port-Forwards auf dem Docker-Host wie im Haupt-[README](../README.md#infrastruktur-und-port-forwards).
+Mit `--network=host` erreicht der Container die Standardadressen `localhost:9999`, `localhost:9200`,
+`localhost:9090`, `localhost:16686`, `localhost:9012`, `localhost:9013` und `localhost:50051`
+ohne zusätzliche URL-Variablen.
+Der Namespace bleibt eine Variable.
+Das Beispiel verwendet das Quality-Gate-Image. Der Zusatzfilter schließt lediglich
+Performance-, Langlauf- und TPM-Szenarien aus; `@Ignore` und OIDC-Szenarien werden
+bereits durch das aktive SMC-B-Profil ausgeschlossen.
+
+```bash
+docker run --rm \
+  --network=host \
+  -v "$HOME/.kube:/home/zeta/.kube:ro" \
+  -e PROFILE=proxy \
+  -e ZETA_BASE_URL="zeta-staging.spree.de" \
+  -e ZETA_K8S_NAMESPACE="zeta-staging" \
+  -e ALLOW_DEPLOYMENT_MODIFICATION=true \
+  -e 'CUCUMBER_TAGS=not @performance and not @longrunning and not @tpm_environment' \
+  testsuite:quality_gate
+```
+
+Im Docker-Bridge-Netzwerk starten Sie die Port-Forwards wie im
+[Haupt-README](../README.md#infrastruktur-und-port-forwards), jeweils mit
+`--address=0.0.0.0`, zum Beispiel:
+
+```sh
+kubectl -n zeta-staging port-forward --address=0.0.0.0 svc/tiger-proxy 9999:9999
+```
+
+Setzen Sie am Container `-e ZETA_PORT_FORWARD_HOST=host.docker.internal`.
+Unter Linux muss der Hostname gegebenenfalls mit
+`--add-host host.docker.internal:host-gateway` ergänzt werden.
+`0.0.0.0` macht die Ports im lokalen Netzwerk erreichbar und sollte daher nur in vertrauenswürdigen Netzwerken verwendet werden.
 
 ## GitLab CI Nutzung für das Quality-Gate
 
@@ -196,9 +301,7 @@ quality-gate:
     CUCUMBER_TAGS: ""
     # PROFILE: "proxy"  # nur bei Bedarf für Proxy-Erfassung setzen
     # ZETA_RUNTIME_FAILURE_ANNOTATIONS_CSV: "docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv"  # optional für interne rote Testrun-Erklärungen
-    # OPENSEARCH_URL: "zeta-kind.local:9200"  # optional für Telemetrie-Log-Abfragen
-    # PROMETHEUS_URL: "zeta-kind.local:9090"  # optional für Telemetry-Metrik Abfragen
-    # ZETA_TLS_TEST_TOOL_SERVICE_URL: "zeta-tls-test-tool-service.zeta-staging.svc:9012"  # optional für das TLS-Test-Tool
+    # ZETA_PORT_FORWARD_HOST: "host.docker.internal"  # nur ohne --network=host
   artifacts:
     when: always
     paths:
@@ -210,14 +313,16 @@ quality-gate:
 
 Hinweise:
 
-- `CUCUMBER_TAGS`/`ZETA_BASE_URL`/`ZETA_PROXY_URL`/`OPENSEARCH_URL`/`PROMETHEUS_URL`/`ZETA_TLS_TEST_TOOL_SERVICE_URL` nach Bedarf setzen.
-- Ein leerer `CUCUMBER_TAGS`-Wert bedeutet im Docker-/CI-Pfad: keine feste Tag-Vorauswahl,
-  also breiter Lauf mit den zusätzlichen Skip-Guards aus `Hooks`.
+- `CUCUMBER_TAGS`, `ZETA_BASE_URL` und `ZETA_K8S_NAMESPACE` nach Bedarf setzen.
+  Bei lokalen Port-Forwards sind keine einzelnen Service-URL-Variablen notwendig.
+- Ein leerer `CUCUMBER_TAGS`-Wert verwendet die Profilauswahl, einschließlich gemeinsamer Szenarien.
+  Die zusätzlichen Laufzeitfreigaben gelten weiterhin.
 - `ALLOW_PERFORMANCE_TESTS=true` und `ALLOW_LONGRUNNING_TESTS=true` nur dann setzen,
   wenn diese Szenarien in CI wirklich ausgeführt werden sollen.
 - Das Quality-Gate-Image erwartet beim Build ein Checkout unter `.cache/zeta-test-certificates`.
 - Lokal lässt sich das einfach aus `~/IdeaProjects/zeta-test-certificates` nach `.cache/zeta-test-certificates` klonen.
-- Nach dem Build sind im Quality-Gate-Image standardmäßig die Manifestdateien und `keystores/` unter
+- Nach dem Build sind im Quality-Gate-Image standardmäßig die Manifestdateien, `keystores/`, `certs/` und
+  `ehca_OCSP_Signer_SMCB_91_ecc/GEM.SMCB-CA91-TEST-ONLY.pem` unter
   `/app/zeta-test-certificates` enthalten.
 - Die Deployment-SMC-B-Testidentität wird nicht in das Image eingebaut.
   Stellen Sie die Pfade zur Base64-codierten PKCS#12-Datei und zur Passwortdatei über `SMB_KEYSTORE_FILE_B64`/`SMB_KEYSTORE_PW_FILE` bereit.
@@ -237,6 +342,17 @@ Hinweise:
 - Interne Fehlerannotationen können per `ZETA_RUNTIME_FAILURE_ANNOTATIONS_CSV` auf eine gemountete CSV gesetzt werden.
   Das CSV-Format ist in `docs/scripts/README.md` beschrieben.
   Die Spalte `Verantwortlich` kann für die verantwortliche Partei gepflegt werden.
+- Beide Images erzeugen zusätzlich `target/site/serenity/runtime_failure_annotation_check.csv`.
+  Die Datei enthält pro fehlendem Ticket und pro bereinigbarer Annotation eine eigene Zeile.
+  Die Werte der Spalte `Typ` sind englische, maschinenlesbare Konstanten wie
+  `FAILURE_WITHOUT_TICKET`, `ANNOTATION_ACTIVE`, `EXECUTION_INCOMPLETE` und `TICKET_REMOVABLE`.
+  `runtime_failure_annotation_check.status` ist `PASS`, wenn alle beobachteten Fehler abgedeckt
+  sind, und `FAIL`, wenn ein Ticket fehlt, eine Annotation ungültig oder eine Zuordnung mehrdeutig ist.
+  Der Marker wird ausschließlich als Audit-Artefakt bereitgestellt und verändert den Job-Status nicht.
+  Der Job-Status wird ausschließlich durch Maven/Failsafe beziehungsweise den eigentlichen Testlauf bestimmt.
+  Der Marker bewertet nur die Ticketabdeckung und ersetzt nicht den eigentlichen Teststatus.
+  Annotationen für nicht ausgeführte oder nur übersprungene Szenarien werden ausdrücklich als solche
+  ausgegeben und nicht automatisch zum Löschen vorgeschlagen.
 - `ALLURE_RESULTS_DIR` wird von beiden Images ausgewertet (das Maven-Image symlinkt
   `/app/target/allure-results` auf den Export-Ordner).
 - Die Docker-Images enthalten die TLS-Test-Tool-Zertifikatsfixtures aus `src/test/resources/tls-test-tool/certificates`.
@@ -283,7 +399,7 @@ docker-image-qualitygate:
     - rm -rf "${CERT_REPO_DIR}"
     - git clone --reference-if-able "${CERT_REPO_GIT_CACHE_DIR}" --no-checkout "${CERT_REPO_GIT_CACHE_DIR}" "${CERT_REPO_DIR}"
     - git -C "${CERT_REPO_DIR}" sparse-checkout init --cone
-    - git -C "${CERT_REPO_DIR}" sparse-checkout set keystores manifest
+    - git -C "${CERT_REPO_DIR}" sparse-checkout set certs keystores manifest ehca_OCSP_Signer_SMCB_91_ecc
     - git -C "${CERT_REPO_DIR}" -c advice.detachedHead=false checkout "${cert_repo_sha}"
     - test -f "${CERT_REPO_DIR}/manifest/cert-manifest.tsv"
     - test -f "${CERT_REPO_DIR}/manifest/truststore-manifest.tsv"
@@ -294,8 +410,9 @@ docker-image-qualitygate:
 
 Wichtig:
 
-- Der zusätzliche Inhalt wird vor dem Docker-Build per Sparse-Checkout nach `.cache/zeta-test-certificates` geholt und dann per `COPY` ins
-  Image übernommen.
+- Der zusätzliche Inhalt wird vor dem Docker-Build per Sparse-Checkout nach `.cache/zeta-test-certificates` geholt.
+  Die Build-Stage übernimmt ihn mit `COPY . .` und kopiert das gesamte Verzeichnis nach `/runtime/app/zeta-test-certificates`.
+  Das abschließende `COPY` aus der Build-Stage übernimmt es nach `/app/zeta-test-certificates` im Runtime-Image.
 - Vor dem Docker-Build wird geprüft, dass `manifest/cert-manifest.tsv`,
   `manifest/truststore-manifest.tsv` und `manifest/keystore-manifest.tsv` vorhanden sind.
 - SMC-B Deployment-Keymaterial muss zur Laufzeit als Datei verfügbar sein.

@@ -26,6 +26,10 @@ package de.gematik.zeta.steps;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.glue.HttpGlueCode;
+import de.gematik.zeta.JwtVariant;
+import de.gematik.zeta.services.ZetaDeploymentConfiguration;
+import io.cucumber.java.de.Dann;
+import io.cucumber.java.en.Then;
 import io.restassured.http.Method;
 import java.io.IOException;
 import java.net.URI;
@@ -47,6 +51,15 @@ public class SigningKeyPreflight {
   private final TigerProxyAccessTokenExtractor accessTokenExtractor;
   private final JwtSteps jwtSteps;
   private final KeycloakSigningKeyResolver keycloakSigningKeyResolver;
+  private final HsmSimulatorSigningKeyResolver hsmSimulatorSigningKeyResolver;
+
+  /** Creates scenario steps when Cucumber instantiates this glue class through reflection. */
+  @SuppressWarnings("unused")
+  public SigningKeyPreflight() {
+    this(new TigerProxyManipulationsSteps(), new TigerProxyAccessTokenExtractor(), new JwtSteps(),
+        new KeycloakSigningKeyResolver(ZetaDeploymentConfiguration.getServiceInstance(), new JwtSteps()),
+        new HsmSimulatorSigningKeyResolver(ZetaDeploymentConfiguration.getServiceInstance(), new JwtSteps()));
+  }
 
   /**
    * Creates a signing-key preflight with its required collaborators.
@@ -55,26 +68,59 @@ public class SigningKeyPreflight {
    * @param accessTokenExtractor reader for the freshly issued Access Token
    * @param jwtSteps JWT signature verification helper
    * @param keycloakSigningKeyResolver fallback resolver for the active Keycloak key
+   * @param hsmSimulatorSigningKeyResolver fallback resolver for the configured test HSM simulator
    */
   public SigningKeyPreflight(
       final TigerProxyManipulationsSteps tigerProxyManipulationsSteps,
       final TigerProxyAccessTokenExtractor accessTokenExtractor,
       final JwtSteps jwtSteps,
-      final KeycloakSigningKeyResolver keycloakSigningKeyResolver) {
+      final KeycloakSigningKeyResolver keycloakSigningKeyResolver,
+      final HsmSimulatorSigningKeyResolver hsmSimulatorSigningKeyResolver) {
     this.tigerProxyManipulationsSteps = tigerProxyManipulationsSteps;
     this.accessTokenExtractor = accessTokenExtractor;
     this.jwtSteps = jwtSteps;
     this.keycloakSigningKeyResolver = keycloakSigningKeyResolver;
+    this.hsmSimulatorSigningKeyResolver = hsmSimulatorSigningKeyResolver;
   }
 
   /**
-   * Verifies the configured signing key and refreshes it through Keycloak when necessary.
+   * Verifies the configured signing key and automatically resolves a replacement when necessary.
    *
    * @throws AssertionError if no usable signing key can be made available
    */
   public void ensureAvailable() {
     var keyPath = resolveSigningKeyPath();
-    var accessToken = issueFreshAccessToken();
+    ensureAvailableForToken(keyPath, issueFreshAccessToken());
+  }
+
+  /**
+   * Prepares the signing key against the scenario's observed token without resetting its client or issuing another request.
+   *
+   * <p>The invalid-signature variant deliberately keeps its separately configured foreign key.
+   * Other variants are rejected here so this step cannot silently skip a required key check.</p>
+   *
+   * @param variant requested signature behavior of the manipulation
+   * @param accessToken unmodified Access Token captured at the scenario's protected endpoint
+   */
+  @Dann("stelle für JWT-Variante {jwtVariant} den Signaturschlüssel anhand des Access Tokens {tigerResolvedString} bereit")
+  @Then("prepare the signing key for JWT variant {jwtVariant} using Access Token {tigerResolvedString}")
+  public void ensureAvailableForAccessToken(final JwtVariant variant, final String accessToken) {
+    if (variant == JwtVariant.INVALID_SIGNATURE) {
+      return;
+    }
+    if (variant != JwtVariant.RESIGN_CORRECT_KEY) {
+      throw new IllegalArgumentException("Signing-key preparation does not support JWT variant " + variant);
+    }
+    ensureAvailableForToken(resolveSigningKeyPath(), accessToken);
+  }
+
+  /**
+   * Verifies the configured key against exactly the supplied token and resolves a matching replacement when necessary.
+   *
+   * @param keyPath destination of the private signing key used by the manipulation
+   * @param accessToken observed, unmodified Access Token
+   */
+  private void ensureAvailableForToken(final Path keyPath, final String accessToken) {
     try {
       jwtSteps.verifyJwtSignatureWithPublicKeyFromPrivateKey(accessToken, readSigningKey(keyPath));
       log.info("Signing-key preflight passed with the configured key '{}'; no kubectl lookup is needed.", keyPath);
@@ -83,12 +129,40 @@ public class SigningKeyPreflight {
       log.debug("Configured signing key '{}' cannot verify the fresh Access Token: {}", keyPath, e.getMessage());
     }
 
-    log.warn("Configured signing key '{}' is missing or does not verify the fresh Access Token; "
-        + "trying to resolve the active Keycloak signing key.", keyPath);
-    var resolvedSigningKey = keycloakSigningKeyResolver.resolve(accessToken);
+    log.warn("Configured signing key '{}' is missing or does not verify the Access Token; "
+        + "trying the Keycloak database and then the HSM simulator.", keyPath);
+    var resolvedSigningKey = resolveVerifiedSigningKey(accessToken);
     writeSigningKey(keyPath, resolvedSigningKey);
     jwtSteps.verifyJwtSignatureWithPublicKeyFromPrivateKey(accessToken, readSigningKey(keyPath));
-    log.info("Resolved and verified the active Keycloak signing key at '{}'.", keyPath);
+    log.info("Resolved and verified the signing key at '{}'.", keyPath);
+  }
+
+  /**
+   * Tries both remote sources in order, keeping retrieval separate from destination file writes.
+   *
+   * @param accessToken exact observed token whose signing key is required
+   * @return a key verified against the supplied token
+   */
+  private String resolveVerifiedSigningKey(String accessToken) {
+    String databaseFailure;
+    try {
+      var key = keycloakSigningKeyResolver.resolve(accessToken);
+      jwtSteps.verifyJwtSignatureWithPublicKeyFromPrivateKey(accessToken, key);
+      log.info("Signing-key resolution succeeded through the Keycloak database.");
+      return key;
+    } catch (AssertionError | RuntimeException e) {
+      databaseFailure = e.getMessage();
+      log.info("Keycloak database did not provide a verified signing key; trying the HSM simulator.");
+    }
+    try {
+      var key = hsmSimulatorSigningKeyResolver.resolve(accessToken);
+      jwtSteps.verifyJwtSignatureWithPublicKeyFromPrivateKey(accessToken, key);
+      log.info("Signing-key resolution succeeded through the HSM simulator.");
+      return key;
+    } catch (AssertionError | RuntimeException e) {
+      throw new AssertionError("Automatic signing-key resolution failed. Keycloak database: " + databaseFailure
+          + "; HSM simulator: " + e.getMessage());
+    }
   }
 
   /**
@@ -111,6 +185,7 @@ public class SigningKeyPreflight {
    * @return compact Access Token used for signing-key verification
    */
   private String issueFreshAccessToken() {
+    var previousMessageIds = accessTokenExtractor.captureMessageIds();
     try {
       tigerProxyManipulationsSteps.resetTigerProxyStateIfAvailable();
       var httpGlueCode = new HttpGlueCode();
@@ -122,7 +197,7 @@ public class SigningKeyPreflight {
       throw new AssertionError("Could not issue a fresh testclient request for signing key verification.", e);
     }
 
-    var accessToken = accessTokenExtractor.extractLatestAccessToken();
+    var accessToken = accessTokenExtractor.extractLatestAccessToken(previousMessageIds);
     log.debug("Fresh Guard Access Token extracted for signing-key verification.");
     return accessToken;
   }

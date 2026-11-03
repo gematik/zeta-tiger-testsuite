@@ -1,0 +1,7 @@
+[#TA_A_29852_02]
+===== TA_A_29852_02 - ZETA Client - Auswertung des PEP-Fehler-Headers bei HTTP 403
+
+"Empfängt der ZETA Client eine HTTP-Fehlerantwort mit Statuscode **403**, MUSS er prüfen, ob der HTTP-Header **``zeta-error-origin: pep``** in der Antwort enthalten ist.
+Ist der HTTP-Header ``zeta-error-origin: pep`` in der Fehlerantwort vorhanden, MUSS der ZETA Client die für den spezifischen Fehlerfall definierte **interne Fehlerbehandlung einleiten**.
+
+**[<=]**"

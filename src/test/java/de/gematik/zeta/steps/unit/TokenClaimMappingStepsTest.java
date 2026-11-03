@@ -25,412 +25,550 @@
 package de.gematik.zeta.steps.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
-import de.gematik.test.tiger.common.config.TigerConfigurationKey;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.steps.SoftAssertionsContext;
 import de.gematik.zeta.steps.TokenClaimMappingSteps;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.ObjectMapper;
 
-/**
- * Unit tests for {@link TokenClaimMappingSteps}.
- */
+/** Counterexamples for scope grants and the two audience contracts. */
 class TokenClaimMappingStepsTest {
-
-  private static final String POLICY_INPUT = """
-      {
-        "version": "1.0",
-        "authorization_request": {
-          "audience": [ "https://zeta-kind.local/pep/" ],
-          "scopes": [ "zero:audience" ],
-          "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
-          "ip_address": "172.18.0.4",
-          "previous_ip_address": "Unknown"
-        },
-        "client_registration_data": {
-          "platform": "linux",
-          "client_id": "38eae48a-ec90-434b-a9b0-17f1c1e8e09f",
-          "product_id": "test-proxy",
-          "product_version": "0.5.0",
-          "registration_timestamp": 1781609046
-        },
-        "user_info": {
-          "identifier": "1-20000300139",
-          "professionOID": "1.2.276.0.76.4.50"
-        }
-      }
-      """;
-
-  private static final String MATCHING_ACCESS_TOKEN_CLAIMS = """
-      {
-        "aud": "https://zeta-kind.local/pep/",
-        "sub": "1-20000300139",
-        "azp": "38eae48a-ec90-434b-a9b0-17f1c1e8e09f",
-        "scope": "zero:audience",
-        "product_version": "0.5.0",
-        "ip_address": "172.18.0.4",
-        "client_id": "38eae48a-ec90-434b-a9b0-17f1c1e8e09f",
-        "platform": "linux",
-        "product_id": "test-proxy",
-        "profession_oid": "1.2.276.0.76.4.50"
-      }
-      """;
-
-  private static final String MATCHING_REFRESH_TOKEN_CLAIMS = """
-      {
-        "aud": "https://zeta-kind.local/auth/realms/zeta-guard",
-        "sub": "1-20000300139",
-        "azp": "38eae48a-ec90-434b-a9b0-17f1c1e8e09f",
-        "scope": "zero:audience",
-        "product_version": "0.5.0",
-        "ip_address": "172.18.0.4",
-        "client_id": "38eae48a-ec90-434b-a9b0-17f1c1e8e09f",
-        "platform": "linux",
-        "product_id": "test-proxy",
-        "profession_oid": "1.2.276.0.76.4.50"
-      }
-      """;
-  private static final String ZETA_BASE_URL_KEY = "zeta_base_url";
-  private static final String TOKEN_ENDPOINT_PATH_KEY = "paths.guard.tokenEndpointPath";
-  private static final String DEFAULT_ZETA_BASE_URL = "zeta-kind.local";
-  private static final String DEFAULT_TOKEN_ENDPOINT_PATH =
-      "/auth/realms/zeta-guard/protocol/openid-connect/token";
-
   private final TokenClaimMappingSteps steps = new TokenClaimMappingSteps();
+  private static final String INPUT =
+      """
+      {"version":"1.1","user_info":{"identifier":"id","professionOID":"oid"},
+       "authorization_request":{"resource":"https://service.example/path","scopes":["S1","S2"],
+       "acr":"gematik-ehealth-loa-substantial"}}
+      """;
+  private static final String TOKEN =
+      """
+      {"ver":2,"sub":"id","profession_oid":"oid","scope":"S1","aud":"service",
+       "acr":"gematik-ehealth-loa-substantial"}
+      """;
+  private static final String DECISION =
+      """
+      {"result":{"allow":true,"aud":"service"}}
+      """;
 
-  /**
-   * Configures the path variables used to derive the refresh token audience.
-   */
-  @BeforeEach
-  void configurePaths() {
-    setDefaultPaths();
+  @ParameterizedTest
+  @ValueSource(strings = {"\"logical\"", "[\"logical\"]", "[\"one\",\"two\"]"})
+  void resourceIssuanceUsesTheLogicalAudienceFixture(String audience) {
+    var decision = "{\"result\":{\"allow\":true,\"aud\":" + audience + "}}";
+    assertThat(
+            steps
+                .evaluateResourceIssuanceClaims(
+                    "{\"ver\":2,\"aud\":" + audience + "}",
+                    decision,
+                    "https://resource.example/path")
+                .troubleFound())
+        .isFalse();
   }
 
-  /**
-   * Restores the path variables after tests that intentionally modify global Tiger configuration.
-   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "null",
+        "1",
+        "0",
+        "-2",
+        "\"2\"",
+        "2.0",
+        "true",
+        "4294967298",
+        "18446744073709551618"
+      })
+  void resourceIssuanceRejectsEveryNonExactVersionWithoutLosingAudienceErrors(String version) {
+    assertThat(
+            steps
+                .evaluateResourceIssuanceClaims(
+                    "{\"ver\":" + version + ",\"aud\":\"wrong\"}",
+                    "{\"result\":{\"allow\":true,\"aud\":\"logical\"}}",
+                    "https://resource.example/path")
+                .report())
+        .contains("ver:", "aud:");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "null",
+        "\"\"",
+        "true",
+        "2",
+        "{}",
+        "[]",
+        "[\"one\"]",
+        "[\"one\",\"two\",\"extra\"]",
+        "[\"one\",2]",
+        "\"https://resource.example/path\""
+      })
+  void resourceIssuanceCannotLoseAddOrReplaceLogicalAudiences(String audience) {
+    assertThat(
+            steps
+                .evaluateResourceIssuanceClaims(
+                    "{\"ver\":2,\"aud\":" + audience + "}",
+                    "{\"result\":{\"allow\":true,\"aud\":[\"one\",\"two\"]}}",
+                    "https://resource.example/path")
+                .report())
+        .contains("aud");
+  }
+
+  @Test
+  void resourceIssuanceCannotOmitAudienceAndVersion() {
+    assertThat(
+            steps
+                .evaluateResourceIssuanceClaims(
+                    "{}",
+                    "{\"result\":{\"allow\":true,\"aud\":\"logical\"}}",
+                    "https://resource.example/path")
+                .report())
+        .contains("aud", "ver:");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{}",
+        "{\"result\":{\"allow\":false,\"aud\":\"logical\"}}",
+        "{\"result\":{\"allow\":\"true\",\"aud\":\"logical\"}}",
+        "{\"result\":{\"allow\":true,\"aud\":[]}}",
+        "{\"result\":{\"allow\":true,\"aud\":2}}",
+        "{\"result\":{\"allow\":true,\"aud\":\"https://resource.example/path\"}}"
+      })
+  void resourceIssuanceNeedsAnIndependentPositiveLogicalAudience(String decision) {
+    assertThrows(
+        AssertionError.class,
+        () ->
+            steps.evaluateResourceIssuanceClaims("{}", decision, "https://resource.example/path"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(
+      strings = {" ", "${missing}", "/relative", "not a URI", "https://fd.example/#fragment"})
+  void resourceIssuanceCannotInferResourceFromTheIssuedToken(String resource) {
+    assertThrows(
+        AssertionError.class,
+        () ->
+            steps.evaluateResourceIssuanceClaims(
+                "{\"ver\":2}", "{\"result\":{\"allow\":true,\"aud\":\"logical\"}}", resource));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"4294967298", "18446744073709551618"})
+  void oversizedResourceVersionIsReportedWithoutAbortingClaimComparison(String version) {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"ver\":2", "\"ver\":" + version),
+                    INPUT,
+                    DECISION,
+                    "another-scope")
+                .report())
+        .contains("ver:", "scope:");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"4294967297", "18446744073709551617"})
+  void oversizedLegacyVersionIsReportedWithoutAbortingClaimComparison(String version) {
+    var input =
+        INPUT
+            .replace("\"version\":\"1.1\"", "\"version\":\"1.0\"")
+            .replace("\"resource\":\"https://service.example/path\"", "\"audience\":\"service\"");
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"ver\":2", "\"ver\":" + version),
+                    input,
+                    DECISION,
+                    "another-scope")
+                .report())
+        .contains("ver:", "scope:");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"\"https://service.example/A%2fb\"", "[\"https://service.example/A%2fb\"]"})
+  void issuedLegacyAudienceRetainsExactValueInEitherJwtRepresentation(String aud) {
+    assertThat(
+            steps
+                .evaluateLegacyIssuanceClaims(
+                    "{\"aud\":" + aud + ",\"ver\":1}", "https://service.example/A%2fb")
+                .troubleFound())
+        .isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"null", "\"1\"", "1.0", "true", "2", "4294967297", "18446744073709551617"})
+  void issuedLegacyVersionMustBeExactlyIntegerOne(String version) {
+    assertThat(
+            steps
+                .evaluateLegacyIssuanceClaims(
+                    "{\"aud\":\"service\",\"ver\":" + version + "}", "service")
+                .report())
+        .contains("ver:")
+        .doesNotContain("aud:");
+  }
+
+  @Test
+  void legacyCompatibilityDoesNotExcuseMissingVersionOnNewIssuance() {
+    assertThat(steps.evaluateLegacyIssuanceClaims("{\"aud\":\"service\"}", "service").report())
+        .contains("ver:");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "null",
+        "[]",
+        "[\"service\",\"other\"]",
+        "[\"service\",\"service\"]",
+        "[1]",
+        "1",
+        "{}",
+        "\"SERVICE\"",
+        "\" service\"",
+        "\"service/\""
+      })
+  void legacyAudienceCannotBeNormalizedExpandedOrMalformed(String audience) {
+    assertThat(
+            steps
+                .evaluateLegacyIssuanceClaims("{\"ver\":1,\"aud\":" + audience + "}", "service")
+                .report())
+        .contains("aud:")
+        .doesNotContain("ver:");
+  }
+
+  @Test
+  void allLegacyIssuanceFailuresAreReportedTogether() {
+    assertThat(steps.evaluateLegacyIssuanceClaims("{}", "secret-sentinel").report())
+        .contains("aud:", "ver:")
+        .doesNotContain("secret-sentinel");
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "${unresolved}"})
+  void missingIndependentRequestReferenceCannotProduceSuccess(String audience) {
+    assertThrows(AssertionError.class, () -> steps.evaluateLegacyIssuanceClaims("{}", audience));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"[]", "null", "{", "\"token\""})
+  void malformedIssuedTokenPayloadFailsClosed(String claims) {
+    assertThrows(AssertionError.class, () -> steps.evaluateLegacyIssuanceClaims(claims, "service"));
+  }
+
+  /** Preserves decoded audience values regardless of their scalar or singleton-array shape. */
+  @ParameterizedTest
+  @ValueSource(strings = {"service", "https://service.example/path", "urn:service:ä", "service\"\\\n", " service "})
+  void singleAudiencePreservesValuesAcrossRepresentations(String audience) {
+    var scalar = new ObjectMapper().writeValueAsString(audience);
+    try (var config = mockStatic(TigerGlobalConfiguration.class)) {
+      steps.storeSingleAudience("{\"aud\":" + scalar + "}", "single_audience");
+      steps.storeSingleAudience("{\"aud\":[" + scalar + "]}", "single_audience");
+      config.verify(() -> TigerGlobalConfiguration.putValue(
+          "single_audience", audience, ConfigurationValuePrecedence.TEST_CONTEXT), times(2));
+      config.verifyNoMoreInteractions();
+    }
+  }
+
+  /** Rejects ambiguous or malformed audiences before writing scenario state. */
+  @ParameterizedTest
+  @ValueSource(strings = {"null", "[]", "[\"service\",\"other\"]", "[\"service\",\"service\"]",
+      "1", "true", "{}", "[1]", "[null]", "[{}]", "[[\"service\"]]", "\"\"", "\" \"", "[\" \" ]"})
+  void singleAudienceRejectsInvalidOrMultipleValues(String audience) {
+    try (var config = mockStatic(TigerGlobalConfiguration.class)) {
+      assertThrows(AssertionError.class, () -> steps.storeSingleAudience(
+          "{\"aud\":" + audience + "}", "single_audience"));
+      config.verifyNoInteractions();
+    }
+  }
+
+  /** Requires a JSON object containing an audience instead of retaining an earlier reference. */
+  @ParameterizedTest
+  @ValueSource(strings = {"{}", "[]", "null", "{", "\"token\""})
+  void singleAudienceRejectsMissingAudienceAndInvalidContainers(String json) {
+    try (var config = mockStatic(TigerGlobalConfiguration.class)) {
+      assertThrows(AssertionError.class, () -> steps.storeSingleAudience(json, "single_audience"));
+      config.verifyNoInteractions();
+    }
+  }
+
   @AfterEach
-  void restorePaths() {
-    setDefaultPaths();
+  void resetSoftAssertions() {
+    SoftAssertionsContext.reset();
   }
 
-  /**
-   * Verifies that a fully matching access token report has no trouble section.
-   */
+  @ParameterizedTest
+  @CsvSource({
+      "zero%3Aread, zero:read",
+      "zero%3Aread+zero%3Awrite, zero:read zero:write",
+      "zero%3Aread%20zero%3Awrite, zero:read zero:write",
+      "zero%3Aread%2Bextra, zero:read+extra",
+      "zero%253Aread, zero%3Aread"
+  })
+  void tokenRequestScopesAreDecodedOnceBeforeComparison(String encodedScopes, String tokenScopes) {
+    steps.checkAccessTokenClaimsWithRequestScopes(
+        TOKEN.replace("\"scope\":\"S1\"", "\"scope\":\"" + tokenScopes + "\""),
+        INPUT, DECISION, encodedScopes);
+
+    assertThat(SoftAssertionsContext.softly().errorsCollected()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"zero:read", "zero:write", "zero:read zero:write:other"})
+  void tokenScopesMustContainEveryRequestedScopeEvenWhenPolicyInputHasOtherScopes(String tokenScopes) {
+    steps.checkAccessTokenClaimsWithRequestScopes(
+        TOKEN.replace("\"scope\":\"S1\"", "\"scope\":\"" + tokenScopes + "\""),
+        INPUT, DECISION, "zero%3Aread+zero%3Awrite");
+
+    assertThat(SoftAssertionsContext.softly().errorsCollected())
+        .singleElement().satisfies(error -> assertThat(error.getMessage()).contains("scope:"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "${missing}"})
+  void missingTokenRequestScopeReferenceFails(String scopes) {
+    assertThrows(AssertionError.class,
+        () -> steps.checkAccessTokenClaimsWithRequestScopes(TOKEN, INPUT, DECISION, scopes));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"%", "%XY"})
+  void malformedTokenRequestScopeEncodingFails(String scopes) {
+    assertThrows(IllegalArgumentException.class,
+        () -> steps.checkAccessTokenClaimsWithRequestScopes(TOKEN, INPUT, DECISION, scopes));
+  }
+
   @Test
-  void accessTokenClaimsPassWhenTheyMatchPolicyInput() {
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isFalse();
-    assertThat(report.report()).contains("sub: matches");
-    assertThat(report.report()).doesNotContain("TROUBLE:");
+  void reducedGrantPassesWithoutRequiringAllRequestedScopes() {
+    assertThat(steps.evaluateAccessTokenClaims(TOKEN, INPUT, DECISION, "S1").troubleFound())
+        .isFalse();
   }
 
-  /**
-   * Verifies that additional scopes and audience drift are listed as trouble.
-   */
+  @ParameterizedTest
+  @ValueSource(strings = {"S1 S2", "email profile S1", "  profile  S1 email  "})
+  void additionalTokenScopesAreAllowed(String tokenScopes) {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"S1\"", "\"" + tokenScopes + "\""), INPUT, DECISION, "S1")
+                .troubleFound())
+        .isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      "zero:read zero:write zero:admin",
+      "zero:write profile zero:read email",
+      "  zero:write  zero:read profile email  "
+  })
+  void tokenRequestScopesMayBeIncludedAlongsideAdditionalTokenScopes(String tokenScopes) {
+    steps.checkAccessTokenClaimsWithRequestScopes(
+        TOKEN.replace("\"scope\":\"S1\"", "\"scope\":\"" + tokenScopes + "\""),
+        INPUT, DECISION, "zero%3Aread+zero%3Awrite");
+
+    assertThat(SoftAssertionsContext.softly().errorsCollected()).isEmpty();
+  }
+
   @Test
-  void accessTokenClaimsListAdditionalScopesAndAudienceDrift() {
-    var tokenClaims = MATCHING_ACCESS_TOKEN_CLAIMS
-        .replace("\"scope\": \"zero:audience\"", "\"scope\": \"email profile zero:audience\"")
-        .replace("\"aud\": \"https://zeta-kind.local/pep/\"", "\"aud\": \"https://zeta-kind.local\"");
-
-    var report = steps.evaluateAccessTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("scope.extra");
-    assertThat(report.report()).contains("additional scopes [email, profile]");
-    assertThat(report.report()).contains("aud.requested");
-    assertThat(report.report()).contains("missing requested audience values [https://zeta-kind.local/pep/]");
-    assertThat(report.report()).contains("aud.extra");
-    assertThat(report.report()).contains("additional requested audience values [https://zeta-kind.local]");
+  void missingGrantedScopeFails() {
+    assertThat(steps.evaluateAccessTokenClaims(TOKEN, INPUT, DECISION, "S1 S2").troubleFound())
+        .isTrue();
   }
 
-  /**
-   * Verifies that an audience array containing the requested and unrelated values is reported.
-   */
   @Test
-  void accessTokenClaimsListAdditionalAudienceValues() {
-    var tokenClaims = MATCHING_ACCESS_TOKEN_CLAIMS
-        .replace("\"aud\": \"https://zeta-kind.local/pep/\"",
-            "\"aud\": [ \"https://zeta-kind.local/pep/\", \"https://zeta-kind.local/other/\" ]");
-
-    var report = steps.evaluateAccessTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("aud.requested");
-    assertThat(report.report()).contains("aud.extra");
-    assertThat(report.report()).contains("additional requested audience values [https://zeta-kind.local/other/]");
+  void whitespaceAndOrderDoNotChangeScopeSets() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"S1\"", "\"S2 S1\""), INPUT, DECISION, " S1  S2 ")
+                .troubleFound())
+        .isFalse();
   }
 
-  /**
-   * Verifies that a missing mapped token claim is reported.
-   */
   @Test
-  void accessTokenClaimsListMissingClaim() {
-    var tokenClaims = MATCHING_ACCESS_TOKEN_CLAIMS
-        .replaceAll("(?m)^\\s*\"platform\".*(?:\\R|$)", "");
-
-    var report = steps.evaluateAccessTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("platform");
-    assertThat(report.report()).contains("missing token claim");
+  void resourceUrlIsNotUsedAsAudience() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"service\"", "\"https://service.example/path\""),
+                    INPUT,
+                    DECISION,
+                    "S1")
+                .troubleFound())
+        .isTrue();
   }
 
-  /**
-   * Verifies that a present but non-scalar token claim is reported as malformed.
-   */
   @Test
-  void accessTokenClaimsListNonScalarTokenClaim() {
-    var tokenClaims = MATCHING_ACCESS_TOKEN_CLAIMS
-        .replace("\"platform\": \"linux\"", "\"platform\": { \"value\": \"linux\" }");
-
-    var report = steps.evaluateAccessTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("platform");
-    assertThat(report.report()).contains("token claim is not a scalar value");
-    assertThat(report.report()).doesNotContain("SKIPPED:");
+  void missingDecisionAudienceFailsClosedForResourceContract() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(TOKEN, INPUT, "{\"result\":{\"allow\":true}}", "S1")
+                .report())
+        .contains("expected aud: missing");
   }
 
-  /**
-   * Verifies that a present but non-scalar Policy Engine input value is reported as malformed.
-   */
   @Test
-  void accessTokenClaimsListNonScalarPolicyInputValue() {
-    var policyInput = POLICY_INPUT
-        .replace("\"platform\": \"linux\"", "\"platform\": { \"value\": \"linux\" }");
-
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, policyInput);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("platform");
-    assertThat(report.report()).contains("policy input path /client_registration_data/platform "
-        + "is not a scalar value");
-    assertThat(report.report()).doesNotContain("SKIPPED:");
+  void malformedAudienceAndScopesFail() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"scope\":\"S1\"", "\"scope\":[\"S1\"]"), INPUT, DECISION, "S1")
+                .troubleFound())
+        .isTrue();
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN, INPUT, "{\"result\":{\"allow\":true,\"aud\":[\"service\",{}]}}", "S1")
+                .troubleFound())
+        .isTrue();
   }
 
-  /**
-   * Verifies that a malformed requested scope value is reported instead of skipped.
-   */
   @Test
-  void accessTokenClaimsListNonScalarPolicyInputScopes() {
-    var policyInput = POLICY_INPUT
-        .replace("\"scopes\": [ \"zero:audience\" ]", "\"scopes\": { \"value\": \"zero:audience\" }");
-
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, policyInput);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("scope");
-    assertThat(report.report()).contains("policy input path /authorization_request/scopes "
-        + "contains non-scalar scope values");
-    assertThat(report.report()).doesNotContain("scope: no requested scopes in policy input");
+  void wrongContractVersionFails() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"ver\":2", "\"ver\":1"), INPUT, DECISION, "S1")
+                .report())
+        .contains("ver:");
   }
 
-  /**
-   * Verifies that mixed scalar and non-scalar requested scope values are reported as malformed.
-   */
   @Test
-  void accessTokenClaimsListMixedNonScalarPolicyInputScopes() {
-    var policyInput = POLICY_INPUT
-        .replace("\"scopes\": [ \"zero:audience\" ]",
-            "\"scopes\": [ \"zero:audience\", { \"value\": \"invalid\" } ]");
-
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, policyInput);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("scope");
-    assertThat(report.report()).contains("policy input path /authorization_request/scopes "
-        + "contains non-scalar scope values");
-    assertThat(report.report()).doesNotContain("scope.requested: all requested scopes are present");
-    assertThat(report.report()).doesNotContain("scope.extra: no additional scopes found");
+  void negativeDecisionCannotJustifyTokenIssuance() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(TOKEN, INPUT, DECISION.replace("true", "false"), "S1")
+                .report())
+        .contains("allow:");
   }
 
-  /**
-   * Verifies that a malformed requested audience value is reported instead of skipped.
-   */
   @Test
-  void accessTokenClaimsListNonScalarPolicyInputAudience() {
-    var policyInput = POLICY_INPUT
-        .replace("\"audience\": [ \"https://zeta-kind.local/pep/\" ]",
-            "\"audience\": { \"value\": \"https://zeta-kind.local/pep/\" }");
-
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, policyInput);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("aud");
-    assertThat(report.report()).contains("policy input path /authorization_request/audience "
-        + "contains non-scalar audience values");
-    assertThat(report.report()).doesNotContain("aud: no requested audience available");
+  void camelCaseTokenClaimDoesNotSatisfyCcMapping() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("profession_oid", "professionOID"), INPUT, DECISION, "S1")
+                .report())
+        .contains("profession_oid:");
   }
 
-  /**
-   * Verifies that mixed scalar and non-scalar requested audience values are reported as malformed.
-   */
   @Test
-  void accessTokenClaimsListMixedNonScalarPolicyInputAudience() {
-    var policyInput = POLICY_INPUT
-        .replace("\"audience\": [ \"https://zeta-kind.local/pep/\" ]",
-            "\"audience\": [ \"https://zeta-kind.local/pep/\", { \"value\": \"invalid\" } ]");
-
-    var report = steps.evaluateAccessTokenClaims(MATCHING_ACCESS_TOKEN_CLAIMS, policyInput);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("aud");
-    assertThat(report.report()).contains("policy input path /authorization_request/audience "
-        + "contains non-scalar audience values");
-    assertThat(report.report()).doesNotContain("aud.requested: all requested audience values are present");
-    assertThat(report.report()).doesNotContain("aud.extra: no additional requested audience values found");
+  void missingMappedClaimFails() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"sub\":\"id\",", ""), INPUT, DECISION, "S1")
+                .report())
+        .contains("sub:");
   }
 
-  /**
-   * Verifies that a malformed token audience value is reported instead of flattened.
-   */
   @Test
-  void accessTokenClaimsListNonScalarTokenAudience() {
-    var tokenClaims = MATCHING_ACCESS_TOKEN_CLAIMS
-        .replace("\"aud\": \"https://zeta-kind.local/pep/\"",
-            "\"aud\": { \"value\": \"https://zeta-kind.local/pep/\" }");
-
-    var report = steps.evaluateAccessTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("aud");
-    assertThat(report.report()).contains("token claim contains no scalar requested audience values");
-    assertThat(report.report()).doesNotContain("{\"value\":\"https://zeta-kind.local/pep/\"}");
+  void legacyContractStillUsesRequestedAudience() {
+    String input =
+        INPUT
+            .replace("\"resource\":\"https://service.example/path\"", "\"audience\":[\"service\"]")
+            .replace("\"1.1\"", "\"1.0\"");
+    String token = TOKEN.replace("\"ver\":2,", "");
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(token, input, "{\"result\":{\"allow\":true}}", "S1")
+                .troubleFound())
+        .isFalse();
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN.replace("\"ver\":2", "\"ver\":1"),
+                    input,
+                    "{\"result\":{\"allow\":true}}",
+                    "S1")
+                .troubleFound())
+        .isFalse();
+    assertThat(steps.evaluateAccessTokenClaims(TOKEN, input, DECISION, "S1").report())
+        .contains("ver:");
   }
 
-  /**
-   * Verifies that refresh token audience is checked against the Authorization Server issuer.
-   */
   @Test
-  void refreshTokenClaimsUseAuthorizationServerAudience() {
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isFalse();
-    assertThat(report.report()).contains("aud.requested: all authorization server audience values are present");
-    assertThat(report.report()).doesNotContain("TROUBLE:");
+  void mixedPolicyContractsAreRejected() {
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN, INPUT.replace("\"1.1\"", "\"1.0\""), DECISION, "S1")
+                .report())
+        .contains("version:");
+    assertThat(
+            steps
+                .evaluateAccessTokenClaims(
+                    TOKEN,
+                    INPUT.replace("\"scopes\":", "\"audience\":[\"service\"],\"scopes\":"),
+                    DECISION,
+                    "S1")
+                .report())
+        .contains("audience:");
   }
 
-  /**
-   * Verifies that refresh token audience drift is listed as trouble.
-   */
   @Test
-  void refreshTokenClaimsListAuthorizationServerAudienceDrift() {
-    var tokenClaims = MATCHING_REFRESH_TOKEN_CLAIMS
-        .replace("\"aud\": \"https://zeta-kind.local/auth/realms/zeta-guard\"",
-            "\"aud\": \"https://zeta-kind.local\"");
-
-    var report = steps.evaluateRefreshTokenClaims(tokenClaims, POLICY_INPUT);
-
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("aud.requested");
-    assertThat(report.report()).contains("missing authorization server audience values "
-        + "[https://zeta-kind.local/auth/realms/zeta-guard]");
-    assertThat(report.report()).contains("aud.extra");
-    assertThat(report.report()).contains("additional authorization server audience values [https://zeta-kind.local]");
+  void unresolvedGrantFixtureFails() {
+    assertThrows(
+        AssertionError.class,
+        () -> steps.evaluateAccessTokenClaims(TOKEN, INPUT, DECISION, "${missing}"));
   }
 
-  /**
-   * Verifies that missing zeta base URL configuration is reported as trouble.
-   */
   @Test
-  void refreshTokenClaimsFailWhenZetaBaseUrlIsMissing() {
-    deleteConfigValue(ZETA_BASE_URL_KEY);
-
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertMissingRefreshAudienceConfiguration(report);
+  void optionalUserClaimsMayBeAbsentButMustMatchWhenIncluded() {
+    var input =
+        INPUT.replace("\"identifier\":\"id\"", "\"identifier\":\"id\",\"commonName\":\"name\"");
+    assertThat(steps.evaluateAccessTokenClaims(TOKEN, input, DECISION, "S1").troubleFound())
+        .isFalse();
+    var token = TOKEN.replace("\"sub\":\"id\"", "\"sub\":\"id\",\"common_name\":\"wrong\"");
+    assertThat(steps.evaluateAccessTokenClaims(token, input, DECISION, "S1").report())
+        .contains("common_name:");
   }
 
-  /**
-   * Verifies that blank zeta base URL configuration is reported as trouble.
-   */
+  /** Policy camelCase fields map to the distinct snake_case JWT contract without aliases. */
   @Test
-  void refreshTokenClaimsFailWhenZetaBaseUrlIsBlank() {
-    setConfigValue(ZETA_BASE_URL_KEY, " ");
-
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertMissingRefreshAudienceConfiguration(report);
+  void userInfoUsesUpstreamFieldNamesWhileTokenClaimsKeepSnakeCase() {
+    var input = INPUT.replace("\"identifier\":\"id\"",
+        "\"identifier\":\"id\",\"commonName\":\"name\",\"organizationName\":\"org\","
+            + "\"birthdate\":\"2000-12-31\"");
+    var token = TOKEN.replace("\"sub\":\"id\"",
+        "\"sub\":\"id\",\"common_name\":\"name\",\"organization_name\":\"org\","
+            + "\"birthdate\":\"2000-12-31\"");
+    assertThat(steps.evaluateAccessTokenClaims(token, input, DECISION, "S1").troubleFound())
+        .isFalse();
+    for (var pair : new String[][] {{"professionOID", "profession_oid"},
+        {"commonName", "common_name"}, {"organizationName", "organization_name"}}) {
+      assertThat(steps.evaluateAccessTokenClaims(
+          token, input.replace(pair[0], pair[1]), DECISION, "S1").troubleFound()).isTrue();
+    }
   }
 
-  /**
-   * Verifies that missing token endpoint path configuration is reported as trouble.
-   */
   @Test
-  void refreshTokenClaimsFailWhenTokenEndpointPathIsMissing() {
-    deleteConfigValue(TOKEN_ENDPOINT_PATH_KEY);
-
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertMissingRefreshAudienceConfiguration(report);
+  void malformedLegacyAudienceCannotBeMixedWithResource() {
+    var input = INPUT.replace("\"scopes\":", "\"audience\":\"service\",\"scopes\":");
+    assertThat(steps.evaluateAccessTokenClaims(TOKEN, input, DECISION, "S1").report())
+        .contains("audience:");
   }
 
-  /**
-   * Verifies that blank token endpoint path configuration is reported as trouble.
-   */
   @Test
-  void refreshTokenClaimsFailWhenTokenEndpointPathIsBlank() {
-    setConfigValue(TOKEN_ENDPOINT_PATH_KEY, " ");
-
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertMissingRefreshAudienceConfiguration(report);
-  }
-
-  /**
-   * Verifies that an unsupported token endpoint path shape is reported as trouble.
-   */
-  @Test
-  void refreshTokenClaimsFailWhenTokenEndpointPathHasUnexpectedSuffix() {
-    setConfigValue(TOKEN_ENDPOINT_PATH_KEY, "/auth/realms/zeta-guard/token");
-
-    var report = steps.evaluateRefreshTokenClaims(MATCHING_REFRESH_TOKEN_CLAIMS, POLICY_INPUT);
-
-    assertMissingRefreshAudienceConfiguration(report);
-  }
-
-  /**
-   * Stores a Tiger configuration value in the test context.
-   *
-   * @param key   configuration key
-   * @param value configuration value
-   */
-  private static void setConfigValue(String key, String value) {
-    TigerGlobalConfiguration.putValue(key, value, ConfigurationValuePrecedence.TEST_CONTEXT);
-  }
-
-  /**
-   * Stores the default path variables used by the token claim mapping tests.
-   */
-  private static void setDefaultPaths() {
-    setConfigValue(ZETA_BASE_URL_KEY, DEFAULT_ZETA_BASE_URL);
-    setConfigValue(TOKEN_ENDPOINT_PATH_KEY, DEFAULT_TOKEN_ENDPOINT_PATH);
-  }
-
-  /**
-   * Removes a Tiger configuration value from all sources visible to the test.
-   *
-   * @param key configuration key
-   */
-  private static void deleteConfigValue(String key) {
-    TigerGlobalConfiguration.deleteFromAllSources(new TigerConfigurationKey(key.split("\\.")));
-  }
-
-  /**
-   * Asserts that refresh token audience derivation failed as a real claim mapping problem.
-   *
-   * @param report claim comparison report
-   */
-  private static void assertMissingRefreshAudienceConfiguration(TokenClaimMappingSteps.ClaimReport report) {
-    assertThat(report.troubleFound()).isTrue();
-    assertThat(report.report()).contains("TROUBLE:");
-    assertThat(report.report()).contains("aud: authorization server audience could not be derived "
-        + "from zeta_base_url and paths.guard.tokenEndpointPath");
-    assertThat(report.report()).doesNotContain("SKIPPED:");
+  void invalidObjectsFailInsteadOfSilentlySkipping() {
+    assertThrows(
+        AssertionError.class, () -> steps.evaluateAccessTokenClaims("[]", INPUT, DECISION, "S1"));
+    assertThrows(
+        AssertionError.class, () -> steps.evaluateAccessTokenClaims(TOKEN, "{", DECISION, "S1"));
   }
 }

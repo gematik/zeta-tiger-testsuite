@@ -1,0 +1,4 @@
+[#A_29862]
+==== A_29862 - ZETA Client, zusätzliches DPoP Token bei ZETA/ASL Terminierung am Resource Server
+
+Der ZETA Client MUSS beim durchführen eines fachlichen Requests zum Resource Server ein zusätzliches DPoP Token für den /ASL Endpunkt gemäß Tabelle Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server erzeugen und im äußeren HTTP Request im DPoP Header verwenden. [<=]

@@ -1,0 +1,4 @@
+[#A_30004]
+==== A_30004 - Authorization Server, Attribute amr und acr bei Authentifizierung ohne Nutzer-Identität
+
+Der Authorization Server MUSS bei der Authentifizierung ohne Nutzer-Identität das Attribut acr wie folgt setzen und im Request an die Policy Engine gemäß [policy-engine-input.yaml] verwenden. acr: gematik-ehealth-loa-low Das Attribut amr wird nicht verwendet. [<=]

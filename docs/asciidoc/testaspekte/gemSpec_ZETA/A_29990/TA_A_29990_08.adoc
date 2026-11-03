@@ -1,0 +1,7 @@
+[#TA_A_29990_08]
+===== TA_A_29990_08 - Notification Service - Übermittlung an Telemetrie-/Monitoring-Dienste ohne Klartext-PII
+
+Der Notification Service MUSS sicherheitsrelevante Ereignisse sowie Betriebs-/Telemetriedaten protokollieren, dabei aber keine Klartext-Identifikatoren (KVNR, Telematik-ID) und keine entschlüsselten Nachrichteninhalte protokollieren; Identifikatoren sind ausschließlich pseudonymisiert zu protokollieren. **Eine etwaige Übermittlung an einen Telemetrie-/Monitoring-Dienst MUSS ebenfalls frei von Klartext-PII erfolgen.** **[<=]**
+
+Hinweis:
+Hier geht es explizit darum die protokollierten Datensätze beim Versenden nicht anzureichern mit Personally Identifiable Information (personenbezogene Daten wie z.Bsp. Name, E-Mail-Adresse, Telefonnummer oder IP-Adresse).

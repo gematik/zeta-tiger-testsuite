@@ -1,0 +1,4 @@
+[#A_29996]
+==== A_29996 - PDP Authorization Server, Revocation-Endpunkt
+
+Der Authorization Server MUSS einen Endpunkt POST /revoke gemäß [RFC7009] bereitstellen, über den ein Client seine eigenen Refresh Token widerrufen kann. Der Request MUSS den Parameter token enthalten und KANN den Parameter token_type_hint (refresh_token) enthalten. Die URL des Revocation-Endpunkts MUSS im [as-well-known.yaml] im Attribut revocation_endpoint angegeben sein. [<=]

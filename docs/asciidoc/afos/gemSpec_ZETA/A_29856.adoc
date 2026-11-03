@@ -1,0 +1,4 @@
+[#A_29856]
+==== A_29856 - PDP Authorization Server - Verhalten bei Token Requests nach Session-Termination
+
+Die Komponente Authorization Server MUSS vor der Ausstellung eines neuen Token-Sets bei Token Requests mit grant_type=refresh_token prüfen, ob die referenzierte Session terminiert wurde. Ist die Session terminiert, MUSS der Request mit einem standardisierten Fehler gemäß Kapitel 5.4.6 abgelehnt werden. [<=]

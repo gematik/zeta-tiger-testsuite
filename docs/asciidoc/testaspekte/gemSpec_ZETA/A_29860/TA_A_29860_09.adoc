@@ -1,0 +1,18 @@
+[#TA_A_29860_09]
+===== TA_A_29860_09 - PEP HTTP Proxy, Erzeugung der Step-Up-Fehlermeldung - Verständliche Fehlerbeschreibung
+
+"Stellt der PEP HTTP Proxy fest, dass für einen Request ein höheres Authentifizierungsniveau erforderlich ist, als das im gültigen Access Token des ZETA-Clients hinterlegte Niveau aufweist (Step-Up-Bedarf), MUSS er den Request abweisen und eine Fehlerantwort mit folgenden Parametern erzeugen:
+
+HTTP-Statuscode: 401 Unauthorized
+
+HTTP-Response-Header: WWW-Authenticate mit error=insufficient_user_authentication, acr_values, ggf. max_age (gemäß [RFC9470]); zeta-error-origin: pep
+
+Response-Body (Content-Type: application/json): Ein JSON-Objekt entsprechend dem Schema [zeta-error.yaml] mit folgendem Inhalt:
+
+error: MUSS auf den Wert insufficient_user_authentication gesetzt werden.
+
+**error_description: MUSS eine für Entwickler verständliche Beschreibung des Fehlers enthalten** (z. B. eine Erklärung, dass das aktuelle Sicherheitsniveau unzureichend ist).
+
+error_uri: KANN eine URL enthalten, die zusätzliche Dokumentation zur Fehlerbehebung bereitstellt.
+
+**[<=]**"

@@ -30,7 +30,7 @@ git clone --reference-if-able "${CERT_REPO_GIT_CACHE_DIR}" \
   "${CERT_REPO_GIT_CACHE_DIR}" \
   "${CERT_REPO_DIR}"
 git -C "${CERT_REPO_DIR}" sparse-checkout init --cone
-git -C "${CERT_REPO_DIR}" sparse-checkout set keystores manifest
+git -C "${CERT_REPO_DIR}" sparse-checkout set certs keystores manifest ehca_OCSP_Signer_SMCB_91_ecc
 git -C "${CERT_REPO_DIR}" -c advice.detachedHead=false checkout "${cert_repo_sha}"
 
 test -f "${CERT_REPO_DIR}/manifest/cert-manifest.tsv"

@@ -1,0 +1,126 @@
+[#UC_GENERIC_02]
+== UseCase_Generic_02: Generische TI-Signatur- und Zertifikatsprüfung
+
+.UseCase_Generic_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Generische TI-Signatur- und Zertifikatsprüfung
+
+| Akteur: | Stationärer ZETA Client
+
+| weitere Akteure: | PDP Authorization Server des ZETA Guard, TI-Vertrauensraum und OCSP-Responder
+
+| Auslöser: | Der stationäre ZETA Client benötigt ein Access Token und sendet ein SMC-B-signiertes Subject Token an den PDP Authorization Server.
+
+| Kurzbeschreibung: |
+Der PDP Authorization Server prüft beim SMC-B-Token-Exchange die Integrität des Subject Tokens, die Zertifikatsgültigkeit, den OCSP-Widerrufsstatus und die Vertrauenskette.
+Bei ansonsten gültiger Authentisierung und erlaubender Policy stellt er Tokens aus; bei einer verletzten Prüfbedingung lehnt er den Austausch ohne Tokenausgabe ab.
+Die OCSP-Antworten werden zertifikatsbezogen für eine konfigurierbare Dauer zwischengespeichert. Diese Dauer soll der Gültigkeitsdauer des Refresh Tokens entsprechen.
+
+| Vorbedingung: |
+. Der stationäre ZETA Client ist registriert, kennt den über AS-Discovery ermittelten Token-Endpunkt und benötigt einen neuen Token-Austausch gemäß <<UC_01_06>>. Ein vorhandenes Access Token oder Refresh Token ersetzt diesen Austausch nicht.
+. Gültige Softwareattestierung, eine erlaubende Policy sowie frische Client Assertions und DPoP Proofs liegen vor. Das JWT im Parameter `subject_token` enthält in der Referenz fachlich gültige Daten und ist mit einer gültigen SMC-B signiert.
+. Für die getrennten Zertifikatsvarianten liegen zeitlich gültige, abgelaufene und nicht vertrauenswürdige Zertifikatsketten vor. Der Authorization Server vertraut nur dem vorgesehenen TI-Vertrauensanker. Blatt- und Ausstellerzertifikat sowie die SMC-B-Identität sind bekannt; das Blattzertifikat im `x5c`-Header gehört zu dieser Identität.
+. Der OCSP-Responder liefert signierte, zeitlich gültige Antworten für das jeweils angefragte Zertifikat. Für die Widerrufsvariante liegt vor jedem Austausch kein nutzbarer OCSP-Cacheeintrag für dasselbe SMC-B-Zertifikat vor.
+. Für die Cachevarianten sind die konfigurierte Cache-Dauer und der Beginn der Gültigkeit des Eintrags bekannt. Die Referenzabfrage liefert GOOD; die OCSP-Antwort bleibt über das gesamte betrachtete Cachefenster gültig.
+
+| Nebenbedingung: |
+Dieser UseCase umfasst die Anwendungssignatur des SMC-B-Subject-Tokens. Weitere TI-Signaturpfade benötigen eigene Varianten.
+Jede Negativvariante unterscheidet sich von der gültigen Referenz ausschließlich in der benannten Prüfbedingung. Die Widerrufsvariante verwendet dasselbe SMC-B-Zertifikat für GOOD und REVOKED; die übrigen Zertifikate und Authentisierungsnachweise bleiben gültig.
+Für eine gegebenenfalls erforderliche Ressourcenanfrage gehört das PoPP-Token zur Telematik-ID und Profession der SMC-B.
+Die Cache-Konfigurationsvariante umfasst zwei Zertifikate C1/C2 und zwei unterschiedliche konfigurierte Dauern. Die Refresh-Token-Variante verwendet je Lauf dasselbe SMC-B-Zertifikat und umfasst zwei unterschiedliche tatsächlich ausgegebene Refresh-Token-Laufzeiten, bestimmt aus `exp - iat`; allgemeine Session-Timeouts ersetzen diese Laufzeiten nicht.
+Für die SOLL-Vorgabe liegt keine begründete Ausnahme vor.
+
+| Ablauf: |
+*Referenz und Signaturintegrität*
+
+. Der ZETA Client sendet einen gültigen Token Exchange mit `subject_token` an den Token-Endpunkt. Der Authorization Server prüft das Subject Token und die übrigen Nachweise und stellt nach positiver Policy-Entscheidung mit HTTP 200 Tokens aus.
+. In einer getrennten Variante enthält das Subject Token einen nach dem Signieren veränderten, fachlich zulässigen JWT-Payloadwert. JSON-/JWT-Struktur und Zertifikat bleiben gültig; die übrigen Nachweise sind frisch. Der Authorization Server lehnt wegen fehlgeschlagener Integritätsprüfung ab und stellt keine Tokens aus.
+
+*Zertifikatsvarianten*
+
+. Der ZETA Client sendet jeweils ein ansonsten gültiges Subject Token mit einem aktuell gültigen beziehungsweise abgelaufenen Zertifikat. Der gültige Fall gelingt; der abgelaufene Fall scheitert an der Zertifikatsgültigkeit ohne Tokenausgabe. Andere zeitabhängige Nachweise bleiben gültig.
+. Ohne nutzbaren Cacheeintrag fragt der Authorization Server den OCSP-Widerrufsstatus des SMC-B-Zertifikats ab. Die Anfrage und die gültig signierte, zeitlich gültige Antwort beziehen sich anhand der vollständigen CertID auf dieses Zertifikat und seinen Aussteller. Bei GOOD gelingt der ansonsten gültige Austausch mit HTTP 200 und Access Token. In der getrennten Variante mit REVOKED für dasselbe Zertifikat lehnt der Authorization Server wegen des Widerrufs mit HTTP 4xx ab; die Fehlerantwort enthält weder Access Token noch Refresh Token.
+. Der ZETA Client sendet den ansonsten gültigen Exchange mit einer Kette zur vertrauten TI-Root beziehungsweise einer Kette zu einer nicht konfigurierten Root. Nur die vertraute Kette wird akzeptiert; der andere Fall endet ohne Tokens an der Vertrauensprüfung.
+
+*OCSP-Cache*
+
+. Bei einer konfigurierten Cache-Dauer T und ohne nutzbaren Eintrag für C1 löst dessen gültiger Token Exchange eine erfolgreiche OCSP-Abfrage aus. Der Authorization Server speichert die Antwort ab dem Einfügezeitpunkt t0. Ein weiterer gültiger Exchange vor t0+T nutzt diesen Eintrag ohne erneute OCSP-Abfrage. Für C2 erfolgt eine eigene Abfrage; nach t0+T wird C1 erneut abgefragt. Der Ablauf gilt entsprechend für eine zweite konfigurierte Dauer.
+. Bei einer tatsächlichen Refresh-Token-Laufzeit T fragt der Authorization Server im Referenz-Exchange den OCSP-Status des SMC-B-Zertifikats erfolgreich ab. Ein weiterer frischer Exchange kurz vor der aus dieser Antwort und T bestimmten Cache-Grenze gelingt ohne neue OCSP-Abfrage. Nach Ablauf des ursprünglichen Refresh Tokens und des erwarteten Cachefensters löst der nächste frische Exchange eine neue erfolgreiche OCSP-Abfrage für dasselbe Zertifikat aus. Der Ablauf gilt entsprechend für eine zweite Refresh-Token-Laufzeit.
+
+| Nachbedingung: |
+Der Referenz-Exchange gelingt. Jeder negative Fall endet an der gezielt veränderten Prüfbedingung ohne Tokenausgabe; Parser-, Client-Authentisierungs- oder Policyfehler erfüllen diese Negativfälle nicht.
+Bei GOOD erhält der Client ein Access Token; bei REVOKED wird derselbe Zertifikatskontext wegen Widerrufs ohne Access Token und ohne Refresh Token abgelehnt.
+Der Cache ist zertifikatsbezogen, wird vor Ablauf genutzt und nach Ablauf erneuert. Seine Dauer ist konfigurierbar und entspricht ohne begründete Ausnahme der jeweiligen Refresh-Token-Gültigkeit.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29046_01>>
+* <<TA_A_29046_02>>
+* <<TA_A_29046_03>>
+* <<TA_A_29046_04>>
+* <<TA_A_29046_05>>
+* <<TA_A_29046_06>>
+
+|===
+
+[mermaid,uc-generic-02-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Stationärer ZETA Client
+    participant A as PDP Authorization Server
+    participant V as TI-Signaturvalidierung
+    participant O as OCSP-Responder
+    C->>A: Token Exchange mit SMC-B subject_token
+    A->>V: JWT und Zertifikatskette prüfen
+    opt Kein gültiger zertifikatsbezogener Cacheeintrag
+    V->>O: Status für Zertifikat C1 oder C2
+    O-->>V: Signierte OCSP-Antwort
+    end
+    alt Integrität, Gültigkeit, Vertrauen und OCSP-Status GOOD bestätigt
+        V-->>A: Gültiges Subject Token und Zertifikat
+        A-->>C: HTTP 200, Tokens nach positiver Policy
+    else OCSP-Status REVOKED
+        V-->>A: SMC-B-Zertifikat widerrufen
+        A-->>C: HTTP 4xx, Widerrufsfehler, kein Access Token oder Refresh Token
+    else Nachricht manipuliert, Zertifikat abgelaufen oder Kette nicht vertraut
+        V-->>A: Ablehnung an der jeweiligen Prüfbedingung
+        A-->>C: Ablehnung ohne Tokens
+    end
+    opt Cachevarianten mit gültigen Nachweisen und OCSP-Status GOOD
+    Note over C,V: Zwei konfigurierte Cache-Dauern und zwei Refresh-Token-Laufzeiten
+    C->>A: Frischer Exchange kurz vor der jeweiligen Cache-Grenze
+    A->>V: TI-Signatur und Zertifikat prüfen
+    V-->>A: Gültigen Cacheeintrag verwenden, ohne OCSP-Abfrage
+    A-->>C: Erfolgreiche Tokenausgabe
+    opt Konfigurationsvariante
+    C->>A: Exchange mit anderem Zertifikat C2
+    A->>V: Eigenen Zertifikatsstatus prüfen
+    V->>O: Eigene OCSP-Abfrage für C2
+    O-->>V: Gültige signierte OCSP-Antwort für C2
+    V-->>A: Positives Prüfergebnis
+    A-->>C: Erfolgreiche Tokenausgabe
+    end
+    C->>A: Frischer Exchange nach Cacheablauf, bei Refresh-Variante auch nach Refresh-Token-Ablauf
+    A->>V: TI-Signatur und Zertifikat prüfen
+    V->>O: Status für dasselbe SMC-B-Zertifikat
+    O-->>V: Gültige signierte OCSP-Antwort
+    V-->>A: Positives Prüfergebnis
+    A-->>C: Erfolgreiche Tokenausgabe
+    end
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Dateien zu diesem Use Case
+
+[source]
+----
+include::smcb_ocsp_widerrufsstatus.feature[]
+----
+
+[source]
+----
+include::ocsp_cache_refresh_laufzeit.feature[]
+----
+endif::[]

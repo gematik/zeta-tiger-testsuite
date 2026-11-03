@@ -1,0 +1,4 @@
+[#A_29993]
+==== A_29993 - Authorization Server, Attribut acr im Access Token
+
+Der PDP Authorization Server MUSS das nachgewiesene Authentifizierungsniveau als Claim acr (Wertebereich gemäß gematik-LoA) in das Access Token übernehmen, damit der PEP die Step-up-Bedingung auswerten kann. [<=]

@@ -1,0 +1,4 @@
+[#A_29903]
+==== A_29903 - Authorization Server – Ableitung der Identitätsbindung aus der Nutzerauthentisierung
+
+Der Authorization Server MUSS die Bindung einer Registrierung an die TI-Identität aus der OIDC-Nutzerauthentisierung ableiten (Statusmodell pending_user_binding gemäß A_29658 / [dcr-response-202.yaml]). Ein realm-/mandantenweites Initial Access Token ohne Identitätsbezug DARF NICHT als hinreichend für die Bindung der Identität verwendet werden. [<=]

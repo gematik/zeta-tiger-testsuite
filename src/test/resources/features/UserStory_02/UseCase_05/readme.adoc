@@ -1,0 +1,112 @@
+[#UC_02_05]
+== UseCase_02_05: mTLS-Zertifikate und TLS-Profile des Notification Service prüfen
+
+.UseCase_02_05
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | mTLS-Zertifikate und TLS-Profile des Notification Service prüfen
+
+| Akteur: | Betreiber des Notification Service und des Resource Servers
+
+| weitere Akteure: | Notification Service, Resource Server, Fach-Client mit ZETA-SDK, Push Gateway, Zertifikatsverwaltung, Testsuite
+
+| Auslöser: | Client-/Server-Zertifikate werden ausgestellt, kompromittiert oder ersetzt.
+
+| Kurzbeschreibung: |
+Gemeinsame Verwaltung und die wirksame Sperrung/Rotation werden für beide Zertifikatsrollen nachgewiesen.
+Das ausführbare Szenario `beidseitige_gateway_authentisierung.feature` prüft die beidseitige NS-Gateway-Authentisierung. Betreiberverfahren, EV-Ausstellungsnachweise und die kryptographischen Matrizen bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Die Betreiber von NS und RS haben Ausstellungs-, Bestands-, Sperr- und Rotationsverfahren mit Verantwortlichkeiten dokumentiert; Zertifikats-IDs lassen sich der aktiven Konfiguration zuordnen.
+. Im untersuchten Verbindungspfad präsentiert der RS das Clientzertifikat und der NS das Serverzertifikat. Vertrauensanker, gültige Ausgangszertifikate und Ersatzschlüssel/-zertifikate sind bekannt. Beide Peers sind für neue Handshakes getrennt beobachtbar.
+. Die Testumgebung kann die alten Zertifikate nach einer Sperrung weiterhin kontrolliert präsentieren: den alten RS-Clientnachweis am NS sowie das alte NS-Serverzertifikat an einem isolierten TLS-Testserver mit passendem Namen und eigener Testschlüsselkopie. Damit prüft der echte RS die Ablehnung des gesperrten Servers.
+. Vor dem Lauf werden die nach dem Betreiberverfahren geltende maximale Sperr-/Konfigurationsübernahmezeit und das Verfahren für frische Handshakes ohne Wiederverwendung bestehender Sessions festgehalten.
+
+. Zusätzlich sind Push Gateway und die vom NS tatsächlich verwendeten Client-/Server-Vertrauensprofile beobachtbar. EV-Aussteller-/Policy- und Ausstellungsbelege gehören zum Zertifikatsprofil; ein beliebiges Testzertifikat mit EV-OID genügt nicht.
+. Für beide Verbindungsgrenzen wird vorab eine rollen-/zertifikatsabhängige TLS-Matrix aus gemSpec_Krypt V2.49.1 erstellt: erforderliche/optionale Versionen, erlaubte/erforderliche Suiten, Schlüssel- und Domainparameter. Isolierte Gegenstellen können jeweils genau einen Parameter anbieten oder verändern.
+. Für die RS-NS-Verbindung steht ein Resource Server mit technischer mTLS-Identität bereit. NS-zu-Gateway-Verbindungen werden durch eine Fach-Client-Aktion über das ZETA-SDK am Resource Server ausgelöst. Der Fach-Client und ein erforderlicher PoPP-Nachweis gehören zum registrierten Empfänger.
+
+Für das ausführbare mTLS-Szenario sind gültige, fehlende und unvertrauenswürdige NS-Clientzertifikatsprofile am Notification Service konfigurierbar. Vertrauensanker und Gateway-Konfiguration bleiben erhalten; URL und Hostname des SDK-Pushers passen zu den bereitgestellten Gateway-Testzertifikaten. Die funktionalen Zertifikate beanspruchen keine EV-Ausstellung.
+
+| Nebenbedingung: |
+Die Prüfung verlangt das dokumentierte Betreiberverfahren, kein bestimmtes Sperrprotokoll. Bestehende Verbindungen müssen durch diese Anforderung nicht sofort beendet werden.
+Prozessreview und Verbindungstests liefern unterschiedliche Belege; ein erfolgreicher Handshake allein belegt keine gemeinsame Verwaltung.
+
+| Ablauf: |
+*Gemeinsame Ausstellung und Verwaltung*
+
+. Die Betreiber stellen Test-Client- und Test-Serverzertifikate nach dem abgestimmten Verfahren bereit. Die Testsuite gleicht Ausstellungsnachweise, beteiligte Betreiber, Zertifikats-IDs und tatsächlich präsentierte Zertifikate ab.
+. Sie verfolgt eine kontrollierte Bestandsaktualisierung für beide Rollen bis in die aktive RS-/NS-Konfiguration; Zuständigkeit und gemeinsame Verwaltung sind aus den Prozessnachweisen ersichtlich.
+
+*Clientzertifikat des RS*
+
+. Der RS öffnet eine frische gültige mTLS-Verbindung zum NS. Danach markiert der Betreiber das RS-Testzertifikat kontrolliert als kompromittiert und sperrt es über das vorgesehene Verfahren.
+. Nach bestätigter Übernahme innerhalb der dokumentierten Frist präsentiert der Test-RS das alte Zertifikat erneut. Der NS lehnt den neuen Handshake ab; das alte Zertifikat erhält keinen berechtigten Zugriff.
+. Der Betreiber rotiert auf das gültige Ersatz-Clientzertifikat. Eine neue mTLS-Verbindung und zulässige Kontrolloperation gelingen.
+
+*Serverzertifikat des NS*
+
+. Aus einem eigenen gültigen Ausgangszustand sperrt der Betreiber das NS-Testzertifikat. Der echte RS verbindet sich nach wirksamer Übernahme mit dem isolierten Testserver, der weiterhin dieses alte Zertifikat präsentiert, und lehnt den neuen Handshake ab.
+. Der Betreiber stellt das Ersatz-Serverzertifikat am NS bereit. Der RS führt einen frischen Handshake und eine zulässige Kontrolloperation erfolgreich aus.
+
+*mTLS und EV zum Push Gateway*
+
+. Der Fach-Client löst über das ZETA-SDK eine Aktion am Resource Server aus. Dieser reicht eine korrelierte Notification für den zuvor registrierten Empfänger und Pusher beim Notification Service ein und gibt dessen Annahmebestätigung mit Notification-ID zurück. Die Testsuite beobachtet beidseitige Authentisierung auf der tatsächlichen NS-Gateway-Verbindung und getrennte Ablehnung fehlender oder ungültiger NS-Clientzertifikate sowie ungültiger Gateway-Serverzertifikate. Ein Proxy darf keinen dieser Nachweise stellvertretend erbringen. Die tatsächliche NS-Verbindung und ihr Clientzertifikat werden gemäß A_28267 beobachtet.
+
+Mit gültigen Zertifikaten beider Peers gelingt die gegenseitige TLS-Authentisierung; der NS überträgt die Notification-Anfrage. Ein fehlendes NS-Clientzertifikat, fremd signierte Client- und Serverzertifikate sowie ein falscher Gateway-Zielname werden getrennt aus dem jeweiligen Authentisierungsgrund abgelehnt. Eine erneute gültige Kontrollverbindung gelingt und überträgt die Notification-Anfrage. Die erfolgreiche Gateway-Anfrage enthält die ursprüngliche Notification-ID, Nutzlast und den registrierten Pusher; bei fehlgeschlagener TLS-Authentisierung werden keine HTTP-Nutzdaten übertragen.
+
+. Das in der Fachdienstrolle verwendete Zertifikatsprofil wird anhand A_29982 und der zugehörigen CA-/Ausstellungsbelege geprüft. Der Prüfnachweis trennt die ZETA-Formulierung zum verwendeten EV-Zertifikat von der Push-Baseline A_28268-02 zur Gateway-Serverrolle; Unklarheiten dieser Rollenfestlegung sind vor einer verbindlichen Produktbewertung aufzulösen. TLS-Erfolg oder eine frei gewählte certificatePolicies-OID allein beweisen keine EV-Ausstellung; das festgelegte EV-Aussteller-/Policy-Profil ist anhand der CA-Belege zu bestätigen.
+. Der echte NS prüft das Gateway-EV-Zertifikat einschließlich Kette, Gültigkeit und Zielbindung. Ein gültiges EV-Profil ist positive Kontrolle; fehlerhafte Kette, falsches Ziel und ein ansonsten gültiges DV-Profil sind getrennte Negativkontrollen. TLS-Erfolg oder eine frei gesetzte Policy-OID allein beweist keine EV-Ausstellung. Das festgelegte EV-Aussteller-/Policy-Profil wird mitgeprüft. Die referenzierte Push-Baseline A_28268-02 betrifft die Gateway-Serverrolle und ersetzt nicht die ZETA-Formulierung zur Fachdienstrolle.
+
+*Kryptographische Profile an beiden Grenzen*
+
+. Am RS-NS- und NS-Gateway-Pfad bietet der kontrollierte Peer jede Version separat an: TLS 1.2 muss gemäß festgelegter Baseline funktionieren, TLS 1.0/1.1 werden abgelehnt. TLS 1.3 ist optional; bei Unterstützung werden A_18467 einschließlich TLS_AES_128_GCM_SHA256 und der dort verlangten BSI-Konfiguration geprüft. Alle tatsächlichen NS-Client-/Serverrollen und RS-Schnittstellen sind einzubeziehen.
+. Für jede tatsächliche Zertifikats-/Peer-Rolle bietet die Testsuite einzelne erforderliche und unzulässige Cipher-Suiten aus der vorab abgeleiteten Matrix an. Sie prüft Aushandlung beziehungsweise Ablehnung, ohne eine andere angebotene Suite als Ausweichmöglichkeit. Die Matrix enthält GS-A_4384-03 (ECDHE_RSA/AES_128/256_GCM), A_17124-03 (ECDHE_ECDSA/AES_128/256_GCM) sowie A_17322. Beim NS als TLS-Client wird zusätzlich die geforderte ECDSA-Priorität im ClientHello gegenüber ebenfalls unterstützten RSA-Suiten beobachtet; unerlaubte Suiten dürfen auch nicht angeboten werden. Ein einzelner erfolgreicher Standard-Handshake belegt keine vollständige Suite-Konformität.
+. Zertifikats- und Schlüsselaustauschparameter werden gegen GS-A_4359-02 und Tab_KRYPT_002/002a geprüft. Für TLS-1.2-ECDHE werden P-256/P-384 verpflichtend sowie brainpoolP256r1/brainpoolP384r1 entsprechend ihrer SOLL-Verbindlichkeit geprüft; TLS 1.3 wird nach seinem eigenen Profil bewertet. Grenzfälle für Mindestlängen und unzulässige Kurven werden einzeln variiert. Beide Verbindungsgrenzen werden mit ihren tatsächlichen Zertifikatsrollen geprüft. Die EV-Pflicht ist A_29982 zugeordnet und folgt nicht aus der Schlüssellänge.
+
+| Nachbedingung: |
+Beide gesperrten Zertifikatsrollen werden bei neuen Verbindungen abgewiesen; Ersatz-Zertifikate erlauben den berechtigten Zugriff. Gemeinsame Ausstellung/Verwaltung sind durch Prozess- und Konfigurationsnachweise belegt.
+Testserver und kompromittierte Testnachweise werden entfernt; der vereinbarte Ausgangszustand ist wiederhergestellt.
+
+Auch NS-Gateway-mTLS und beide kryptographischen Verbindungsprofile sind belegt. Zertifikatsrollen, EV-Ausstellungsnachweise und kryptographische Handshakes werden getrennt bewertet; nicht aufgelöste EV-Rollenfragen werden ausdrücklich festgehalten.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29982_01>>
+* <<TA_A_29982_02>>
+* <<TA_A_29982_03>>
+* <<TA_A_29991_01>>
+* <<TA_A_29991_02>>
+* <<TA_A_29991_03>>
+* <<TA_A_29991_04>>
+* <<TA_A_29991_05>>
+* <<TA_A_29991_06>>
+* <<TA_A_29981_01>>
+* <<TA_A_29981_02>>
+* <<TA_A_29981_04>>
+* <<TA_A_29981_07>>
+
+|===
+
+[mermaid,uc-02-05-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant B as Betreiber NS und RS
+    participant C as Fach-Client mit ZETA-SDK
+    participant R as Resource Server
+    participant N as Notification Service
+    participant P as Push Gateway
+    B->>B: Client-/Server-Zertifikate gemeinsam verwalten
+    R->>N: Frischer mTLS-Handshake mit gültigen Zertifikaten
+    B->>B: Kompromittiertes Zertifikat sperren und rotieren
+    R->>N: Neue Verbindung mit altem bzw. Ersatz-Zertifikat
+    Note over R,N: Beide Zertifikatsrollen getrennt prüfen
+    C->>R: Authentisierte Fachaktion für den registrierten Empfänger
+    R->>N: Korrelierte Notification einreichen
+    N-->>R: Annahme mit Notification-ID
+    R-->>C: Annahme mit derselben Notification-ID
+    N->>P: mTLS mit rollenbezogener EV-Prüfung
+    P-->>N: Gateway-Ergebnis
+    Note over R,N: Eigene Läufe für Versionen, Suiten und Schlüssellängen des NS-Servers
+    Note over N,P: Eigene Läufe für Versionen, Suiten und Schlüssellängen des NS-Clients
+....

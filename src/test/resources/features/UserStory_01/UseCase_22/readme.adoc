@@ -29,9 +29,11 @@ Der Client erhält daraufhin die angeforderte Ressource.
 Der stationäre ZETA Client ist bereits beim ZETA Guard registriert, d.h. es existiert eine
 ``client_id`` inkl. zugehörigem Schlüsselpaar.
 Der ZETA Client verfügt über ein gültiges PoPP Token sowie auch eine bestehende Session mit zugehörigem Access- und Refresh-Token.
+Die Szenarien für PoPP-Gültigkeit und JWKS-Caching aktivieren die Verifikation für die Zielroute explizit.
+Das Cache-Szenario benötigt einen frisch beobachtbaren JWKS-Download. Es prüft dessen Cache-Control-Frist und den tatsächlichen Zeitpunkt des anschließenden Ressourcenaufrufs; ein bereits vor dem Szenario unsichtbar befüllter Cache genügt nicht als Nachweis.
 
 | Nebenbedingung: |
-- Bereitstellung von *PoPP-Token* für Ressourcenanfrage *notwendig*. <<A_26477>>
+- Bereitstellung von *PoPP-Token* für Ressourcenanfrage *notwendig*. <<A_26477-01>>
 - Weiterleitung der *Client-Daten* an Resource Server ist deaktiviert. <<A_26492-02>>
 
 | Ablauf: |
@@ -65,6 +67,23 @@ Der ZETA Client verfügt über ein gültiges PoPP Token sowie auch eine bestehen
 12. Der PEP HTTP Proxy gibt die Antwort ``200 OK`` und Ressource zurück an den ZETA Client.
 13. Der ZETA Client liefert die Ressource an den MA.
 
+Die Endpunkt-Konfiguration wird mit mehreren unabhängig erreichbaren Routen geprüft. Nach erfolgreichen Kontrollaufrufen wird die PoPP-Prüfung gezielt für eine Route aktiviert: Dort muss ein entfernter PoPP-Header zu 400 und ein sonst gültig signierter Nachweis mit abweichendem actorId zu 403 führen. Derselbe Nachweis darf an den weiterhin ohne PoPP-Prüfung konfigurierten Routen deren fachliche Antwort nicht verändern. Die vorhandene Endpunktmatrix und ihre Kontrollantworten bleiben erhalten. Sie prüft die getrennte Aktivierung der Tokenvalidierung (<<TA_A_26477-01_15>>).
+
+Die Konfiguration der Header-Pflicht pro Endpunkt (<<TA_A_26477-01_01>>) benötigt zusätzlich Requests ohne PoPP-Header an den weiterhin ohne diese Pflicht konfigurierten Routen. Diese müssen ihre jeweilige fachliche Kontrollantwort liefern. Dieser Nachweis ist im vorhandenen Szenario nicht implementiert; dessen bisherige Missing-Header-Kontrolle an der aktivierten Route bleibt erhalten, erhält aber keinen vollständigen Abdeckungstag für TA_A_26477-01_01. Die Implementierungslücke begründet im reduzierten Umsetzungsumfang keine zusätzlichen Szenarien oder Varianten.
+
+Für die Gültigkeitsdauer werden gültig signierte PoPP-Nachweise mit identischem Aussteller und passendem actorId über den SDK-Aufruf verwendet. Die Sekundenvariante vergleicht einen noch gültigen Nachweis mit einem Nachweis jenseits der konfigurierten Dauer; die Quartalsvariante vergleicht das aktuelle Quartal mit einem sicher außerhalb der Kulanz liegenden Quartal. Eine maximale Dauer darf den Quartalsfall nicht unabhängig ungültig machen. Die Konfigurierbarkeit pro Endpunkt benötigt zusätzlich unterscheidbare Einstellungen zweier Routen und deren getrennte Kontrollaufrufe. Ein nur global verstellbares Testprofil belegt diese Trennung nicht und wird als fehlende Voraussetzung dieses Entwurfsteils dokumentiert. Der bestehende positive Quartalsfall bleibt als Teilnachweis mit allen bisherigen Schritten erhalten; er erhält keinen vollständigen Abdeckungstag für den korrigierten Quartalsaspekt. (<<TA_A_26477-01_02>>, <<TA_A_26477-01_03>>)
+
+Für die rechtzeitige JWKS-Erneuerung wird zuerst eine konkrete erfolgreiche Downloadantwort mit beobachteter Gültigkeitsfrist und Empfangszeit gesichert. Der zugehörige PEP-Cache muss vor deren Ablauf einen weiteren erfolgreichen Download durchführen. Anfangsdownloads mehrerer Worker dürfen nicht als Erneuerung desselben Cacheeintrags gewertet werden; der Ablauf benötigt einen eindeutig zuordenbaren Cache beziehungsweise Worker und ein vollständiges Beobachtungsfenster. (<<TA_A_26477-01_07>>)
+
+Mit kontrollierter Uhr unmittelbar nach dem Quartalswechsel ein sonst gültiges PoPP Token aus dem Ende des Vorquartals innerhalb der fünfminütigen Kulanz akzeptieren; nach deren Ablauf ablehnen. Alle übrigen Prüfungen einschließlich einer zusätzlich konfigurierten maximalen Gültigkeitsdauer müssen erfüllt sein. Die kontrollierte Uhr ist Voraussetzung dieser geplanten Variante; das Szenario mit iat im vorletzten Quartal belegt die Kulanz nicht.
+ (<<TA_A_26477-01_14>>)
+
+Der Schlüsselbezug für die PoPP-Signaturprüfung ist eine gemeinsame Pflicht mit zwei erlaubten Wegen: gültiges vorhandenes JWKS oder erneuter Download. Ein gültiger vorhandener Satz begründet kein Download-Verbot. Der unbekannte-kid-Fall behält seine eigenständige Downloadpflicht unter A_26493-01 und beide bisherigen Kontrollen (erfolgreicher Download sowie Downloadfehler mit 403). Der positive Schlüsselbezugsfall prüft weiterhin beobachtete Cache-Control und das Zeitfenster, erlaubt aber den erneuten Download. Eine zusätzliche isolierte fremde Signatur bei unverändertem kid, iss, iat und actorId muss 403 liefern; die ausdrücklich konfigurierte Gültigkeit von 300 Sekunden wird unabhängig geprüft. (<<TA_A_26477-01_12>>)
+
+Für <<TA_A_25669-01_05>> wird am PEP-Eingang ein vorgegebener falscher ``ZETA-PoPP-Token-Content``-Header beobachtet. Die anhand desselben PoPP-Tokens korrelierte Backend-Anfrage muss einen ersetzten Header in strengem Base64-URL-Format enthalten. Dessen dekodierter JSON-Inhalt wird in beiden Richtungen mit dem vollständigen PoPP-Payload verglichen.
+
+Eine weitere Gegenkontrolle zu <<TA_A_26477-01_08>> ersetzt ausschließlich ``actorId`` durch eine vom Access-Token-Subjekt verschiedene Identität und signiert korrekt mit dem bekannten PoPP-Schlüssel. Bei unveränderten und weiterhin gültigen ``kid``, ``iss`` und ``iat`` muss die tatsächlich manipulierte Anfrage mit 403 abgelehnt werden.
+
 | Hinweis: |
 Gemäß Fachaustausch vom 02.07.2026 prüft der PoPP-Verifier des ZETA Guard ausschließlich die Claims ``iss``, ``iat`` und ``actorId``.
 Alle weiteren Claims werden durch den Fachdienst geprüft.
@@ -77,18 +96,20 @@ Die Ablehnung abweichender Werte für ``iss``, ``iat`` und ``actorId`` wird in <
 Der MA hat über den ZETA Client die geschützte Ressource erfolgreich abgerufen und kann diese nun verwenden.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_26477-01_14>> (geplante Variante: kontrollierter Quartalswechsel mit fünfminütiger Kulanz)
 * <<TA_A_25669-01_05>>
 * <<TA_A_26450_02>>
 * <<TA_A_26452_01>>
 * <<TA_A_26452_02>>
 * <<TA_A_26452_03>>
-* <<TA_A_26477_01>>
-* <<TA_A_26477_02>>
-* <<TA_A_26477_03>>
-* <<TA_A_26477_07>>
-* <<TA_A_26477_05>>
-* <<TA_A_26477_08>>
-* <<TA_A_26477_12>>
+* <<TA_A_26477-01_01>>
+* <<TA_A_26477-01_15>>
+* <<TA_A_26477-01_02>>
+* <<TA_A_26477-01_03>>
+* <<TA_A_26477-01_07>>
+* <<TA_A_26477-01_05>>
+* <<TA_A_26477-01_08>>
+* <<TA_A_26477-01_12>>
 
 |===
 
@@ -126,6 +147,6 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_fachdienst_PoPP-Header_SC_200.feature[]
+include::client_ressource_anfrage_fachdienst_popp_header_sc_200.feature[]
 ----
 endif::[]

@@ -3,15 +3,47 @@ client:
     dpop_private_key: "$.body.[?(key =~ '^dpop_private_key(_.+)?$')]"
 
 responseCode: "$.responseCode"
+method: "$.method"
 path: "$.path"
+message: "$.body.message"
+
+tokenRequest:
+  subjectToken:
+    header:
+      x5c:
+        root: "$.body.subject_token.header.x5c"
+        first: "$.body.subject_token.header.x5c.0"
+    body:
+      sub: "$.body.subject_token.body.sub"
+  clientAssertion:
+    body:
+      clientStatement:
+        posture:
+          productId: "$.body.client_assertion.body.client_statement.posture.product_id"
+          productVersion: "$.body.client_assertion.body.client_statement.posture.product_version"
+tokenResponse:
+  accessToken: "$.body.access_token"
 
 oidc:
+  parRequest:
+    clientId: "$.body.client_id"
+    state: "$.body.state"
+    redirectUri: "$.body.redirect_uri"
+  parResponse:
+    requestUri: "$.body.request_uri"
+  authorizationRequest:
+    clientId: "$.path.client_id"
+    requestUri: "$.path.request_uri.value"
+  callbackRequest:
+    code: "$.path.code.value"
+    state: "$.path.state"
   bindEmailRequest:
     email: "$.body.email"
   emailVerificationRequest:
     code: "$.body.code"
   tokenRequest:
     grantType: "$.body.grant_type"
+    code: "$.body.code"
   tokenResponse:
     idToken:
       root: "$.body.id_token"
@@ -23,3 +55,4 @@ oidc:
       identifier: "$.body.input.user_info.identifier"
       commonName: "$.body.input.user_info.commonName"
       professionOid: "$.body.input.user_info.professionOID"
+      organizationName: "$.body.input.user_info.organizationName"

@@ -1,0 +1,4 @@
+[#TA_A_29672_03]
+===== TA_A_29672_03 - OIDC-Token-Bezug - Policy deny mit 403 Forbidden
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-OIDC-Token-Bezug** unterstützen. [<=]"

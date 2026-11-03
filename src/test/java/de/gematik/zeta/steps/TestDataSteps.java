@@ -26,6 +26,7 @@ package de.gematik.zeta.steps;
 
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.KvnrGenerator;
 import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
@@ -57,5 +58,22 @@ public class TestDataSteps {
     var value = "%s-%s".formatted(prefix, UUID.randomUUID());
     TigerGlobalConfiguration.putValue(varName, value, ConfigurationValuePrecedence.TEST_CONTEXT);
     log.info("Generated unique test id '{}' for variable '{}'", value, varName);
+  }
+
+  /**
+   * Generates a syntactically valid, unregistered identifier without changing testdriver identity or server state.
+   *
+   * @param identifierType supported Notification Service identifier type
+   * @param variableName scenario variable receiving the identifier
+   */
+  @Gegebensei("ein neuer Notification-Testidentifikator vom Typ {tigerResolvedString} in Variable {tigerResolvedString}")
+  @Given("a new notification test identifier of type {tigerResolvedString} in variable {tigerResolvedString}")
+  public void generateNotificationIdentifier(String identifierType, String variableName) {
+    var identifier = switch (identifierType) {
+      case "kvnr" -> KvnrGenerator.generateRandomValidKvnr();
+      case "telematik-id" -> "3-notification-" + UUID.randomUUID();
+      default -> throw new IllegalArgumentException("Unsupported notification identifier type: " + identifierType);
+    };
+    TigerGlobalConfiguration.putValue(variableName, identifier, ConfigurationValuePrecedence.TEST_CONTEXT);
   }
 }

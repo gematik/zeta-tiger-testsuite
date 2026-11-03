@@ -10,45 +10,53 @@
 *Mehrere MA einer LEI*
 
 | weitere Akteure: |
+- *ZETA Clients*
+- *PDP Authorization Server*
 - *PEP HTTP Proxy*
 - *Resource Server*
 
 | Auslöser: |
-Mehrere MA einer LEI fragen parallel eine Ressource an.
+Mehrere MA einer LEI registrieren und authentisieren ihre ZETA Clients, fragen parallel Ressourcen an, erneuern ihre Token oder melden sich ab.
 
 | Kurzbeschreibung: |
 Das System ZETA Guard wird mit parallelen Anfragen mehrerer Nutzer belastet.
 Jeder Nutzer tritt mit einem gültigen Access Token an den ZETA Guard heran und fordert Ressourcen beim Resource Server an.
 Die Anfragen werden von ZETA Guard im angemessenen Zeitrahmen beantwortet.
+Der PDP Authorization Server beantwortet unter Last auch die Nonce-, Registrierungs-, Token- und Widerrufsanfragen innerhalb der vorgegebenen Antwortzeiten. Token Requests umfassen den initialen Token-Austausch und die Erneuerung mit Refresh Token.
 
 | Vorbedingung: |
-Die ZETA Clients sind alle registriert und authentisiert.
-Es liegt eine Autorisierung in Form eines Access Tokens für jede Ressource vor.
+Für Ressourcenanfragen sind die ZETA Clients registriert und authentisiert; es liegt eine Autorisierung in Form eines gültigen Access Tokens für jede Ressource vor.
+Für die Registrierungsvariante liegen die erforderlichen Registrierungsnachweise vor. Für Token-Erneuerung und Widerruf besteht eine aktive Session mit einem gültigen Refresh Token.
 Die optionale zusätzliche Verschlüsselung der Daten per ZETA/ASL wird nicht genutzt.
-
-| Ablauf: |
-1. Mehrere MA fordern über ihre ZETA Clients eine geschützte Ressource an.
-2. Die ZETA Clients senden ``GET /resource`` an den PEP HTTP Proxy und fügen die Access Tokens im Authorization Header hinzu.
-3. Der HTTP PEP Proxy prüft jedes Access Token und leitet valide Anfragen parallel an den Resource Server weiter.
-4. Der Resource Server stellt die Ressourcen bereit und antwortet mit ``200 OK`` inklusive Antwortdaten an den PEP.
-5. Der HTTP PEP Proxy empfängt alle Antworten und leitet sie zurück an die ZETA Clients.
-6. Die ZETA Clients liefern die erhaltenen Ressourcen an die MA zurück.
 
 | Nebenbedingung: |
 Die Access Tokens dürfen nicht abgelaufen oder ungültig sein.
 
+| Ablauf: |
+Je nach Ausgangszustand durchlaufen die ZETA Clients unter paralleler Last die folgenden Produktinteraktionen:
+
+1. Noch nicht registrierte ZETA Clients registrieren sich über ``POST /register`` beim PDP Authorization Server.
+2. Für den initialen Token-Austausch beziehen die ZETA Clients eine Nonce über ``/nonce`` und senden ihre Token Requests an ``POST /token``. Der PDP Authorization Server prüft die Nachweise und stellt bei erfolgreicher Autorisierung Access- und Refresh Token aus.
+3. Bei der Token-Erneuerung senden die ZETA Clients ``POST /token`` mit ``grant_type=refresh_token``. Bei gültiger Session und erfolgreicher Autorisierung stellt der PDP Authorization Server neue Access- und Refresh Token aus.
+4. Mehrere MA fordern über ihre ZETA Clients eine geschützte Ressource an.
+5. Die ZETA Clients senden ``GET /resource`` an den PEP HTTP Proxy und fügen die Access Tokens im Authorization Header hinzu.
+6. Der HTTP PEP Proxy prüft jedes Access Token und leitet valide Anfragen parallel an den Resource Server weiter.
+7. Der Resource Server stellt die Ressourcen bereit und antwortet mit ``200 OK`` inklusive Antwortdaten an den PEP.
+8. Der HTTP PEP Proxy empfängt alle Antworten und leitet sie zurück an die ZETA Clients.
+9. Die ZETA Clients liefern die erhaltenen Ressourcen an die MA zurück.
+10. Bei einer Abmeldung widerrufen die ZETA Clients ihre Refresh Token über ``POST /revoke``. Der PDP Authorization Server macht die Refresh Token der jeweiligen Session ungültig, terminiert die Session und antwortet mit ``200 OK``.
+
 | Nachbedingung: |
 Die Nutzer haben die Ressourcen zeitnah erhalten. Als Statuscode kommt ``200 OK`` zurück.
+Die Antwortzeiten unter Last betragen für ``/nonce`` höchstens 33 ms im Mittel, 50 ms im 90. Perzentil, 75 ms im 95. Perzentil und 500 ms im 99. Perzentil; für ``/register``, ``/token`` einschließlich Refresh und ``/revoke`` gelten 75 ms, 100 ms, 150 ms und 1 s.
 
 | Abgedeckte Testaspekte: |
 * <<TA_A_26486-01_01>>
 * <<TA_A_26487_01>>
 * <<TA_A_26488_01>>
-* <<TA_A_26489-01_01>>
+* <<TA_A_26489-02_01>>
 * <<TA_A_26490_01>>
 * <<TA_A_26491_01>>
-* <<TA_A_26561_01>>
-* <<TA_A_26561_02>>
 * <<TA_A_26661_01>>
 
 |===
@@ -61,15 +69,34 @@ sequenceDiagram
 
     actor MA as Mehrere MA einer LEI
     participant ZC as ZETA Client
+    participant PDP as PDP Authorization Server
     participant PEP-HP as PEP HTTP Proxy
     participant RS as Resource Server
 
+    opt Registrierung eines neuen Clients unter Last
+        ZC->>PDP: POST /register<br>Registrierungsnachweise
+        PDP-->>ZC: 201 Created<br>Client-Registrierung
+    end
+    alt Initialer Token-Austausch
+        ZC->>PDP: /nonce
+        PDP-->>ZC: Nonce
+        ZC->>PDP: POST /token<br>Token-Austausch
+    else Token-Erneuerung
+        ZC->>PDP: POST /token<br>grant_type=refresh_token
+    end
+    PDP-->>ZC: 200 OK<br>Access- und Refresh Token
     MA->>+ZC: Ressource anfragen
     ZC->>+PEP-HP: GET /resource<br>Authorization: Bearer Access Token
     PEP-HP->>+RS: Weiterleitung GET /resource<br>inkl. Access Token
     RS-->>-PEP-HP: 200 OK<br>Antwortdaten
     PEP-HP-->>-ZC: 200 OK<br>Antwortdaten
     ZC-->>-MA: Erhalt der Ressource
+    opt Nutzerabmeldung unter Last
+        MA->>ZC: Abmelden
+        ZC->>PDP: POST /revoke<br>Refresh Token
+        PDP->>PDP: Refresh Token ungültig machen<br>Session terminieren
+        PDP-->>ZC: 200 OK
+    end
 ....
 
 ifdef::render_features[]
@@ -78,6 +105,6 @@ Feature-Datei zu diesem Use Case:
 
 [source]
 ----
-include::Client_ressource_anfrage_Performance_SC_200.feature[]
+include::client_ressource_anfrage_performance_sc_200.feature[]
 ----
 endif::[]

@@ -33,7 +33,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 
   @A_25786
   @TA_A_25786_03
   @deployment_modification
-  @MASVS-RESILIENCE
   Szenario: Laufende Anfrage wird vor Abschluss des Versionswechsels beendet
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -56,7 +55,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 
   @A_25784
   @TA_A_25784_01
   @deployment_modification
-  @MASVS-RESILIENCE
   Szenario: Aktualisierung wird im Hintergrund heruntergeladen, während eine Anfrage weiterläuft
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -81,7 +79,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 
   @A_25785
   @TA_A_25785_01
   @deployment_modification
-  @MASVS-RESILIENCE
   Szenario: Folgeanfragen bleiben bis zur finalisierten Aktualisierung ohne Unterbrechung verfügbar
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -102,7 +99,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 
   @A_25786
   @TA_A_25786_04
   @deployment_modification
-  @MASVS-RESILIENCE
   Szenario: Langlaufende Anfrage wird während des Versionswechsels ordnungsgemäß weitergeführt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
@@ -135,7 +131,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst während Aktualisierung SC 
   @TA_A_25788_01
   @TA_A_25789_01
   @deployment_modification
-  @MASVS-RESILIENCE
   Szenario: Rollback bei fehlgeschlagener Aktualisierung stellt stabile Vorversion wieder her
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 

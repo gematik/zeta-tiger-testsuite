@@ -1,0 +1,4 @@
+[#A_29691]
+==== A_29691 - ZETA Guard - Versionierung der Token Ausstellung
+
+Der ZETA Guard Authorization Server MUSS im OAuth Authorization Server Well-known JSON Dokument ([as-well-known.yaml]) über das Feld api_versions_supported die unterstützten Vertragsversionen der Token-Ausstellung bekannt geben. [<=]

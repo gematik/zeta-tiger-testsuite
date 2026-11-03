@@ -1,0 +1,8 @@
+[#TA_A_29861_01]
+===== TA_A_29861_01 - Authorization Server, zusätzliches ASL-Access-Token bei Resource-Server-Terminierung ausgeben
+
+"Der Authorization Server MUSS, wenn: die Policy Engine die Token-Ausstellung erlaubt hat und der ZETA/ASL Kanal am Resource Server terminiert, **ein zusätzliches Access Token für den Zugriff auf den /ASL Endpunkt ausstellen gemäß Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server. Das zusätzliche Access Token wird in der Response auf den Token Request im Parameter asl_access_token gesendet.**
+
+[<=]"
+
+Tabelle 19 legt die logische ASL-Audience, scope=asl und ver=2 beziehungsweise ver=1 für den zulässigen Legacy-Vertrag fest. Das signierte ASL-Access-Token gehört zur erlaubten Anfrage; die konkrete /ASL-Endpunkt-URL wird über htu im DPoP-Proof gebunden.

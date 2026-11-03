@@ -1,0 +1,8 @@
+[#TA_A_29960_04]
+===== TA_A_29960_04 - Notification Service – Pseudonymisierung von KVNR und Telematik-ID - Telematik-ID ausschließlich pseudonym persistieren
+
+"Der Notification Service MUSS Nutzeridentifikatoren (KVNR, **Telematik-ID**) nicht im Klartext, sondern ausschließlich als Pseudonym **persistieren** und indizieren. Das PseudonymMUSS als schlüsselgebundener MAC über den Identifikator gebildet werden; das eingesetzte MAC-Verfahren und die Schlüssellänge MÜSSEN [gemSpec_Krypt] entsprechen. Der zugehörige
+
+Pseudonymisierungsschlüssel MUSS in der VAU erzeugt und ausschließlich HSM-versiegelt (per HsmProxyService.Encrypt/Decrypt) persistiert werden; die eigentliche MAC-Berechnung MUSS mit dem entwrappten Schlüssel innerhalb der VAU erfolgen (Erzeugung, Cache-Haltung und sicheres Verwerfen gemäß A_29958). Die Pseudonymbildung MUSS deterministisch sein (gleicher Identifikator → gleiches Pseudonym), damit die für (1) und (2) benötigten Lookups (Channel-/Pusher-Abfrage je Nutzer) ohne Klartext-Identifikator möglich sind. Eine Rotation des Pseudonymisierungsschlüssels verändert alle abgeleiteten Pseudonyme und ist daher nur unter den in A_29963 (Punkt 3) genannten Bedingungen (vollständige Re-Pseudonymisierung oder versioniertes Vorhalten der vorherigen Schlüsselgeneration) zulässig, damit der deterministische Lookup nicht bricht.
+
+**[<=]**"

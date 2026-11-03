@@ -1,0 +1,117 @@
+[#UC_02_03]
+== UseCase_02_03: Identifikatoren in der VAU pseudonymisieren
+
+.UseCase_02_03
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Identifikatoren in der VAU pseudonymisieren
+
+| Akteur: | Client-Modul und Resource Server
+
+| weitere Akteure: | Notification Service in VAU-Variante A, HSM, Datenspeicher, Betreiber des Notification Service
+
+| Auslöser: | Channel-/Pusher-Daten werden gespeichert oder der Pseudonymisierungsschlüssel wird rotiert.
+
+| Kurzbeschreibung: |
+KVNR und Telematik-ID werden ausschließlich pseudonym persistiert; MAC-Bildung, Schlüsselgrenze und deterministische Lookups werden auch über die Rotation geprüft.
+Die KVNR-Indizierung bei Pusher-Registrierung und Channel-Änderung ist in `kvnr_index_pseudonymisierung.feature` ausführbar. Die weiteren Varianten bleiben Prüfentwürfe.
+
+| Vorbedingung: |
+. Der Notification Service wird in VAU-Variante A betrieben. Nutzer mit KVNR beziehungsweise Telematik-ID können über die vorgesehenen NS-Schnittstellen Pusher registrieren und Channels konfigurieren. Für den Vergleich verschiedener Nutzer sind je Identifikatortyp zwei eindeutig zugeordnete Bestände vorhanden.
+. Die tatsächlich verwendeten Datensätze und Indizes einschließlich ihrer Identitätszuordnung sind vor und nach Schreiboperationen sowie vor und nach einer Rotation beobachtbar.
+. Das eingesetzte MAC-Verfahren und die Schlüssellänge sind bekannt und entsprechen gemSpec_Krypt. Die für die MAC-Berechnung verwendeten Identifikatorbytes sind eindeutig bestimmt.
+. Schlüsselerzeugung, MAC-Berechnung, Persistenzschreibpfade und HSM Encrypt/Decrypt sind innerhalb ihrer jeweiligen Vertrauensgrenzen beobachtbar. Der Pseudonymisierungsschlüssel liegt im Klartext ausschließlich innerhalb der VAU vor; dies gilt auch für Kopien sowie Crash- und Dump-Pfade.
+. Start, Wiederanlauf und Rotation werden unterstützt. Die Implementierung verwendet entweder vollständige Re-Pseudonymisierung oder geschütztes Vorhalten der vorherigen Generation; die gewählte Strategie und der Abschluss der Migration sind erkennbar.
+
+| Nebenbedingung: |
+Die Schutzpflichten gelten für den Betrieb in VAU-Variante A. Ein erfolgreicher fachlicher Lookup allein weist weder das eingesetzte MAC-Verfahren noch die Einhaltung der VAU-/HSM-Grenze nach.
+
+| Ablauf: |
+*Persistenz und deterministischer Zugriff*
+
+. Das Client-Modul registriert einen Pusher für einen Nutzer mit KVNR und konfiguriert dessen Channels. Der Notification Service ordnet die Operationen diesem Nutzer zu und bestätigt die Registrierung sowie die Channel-Änderung. Die entsprechende Variante verwendet einen Nutzer mit Telematik-ID.
+. Der Notification Service bildet den Identifikator mit einem schlüsselgebundenen MAC auf ein Pseudonym ab. Er persistiert und indiziert beide Identifikatortypen ausschließlich pseudonym; die zugeordneten Datensätze und Indexeinträge enthalten keinen Klartextidentifikator.
+. Wiederholte Operationen mit denselben Identifikatorbytes und demselben Schlüssel verwenden dasselbe Pseudonym. MAC-Verfahren, Schlüssellänge und die tatsächlich gespeicherten Werte stimmen mit den kryptographischen Vorgaben überein.
+. Das Client-Modul fragt seine Pusher und Channel-Konfiguration ab; der Resource Server fragt die Channels des Nutzers ab. Der Notification Service löst die Anfragen über den pseudonymbasierten Index auf und liefert den jeweils zugeordneten Bestand. Die Bestände der zweiten KVNR beziehungsweise Telematik-ID bleiben getrennt.
+
+*Erzeugung, Wiederanlauf und Schlüsselgrenze*
+
+. Beim Start einer VAU-Instanz ohne vorhandenen Pseudonymisierungsschlüssel erzeugt der Notification Service den Schlüssel innerhalb der VAU. Die MAC-Berechnung erfolgt ausschließlich mit dem entwrappten Schlüssel innerhalb der VAU.
+. Der Notification Service lässt den Schlüssel über HsmProxyService.Encrypt HSM-versiegeln und persistiert ausschließlich die versiegelte Form. Nach einem Wiederanlauf stellt er ihn über HsmProxyService.Decrypt innerhalb der VAU wieder her. Kein Persistenzschreibpfad speichert eine unversiegelte Kopie.
+
+*Rotation — jeweils die implementierte Alternative*
+
+. Der Betreiber veranlasst die Rotation des Pseudonymisierungsschlüssels bei vorhandenen Channel-/Pusher-Daten für beide Identifikatortypen. Noch benötigte Altgenerationen bleiben ausschließlich geschützt verfügbar und werden bei Bedarf in der VAU entsiegelt.
+. Bei Re-Pseudonymisierung migriert der Notification Service alle betroffenen Channel-/Pusher-Daten und Indizes nach A_29963 Punkt 3 vollständig. Die bestehenden Bestände bleiben über die aus dem neuen Schlüssel abgeleiteten Pseudonyme auffindbar.
+. Bei versioniertem Vorhalten löst der Notification Service Lookups auf alte und neu geschriebene Daten während der Migration über die jeweils richtige Generation auf. Die Altgeneration bleibt bis zum vollständigen Abschluss verfügbar; danach funktionieren sämtliche Lookups mit der neuen Generation.
+
+| Nachbedingung: |
+Datensätze/Indizes enthalten keine Klartextidentifikatoren; Wiederholungen und Lookups ordnen jede Identität korrekt zu. Die implementierte Rotationsalternative erhält alte und neue Bestände.
+Der Pseudonymisierungsschlüssel wird innerhalb der VAU erzeugt und verwendet und liegt außerhalb der VAU ausschließlich HSM-versiegelt vor. Kein fachlicher Erfolg ersetzt den gesonderten Nachweis dieser Schlüsselgrenzen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29960_01>>
+* <<TA_A_29960_02>>
+* <<TA_A_29960_03>>
+* <<TA_A_29960_04>>
+* <<TA_A_29960_05>>
+* <<TA_A_29960_06>>
+* <<TA_A_29960_07>>
+* <<TA_A_29960_08>>
+* <<TA_A_29960_09>>
+* <<TA_A_29960_10>>
+* <<TA_A_29960_11>>
+* <<TA_A_29960_14>>
+* <<TA_A_29960_15>>
+
+|===
+
+[mermaid,uc-02-03-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Client-Modul
+    participant R as Resource Server
+    participant B as Betreiber
+    participant V as Notification Service in VAU
+    participant H as HSM
+    participant D as Datenspeicher
+    alt Noch kein Pseudonymisierungsschlüssel vorhanden
+        V->>V: Schlüssel innerhalb der VAU erzeugen
+        V->>H: HsmProxyService.Encrypt
+        H-->>V: Versiegelter Schlüssel
+        V->>D: Ausschließlich versiegelten Schlüssel persistieren
+    else Wiederanlauf mit vorhandenem Schlüssel
+        V->>D: Versiegelten Schlüssel laden
+        D-->>V: Versiegelter Schlüssel
+        V->>H: HsmProxyService.Decrypt
+        H-->>V: Schlüssel innerhalb der VAU wiederherstellen
+    end
+    C->>V: Pusher registrieren / Channels konfigurieren
+    V->>V: MAC innerhalb der VAU bilden
+    V->>D: Pseudonyme Datensätze und Indexeinträge speichern
+    D-->>V: Zugehöriger Datensatz
+    V-->>C: Registrierung / Channel-Änderung bestätigt
+    C->>V: Eigene Pusher / Channels abfragen
+    R->>V: Channels eines Nutzers abfragen
+    V->>D: Bestand über Pseudonym nachschlagen
+    D-->>V: Zugeordneter Bestand ohne Vermischung der Nutzer
+    V-->>C: Zugeordnete Pusher / Channel-Konfiguration
+    V-->>R: Zugeordnete Channels
+    B->>V: Pseudonymisierungsschlüssel rotieren
+    alt Vollständige Re-Pseudonymisierung
+        V->>D: Alle betroffenen Bestände und Indizes migrieren
+    else Vorherige Schlüsselgeneration versioniert vorhalten
+        V->>D: Alt- und Neubestand über richtige Generation auflösen
+    end
+    V->>D: Lookup mit neuer Generation nach Abschluss
+    D-->>V: Vorhandener Bestand bleibt auffindbar
+....
+
+[.lead]
+Feature-Datei zur KVNR-Indizierung bei Pusher- und Channel-Operationen:
+
+[source]
+----
+include::kvnr_index_pseudonymisierung.feature[]
+----

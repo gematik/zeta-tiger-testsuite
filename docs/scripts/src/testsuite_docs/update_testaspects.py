@@ -141,14 +141,14 @@ def create_readmes(base_folder: Path) -> None:
   for root, _, files in os.walk(base_folder):
     adoc_files = [
       name for name in files if
-      name.endswith(".adoc") and name.lower() != "readme.adoc"
+      name.startswith("TA_") and name.endswith(".adoc")
     ]
     if not adoc_files:
       continue
 
     afo_id = Path(root).name
     readme_path = Path(root) / "readme.adoc"
-    with readme_path.open("w", encoding="utf-8") as handle:
+    with readme_path.open("w", encoding="utf-8", newline="\n") as handle:
       handle.write(f"==== Testaspekte für die Anforderung {afo_id}\n\n")
       handle.write(f"Folgende Testaspekte testen <<{afo_id}>>.\n\n")
       for file_name in sorted(adoc_files):
@@ -162,12 +162,13 @@ def create_spec_readmes(base_folder: Path) -> None:
     if not spec_folder_path.is_dir():
       continue
 
-    afo_dirs = [entry for entry in spec_folder_path.iterdir() if entry.is_dir()]
+    afo_dirs = [entry for entry in spec_folder_path.iterdir()
+                if entry.is_dir() and any(entry.glob("TA_*.adoc"))]
     if not afo_dirs:
       continue
 
     readme_path = spec_folder_path / "readme.adoc"
-    with readme_path.open("w", encoding="utf-8") as handle:
+    with readme_path.open("w", encoding="utf-8", newline="\n") as handle:
       handle.write(f"=== Testaspekte aus {spec_folder_name}\n\n")
       for afo_dir in sorted(afo_dirs):
         include_path = (afo_dir.name + "/readme.adoc").replace("\\", "/")
@@ -176,12 +177,11 @@ def create_spec_readmes(base_folder: Path) -> None:
 
 def create_base_readme(base_folder: Path) -> None:
   """Write the top-level ``readme.adoc`` for the generated structure."""
-  spec_dirs = [entry for entry in Path(base_folder).iterdir() if entry.is_dir()]
-  if not spec_dirs:
-    return
+  spec_dirs = [entry for entry in Path(base_folder).iterdir()
+               if entry.is_dir() and any(entry.glob("*/TA_*.adoc"))]
 
   readme_path = Path(base_folder) / "readme.adoc"
-  with readme_path.open("w", encoding="utf-8") as handle:
+  with readme_path.open("w", encoding="utf-8", newline="\n") as handle:
     handle.write("== Abgeleitete Testaspekte\n\n")
     handle.write(
         "Es wurden Testaspekte aus den identifizierten Anforderungen generiert,"

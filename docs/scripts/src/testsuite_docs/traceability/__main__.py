@@ -47,11 +47,6 @@ def main(argv: list[str] | None = None) -> int:
     help="Path to the project root (defaults to autodetected repository root).",
   )
   parser.add_argument(
-    "--product-status-csv",
-    type=Path,
-    help="Optional CSV with product implementation status (defaults to docs/asciidoc/tables/source/product_implementation.csv).",
-  )
-  parser.add_argument(
     "--dry-run",
     action="store_true",
     help="Collect data but do not write artefacts to disk.",
@@ -77,7 +72,6 @@ def main(argv: list[str] | None = None) -> int:
 
   report = build_traceability(
     project_root=args.project_root,
-    product_status_csv=args.product_status_csv,
     write_outputs=not args.dry_run,
   )
 

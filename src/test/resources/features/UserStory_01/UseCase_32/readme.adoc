@@ -1,0 +1,90 @@
+[#UC_01_32]
+== UseCase_01_32: Zusätzliches ASL-Token und äußerer DPoP-Nachweis bei required_passthrough
+
+.UseCase_01_32
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Zusätzliches ASL-Token und äußerer DPoP-Nachweis bei required_passthrough
+
+| Akteur: | MA einer LEI über einen stationären ZETA Client
+
+| weitere Akteure: | SMC-B, Authorization Server, Policy Engine, PEP HTTP Proxy, Resource Server
+
+| Auslöser: |
+Der MA fordert eine geschützte Ressource an, deren OAuth Protected Resource Well-known Dokument zeta_asl_use=required_passthrough vorgibt.
+
+| Kurzbeschreibung: |
+Der ASL-Kanal terminiert am Resource Server. Der Authorization Server stellt zusätzlich zum Ressourcen-Token ein Access Token für den /ASL-Endpunkt aus. Der Client erzeugt dafür einen eigenen äußeren DPoP-Proof und verwendet ihn im äußeren HTTP Request. Der innere Ressourcenrequest behält seinen eigenen Token und DPoP-Proof.
+Die getrennte Gegenprobe verwendet dieselbe zulässige Nutzer-, Client- und Policybedingung mit ASL-Terminierung am PEP und ohne required_passthrough.
+
+| Vorbedingung: |
+. Der stationäre Client ist registriert und beginnt eine frische SMC-B-/Software-Token-Exchange-Sitzung mit gültigen Signaturen, Nonces und Client-/DPoP-Schlüsselbindungen gemäß <<UC_01_06>>.
+. Für das Passthrough-Profil sind required_passthrough im OAuth Protected Resource Well-known Dokument und die ASL-Terminierung am Resource Server eingerichtet. Ein ASL-fähiger Resource Server sowie die erforderlichen Vertrauensanker stehen bereit.
+. Die Policy erlaubt den Ressourcenzugriff und die zusätzliche ASL-Berechtigung. Ressourcen-Endpunkt, /ASL-Endpunkt und ihre logischen Audiences sind vor dem Vorgang festgelegt; der ASL-Scope lautet asl. Angefragte und gewährte Ressourcen-Scopes stimmen überein.
+. Für Token-Lebensdauern gelten das Ausgabezeitfenster und die unabhängig bekannte maximale Uhrabweichung aus <<UC_04_09>>.
+. Tokenrequest, Policy-Entscheidung, direkte Tokenantwort und anschließender Ressourcenaufruf gehören zu derselben Clientinstanz. Das unveränderte Schema-Bundle schemas/v_2_0 steht bereit.
+. Die Gegenprobe beginnt mit einer eigenen frischen Sitzung bei ansonsten denselben gültigen Voraussetzungen. Ihr Well-known Dokument verwendet zeta_asl_use=required und ihr ASL-Kanal terminiert am PEP.
+
+| Nebenbedingung: |
+Die Produktfunktion required_passthrough ist zur späteren Implementierung vorgesehen. Dieser UseCase ist ein Prüfentwurf; eine ausführbare Feature-Datei ist noch nicht implementiert. Das Passthrough-Profil ist eine eigene Voraussetzung und blockiert die übrigen Token-Exchange-Varianten aus <<UC_04_09>> nicht.
+
+| Ablauf: |
+. Der ZETA Client liest das OAuth Protected Resource Well-known Dokument und erkennt required_passthrough sowie den zuständigen Authorization Server und das Ressourcenziel.
+. Der Client führt den SMC-B-Token-Exchange mit seinem registrierten Client-Schlüssel und einem frischen, nonce-gebundenen DPoP-Proof aus. Der Authorization Server validiert die Nachweise und erhält die erlaubende Policy-Entscheidung für Ressourcen- und ASL-Zugriff.
+. Der Authorization Server liefert die direkte Erfolgsantwort nach token-response.yaml. access_token, token_type=DPoP und expires_in sind vorhanden; ein vorhandenes issued_token_type enthält einen der beiden im Schema erlaubten Werte. Das Ressourcen-Access-Token ist ein signiertes, DPoP-gebundenes JWT gemäß access-token.yaml; die SMC-B-Authentisierung ergibt acr=gematik-ehealth-loa-substantial. expires_in gibt die verbleibende Lebensdauer des Access Tokens in Sekunden ab Erzeugung der Antwort an und stimmt mit dem signierten exp und dem Ausgabezeitfenster überein. Ein vorhandenes refresh_token ist signiert und gehört zum selben Grant; vorhandenes refresh_expires_in entspricht seiner Lebensdauer. Vorhandene optionale Felder entsprechen den Typen und Werten des Antwortschemas. Bei Softwareattestierung fehlt zeta_attestation_token.
+. Die Antwort enthält zusätzlich asl_access_token als signiertes JWT für den /ASL-Endpunkt. Dessen aud entspricht dem logischen ASL-Bezeichner, sein scope lautet asl. Im resource-Vertrag stammt die logische Audience aus der korrelierten Policy-Entscheidung und ver ist 2; im zulässigen Legacy-audience-Vertrag wird die Audience unverändert übernommen und ver ist 1. Die konkrete Endpunkt-URL wird über den DPoP-Proof gebunden.
+. Der Client bildet den inneren fachlichen Request mit dem Ressourcen-Access-Token und einem dazu passenden DPoP-Proof. Er erzeugt zusätzlich einen gültig signierten äußeren DPoP-Proof für den /ASL-Endpunkt mit htm=POST und htu=https://<FQDN>/ASL. Der FQDN entspricht dem resource-Attribut des Well-known Dokuments; Token, Proof und Schlüsselbindungen gehören zu derselben Sitzung.
+. Der Client baut den ASL-Kanal mit dem Resource Server über den PEP auf. Der äußere POST /ASL trägt das zusätzliche ASL-Access-Token und den zusätzlichen Proof im DPoP-Header; sein verschlüsselter Inhalt enthält den eigenständigen inneren Ressourcenrequest.
+. Der PEP autorisiert den äußeren Request und leitet den verschlüsselten Inhalt an den Resource Server weiter. Der Resource Server terminiert ASL, prüft den inneren Berechtigungsnachweis und verarbeitet die Fachanfrage. Der Client erhält und entschlüsselt die korrelierte fachliche Antwort. Die getrennten ASL-Transport- und Validierungsvarianten sind in <<UC_01_31>> beschrieben.
+. In der frischen Gegenprobe mit ASL-Terminierung am PEP gelingt ebenfalls ein gültiger SMC-B-Token-Exchange mit positiver Policy. Die direkte Erfolgsantwort ist schemakonform. Der Ressourcenrequest gelingt über den am PEP terminierten ASL-Kanal gemäß <<UC_01_31>>.
+
+| Nachbedingung: |
+Bei required_passthrough wurde zusätzlich ein signiertes, zum ASL-Ziel passendes Access Token im Feld asl_access_token ausgegeben. Der Client hat den äußeren DPoP-Proof selbst erzeugt und im DPoP-Header des äußeren POST /ASL verwendet; innere und äußere Berechtigungsnachweise bleiben ihren jeweiligen Zielen zugeordnet. Die direkte Tokenantwort ist schemakonform und der fachliche Zugriff gelingt.
+Die gemeldete Access-Token-Lebensdauer expires_in entspricht dem signierten exp bezogen auf das festgelegte Ausgabezeitfenster mit der unabhängig bekannten maximalen Uhrabweichung; dies gilt auch für die erfolgreiche Gegenprobe.
+In der erfolgreichen Gegenprobe mit ASL-Terminierung am PEP ist die direkte Tokenantwort schemakonform und der fachliche Zugriff gelingt. Die spätere Ausführung benötigt ein echtes Passthrough-Profil und die zugehörigen SDK-Operationen; der Entwurf allein begründet keine implementierte Szenarioabdeckung oder bestandene Produktprüfung.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29861_01>>
+* <<TA_A_29862_01>>
+* <<TA_A_29862_02>>
+* <<TA_A_29951_01>>
+* <<TA_A_25760_04>>
+
+|===
+
+[mermaid,uc-01-32-asl-passthrough,svg]
+....
+sequenceDiagram
+    autonumber
+    actor M as MA einer LEI
+    participant C as ZETA Client
+    participant A as Authorization Server
+    participant P as Policy Engine
+    participant E as PEP HTTP Proxy
+    participant R as Resource Server
+    M->>C: Geschützte Ressource anfordern
+    C->>E: OAuth Protected Resource Discovery
+    E-->>C: Ressource, AS und zeta_asl_use
+    C->>A: Gültiger SMC-B-Token-Exchange mit DPoP
+    A->>P: Autorisierungsentscheidung anfordern
+    P-->>A: Zugriff erlaubt, logische Audiences
+    alt required_passthrough, ASL endet am Resource Server
+        A-->>C: Erfolgsantwort mit Ressourcen-Token und asl_access_token
+        C->>C: Inneren Request und zusätzlichen äußeren DPoP-Proof bilden
+        C->>R: ASL-Kanal über PEP aufbauen
+        C->>E: POST /ASL mit ASL-Token, äußerem DPoP und Ciphertext
+        E->>R: Autorisierten verschlüsselten Request weiterleiten
+        R->>R: ASL terminieren, inneren Nachweis prüfen und Ressource verarbeiten
+        R-->>E: Verschlüsselte Fachantwort
+        E-->>C: Verschlüsselte Fachantwort weiterleiten
+    else required, ASL endet am PEP, eigene frische Sitzung
+        A-->>C: Schemakonforme Erfolgsantwort mit Ressourcen-Token
+        C->>E: ASL-Kanal und verschlüsselter innerer Request
+        E->>E: ASL terminieren und inneren Nachweis prüfen
+        E->>R: Autorisierte Fachanfrage
+        R-->>E: Fachantwort
+        E-->>C: Verschlüsselte Fachantwort
+    end
+    C->>C: Fachantwort entschlüsseln
+    C-->>M: Fachliches Ergebnis
+....

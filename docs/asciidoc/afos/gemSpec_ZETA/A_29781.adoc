@@ -1,0 +1,4 @@
+[#A_29781]
+==== A_29781 - ZETA Client, Android Ablauf zur Schlüsselgenerierung
+
+Der ZETA Client MUSS den Ablauf gemäß Abbildung Abb-ZETA-Schlüsselgenerierung-Android unterstützen. [<=]

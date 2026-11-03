@@ -1,0 +1,8 @@
+[#TA_A_29376_12]
+===== TA_A_29376_12 - ZETA, Ablauf Token Exchange mit Attestation - Sitzungsbezogenes DPoP-Schlüsselpaar erzeugen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritt 04: Der Client erzeugt ein **sitzungsbezogenes DPoP-Schlüsselpaar** für die Bindung der ausgegebenen Tokens.

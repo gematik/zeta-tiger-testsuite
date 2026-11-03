@@ -42,6 +42,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
+from testsuite_docs.generate_doc_includes import create_afo_readmes
+
 
 def _write_file_lf(path: Path, content: str) -> None:
   """Write UTF-8 text with LF line endings regardless of platform."""
@@ -49,7 +51,9 @@ def _write_file_lf(path: Path, content: str) -> None:
     handle.write(content)
 
 
-DEFAULT_XML = Path("docs/gemVZ_Afo_ZETA_Guard_V_1.3.0-0_V1.0.0.xml")
+DEFAULT_XML = Path(
+    "docs/specifications/2.0.0-cc/derived/"
+    "gemVZ_Afo_ZETA_Guard_V_2.0.0-0_V1.0.0.xml")
 DEFAULT_OUTPUT = Path("docs/asciidoc/afos")
 DEFAULT_TEST_PROCEDURE = (
     'Festlegungen zur funktionalen Eignung "Produkttest/Produktübergreifender Test"'
@@ -257,6 +261,7 @@ def _render_gemspec_zeta_section(
     grouped: dict[str, list[Requirement]],
     sources: List[SourceDocument],
 ) -> str:
+  """Render source metadata with one generated include index per source."""
   lines: List[str] = []
   lines.append("=== Anforderungen gemVZ AFO ZETA Guard (Produkttest 3.1.1)\n")
   source_lookup = {s.identifier: s for s in sources}
@@ -266,9 +271,7 @@ def _render_gemspec_zeta_section(
     if src_doc:
       heading = f"{src_doc.denotation} ({src_doc.identifier} V{src_doc.version})"
     lines.append(f"==== {heading}\n")
-    for req in grouped[source_key]:
-      include_path = f"{source_key}/{req.requirement_id}.adoc"
-      lines.append(f"include::{include_path}[]\n")
+    lines.append(f"include::{source_key}/readme.adoc[]\n")
   return "\n".join(lines).rstrip() + "\n"
 
 
@@ -426,6 +429,7 @@ def main(argv: Sequence[str] | None = None) -> int:
   _write_requirements(grouped, args.output_dir)
 
   if args.readme:
+    create_afo_readmes(args.output_dir)
     catalog = CatalogDocument.from_xml_path(args.input_xml)
     section = _render_gemspec_zeta_section(grouped, sources)
     _update_root_readme(ROOT_README, section, catalog, sources)

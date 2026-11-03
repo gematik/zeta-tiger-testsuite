@@ -24,15 +24,20 @@
 
 package de.gematik.zeta.steps;
 
+import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.reports.SerenityReportUtils;
 import de.gematik.zeta.services.KubernetesRateLimitConfigurationEvidence;
+import de.gematik.zeta.services.OtlpTracePipeline;
+import de.gematik.zeta.services.TelemetryCollectorDiscovery;
 import de.gematik.zeta.services.ZetaDeploymentConfiguration;
 import de.gematik.zeta.services.ZetaDeploymentModificationService;
+import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -48,63 +53,234 @@ import tools.jackson.dataformat.yaml.YAMLFactory;
 public class KubernetesProbeSteps {
 
   private static final String ZETA_NAMESPACE_CONFIG_KEY = "zetaDeploymentConfig.namespace";
-  private static final String OPENTELEMETRY_RELAY_JSONPATH = "jsonpath={.data.relay}";
   private static final String ACTIVE_OPA_CONFIGMAP = "opa-config";
   private static final String SIMULATION_OPA_CONFIGMAP = "opa-simulation-config";
   private static final String RATE_LIMIT_CONFIG_RESOURCE_TYPES = "configmap,ingress";
-  private static final String TELEMETRY_GATEWAY_CONFIGMAP_SELECTOR =
-      "app.kubernetes.io/name=telemetry-gateway,app.kubernetes.io/component=standalone-collector";
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
-  private static final Pattern TRACES_PIPELINE_USES_BATCH = Pattern.compile(
-      "(?ms)^\\s*traces:\\s*$.*?^\\s*processors:\\s*$.*?^\\s*-\\s*batch\\s*(?:#.*)?$");
-  private static final Pattern TRACES_PIPELINE_OTLP_EXPORTER = Pattern.compile(
-      "(?ms)^\\s*traces:\\s*$.*?^\\s*exporters:\\s*$.*?^\\s*-\\s*(otlp[\\w-]*(?:/[^\\s#]+)?)\\s*(?:#.*)?$");
-  private static final Pattern TRACES_PIPELINE_PATTERN = Pattern.compile(
-      "(?ms)^\\s*traces:\\s*$.*?(?=^\\s{0,4}\\S|\\z)");
   private static final List<String> TELEMETRY_SIGNALS = List.of("logs", "metrics", "traces");
   private final ZetaDeploymentModificationService service = ZetaDeploymentConfiguration.getServiceInstance();
 
   /**
-   * Checks whether the traces pipeline uses a batch processor.
+   * Resolves the named Service's current ClusterIP for an exact RBEL sender assertion.
    *
-   * @param relayConfig OpenTelemetry Collector relay configuration
-   * @return true if the traces pipeline references the batch processor
+   * @param serviceName Kubernetes Service name
+   * @param port required TCP Service port
+   * @param variableName Tiger variable receiving the sender pattern
    */
-  static boolean tracesPipelineUsesBatch(String relayConfig) {
-    return TRACES_PIPELINE_USES_BATCH.matcher(relayConfig).find();
+  @Dann("ermittle das Sender-Muster für den Kubernetes Service {tigerResolvedString} auf Port {int} "
+      + "und speichere in der Variable {tigerResolvedString}")
+  @Then("resolve the sender pattern for Kubernetes Service {tigerResolvedString} on port {int} "
+      + "and store it in variable {tigerResolvedString}")
+  public void storeServiceSenderPattern(String serviceName, int port, String variableName) {
+    var result = service.executeKubectlCommand(false, "-n", getNamespace(), "get", "service", serviceName,
+        "-o", "json");
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Could not read Kubernetes Service '" + serviceName + "': " + result.stderr());
+    }
+    try {
+      var pattern = serviceSenderPattern(JSON.readTree(result.stdout()), serviceName, port);
+      TigerGlobalConfiguration.putValue(variableName, pattern, ConfigurationValuePrecedence.TEST_CONTEXT);
+    } catch (JacksonException e) {
+      throw new AssertionError("Could not parse Kubernetes Service '" + serviceName + "'", e);
+    }
   }
 
   /**
-   * Reads the first OTLP exporter from the traces pipeline.
+   * Allows only the expected Service name or its live ClusterIP on the advertised TCP port.
    *
-   * @param relayConfig OpenTelemetry Collector relay configuration
-   * @return OTLP exporter name when present
+   * @param description live Kubernetes Service JSON
+   * @param serviceName expected Kubernetes Service name
+   * @param port required TCP Service port
+   * @return anchored RBEL sender pattern
    */
-  static Optional<String> firstTraceOtlpExporter(String relayConfig) {
-    var exporterMatcher = TRACES_PIPELINE_OTLP_EXPORTER.matcher(relayConfig);
-    if (exporterMatcher.find()) {
-      return Optional.of(exporterMatcher.group(1));
+  static String serviceSenderPattern(JsonNode description, String serviceName, int port) {
+    if (description == null || !serviceName.equals(description.path("metadata").path("name").asText())) {
+      throw new AssertionError("Kubernetes response does not identify Service '" + serviceName + "'");
     }
-    return Optional.empty();
+    var spec = description.path("spec");
+    var clusterIp = spec.path("clusterIP").asText();
+    if (clusterIp.isBlank() || "None".equals(clusterIp)) {
+      throw new AssertionError("Kubernetes Service '" + serviceName + "' has no ClusterIP");
+    }
+    var tcpPortFound = false;
+    for (var servicePort : spec.path("ports")) {
+      if (servicePort.path("port").asInt() == port
+          && "TCP".equals(servicePort.path("protocol").asText("TCP"))) {
+        tcpPortFound = true;
+      }
+    }
+    if (port < 1 || port > 65535 || !tcpPortFound) {
+      throw new AssertionError("Kubernetes Service '" + serviceName + "' does not expose TCP port " + port);
+    }
+    return "\\A(?:" + Pattern.quote(serviceName) + "|" + Pattern.quote(clusterIp) + "):" + port + "\\z";
   }
 
   /**
-   * Extracts the traces pipeline for the Serenity report.
+   * Reads an explicit environment value from the selected running pod without changing Kubernetes resources.
    *
-   * @param relayConfig OpenTelemetry Collector relay configuration
-   * @return traces pipeline block or a placeholder
+   * <p>Only literal pod environment entries are supported. Missing values, valueFrom references and
+   * envFrom-only configuration fail rather than being interpreted as an empty allowlist.</p>
+   *
+   * @param environmentName name of the non-secret environment entry to record
+   * @param containerName container in the selected pod
+   * @param podName pod previously selected for the tested deployment
+   * @param variableName Tiger variable receiving the literal string value
    */
-  static String tracePipelineForReport(String relayConfig) {
-    var tracesMatcher = TRACES_PIPELINE_PATTERN.matcher(relayConfig);
-    var tracesPipeline = "";
-    while (tracesMatcher.find()) {
-      tracesPipeline = tracesMatcher.group();
+  @Und("ermittle die konfigurierte Umgebungsvariable {tigerResolvedString} des Containers {tigerResolvedString} "
+      + "im Pod {tigerResolvedString} und speichere in der Variable {tigerResolvedString}")
+  public void readConfiguredContainerEnvironment(String environmentName, String containerName,
+      String podName, String variableName) {
+    var namespace = getNamespace();
+    var result = service.executeKubectlCommand(false, "-n", namespace, "get", "pod", podName, "-o", "json");
+    if (result.exitCode() != 0) {
+      throw new AssertionError("Could not read pod configuration: " + result.stderr());
     }
-    if (tracesPipeline.isBlank()) {
-      return "<pipeline not found>";
+    JsonNode pod;
+    try {
+      pod = JSON.readTree(result.stdout());
+    } catch (JacksonException e) {
+      throw new AssertionError("Could not parse pod configuration", e);
     }
-    return tracesPipeline.stripTrailing();
+    var value = literalContainerEnvironment(pod, containerName, environmentName);
+    var context = service.executeKubectlCommand(false, "config", "current-context");
+    if (context.exitCode() != 0 || context.stdout().isBlank()) {
+      throw new AssertionError("Could not identify Kubernetes context: " + context.stderr());
+    }
+    SerenityReportUtils.addCustomData("Kubernetes container configuration: " + environmentName,
+        "CONTEXT=" + context.stdout().strip() + " | NAMESPACE=" + namespace + " | POD=" + podName
+            + " | UID=" + pod.path("metadata").path("uid").asText()
+            + " | RESOURCE_VERSION=" + pod.path("metadata").path("resourceVersion").asText()
+            + " | CONTAINER=" + containerName + "\n" + environmentName + "=" + value);
+    TigerGlobalConfiguration.putValue(variableName, value, ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
+  /**
+   * Extracts a non-empty literal environment entry from a named, ready and running container.
+   *
+   * @param pod Kubernetes pod JSON
+   * @param containerName exact container name
+   * @param environmentName exact environment entry name
+   * @return configured string, retaining CSV separators and whitespace
+   * @throws AssertionError if the container is unavailable or the entry cannot be resolved literally
+   */
+  static String literalContainerEnvironment(JsonNode pod, String containerName, String environmentName) {
+    if (pod == null || !"Running".equals(pod.path("status").path("phase").asText())
+        || pod.path("metadata").hasNonNull("deletionTimestamp")) {
+      throw new AssertionError("Selected pod is not running or is terminating");
+    }
+    var ready = false;
+    for (var status : pod.path("status").path("containerStatuses")) {
+      if (containerName.equals(status.path("name").asText())
+          && status.path("ready").asBoolean(false) && status.path("state").has("running")) {
+        ready = true;
+      }
+    }
+    if (!ready) {
+      throw new AssertionError("Selected container is not ready and running: " + containerName);
+    }
+    var values = new ArrayList<String>();
+    for (var container : pod.path("spec").path("containers")) {
+      if (!containerName.equals(container.path("name").asText())) {
+        continue;
+      }
+      for (var entry : container.path("env")) {
+        if (!environmentName.equals(entry.path("name").asText())) {
+          continue;
+        }
+        if (entry.has("valueFrom") || !entry.path("value").isString()
+            || entry.path("value").asText().isBlank() || entry.path("value").asText().contains("$(")) {
+          throw new AssertionError("Environment entry must have a non-empty literal value: " + environmentName);
+        }
+        values.add(entry.path("value").asText());
+      }
+    }
+    if (values.size() != 1) {
+      throw new AssertionError("Expected exactly one explicit environment entry for " + containerName
+          + "/" + environmentName + ", found " + values.size());
+    }
+    return values.getFirst();
+  }
+
+  /**
+   * Resolves batch processors in every trace pipeline using the selected OTLP exporter.
+   *
+   * @param relayConfig OpenTelemetry Collector YAML configuration
+   * @param exporterName configured exporter for the gematik telemetry destination
+   * @return nonempty list of correlated pipeline, processor and exporter names
+   * @throws AssertionError if the selected exporter or its batched trace pipelines are missing
+   */
+  static List<String> traceBatchExportEvidence(String relayConfig, String exporterName) {
+    final JsonNode collector;
+    try {
+      collector = YAML.readTree(relayConfig);
+    } catch (JacksonException failure) {
+      throw new AssertionError("Invalid OpenTelemetry Collector YAML", failure);
+    }
+    if (collector == null || !collector.isObject()) {
+      throw new AssertionError("Missing OpenTelemetry Collector configuration");
+    }
+    if (exporterName == null || !exporterName.matches("otlp(?:http|_grpc|_http)?(?:/[^/]+)?")) {
+      throw new AssertionError("Expected one configured OTLP exporter for the gematik telemetry destination");
+    }
+    var declaration = collector.path("exporters").path(exporterName);
+    if (!declaration.isObject() || !declaration.path("endpoint").isTextual()
+        || declaration.path("endpoint").asText().isBlank()) {
+      throw new AssertionError("Missing OTLP exporter endpoint: " + exporterName);
+    }
+    var evidence = new ArrayList<String>();
+    var pipelines = collector.path("service").path("pipelines");
+    for (var name : pipelines.propertyNames()) {
+      if (!name.equals("traces") && !name.startsWith("traces/")) {
+        continue;
+      }
+      var pipeline = pipelines.path(name);
+      var usesExporter = false;
+      for (var exporter : pipeline.path("exporters")) {
+        usesExporter |= exporterName.equals(exporter.asText());
+      }
+      if (!usesExporter) {
+        continue;
+      }
+      var batches = new ArrayList<String>();
+      for (var processor : pipeline.path("processors")) {
+        var id = processor.asText();
+        var processorConfig = collector.path("processors").path(id);
+        if (id.matches("batch(?:/[^/]+)?") && collector.path("processors").has(id)
+            && (processorConfig.isObject() || processorConfig.isNull())) {
+          batches.add(id);
+        }
+      }
+      if (batches.isEmpty()) {
+        throw new AssertionError("OTLP trace pipeline '" + name + "' has no declared batch processor");
+      }
+      evidence.add(name + " | BATCH=" + batches + " | OTLP=" + List.of(exporterName));
+    }
+    if (evidence.isEmpty()) {
+      throw new AssertionError("No trace pipeline references the selected OTLP exporter: " + exporterName);
+    }
+    return List.copyOf(evidence);
+  }
+
+  /**
+   * Verifies batching for every trace pipeline sharing the selected pipeline's OTLP destinations.
+   *
+   * @param relayConfig collector configuration
+   * @param pipelineName trace pipeline assigned to the gematik telemetry destination
+   * @return correlated trace pipeline, batch processor and exporter evidence
+   * @throws AssertionError if a destination or its batching configuration is missing
+   */
+  static List<String> tracePipelineBatchExportEvidence(String relayConfig, String pipelineName) {
+    final JsonNode collector;
+    try {
+      collector = YAML.readTree(relayConfig);
+    } catch (JacksonException failure) {
+      throw new AssertionError("Invalid OpenTelemetry Collector YAML", failure);
+    }
+    return OtlpTracePipeline.exporters(collector, pipelineName).stream()
+        .flatMap(exporter -> traceBatchExportEvidence(relayConfig, exporter).stream())
+        .distinct()
+        .toList();
   }
 
   /**
@@ -374,63 +550,6 @@ public class KubernetesProbeSteps {
   }
 
   /**
-   * Verifies that exactly one pod contains the given container and that the requested Kubernetes probe is configured.
-   *
-   * @param namespace     namespace for the kubectl query
-   * @param containerName target container name
-   * @param probeName     probe to check (`livenessProbe`, `readinessProbe`, `startupProbe`)
-   */
-  @Und("prüfe im Namespace {tigerResolvedString} dass der Container {tigerResolvedString} eine {kubeProbe} konfiguriert hat")
-  @And("verify in namespace {tigerResolvedString} that container {tigerResolvedString} has {kubeProbe} configured")
-  public void verifyContainerHasProbeConfigured(String namespace, String containerName, String probeName) {
-    var items = service.readPodsForNamespace(namespace);
-    var matchingPodNames = new ArrayList<String>();
-    JsonNode matchingContainer = null;
-    String reportLine;
-
-    for (var pod : items) {
-      var containers = pod.path("spec").path("containers");
-      if (!containers.isArray()) {
-        continue;
-      }
-      var podName = pod.path("metadata").path("name").asText("<unknown>");
-      for (var container : containers) {
-        if (!containerName.equals(container.path("name").asText(""))) {
-          continue;
-        }
-        matchingPodNames.add(podName);
-        matchingContainer = container;
-      }
-    }
-
-    if (matchingPodNames.isEmpty()) {
-      var msg = "No container with name '" + containerName + "' found in namespace '" + namespace + "'.";
-      reportLine = "CONTAINER=" + containerName + " | RESULT=NOT_FOUND";
-      SoftAssertionsContext.recordSoftFailure(msg, new AssertionError(msg));
-    } else if (matchingPodNames.size() > 1) {
-      var msg = "Container '" + containerName + "' found in multiple pods in namespace '" + namespace
-          + "': " + String.join(", ", matchingPodNames);
-      reportLine = "CONTAINER=" + containerName + " | RESULT=AMBIGUOUS | PODS=" + String.join(",", matchingPodNames);
-      SoftAssertionsContext.recordSoftFailure(msg, new AssertionError(msg));
-    } else {
-      var podName = matchingPodNames.getFirst();
-      var probe = matchingContainer.path(probeName);
-      if (probe.isMissingNode() || probe.isNull()) {
-        var msg = "Container '" + containerName + "' in pod '" + podName + "' has no " + probeName + " configured.";
-        reportLine = "POD=" + podName + " | CONTAINER=" + containerName + " | " + probeName + "=MISSING";
-        SoftAssertionsContext.recordSoftFailure(msg, new AssertionError(msg));
-      } else {
-        reportLine =
-            "POD=" + podName + " | CONTAINER=" + containerName + " | " + probeName + ":\n" + probe.toPrettyString();
-      }
-    }
-
-    SerenityReportUtils.addCustomData(
-        "Kubernetes probe check: " + containerName + " / " + probeName,
-        reportLine);
-  }
-
-  /**
    * Verifies that the current Kubernetes deployment contains the expected rate-limit configuration for one endpoint.
    *
    * @param endpoint      endpoint path
@@ -602,31 +721,21 @@ public class KubernetesProbeSteps {
   }
 
   /**
-   * Verifies that the telemetry gateway exports traces asynchronously through a batch processor and an OTLP exporter.
+   * Verifies batching on trace pipelines using the configured gematik pipeline's OTLP destinations.
+   *
+   * @param pipelineName trace pipeline assigned to the gematik telemetry destination
    */
-  @Und("prüfe, dass die Telemetrie-Gateway Collector-Konfiguration Traces per Batch exportiert")
-  @And("verify that the telemetry gateway collector configuration exports traces by batch")
-  public void verifyTelemetryGatewayExportsTracesByBatch() {
+  @Dann("prüfe, dass die Telemetrie-Gateway Collector-Konfiguration Traces aus Pipeline {tigerResolvedString} per Batch über OTLP exportiert")
+  @Then("verify that the telemetry gateway collector configuration exports traces from pipeline {tigerResolvedString} by batch through OTLP")
+  public void verifyTelemetryGatewayExportsTracesByBatch(String pipelineName) {
     var namespace = getNamespace();
-    var configMapName = findTelemetryGatewayConfigMapName(namespace);
-    var relayConfig = readOpenTelemetryCollectorRelayConfig(namespace, configMapName);
-    var batchConfigured = tracesPipelineUsesBatch(relayConfig);
-    var otlpExporter = firstTraceOtlpExporter(relayConfig).orElse("");
-
-    var reportLine = "CONFIGMAP=" + configMapName
-        + " | TRACES_BATCH=" + batchConfigured
-        + " | TRACES_OTLP_EXPORTER=" + (otlpExporter.isBlank() ? "<missing>" : otlpExporter)
-        + "\nTRACES_PIPELINE:\n" + tracePipelineForReport(relayConfig);
-
-    if (!batchConfigured || otlpExporter.isBlank()) {
-      var msg = "Telemetry gateway ConfigMap '" + configMapName
-          + "' must export traces with the batch processor and an OTLP exporter.";
-      SoftAssertionsContext.recordSoftFailure(msg, new AssertionError(msg));
-    }
-
+    var configMapName = TelemetryCollectorDiscovery.gatewayConfigMap(service, namespace);
+    var relayConfig = TelemetryCollectorDiscovery.relayConfig(service, namespace, configMapName);
+    var pipelines = tracePipelineBatchExportEvidence(relayConfig, pipelineName);
     SerenityReportUtils.addCustomData(
         "Telemetry gateway trace export configuration",
-        reportLine);
+        "CONFIGMAP=" + configMapName + " | SELECTED_PIPELINE=" + pipelineName
+            + "\n" + String.join("\n", pipelines));
   }
 
   /**
@@ -636,8 +745,8 @@ public class KubernetesProbeSteps {
   @And("verify that the telemetry gateway collector configuration forwards telemetry by an allowed OTLP protocol")
   public void verifyTelemetryGatewayForwardsTelemetryByAllowedOtlpProtocol() {
     var namespace = getNamespace();
-    var configMapName = findTelemetryGatewayConfigMapName(namespace);
-    var relayConfig = readOpenTelemetryCollectorRelayConfig(namespace, configMapName);
+    var configMapName = TelemetryCollectorDiscovery.gatewayConfigMap(service, namespace);
+    var relayConfig = TelemetryCollectorDiscovery.relayConfig(service, namespace, configMapName);
     var activeProtocols = activeOtlpForwardingProtocols(relayConfig);
     var otlpExporters = configuredOtlpExporters(relayConfig);
     var forwardingPipelines = pipelinesUsingAnyExporter(relayConfig, otlpExporters);
@@ -661,39 +770,6 @@ public class KubernetesProbeSteps {
     SerenityReportUtils.addCustomData(
         "Telemetry gateway active OTLP forwarding protocol",
         reportLine);
-  }
-
-  /**
-   * Finds the telemetry gateway ConfigMap rendered by the zeta-guard Helm chart.
-   *
-   * @param namespace Kubernetes namespace
-   * @return ConfigMap name
-   */
-  private String findTelemetryGatewayConfigMapName(String namespace) {
-    service.verifyRequirements(namespace);
-    var result = service.executeKubectlCommand(
-        "-n", namespace, "get", "configmap", "-l", TELEMETRY_GATEWAY_CONFIGMAP_SELECTOR,
-        "-o", "jsonpath={.items[*].metadata.name}");
-
-    if (result.exitCode() != 0) {
-      throw new AssertionError("Could not find telemetry gateway ConfigMap in namespace '" + namespace
-          + "': " + result.stderr());
-    }
-
-    var configMapNamesOutput = result.stdout() == null ? "" : result.stdout();
-    var names = Pattern.compile("\\s+").splitAsStream(configMapNamesOutput)
-        .map(String::trim)
-        .filter(name -> !name.isBlank())
-        .toList();
-    if (names.isEmpty()) {
-      throw new AssertionError("No telemetry gateway ConfigMap found in namespace '" + namespace
-          + "' with selector '" + TELEMETRY_GATEWAY_CONFIGMAP_SELECTOR + "'.");
-    }
-    if (names.size() > 1) {
-      throw new AssertionError("Multiple telemetry gateway ConfigMaps found in namespace '" + namespace
-          + "': " + String.join(", ", names));
-    }
-    return names.getFirst();
   }
 
   /**
@@ -734,30 +810,6 @@ public class KubernetesProbeSteps {
       throw new AssertionError("OPA ConfigMap '" + configMapName
           + "' could not be parsed as ConfigMap JSON.", e);
     }
-  }
-
-  /**
-   * Reads the OpenTelemetry Collector relay configuration from a ConfigMap.
-   *
-   * @param namespace     Kubernetes namespace
-   * @param configMapName name of the OpenTelemetry Collector ConfigMap
-   * @return relay configuration from `data.relay`
-   */
-  private String readOpenTelemetryCollectorRelayConfig(String namespace, String configMapName) {
-    var result = service.executeKubectlCommand(
-        "-n", namespace, "get", "configmap", configMapName, "-o", OPENTELEMETRY_RELAY_JSONPATH);
-
-    if (result.exitCode() != 0) {
-      throw new AssertionError("Could not read OpenTelemetry Collector ConfigMap '" + configMapName
-          + "' in namespace '" + namespace + "': " + result.stderr());
-    }
-
-    var relayConfig = result.stdout();
-    if (relayConfig == null || relayConfig.isBlank()) {
-      throw new AssertionError("OpenTelemetry Collector ConfigMap '" + configMapName
-          + "' in namespace '" + namespace + "' has no data.relay content.");
-    }
-    return relayConfig;
   }
 
   /**

@@ -1,0 +1,4 @@
+{
+  "kvnr": "${oidcTestData.kvnr}",
+  "email": "${oidcTestData.kvnr}@${oidcTestData.emailDomain}"
+}

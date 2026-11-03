@@ -1,0 +1,4 @@
+[#A_29976]
+==== A_29976 - Notification Service – Prüfung des ZETA-Zugriffstoken
+
+Der Notification Service MUSS bei jedem Aufruf durch das Client-Moduls Signatur, Gültigkeitszeitraum exp / nbf / iat, Aussteller iss sowie die Zielgruppe aud – diese MUSS der eigenen Resource-Kennung des Notification Service entsprechen (siehe A_29979) – sowie die für die Operation erforderlichen Scopes/Berechtigungen des Tokens prüfen und das Token bei einer fehlenden oder fehlgeschlagenen Prüfung zurückweisen 401 / 403. Ein Token, dessen aud den Notification Service nicht adressiert, DARF er NICHT akzeptieren. [<=]

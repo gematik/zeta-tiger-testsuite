@@ -26,6 +26,7 @@ package de.gematik.zeta.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,15 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link SystemCommandService}.
  */
 public class SystemCommandServiceTest {
+
+  @Test
+  void resolvesRepositoryRelativeWorkingDirectoryAndPreservesMakeArgument() {
+    var assignment = "HELM_EXTRA_VALUES_PARAMS=--set example.enabled=true --set example.mode=test";
+    var result = SystemCommandService.prepareWindowsCommand(List.of("make", "deploy", assignment), "../helm chart");
+    var expected = Path.of("../helm chart").toAbsolutePath().normalize().toString()
+        .replace(SystemCommandService.WIN_PATH_USERS, SystemCommandService.WSL_PATH_USERS).replace('\\', '/');
+    assertEquals(List.of("wsl", "--cd", expected, "--exec", "make", "deploy", assignment), result);
+  }
 
   /**
    * Verifies that WSL receives metacharacter-heavy psql arguments without a shell.

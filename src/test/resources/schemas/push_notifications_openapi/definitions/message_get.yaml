@@ -1,0 +1,25 @@
+examples:
+  response:
+    value: {
+        "identifier": "1",
+        "payload": {
+            "trigger_id": "abc",
+            "message": "Hello World!",
+            "document_id": "123"
+        }
+    }
+schema:
+  title: Message
+  properties:
+    identifier:
+      type: string
+      description: uniquie identifier for the message
+    payload:
+      type: object
+      description: |
+        payload of the message, use-case specific. Available properties are to be defined by the backends
+        specification. This should strongly correlate with any sent data within cyphertext of the original
+        notification.
+  required:
+    - identifier
+    - payload

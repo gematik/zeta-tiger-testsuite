@@ -1,0 +1,6 @@
+[#TA_A_29993_02]
+===== TA_A_29993_02 - Authorization Server, Attribut acr im Access Token - Wertebereich gemäß gematik-LoA
+
+"Der PDP Authorization Server MUSS das nachgewiesene Authentifizierungsniveau als Claim acr (**Wertebereich gemäß gematik-LoA**) in das Access Token übernehmen, damit der PEP die Step-up-Bedingung auswerten kann.
+
+**[<=]**"

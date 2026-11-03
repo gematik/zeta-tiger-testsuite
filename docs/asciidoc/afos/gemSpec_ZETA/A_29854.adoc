@@ -1,0 +1,4 @@
+[#A_29854]
+==== A_29854 - PDP Authorization Server - Aktive Session-Termination
+
+Die Komponente Authorization Server MUSS eine aktive Session-Termination anhand einer Session-Id unterstützen. Für die Session-Termination MÜSSEN die Eingaben Trace-Id, Session-Id, Reason-Code und Trigger-Source verarbeitet werden. [<=]

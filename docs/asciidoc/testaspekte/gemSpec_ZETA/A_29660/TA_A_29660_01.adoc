@@ -1,0 +1,4 @@
+[#TA_A_29660_01]
+===== TA_A_29660_01 - Authorization Request mit äußerem und innerem PAR bei beidseitig unbekannten Entity Statements einschließlich der optionalen Abrufe 07–10 und 13–14
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR unterstützen.** [<=]"

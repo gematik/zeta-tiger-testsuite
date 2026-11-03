@@ -30,8 +30,8 @@ import com.google.protobuf.StringValue;
 import com.google.protobuf.Struct;
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.ClientCalls;
 import java.util.Set;
@@ -65,7 +65,11 @@ public final class LoadDispenserClient implements AutoCloseable {
    * @param endpoint load-dispenser address in {@code host:port} form
    */
   public LoadDispenserClient(String endpoint) {
-    this.channel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build();
+    this.channel = NettyChannelBuilder.forTarget(endpoint)
+        // Tiger installs a JVM-wide proxy, but the in-cluster gRPC endpoint must be reached directly.
+        .proxyDetector(targetAddress -> null)
+        .usePlaintext()
+        .build();
   }
 
   /**

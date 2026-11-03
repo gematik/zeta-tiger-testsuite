@@ -1,0 +1,8 @@
+[#TA_A_30001_20]
+===== TA_A_30001_20 - ZETA, Ablauf Token Revocation - Folge-Refresh nach Widerruf ablehnen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 06–08: **refresh_token_revoked bei Folge-Refresh**.

@@ -1,0 +1,4 @@
+[#A_29992]
+==== A_29992 - Notification Service – Idempotenz des Versands
+
+Der Notification Service SOLL Retransmissionen des Resource Servers idempotent behandeln. Übermittelt der Resource Server einen Idempotency-Key, MUSS der Notification Service innerhalb der Aufbewahrungsfrist nach A_29988 wiederholte Übermittlungen mit demselben Schlüssel erkennen und dieselbe notification_id ohne erneuten Versand zurückgeben. Das reference-Feld ist hierfür NICHT geeignet, da es nicht eindeutig sein muss (A_29969). [<=]

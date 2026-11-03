@@ -1,0 +1,90 @@
+[#UC_04_06]
+== UseCase_04_06: JSON-Metadatenaktualisierung auf den Clientnamen begrenzen
+
+.UseCase_04_06
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | JSON-Metadatenaktualisierung auf den Clientnamen begrenzen
+
+| Akteur: | Registrierter ZETA Client
+
+| weitere Akteure: | Authorization Server, Registrierungsspeicher
+
+| Auslöser: | Der Client sendet ein JSON-PUT mit seinem RAT an den Registrierungsendpunkt.
+
+| Kurzbeschreibung: |
+Erlaubte Umbenennung und verbotene F1/F2-, Audience- und DCR-Felder werden einzeln und gemischt geprüft; die gesonderten Änderungsverfahren werden abgegrenzt.
+Die Aktualisierung von redirect_uris über JSON-PUT ist als Szenariogrundriss implementiert: allein und zusammen mit client_name. Eine erfolgreiche Umbenennung mit anschließendem GET dient vorher als Kontrolle für RAT und Schreibzugriff. Die weiteren Varianten bleiben Prüfentwürfe.
+Der Client führt Registrierung, RAT-autorisierte Metadaten-PUTs und Bestands-GETs über seinen SDK-Kontext aus. Er verwendet seine veröffentlichte Registrierungs-URI und das eigene RAT und übernimmt ein bei erfolgreicher Aktualisierung rotiertes RAT für die nachfolgende Bestandsabfrage.
+
+| Vorbedingung: |
+. Eine eigene Registrierung besitzt gültiges RAT und den Namen alt. Eine unabhängige Bestandsabfrage liefert client_id, Name, Instanzschlüssel-Fingerprint, F1, berechtigte Audiences, jwks, redirect_uris und grant_types.
+. Das versionsgebundene Schnittstellenprofil benennt die JSON-Schreibweisen geschützter Werte. Die Datenvarianten verwenden jwks für F2/DCR-Schlüssel, redirect_uris, grant_types sowie die im gewählten Profil benannten E-Mail- und Audience-Felder. Für diese beiden Bereiche werden exakter Feldname, Beispielwert und zugehöriger gespeicherter Wert vorab aus dem Schema in die Testdaten übernommen; unbekannte erfundene Feldnamen sind keine Abdeckung einer Faktoränderung.
+. Pro geschütztem Feld gibt es zwei gültig serialisierte Requests: nur geschützte Änderung und geschützte Änderung zusammen mit client_name=neu. Ausgangsregistrierung und RAT sind je destruktiver Kontrolle unabhängig.
+. Für gesonderte positive Kontrollflüsse sind alter/neuer Instanzschlüssel, serverseitiger Einmal-Nonce, Guard-/Methoden-/URI-Bindung für Rollover und Step-Up, überlebender Faktor sowie neue E-Mail-Verifikation für A_29911 verfügbar.
+
+| Nebenbedingung: |
+Die Metadatenprüfung folgt A_30005. Ein neuerer Schnittstellenvertrag mit anderem Autorisierungsmodell wird nicht stillschweigend an dessen Stelle verwendet.
+Für die Negativfälle wird kein durch die AFO nicht festgelegter Fehlercode vorausgesetzt; die geschützten Felder müssen erkennbar abgelehnt werden.
+
+| Ablauf: |
+*Zulässige Umbenennung und Autorisierung*
+
+. Der Client sendet PUT /register/{client_id} mit Content-Type application/json, passender unveränderter client_id, client_name=neu und seinem gültigen RAT. Er sendet weder einen zusätzlichen Faktornachweis noch eine Client Assertion. Der AS ändert den Namen; die Testsuite liest ausschließlich diese Änderung zurück.
+. Für denselben gültigen Request ohne RAT beziehungsweise mit fremdem RAT bleibt die Umbenennung aus; die Testsuite prüft Ablehnung und unveränderten Bestand.
+
+*Geschützte Felder — jeweils allein und zusammen mit client_name*
+
+. Der Client sendet die im Profil festgelegte F2-/jwks-Änderung mit gültigem eigenen RAT. Der AS lehnt die geschützten Felder ab; der gespeicherte Schlüsselfingerprint und jwks bleiben unverändert.
+. Er wiederholt die Varianten für das bestehende F1 und die berechtigten Audiences. Ablehnung und unabhängiger Vorher-/Nachhervergleich belegen unveränderte Bindung/Werte.
+. Er wiederholt sie für redirect_uris und grant_types und liest beide unverändert zurück. In gemischten Requests wird auch der resultierende Name protokolliert; das erwartete atomare Verhalten folgt dem ausgewählten Schnittstellenvertrag, die Schutzpflicht betrifft in jedem Fall die verbotenen Felder.
+
+*Gesonderte erlaubte Änderungsverfahren*
+
+. Aus einem eigenen Ausgangszustand führt der Client den In-Place-Rollover mit application/zeta-rollover+jws, äußerer Signatur des alten und innerer Signatur des neuen Schlüssels sowie Nonce-/Guard-/Zielbindung nach A_29921 ff. aus. Die Bestandsprüfung bestätigt den zulässigen Schlüsselwechsel über diesen Pfad.
+. In einem weiteren Zustand ändert er F1 über POST /zeta/identity/email nach A_29911: erforderliches Step-Up, überlebender Faktor und Verifikation der neuen Adresse. Der AS ändert die Bindung über diesen gesonderten Pfad.
+
+| Nachbedingung: |
+JSON-Metadatenupdates ändern mit gültigem RAT nur den Namen; geschützte Felder werden abgelehnt und bleiben unverändert. Fehlendes/fremdes RAT führt zu keiner Umbenennung.
+Positive Schlüssel-/E-Mail-Änderungen gelingen ausschließlich in ihren getrennt autorisierten Kontrollflüssen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_30005_01>>
+* <<TA_A_30005_02>>
+* <<TA_A_30005_03>>
+* <<TA_A_30005_04>>
+* <<TA_A_30005_05>>
+* <<TA_A_30005_06>>
+* <<TA_A_30005_07>>
+* <<TA_A_30005_08>>
+* <<TA_A_30005_09>>
+* <<TA_A_30005_10>>
+
+|===
+
+[mermaid,uc-04-06-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Registrierter Client
+    participant A as Authorization Server
+    C->>A: PUT /register/{client_id}, application/json, RAT, passende client_id
+    alt Nur client_name
+    A->>A: Namen aktualisieren
+    A-->>C: Aktualisierte Registrierung
+    else Geschütztes Feld enthalten
+    A-->>C: Request abgelehnt
+    end
+    C->>A: Registrierung / Bindungen unabhängig prüfen
+    Note over C,A: Rollover-JWS und E-Mail-Endpunkt sind gesonderte Verfahren
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::client_metadaten.feature[]
+----
+endif::[]

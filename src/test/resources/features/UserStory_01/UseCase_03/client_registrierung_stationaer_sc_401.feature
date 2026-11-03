@@ -30,7 +30,6 @@ Funktionalität: Client-Registrierung stationär SC 401
   @A_26661
   @TA_A_26661_12
   @critical
-  @MASVS-AUTH
   Szenario: Hinweis zu Fehlercode 401 am /register
     Gegeben sei TGR setze lokale Variable "Kommentar" auf "Am Endpunkt /register für die Clientregistrierung wird keine Authentifizierung des Clients vorgenommen.  Daher kann hier auch der Fehlercode 401 Unauthorized nicht erwartet werden. Fehlerhafte Clientdaten bzw. Authentifizierungsdaten hätten einen Fehlercode 400 Bad Request zur Folge."
     Dann warte "1" Sekunden

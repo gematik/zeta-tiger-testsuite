@@ -1,0 +1,6 @@
+[#TA_A_29991_06]
+===== TA_A_29991_06 - Notification Service – Zulässige Schlüssellängen auf der NS-Verbindung zum Push Gateway
+
+"Der Notification Service MUSS für alle TLS-/mTLS-Verbindungen (RS-Schnittstelle sowie **Push Gateway**) die in [gemSpec_Krypt] zugelassenen TLS-Versionen, Cipher-Suiten und **Schlüssellängen** verwenden. Für die Verbindung zum Push Gateway gilt ergänzend A_29982 (EV-Zertifikat).
+
+**[<=]**"

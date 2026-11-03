@@ -1,0 +1,207 @@
+[#UC_04_07]
+== UseCase_04_07: Refresh Token widerrufen und Logout abschließen
+
+.UseCase_04_07
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Refresh Token widerrufen und Logout abschließen
+
+| Akteur: | Nutzer / ZETA Client
+
+| weitere Akteure: | Authorization Server, Sitzungsspeicher, Auditdienst, lokaler Clientspeicher
+
+| Auslöser: | Nutzerlogout, Session-Beendigung oder expliziter Widerruf eines eigenen Refresh Tokens.
+
+| Kurzbeschreibung: |
+Discovery, Requestformat, Authentisierung, Token-Eigentum, Terminierung der Tokenfamilie, neutrale Antworten und lokale Bereinigung werden in getrennten Varianten geprüft.
+Die Veröffentlichung von revocation_endpoint, fehlerhafte Client Assertions, neutrale Antworten für gültige, widerrufene, abgelaufene und unbekannte Refresh Token, der Widerruf des übergebenen eigenen Refresh Tokens und die Access-Token-Antwortalternative sind als Szenarien implementiert. Ein SDK-Szenario prüft den vollständigen POST an den veröffentlichten Revocation-Endpunkt und die zugehörigen frischen Authentisierungsnachweise; ein zweites prüft beim Nutzerlogout zusätzlich die tatsächliche Terminierung des ursprünglichen Server-Grants. Die weiteren Familien-, SDK- und Auditprüfungen bleiben Prüfentwürfe.
+Der ZETA Client führt Discovery, Registrierung, Token Exchange, Revocation und die anschließenden Refresh- und Ressourcenoperationen über seinen SDK-Kontext aus. Revocation verwendet frische private_key_jwt-Assertions und DPoP-Proofs, gebunden an den registrierten Client und das ausgewählte eigene Token. Kontrollrefreshs beziehen eine frische AS-Nonce und übernehmen rotierte Refresh Token.
+Ein erfolgreich authentifizierter Widerruf eines unbekannten, bereits widerrufenen oder regulär abgelaufenen Refresh Tokens liefert wie der Widerruf eines gültigen eigenen Refresh Tokens HTTP 200. Beim wiederholten Widerruf ist dieselbe zuvor aktive Session bereits beendet; beim Ablauf ist das unverbrauchte Token regulär abgelaufen. Fehlerhafte Client-Authentisierung liefert hingegen HTTP 401 mit invalid_client und verändert die eigene Session nicht.
+
+
+Die SDK-Szenarien verwenden jeweils einen separaten, auf 100 Sekunden begrenzten JVM-Prozess im konfigurierten Testdriver-Container. Der Adapter lädt die dort bereits installierten, unveränderten Testdriver-/SDK-JARs, provisioniert über die öffentliche TestDriverManager-Factory eine frische KVNR/E-Mail und ruft die öffentlichen SDK-Funktionen für Discovery, Registrierung, OIDC-Authentisierung und Logout auf. Die SDK-Factory verwendet InMemoryStorage; damit hat dieser eigene Prozess weder einen gemeinsamen Tokenkontext noch persistenten Clientspeicher. Das ursprüngliche Testdriver-Deployment wird nicht verändert. Der Adapter wird temporär im RAM-Dateisystem abgelegt und anschließend entfernt; Pod-Konfiguration, Container-ID, Image-ID, Neustartzähler und Bereitschaft werden verglichen.
+
+Erzeugung des SDK-Kontexts, Discovery, Registrierung, Authentisierung und Logout werden einzeln durch die Feature-Schritte gesteuert. Derselbe Prozess erhält SDK-Instanz, InMemoryStorage und Callbacks zwischen den Befehlen. Ein After-Hook beendet den eigenen Prozess und entfernt seine temporären Dateien auch nach fehlgeschlagener Vorbereitung oder Prüfung.
+
+Das skalare Adapterprotokoll enthält ausschließlich Hashwerte der ursprünglichen Tokens, Laufzeit-JARs sowie Zustands-/Zeitangaben. Die Testsuite bindet beide Tokenhashes an dieselbe erfolgreiche aufgezeichnete Tokenantwort und deren Client/Identität. Der geprüfte POST muss das ursprüngliche eigene Refresh Token an den HTTPS-Endpunkt aus der tatsächlichen AS-Discovery senden. Die Testsuite erzeugt diesen Request nicht selbst; nach Logout erfolgt auch kein zusätzlicher SDK-close-Aufruf, der ihn ersatzweise auslösen könnte. Die unmittelbar nach Logout beobachteten Speicherwerte sind Diagnosewerte, kein Nachweis der noch unimplementierten Löschreihenfolge, DPoP-Bereinigung oder Terminierung aller rotierten Nachfolger.
+
+Der vollständige SDK-Widerrufsrequest wird rein lesend am aufgezeichneten HTTP-Verkehr geprüft: tatsächliche Methode, vollständiger Discovery-Endpunkt einschließlich Host/Port, Formkodierung, unverändertes eigenes RT, refresh_token-Hint und Assertion-Typ. Das Request-Zeitintervall muss zum echten Logout gehören. Die Assertion-Signatur wird gegen den öffentlichen Schlüssel aus genau der erfolgreichen DCR desselben Clients geprüft; Identität, AS-Audience, Gültigkeit und neue jti müssen stimmen und Attestierungsdaten fehlen. Der DPoP Proof wird kryptografisch geprüft und an cnf.jkt des unabhängig gegen AS-JWKS verifizierten ursprünglichen Access Tokens sowie an Methode/URI gebunden; Typ, Aktualität, neue jti und Abwesenheit einer Nonce werden geprüft. Beide Proof-IDs werden mit dem ursprünglichen erfolgreichen SDK-Grant verglichen. Doppelte Formparameter oder mehrdeutige Registrierung/Grant-Zuordnung werden abgelehnt. Für diesen Beobachter werden keine privaten SDK-Schlüssel kopiert. Fehlender tatsächlicher SDK-Widerruf blockiert diese Nachweise; vorhandene Tags und Unit-Tests belegen keine Produkterfüllung.
+
+Für den Nutzerlogout sichert der Adapter vor Logout zusätzlich die vier Software-Schlüssel dieser frischen Testidentität in einer separaten Datei mit Dateirechten 600 im privaten RAM-Verzeichnis. Die Testsuite liest sie ohne Ausgabeprotokollierung ausschließlich in den unabhängigen Prüfclient ein und entfernt die Datei beim Cleanup des eigenen Adapterprozesses. Sie gelangen weder in Tiger-Konfigurationsvariablen noch in RBEL-Nachrichten; ein After-Hook gibt die getrennte Referenz auch bei Testfehlern frei. Die ursprüngliche Access-Token-Signatur wird gegen AS-JWKS geprüft, die Testschlüssel werden kryptografisch an die ursprüngliche Client Assertion und die DPoP-Bindung des Grants gebunden. Ein unabhängiger Refresh mit dem ursprünglichen unverbrauchten RT, frischer AS-Nonce und neuen Proofs muss ohne Tokenausgabe für den beendeten Grant abgelehnt werden; Authentisierungsfehler zählen nicht. Die Testsuite verlangt zusätzlich einen erfolgreichen tatsächlichen SDK-Widerrufs-POST und liest die ursprüngliche Session über die AS-Verwaltung als beendet zurück. Persistente rohe Zeilenzahlen dienen nur der Diagnose; physische Datenlöschung wird damit nicht gefordert. Dieser eng begrenzte Nutzerlogout-Fall prüft eine Sitzung ohne Rotationshistorie. Die weiteren Session-, Familien- und lokalen Bereinigungsaspekte bleiben ungetaggt.
+
+Eine separate JFR-Beobachtung zählt Socket-Schreibvorgänge mit übertragenen Bytes: zunächst als positive Kontrolle während Discovery/Registrierung/Authentisierung, anschließend während Logout und zwei Sekunden Nachbeobachtung. Ohne positive Kontrollereignisse gilt der Beobachter nicht als funktionsfähig. Die Socket-Zahlen ergänzen den Tiger-Nachweis; nur der echte aufgezeichnete POST erfüllt den Testaspekt. Die temporäre JFR-Datei bleibt im RAM-Verzeichnis des Containers und wird dort gelöscht; Netzwerk-Nutzdaten werden nicht exportiert.
+
+Im neutralen Antwortfall werden die beiden exakten HTTP-401-Assertions der Signatur-Gegenkontrollen gesammelt und im abschließenden Szenario-Hook verbindlich ausgewertet. Eine Abweichung lässt das Szenario fehlschlagen; sie wird nicht als bestandene Assertion gewertet. So können die unabhängigen Tokenzustände trotz eines falschen Fehlerstatus weiter beobachtet werden. Fehlerinhalt und Tokenfreiheit sowie erfolgreiche HTTP-200-Voraussetzungen bleiben unmittelbar abbrechende Prüfungen. Die vier separaten Varianten fehlerhafter Client Assertions prüfen HTTP 401 weiterhin unmittelbar.
+
+| Vorbedingung: |
+. Für jede Variante steht ein eigener registrierter Testclient C1 mit aktiver Sitzung S1 bereit; Varianten zur Isolation und Familien-Terminierung verwenden zusätzlich einen unabhängigen Kontrollclient C2 mit S2. Ihre Client-IDs, Session-IDs, Token und DPoP-Bindungen sind bekannt; Policy, Zeit und übrige Credentials sind gültig.
+. Die Testsuite liest revocation_endpoint aus der AS-Discovery desselben Guards. Token-, Discovery- und Fehlerschemas stammen aus dem für diesen Lauf festgelegten vollständigen Schema-Bundle; direkte Requests/Responses sind über Request-/Trace-ID korrelierbar.
+. Vor dem Logout erhält ein vom SDK-Speicher getrennter Prüfclient Kopien der ausschließlich testbezogenen Refresh-/Access Token und einen unabhängigen Testsignierzugang für Client Assertion und den zugehörigen DPoP-Schlüssel. Er bleibt nach SDK-Bereinigung funktionsfähig und erzeugt neue jti-/Zeitwerte sowie Proofs für die tatsächlich angesprochene Methode/URI. Er hält am Token-Endpunkt gegebenenfalls erforderliche Nonce-Regeln ein; ein aufgezeichneter Proof wird nicht wiederholt.
+. Für den Familienwiderruf werden mindestens zwei Rotationsschritte mit protokollierter Zuordnung RT0, RT1, RT2 zu S1 durchgeführt. Widerruf über RT2 und über RT0 nutzen getrennt aufgebaute Familien; die Nachfolgetokens sind vor dem Widerruf noch nicht abgelaufen. Kontrollrefreshs verwenden stets das neueste unverbrauchte Token.
+. Ein schreibgeschützter AS-Prüfadapter liefert den Session-Zustand. Ein SDK-Prüfadapter beobachtet lokale flüchtige und gegebenenfalls persistente Tokens/Schlüssel sowie Logout-Ereignisse. Die Prüfclient-Kopien gehören nicht zum SDK-Speicher und werden nach Abschluss gelöscht.
+. Ein Audit-Prüfprofil benennt Leseschnittstelle, unabhängige Trace-/Session-Zuordnung, Auslöser, Reason-Code und Zeitintervall. Für Integrität werden der dokumentierte Schreibschutz beziehungsweise der Verifikationsmechanismus und ein isolierter Manipulationsversuch mit festgelegten Rollen beschrieben.
+. Nutzerlogout und nutzerinitiierte Session-Beendigung sind separat am SDK auslösbar. SDK-Fehlerantworten (401/403, abschließende 503 und die Access-Token-Antwortalternative) können kontrolliert zugestellt werden; künstliche Antworten belegen ausschließlich Clientverhalten.
+
+| Nebenbedingung: |
+Server-, SDK- und Auditvarianten haben jeweils eigene Ausgangszustände. Die Serverprotokoll-Varianten verlangen den vorgegebenen Fehler refresh_token_revoked. Der Nutzerlogout-Aspekt prüft die Grant-Terminierung durch erfolgreichen tatsächlichen SDK-Widerruf, unabhängige Session-Abwesenheit und 4xx-Refresh-Ablehnung mit invalid_grant, refresh_token_revoked oder session_terminated ohne neue Tokens. invalid_client oder invalid_dpop_proof belegen keine Terminierung. Die spezifischen Fehlercode- und Familienprüfungen werden dadurch nicht ersetzt.
+Session-, Speicher- und Auditadapter sind vor Implementierung bereitzustellen und im Prüfprofil zu benennen. Geschützte Produktionsschlüssel werden nicht exportiert; die unabhängige Signierung nutzt ausschließlich dafür provisioniertes Testmaterial.
+
+| Ablauf: |
+*Serverprotokoll und Familienwiderruf*
+
+. Die Testsuite validiert die Discovery einschließlich revocation_endpoint und sendet an genau diese HTTPS-URL einen formular-kodierten POST mit dem eigenen Refresh Token, gültiger Client Assertion und DPoP.
+. In getrennten frischen Sitzungen prüft sie token als Pflichtparameter sowie Requests ohne Hint, mit refresh_token, unbekanntem und unpassendem token_type_hint. Fehlendes token wird abgelehnt; die Hint-Varianten verhindern den Lookup eines unterstützten Refresh Tokens nicht.
+. Der AS beantwortet den gültigen eigenen Widerruf mit 200. Die Testsuite liest S1 als terminiert zurück. Unmittelbar nach Antwortabschluss sendet der unabhängige Prüfclient frische, sonst gültige Refresh-Requests mit dem widerrufenen Token und den zugehörigen Nachfolgern; alle enden mit refresh_token_revoked ohne neues Token-Set. S2 bleibt nutzbar.
+. Die Testsuite wiederholt den vollständigen Ablauf für Widerruf über RT2 und über RT0 mit jeweils eigener neu aufgebauter Familie; kein Nachfolger der betroffenen Session bleibt verwendbar.
+
+*Client-Authentisierung und Eigentum*
+
+. Die Testsuite sendet nach erfolgreicher Kontrolle jeweils nur eine fehlerhafte Client Assertion: fehlend, falsch signiert, abgelaufen oder falsch gebunden. DPoP und Token bleiben gültig. Der AS antwortet mit 401, error=invalid_client und schemakonformem zeta-error; der unabhängige Prüfclient bestätigt, dass kein Widerruf erfolgt ist.
+. Mit gültiger Assertion variiert sie allein DPoP: fehlend, falsche Signatur, ungültige Zeit oder falsche Methode/URI/Schlüsselbindung. Der AS prüft wie am Token-Endpunkt und weist den ungültigen Nachweis zurück.
+. C1 sendet mit gültigen eigenen Nachweisen kontrolliert ein Token von C2. Die Testsuite bestätigt unabhängig, dass Token/Session von C2 unverändert nutzbar bleiben; Widerruf des eigenen Tokens von C1 bildet die positive Kontrolle.
+
+*Tokenzustände und Access-Token-Alternative*
+
+. Bei gültiger Client-Authentisierung sendet die Testsuite getrennt gültige, bereits ungültige (widerrufene und abgelaufene) sowie syntaktisch geeignete unbekannte Refresh Token. Alle Antworten haben Status 200; die Existenz ist aus dem Status nicht unterscheidbar. Die Zustände werden vor der jeweiligen Anfrage unabhängig nachgewiesen: aktive Session, anschließend beendete Session bei unverändert noch zeitgültigem RT sowie frisch ausgestelltes, bis zum regulären Ablauf unverbrauchtes RT. Gültige und gezielt falsch signierte Client-Authentisierung bleiben Gegenkontrollen.
+. Für ein noch gültiges eigenes Access Token prüft sie die implementierte Alternative: 200 ohne serverseitige Wirkung oder 400 mit error=unsupported_token_type. Nur die gewählte Alternative ist erforderlich.
+. Vor regulärem Ablauf verwendet der unabhängige Prüfclient das Access Token mit gültigem Besitznachweis und aktualisiert die zugehörige Sitzung mit deren aktuellem Refresh Token. Beide bleiben serverseitig verwendbar.
+
+*SDK-Logout und lokale Bereinigung*
+
+. Der Nutzer löst in getrennten frischen SDK-Kontexten Logout beziehungsweise Session-Beendigung aus. Das SDK beginnt den serverseitigen Widerruf seines eigenen Refresh Tokens.
+. Die Testsuite erfasst den POST an den aus Discovery bekannten Revocation-Endpunkt. token stimmt bytegleich mit dem abzumeldenden Refresh Token überein und token_type_hint ist refresh_token.
+. Sie prüft den neu erzeugten DPoP Proof ohne Nonce, mit passender Methode/URI, im DPoP-Header genau dieses Requests. Die Client Assertion ist mit PrK.Client.Sig signiert, mit PuK.Client.Sig verifizierbar, enthält keine Hardwareattestierung und steht im client_assertion-Parameter.
+. Für den echten erfolgreichen Widerruf prüft sie 200, Terminierung von S1 und unmittelbar anschließend refresh_token_revoked ohne Tokenausgabe mit dem unabhängigen Prüfclient. SDK-Schlüssellöschung beeinflusst diesen Prüfnachweis nicht. S2 bleibt nutzbar.
+. Für aktuelle und alte rotierte Token verwendet sie erneut getrennte Familien und prüft alle zugehörigen Nachfolger.
+. Im gesonderten SDK-Protokollfall übergibt der Prüfadapter ein eigenes noch gültiges Access Token statt des Refresh Tokens an die Revocation-Prozedur. Die Testsuite beobachtet die implementierte 200- oder 400/unsupported_token_type-Antwort, anschließend die lokale Bereinigung und danach mit dem unabhängigen Prüfclient die weiterhin nutzbare serverseitige Sitzung.
+. Nach der Antwort außerhalb 401/403 prüft sie im SDK-Speicher die Entfernung zugehöriger Access Token, Refresh Token und DPoP-Schlüssel. Der Prüfadapter deckt flüchtige und gegebenenfalls persistente Speicher ab.
+. Erst nach Bereinigung meldet das SDK den Logout-Abschluss. In einer getrennten Clientvariante führt auch eine kontrollierte abschließende 503-Antwort zur beschriebenen Bereinigung; der serverseitige Widerruf gilt in diesem Fall als nicht nachgewiesen.
+. Bei gezielt ungültiger Assertion beziehungsweise DPoP bricht der Ablauf mit 401 invalid_client gemäß zeta-error.yaml ohne Widerruf ab. 401 und die kontrollierte 403-Gegenprobe führen nicht in den erfolgreichen Abschlusszweig. Der unabhängige Prüfclient trennt den Serverzustand vom SDK-Ergebnis.
+
+*Auditnachweis*
+
+. Für einen echten eigenen Widerruf liest die Testsuite den korrelierten Auditdatensatz und vergleicht Trace-Id, Session-Id, Trigger-Source, Reason-Code und Zeitpunkt mit ihren unabhängig aufgezeichneten Werten.
+. Sie führt den im Audit-Prüfprofil definierten Änderungsversuch an einer isolierten Auditkopie beziehungsweise im isolierten Auditdienst aus. Die Änderung wird durch den vorgesehenen Schutz verhindert oder bei der Integritätsprüfung erkannt; bloße Anwesenheit eines Datensatzes genügt nicht. Rollen, Schutzkonfiguration und Ergebnis werden dem echten Widerrufsnachweis zugeordnet.
+
+*Antwortvertrag nach Terminierung*
+
+Der ausführbare Fall „Eigenes Refresh Token ist nach erfolgreichem Widerruf unbrauchbar“ deckt zusätzlich den Antwortvertrag beim Widerruf eines Refresh Tokens ab: Die Grundlage führt einen echten erfolgreichen SDK-Exchange und danach einen erfolgreichen unabhängigen Kontrollrefresh durch. Dessen aktuelles, unverbrauchtes Refresh Token wird mit gültigen Nachweisen widerrufen. Der nächste unabhängige Refresh erhält eine frische AS-Nonce und neue signierte Client-/DPoP-Nachweise; die Antwort wird exakt auf HTTP 403/refresh_token_revoked, Fehlerschema und Tokenfreiheit geprüft. Der Prüfclient verwendet die vom SDK bereitgestellten Schlüssel, weil ein SDK-Logout diese für die unabhängige serverseitige Nachprüfung beseitigen kann. Dieser Fall belegt keine administrative Session-Beendigung und erhält daher keinen Abdeckungstag für die administrative Session-Beendigung.
+
+. Zwei getrennte frische Sitzungen dienen dem Antwortnachweis nach administrativer Session-Beendigung beziehungsweise eigenem Refresh-Token-Widerruf. Zuvor gelingt mit jeder Sitzung ein Kontrollrefresh. Nach unabhängig bestätigter Terminierung sendet der Prüfclient einen frischen, sonst gültigen Refresh mit dem gesicherten aktuellen Token. Erwartet sind HTTP 403/session_terminated beziehungsweise HTTP 403/refresh_token_revoked, schemakonforme Fehlerantwort und keine neuen Tokens. Eine unabhängige Kontrollsession bleibt nutzbar. Client-Authentisierung, Nonce und Signaturen müssen unabhängig gültig sein; invalid_grant ist kein Ersatz für diese beiden spezifischen Antwortverträge.
+
+Die administrative Session-Variante ist in <<UC_04_08>> mit zwei echten OIDC-SDK-Kontexten implementiert. Dort bleiben der erfolgreiche Ziel-Kontrollrefresh,
+die Admin-/Datenbankbeobachtung und der nachfolgende Refresh der unabhängigen Session erhalten; sämtliche Ziel-Refresh-Versuche werden mit ihren Nachweisen gesichert und anschließend auf den genauen Antwortvertrag geprüft.
+
+| Nachbedingung: |
+Beim erfolgreichen eigenen Refresh-Token-Widerruf ist die gesamte Session-Familie sofort unbrauchbar und die Session terminiert; der Auditnachweis ist korreliert. Ein erfolgreich abgeschlossener SDK-Logout hat außerdem lokale Tokens und DPoP-Schlüssel entfernt.
+Fehlerhafte Authentisierung widerruft nichts und erzeugt keinen erfolgreichen Logout-Abschluss. Fremde Sessions und der Access-Token-Zweig bleiben serverseitig unverändert; unbekannte beziehungsweise bereits ungültige Refresh Token liefern neutral 200.
+Künstliche 503-/Clientantworten weisen nur das Clientverhalten nach. Unabhängige Testkopien und Testsignierzugänge werden nach allen Prüfungen entfernt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25661-01_11>>
+* <<TA_A_25661-01_16>>
+* <<TA_A_29996_01>>
+* <<TA_A_29996_02>>
+* <<TA_A_29996_03>>
+* <<TA_A_29996_04>>
+* <<TA_A_29997_01>>
+* <<TA_A_29997_02>>
+* <<TA_A_29997_03>>
+* <<TA_A_29997_04>>
+* <<TA_A_29997_05>>
+* <<TA_A_29997_06>>
+* <<TA_A_29998_01>>
+* <<TA_A_29998_02>>
+* <<TA_A_29998_03>>
+* <<TA_A_29998_04>>
+* <<TA_A_29998_05>>
+* <<TA_A_29998_06>>
+* <<TA_A_29998_07>>
+* <<TA_A_29999_01>>
+* <<TA_A_30000_01>>
+* <<TA_A_30000_03>>
+* <<TA_A_30001_01>>
+* <<TA_A_30001_02>>
+* <<TA_A_30001_03>>
+* <<TA_A_30001_04>>
+* <<TA_A_30001_05>>
+* <<TA_A_30001_06>>
+* <<TA_A_30001_07>>
+* <<TA_A_30001_08>>
+* <<TA_A_30001_09>>
+* <<TA_A_30001_10>>
+* <<TA_A_30001_11>>
+* <<TA_A_30001_12>>
+* <<TA_A_30001_13>>
+* <<TA_A_30001_14>>
+* <<TA_A_30001_15>>
+* <<TA_A_30001_16>>
+* <<TA_A_30001_18>>
+* <<TA_A_30001_19>>
+* <<TA_A_30001_20>>
+* <<TA_A_30001_25>>
+* <<TA_A_30001_26>>
+* <<TA_A_30001_29>>
+* <<TA_A_30002_01>>
+* <<TA_A_30002_02>>
+* <<TA_A_30002_03>>
+* <<TA_A_30002_04>>
+* <<TA_A_30002_05>>
+
+|===
+
+[mermaid,uc-04-07-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    actor N as Nutzer
+    participant C as ZETA Client
+    participant T as Unabhängiger Prüfclient
+    participant A as Authorization Server
+    participant L as Auditdienst
+    Note over C,T: Getrennte Testkontexte mit gültigem Signierzugang vor Logout
+    N->>C: Logout oder Session beenden
+    C->>A: Discovery lesen
+    A-->>C: revocation_endpoint
+    C->>A: POST mit eigenem RT, Assertion und DPoP ohne Nonce
+    alt Authentisierung fehlgeschlagen
+    A-->>C: 401 invalid_client, kein Widerruf
+    else Eigenes zuordenbares Refresh Token
+    A->>A: Session und Tokenfamilie terminieren
+    A->>L: Korrelierter Auditdatensatz
+    A-->>C: 200
+    else Unbekanntes Refresh Token
+    A-->>C: 200 ohne Existenzhinweis
+    else Access Token
+    A-->>C: 200 ohne Wirkung oder 400 unsupported_token_type
+    end
+    opt Antwort außerhalb 401 und 403
+    C->>C: Lokale Tokens und DPoP-Schlüssel entfernen
+    C-->>N: Logout-Abschluss
+    end
+    opt Echter eigener Refresh-Token-Widerruf
+    T->>A: Refresh mit behaltenem Testtoken und frischen gültigen Proofs
+    A-->>T: refresh_token_revoked, keine Tokens
+    T->>L: Auditinhalt und gesonderten Integritätsnachweis prüfen
+    end
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Datei zu diesem Use Case:
+
+[source]
+----
+include::token_revocation.feature[]
+----
+
+[source]
+----
+include::revocation_authentisierung.feature[]
+----
+
+[source]
+----
+include::sdk_logout_revocation.feature[]
+----
+endif::[]

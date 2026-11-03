@@ -1,0 +1,11 @@
+{
+  "user": {
+    "id_type": "${testdata.notificationService.notificationIdType}",
+    "value": "${notificationUserId}"
+  },
+  "channel": "zeta",
+  "payload": {
+    "event_type": "registered_client_activity",
+    "correlation_id": "${notificationCorrelationId}"
+  }
+}

@@ -1,0 +1,4 @@
+[#TA_A_29966_07]
+===== TA_A_29966_07 - Notification Service – Persistierung erst bei tatsächlichem Versand
+
+"Ein (verschlüsselter) Notification-Datensatz DARF **erst angelegt werden, wenn tatsächlich ein Versand an das Push Gateway erfolgt (Status accepted)**. **[<=]**"

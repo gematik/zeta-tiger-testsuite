@@ -1,0 +1,4 @@
+[#A_29853]
+==== A_29853 - ZETA Client, Weiterleitung von Fachdienst-Fehlern
+
+Ist der HTTP-Header zeta-error-origin in einer Fehlerantwort (auch bei den Statuscodes 401 oder 403) nicht enthalten, MUSS der ZETA Client den Fehler unverändert und transparent an den aufrufenden Fach-Client durchreichen. [<=]

@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -99,6 +100,10 @@ class TlsTestToolFixtureCompatibilityTest {
     assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CN_CERTIFICATE, positiveFixtureDate);
     assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_SAN_CERTIFICATE, positiveFixtureDate);
     assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CN_SAN_CERTIFICATE, positiveFixtureDate);
+    assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_CERTIFICATE, positiveFixtureDate);
+    assertValidAt(
+        TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_EVIL_CN_CERTIFICATE,
+        positiveFixtureDate);
     assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_DIFFERENT_CA_CERTIFICATE, positiveFixtureDate);
 
     var currentTestDate = Date.from(Instant.parse("2026-06-07T00:00:00Z"));
@@ -113,6 +118,24 @@ class TlsTestToolFixtureCompatibilityTest {
 
     var futureFixtureDate = Date.from(Instant.parse("2036-06-01T00:00:00Z"));
     assertValidAt(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_NOT_YET_VALID_CERTIFICATE, futureFixtureDate);
+  }
+
+  /**
+   * Verifies that the CN fallback fixtures omit SAN and expose the intended Common Names.
+   *
+   * @throws Exception if a fixture cannot be read or parsed
+   */
+  @Test
+  void cnFallbackFixturesOmitSanAndExposeExpectedCommonNames() throws Exception {
+    var matchingCnCertificate =
+        readCertificate(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_CERTIFICATE);
+    var differentCnCertificate =
+        readCertificate(TlsServerCertificates.ZETA_TLS_TEST_TOOL_SERVER_ECDSA_WITHOUT_SAN_EVIL_CN_CERTIFICATE);
+
+    assertEquals("CN=zeta-tls-test-tool-server", matchingCnCertificate.getSubjectX500Principal().getName());
+    assertEquals("CN=zeta-tls-evil-server", differentCnCertificate.getSubjectX500Principal().getName());
+    assertNull(matchingCnCertificate.getSubjectAlternativeNames());
+    assertNull(differentCnCertificate.getSubjectAlternativeNames());
   }
 
   /**

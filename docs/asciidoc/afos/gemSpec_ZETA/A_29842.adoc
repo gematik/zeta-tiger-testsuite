@@ -1,0 +1,4 @@
+[#A_29842]
+==== A_29842 - Authorization Server, ZETA Attestation Token
+
+Der Authorization Server MUSS, zusätzlich zur Ausstellung von Access und Refresh Token, ein ZETA Attestation Token gemäß [zeta-attestation-token.yaml] ausstellen, wenn bei der Client Registrierung eine Hardware basierte Attestation verwendet und eine erfolgreiche Nutzer-Authentifizierung durchgeführt wurde. [<=]

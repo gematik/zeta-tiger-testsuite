@@ -1,0 +1,6 @@
+[#TA_A_29939_03]
+===== TA_A_29939_03 - Authorization Server – Autorisierungsprüfung bei Client-übergreifender Löschung - Objektreferenz ist keine Autorisierung
+
+"Der Authorization Server MUSS bei der Löschung eines anderen Clients (DELETE /zeta/clients/{target_client_id}) prüfen, dass der Ziel-Client tatsächlich zur Identität des aufrufenden Registration Access Token gehört, und einen nicht zur Identität gehörenden Ziel-Client ablehnen (403). **Der Besitz einer Objektreferenz (target_client_id) allein DARF NICHT als Autorisierung gelten** (Schutz gegen Broken Object Level Authorization).
+
+**[<=]**"

@@ -1,0 +1,106 @@
+[#UC_03_02]
+== UseCase_03_02: Authorization Request mit PAR und sektorale Nutzerauthentisierung
+
+.UseCase_03_02
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Authorization Request mit PAR und sektorale Nutzerauthentisierung
+
+| Akteur: | Nutzer eines mobilen Fach-Clients
+
+| weitere Akteure: | ZETA Client, ZETA Guard als OIDC Relying Party, sektoraler IDP, Federation Master, Authenticator-Modul
+
+| Auslöser: | Der Nutzer wählt seinen sektoralen IDP und startet über den ZETA Client den Zugriff auf einen geschützten Fachdienst.
+
+| Kurzbeschreibung: |
+Der Authorization Request durchläuft äußeren und inneren PAR bei beidseitig zunächst unbekannten Entity Statements. Der Guard beschafft das IDP-Statement und dessen Bestätigung beim Federation Master. Der IDP beschafft das Fachdienst-Statement beim Guard. Nach erfolgreichem innerem PAR leitet der Guard den Client zum IDP weiter. Anschließend authentisiert sich der Nutzer über das Authenticator-Modul. Der IDP gibt den zugehörigen Code und State an den Client zurück; dieser übergibt sie unverändert an den Guard.
+
+| Vorbedingung: |
+. Service Discovery und Dynamic Client Registration des mobilen ZETA Clients sind abgeschlossen. Clientidentität, Schlüssel und Redirect-URIs sind zugeordnet.
+. Das IDP-Statement und seine Bestätigung sind dem Guard zunächst unbekannt. Das Fachdienst-Statement ist dem sektoralen IDP zunächst unbekannt. Beide benötigen deshalb die optionalen Abrufe.
+. IDP, Federation Master und Guard liefern gültige signierte Entity Statements. Der Guard besitzt die nötige Vertrauenskonfiguration; die erlaubten Scopes, Redirect-URIs und TLS-Identitäten passen zum inneren PAR.
+. Das Authenticator-Modul und die App-/Universal-Links sind eingerichtet.
+
+| Nebenbedingung: |
+Der Ablauf beschreibt die erfolgreiche Nutzerauthentisierung bei beidseitig zunächst unbekannten Entity Statements. Die optionalen Beschaffungsblöcke werden durch die fehlenden Statements ausgelöst.
+
+| Ablauf: |
+*Authorization Request mit äußerem und innerem PAR*
+
+. Der ZETA Client sendet den authentisierten äußeren POST/PAR mit seinen Autorisierungsparametern an den Guard (02).
+. Der Guard antwortet mit 201, äußerer request_uri und expires_in=5 (04).
+. Der Client sendet den Authorization Request mit seiner client_id und genau dieser äußeren request_uri an den Guard (05).
+. Der Guard ruft das noch unbekannte Entity Statement beim ausgewählten sektoralen IDP ab und erhält die signierte Antwort (07–08).
+. Der Guard ruft beim Federation Master das Statement für sub=idp_iss ab und erhält die signierte Antwort (09–10).
+. Der Guard sendet den inneren POST/PAR mit seiner eigenen client_id, oidc_redirect_uri, response_type=code, innerer S256-Challenge, scope, claims, acr_values, nonce und innerem state an den IDP (12).
+. Der IDP ruft das noch unbekannte Fachdienst-Entity-Statement beim Guard ab und erhält die signierte Antwort (13–14).
+. Der IDP beantwortet den inneren PAR mit 201, innerer request_uri und einem positiven expires_in von höchstens 90 Sekunden (19).
+. Der Guard leitet den Client mit 302 zum Authorization-Endpunkt aus dem IDP-Statement weiter. Die Location enthält die Guard-client_id und genau die innere request_uri (20).
+
+*Authenticator und Rücksprung*
+
+. Der ZETA Client öffnet das Authenticator-Modul per Deep-Link beziehungsweise Universal-Link und übergibt die zum inneren PAR gehörende client_id und request_uri. Das Modul sendet damit den Authentication Request an den sektoralen IDP.
+. Der IDP ordnet den Request dem inneren PAR zu. Der Nutzer authentisiert sich mit einem unterstützten Verfahren und erteilt Consent.
+. Der IDP gibt nach erfolgreicher Authentisierung AUTH_CODE_IDP mit höchstens 90 Sekunden Gültigkeit aus.
+. Der IDP liefert den Code mit state_as über oidc_redirect_uri und den App-/Universal-Link an den Client. Code und State bleiben bis zum korrelierten Folgefluss erhalten; äußere Werte dürfen sie nicht ersetzen. Der Folgefluss aus <<UC_03_01>> löst den Code ein.
+
+| Nachbedingung: |
+Der Authorization Request hat den äußeren und inneren PAR, die durch unbekannte Statements ausgelösten Beschaffungsblöcke und die Weiterleitung zum IDP erfolgreich durchlaufen. Äußere und innere URI sowie Clientidentitäten sind ihren jeweiligen Rollen zugeordnet. Nach erfolgreicher Nutzerauthentisierung gibt der Client den vom IDP erhaltenen Code und State unverändert an den Guard zur Einlösung weiter.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29660_01>>
+* <<TA_A_29671_01>>
+
+|===
+
+[mermaid,uc-03-02-ablauf,svg]
+....
+sequenceDiagram
+    actor N as Nutzer
+    participant C as ZETA Client
+    participant A as Authenticator-Modul
+    participant G as Guard / Fachdienst
+    participant I as Sektoraler IDP
+    participant F as Federation Master
+    C->>G: 02 POST /par (äußerer Kontext)
+    G-->>C: 04 201 (request_uri_app, expires_in=5)
+    C->>G: 05 GET /authorize (client_id, request_uri_app)
+    opt IDP-Statement im Guard unbekannt
+        G->>I: 07 GET /.well-known/openid-federation
+        I-->>G: 08 Signiertes IDP-Statement
+        G->>F: 09 GET federation_fetch_endpoint (sub=idp_iss)
+        F-->>G: 10 Signiertes Statement über den IDP
+    end
+    G->>I: 12 POST /PAR (innerer Kontext)
+    opt Fachdienst-Statement im IDP unbekannt
+        I->>G: 13 GET /.well-known/openid-federation
+        G-->>I: 14 Signiertes Fachdienst-Statement
+    end
+    I-->>G: 19 201 (request_uri, expires_in höchstens 90)
+    G-->>C: 20 302 IDP-Authorization-Endpunkt (Guard-client_id, request_uri)
+    C->>A: Authenticator öffnen (client_id, request_uri)
+    A->>I: Authentication Request (client_id, request_uri)
+    I->>A: Nutzerauthentisierung und Consent anfordern
+    A->>N: Authentisierung und Consent
+    N-->>A: Erfolgreiche Authentisierung und Zustimmung
+    A->>I: Authentisierung bestätigen
+    I-->>A: 302 oidc_redirect_uri (AUTH_CODE_IDP, state_as)
+    A-->>C: Rückgabe über App-/Universal-Link
+    C->>G: Code und State unverändert übergeben (Folgefluss UC_03_01)
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Dateien zu diesem Use Case:
+
+[source]
+----
+include::nutzerauthentisierung_am_idp.feature[]
+----
+
+[source]
+----
+include::oidc_par_federation_happy_path.feature[]
+----
+
+endif::[]

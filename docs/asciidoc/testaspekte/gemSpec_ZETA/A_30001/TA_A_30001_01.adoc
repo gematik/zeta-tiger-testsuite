@@ -1,0 +1,8 @@
+[#TA_A_30001_01]
+===== TA_A_30001_01 - ZETA, Ablauf Token Revocation - Revocation bei Abmeldung einleiten
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 01: **Abmeldung (Logout) / Session beenden**.

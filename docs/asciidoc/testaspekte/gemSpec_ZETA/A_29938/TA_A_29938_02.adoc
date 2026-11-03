@@ -1,0 +1,6 @@
+[#TA_A_29938_02]
+===== TA_A_29938_02 - Authorization Server – Fortbestand der Identität nach Löschung des letzten Clients - Erneute Einbuchung als Folgeregistrierung
+
+"Der Authorization Server MUSS den Identitätsdatensatz (gebundene E-Mail F1) nach Löschung des letzten Clients erhalten (unbeschadet der Inaktivitäts-Löschfristen nach A_28808). Eine erneute Einbuchung MUSS **als Folgeregistrierung** mit erneuter Verifikation der bestehenden E-Mail behandelt werden.
+
+**[<=]**"

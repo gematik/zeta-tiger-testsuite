@@ -36,8 +36,6 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 405
   @TA_A_27265_02
   @TA_A_27725-01_34
   @normal
-  @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: PEP HTTP Proxy antwortet mit 405 bei nicht erlaubter HTTP Methode
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
@@ -54,7 +52,7 @@ Funktionalität: Client Ressource Anfrage Fachdienst SC 405
     Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "body.htm" auf Wert "DELETE" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen
 
     Und TGR setze lokale Variable "tokenRequestCondition" auf "isRequest && request.path =~ '.*${paths.guard.helloZetaPath}'"
-    Und Setze im TigerProxy für die Nachricht "${tokenRequestCondition}" die Regex-Manipulation auf Feld "$.method" mit Regex "GET" und Wert "DELETE"
+    Und Setze im TigerProxy für die Nachricht "${tokenRequestCondition}" die Regex-Manipulation auf Feld "$.method" mit Regex "GET" und Wert "DELETE" und 1 Ausführungen
     Und TGR lösche aufgezeichnete Nachrichten
     Und speichere den aktuellen Unix-Zeitstempel in der Variable "START"
     Und TGR setze lokale Variable "START_MICROS" auf "!{${START} * 1000000}"

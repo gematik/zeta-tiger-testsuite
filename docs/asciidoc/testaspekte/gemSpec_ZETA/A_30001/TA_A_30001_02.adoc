@@ -1,0 +1,8 @@
+[#TA_A_30001_02]
+===== TA_A_30001_02 - ZETA, Ablauf Token Revocation - Erlaubte Antwortalternativen im Access-Token-Zweig
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+Abbildung 28, Schritt 09 und seine Erläuterung: Der Authorization Server beantwortet ein übergebenes Access Token **mit 200 OK oder mit 400 Bad Request und error=unsupported_token_type**. Die Antwortwege sind zulässige Alternativen derselben Pflicht.

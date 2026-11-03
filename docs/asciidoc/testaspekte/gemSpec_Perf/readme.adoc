@@ -1,3 +1,0 @@
-=== Testaspekte aus gemSpec_Perf
-
-include::A_28782/readme.adoc[]

@@ -44,9 +44,9 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
   @TA_A_26281-01_01
   @TA_A_27725-01_14
   @normal
+  @MASVS-STORAGE
   @MASVS-AUTH
   @MASVS-CRYPTO
-  @MASVS-RESILIENCE
   Szenario: Refresh Token Rotation - Token wird nur einmal verwendet und rotiert
     Gegeben sei TGR sende eine leere "GET" Anfrage an "${paths.guard.baseUrl}${paths.guard.certsEndpointPath}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.certsEndpointPath}"
@@ -160,22 +160,25 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
   @A_25660
   @A_25760
   @A_25782
-  @A_26586
+  @A_26586-01
   @A_26587-01
-  @A_26972-02
+  @A_26972-03
   @A_28837
-  @TA_A_26586_02
-  @TA_A_26587-01_01
   @TA_A_25660_04
   @TA_A_25660_05
   @TA_A_25760_03
   @TA_A_25782_04
-  @TA_A_26972-02_01
-  @TA_A_26972-02_02
-  @TA_A_26972-02_03
-  @TA_A_26972-02_04
-  @TA_A_28837_01
+  @TA_A_26586-01_02
+  @TA_A_26587-01_01
+  @TA_A_26972-03_01
+  @TA_A_26972-03_02
+  @TA_A_26972-03_03
+  @TA_A_26972-03_04
+  @MASVS-CRYPTO
+  @MASVS-STORAGE
   @MASVS-AUTH
+  @require_kubectl
+  @smb
   Szenario: Session Management - Ausgabe und Verwaltung von Refresh Token
     # expires_in Manipulation aktivieren BEVOR der erste HelloZeta Request
     # 2 Ausführungen: Initial Token Exchange + 1 Refresh
@@ -200,7 +203,7 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "firstAccessToken"
     Und TGR speichere Wert des Knotens "$.body.refresh_token" der aktuellen Antwort in der Variable "firstRefreshToken"
     # TA_A_26587-01_01: PDP Datenbank - Kompatibilität zum Authorization Server über persistente Session-, Nutzer- und Client-Daten
-    Und decodiere und validiere "${firstAccessToken}" gegen Schema "schemas/v_1_0/access-token.yaml"
+    Und decodiere und validiere "${firstAccessToken}" gegen Schema "schemas/v_2_0/schemas/access-token.yaml"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.access_token.body.sid"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_token.body.sid"
     Und TGR speichere Wert des Knotens "$.body.access_token.body.sid" der aktuellen Antwort in der Variable "sessionId"
@@ -215,9 +218,13 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR speichere Wert des Knotens "$.body.access_token.body.jti" der aktuellen Antwort in der Variable "accessTokenJti1"
     Und TGR speichere Wert des Knotens "$.body.refresh_token.body.jti" der aktuellen Antwort in der Variable "refreshTokenJti1"
     Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "SUBJECT_TOKEN"
-    Und decodiere und validiere "${SUBJECT_TOKEN}" gegen Schema "schemas/v_1_0/subject-token-smb.yaml"
+    Und decodiere und validiere "${SUBJECT_TOKEN}" gegen Schema "schemas/v_2_0/schemas/subject-token-smb.yaml"
+    Und verifiziere die ES256 Signatur des JWT "${SUBJECT_TOKEN}"
     Und TGR speichere Wert des Knotens "$.body.subject_token.header.x5c.0" der aktuellen Anfrage in der Variable "smcbCertificate"
     Und schreibe Daten aus dem SMC-B Zertifikat "${smcbCertificate}" in die Variable "SMCB-INFO"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_id" überein mit "\Q${clientId}\E"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.iss" überein mit "\Q${clientId}\E"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.sub" überein mit "\Q${SMCB-INFO.telematikId}\E"
 
     # Warte bis Access Token abgelaufen ist
     Und warte "${accessTokenTtl}" Sekunden
@@ -241,7 +248,7 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "${oauth_parameters.grant_type.refreshToken}"
     # TA_A_25660_05: Validiere dass das zuvor ausgegebene Refresh Token verwendet wird
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.refresh_token" überein mit "${firstRefreshToken}"
-    # TA_A_26972-02: Refresh ohne erneutes Subject-Token (Persistenz-Indiz)
+    # TA_A_26972-03: Refresh ohne erneutes Subject-Token (Persistenz-Indiz)
     Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.subject_token"
     # TA_A_26587-01_01: Validiere kompatible Fortführung der Session-Daten und Rotation der Token-IDs nach Refresh
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.access_token.body.sid" überein mit "${sessionId}"
@@ -255,21 +262,32 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.access_token" nicht überein mit "${firstAccessToken}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.refresh_token" nicht überein mit "${firstRefreshToken}"
 
-    # TA_A_26586_02: Nutzer-Daten im Policy-Engine-Request
+    # TA_A_26972-03: Speicherung nach dem SDK-Refresh unabhängig von der Policy-Weitergabe prüfen.
+    # Der Testdriver bietet keinen lesenden Zugriff auf persistierte AS-Nutzerdaten.
+    # Client und Session stammen aus dem signaturgeprüften Refresh-Access-Token;
+    # die Referenzwerte stammen aus dem signaturgeprüften ursprünglichen Subject-Token.
+    Und TGR speichere Wert des Knotens "$.body.access_token" der aktuellen Antwort in der Variable "SMCB_REFRESH_ACCESS_TOKEN"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.guard.baseUrl}${paths.guard.certsEndpointPath}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.certsEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "SMCB_REFRESH_JWKS"
+    Und verifiziere die ES256 Signatur des JWT "${SMCB_REFRESH_ACCESS_TOKEN}" mit KeyStore "${SMCB_REFRESH_JWKS}"
+    Dann prüfe SMC-B-Persistenz: Client "${clientId}", Session "${sessionId}", Telematik-ID "${SMCB-INFO.telematikId}", Common Name "${SMCB-INFO.commonName}", Profession "${SMCB-INFO.professionId}", Organisation "${SMCB-INFO.organizationName}"
+
+    # TA_A_26586-01_02: Nutzer-Daten im Policy-Engine-Request
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.opa.decisionPath}"
     Und TGR prüfe aktueller Request enthält Knoten "$.body.input.user_info"
     Und TGR speichere Wert des Knotens "$.body.input.user_info" der aktuellen Anfrage in der Variable "OPA_USER_INFO"
-    Und validiere "${OPA_USER_INFO}" gegen Schema "schemas/v_1_0/user-info.yaml"
-    # TA_A_26972-02_01 identifier
+    Und validiere "${OPA_USER_INFO}" gegen Schema "schemas/v_2_0/schemas/zeta-user-info.yaml"
+    # TA_A_26972-03_01 identifier
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.identifier" überein mit "${SMCB-INFO.telematikId}"
-    # TA_A_26972-02_03 professionOID
+    # TA_A_26972-03_03 professionOID
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.professionOID" überein mit "${SMCB-INFO.professionId}"
 
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
-    # TA_A_26972-02_02 commonName
-    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.authorization.dpopToken.body.common_name}" überein mit "${SMCB-INFO.commonName}"
-    # TA_A_26972-02_04 optional organizationName
-    Und prüfe optional: Knoten "${headers.authorization.dpopToken.body.organization_name}" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
+    # TA_A_26972-03_02 commonName
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.user_info.commonName" überein mit "${SMCB-INFO.commonName}"
+    # TA_A_26972-03_04 optional organizationName
+    Und prüfe optional: Knoten "$.body.input.user_info.organizationName" fehlt wenn "${SMCB-INFO.organizationName}" leer ist, sonst gleich und nutze soft assert
 
   @A_25663
   @A_25766
@@ -359,9 +377,7 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
 
 
   @A_25660
-  @A_27867-01
   @TA_A_25660_02
-  @TA_A_27867-01_01
   @normal
   @MASVS-AUTH
   Szenario: Session-Daten werden verwaltet (indirekter Nachweis)

@@ -1,0 +1,4 @@
+[#TA_A_28527-01_03]
+===== TA_A_28527-01_03 - PDP Authorization Server - Höchstgrenze Access Token
+
+"Die Komponente Authorization Server MUSS beim Ausstellen von Access und Refresh Token die Gültigkeitsdauer aus der Policy Decision übernehmen. **Dabei MUSS eine feste Höchstgrenze der Gültigkeit vom Authorization Server eingehalten werden.** **Access Token: maximal 3600 Sekunden** Refresh Token (Versicherte, mobile Clients): maximal 1 Tag [<=]"

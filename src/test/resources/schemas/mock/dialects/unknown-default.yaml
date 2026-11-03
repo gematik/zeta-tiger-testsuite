@@ -1,0 +1,5 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://example.invalid/unsupported-dialect
+components:
+  schemas:
+    Example: {type: string}

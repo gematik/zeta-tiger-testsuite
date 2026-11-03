@@ -1,0 +1,4 @@
+[#A_29850]
+==== A_29850 - PEP HTTP Proxy, Kennzeichnung von PEP-Fehlern im HTTP-Header
+
+Tritt im PEP HTTP Proxy ein Fehler auf, der zu den HTTP-Statuscodes 401 oder 403 führt, MUSS der HTTP Proxy der HTTP-Antwort an den ZETA-Client den folgenden HTTP-Header hinzufügen: Header-Name: zeta-error-origin Header-Wert: pep [<=]

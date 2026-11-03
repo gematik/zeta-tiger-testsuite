@@ -1,0 +1,6 @@
+[#TA_A_29982_03]
+===== TA_A_29982_03 - Notification Service – mTLS mit EV-Zertifikat zum Push Gateway - EV-Zertifikat des Push Gateways prüfen
+
+"Der Notification Service MUSS die Verbindung zum Push Gateway über mTLS absichern und dabei – in der Rolle des Fachdienstes gemäß [gemF_PushNotification] – ein Extended-Validation-TLS-Zertifikat gemäß den Anforderungen des CA/Browser Forums verwenden bzw. **ein solches des PushGateways prüfen** ( vgl. A_28267, A_28268).
+
+**[<=]**"

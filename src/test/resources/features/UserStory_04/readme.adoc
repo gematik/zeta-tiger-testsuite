@@ -1,0 +1,49 @@
+[#US_04]
+== UserStory_04: Client-Bindung, Authentisierungsniveau und Sitzungslebenszyklus
+
+Als Nutzer möchte ich registrierte Clients, gebundene Faktoren und Sitzungen sicher verwalten und bei Bedarf ein höheres Authentifizierungsniveau erreichen.
+Die Use Cases verbinden vorhandene Teilszenarien mit Prüfentwürfen für V2.0.0 CC. Die generierte Rückverfolgbarkeit weist vorhandene Szenariozuordnungen aus; neue Entwürfe allein begründen keine Szenarioabdeckung.
+
+=== Akzeptanzkriterien
+
+* Bestehende Client- und Faktorbindungen werden nur mit den für die jeweilige Operation erforderlichen Nachweisen verändert.
+* Client-Löschungen beachten Eigentum, Fachdienstgrenze, Benachrichtigung und den zusätzlichen Schutz des letzten Clients.
+* Tokenantworten und Step-Up-Abläufe entsprechen der tatsächlichen Authentisierung und der gewählten Betriebsvariante.
+* Ein erfolgreicher Logout beendet die serverseitige Sitzung und entfernt die zugehörigen lokalen Tokens und DPoP-Schlüssel.
+
+* Android-Instanzschlüssel und Attestierungsnachweise bleiben an dieselbe Client-Instanz gebunden.
+* TOFU-Geltungsbereich und Identitäts-/Client-Datenhaltung entsprechen der jeweiligen Clientklasse.
+
+=== Identifizierte Use Cases
+
+:leveloffset: +2
+
+include::UseCase_01/readme.adoc[]
+
+include::UseCase_02/readme.adoc[]
+
+include::UseCase_03/readme.adoc[]
+
+include::UseCase_04/readme.adoc[]
+
+include::UseCase_05/readme.adoc[]
+
+include::UseCase_06/readme.adoc[]
+
+include::UseCase_07/readme.adoc[]
+
+include::UseCase_08/readme.adoc[]
+
+include::UseCase_09/readme.adoc[]
+
+include::UseCase_10/readme.adoc[]
+
+include::UseCase_11/readme.adoc[]
+
+include::UseCase_12/readme.adoc[]
+
+include::UseCase_13/readme.adoc[]
+
+include::UseCase_14/readme.adoc[]
+
+:leveloffset: -2

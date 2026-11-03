@@ -73,7 +73,8 @@ public final class JwtTestHelper {
   public static String createSignedJwt(
       String headerJson, String payloadJson, PrivateKey privateKey) throws Exception {
     var signingInput = base64Url(headerJson) + "." + base64Url(payloadJson);
-    var signature = Signature.getInstance("SHA256withECDSA");
+    var signature = Signature.getInstance("SHA256withECDSA",
+        new org.bouncycastle.jce.provider.BouncyCastleProvider());
     signature.initSign(privateKey);
     signature.update(signingInput.getBytes(StandardCharsets.US_ASCII));
     var joseSignature = EcdsaUsingShaAlgorithm.convertDerToConcatenated(signature.sign(), 64);
@@ -88,10 +89,11 @@ public final class JwtTestHelper {
    * @return parsed private key
    * @throws IOException if Bouncy Castle cannot parse the key
    */
-  private static PrivateKey loadPrivateKey(String privateKeyPem) throws IOException {
+  static PrivateKey loadPrivateKey(String privateKeyPem) throws IOException {
     try (var pemParser = new PEMParser(new StringReader(privateKeyPem))) {
       var parsedObject = pemParser.readObject();
-      var converter = new JcaPEMKeyConverter();
+      var converter = new JcaPEMKeyConverter().setProvider(
+          new org.bouncycastle.jce.provider.BouncyCastleProvider());
       if (parsedObject instanceof PEMKeyPair pemKeyPair) {
         return converter.getPrivateKey(pemKeyPair.getPrivateKeyInfo());
       }

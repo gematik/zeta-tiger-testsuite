@@ -1,0 +1,8 @@
+[#TA_A_29376_06]
+===== TA_A_29376_06 - ZETA, Ablauf Token Exchange mit Attestation - Validierte Daten an Policy Engine übergeben
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 10–12: Erst nach erfolgreicher technischer Validierung erstellt der Authorization Server aus den **validierten Daten den Policy-Input und übergibt ihn an POST /v1/data/authz**. Nutzer, Client und angeforderter Scope bleiben dem Vorgang zugeordnet; die Entscheidung liegt vor der Tokenausgabe vor.

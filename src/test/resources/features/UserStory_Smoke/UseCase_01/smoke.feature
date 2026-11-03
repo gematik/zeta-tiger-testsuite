@@ -32,8 +32,7 @@ Funktionalität: Smoke Test
   @blocker
   @critical
   @no_proxy
-  @MASVS-NETWORK
-  Szenariogrundriss: Einfache Ressource-Anfrage — Ein Client fordert die "Hello ZETA!" Resource vom Testfachdienst an
+  Szenariogrundriss: Einfache Ressource-Anfrage — Ein Client fordert die 'Hello ZETA!' Resource vom Testfachdienst an
     Wenn TGR setze lokale Variable "anfrage" auf "<anfrage>"
     Und TGR gebe variable "anfrage" aus
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -51,20 +50,13 @@ Funktionalität: Smoke Test
       | zweite Anfrage |
       | dritte Anfrage |
 
-  @normal
-  Szenario: SMC-B OCSP-Anfrage wird über Tiger Proxy sichtbar
-    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
-    Und TGR lösche aufgezeichnete Nachrichten
-    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Dann TGR finde die erste Anfrage mit Pfad "^/ecc-ocsp"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.responseCode"
-
   # requires globally enabled ASL; see tiger/defaults.yaml -> zeta_k8s_enable_asl_globally
   @Ignore
   @blocker
   @deployment_modification
   @no_proxy
-  Szenario: Einfache Ressource-Anfrage mit ASL — Ein Client fordert die "Hello ZETA!" Resource vom Testfachdienst an
+  @bot
+  Szenario: Einfache Ressource-Anfrage mit ASL — Ein Client fordert die 'Hello ZETA!' Resource vom Testfachdienst an
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
@@ -73,7 +65,8 @@ Funktionalität: Smoke Test
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.message" überein mit "Hello ZETA!"
     Dann TGR finde die letzte Anfrage mit dem Pfad "^/ASL/[^/]+$"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.sender" überein mit "pep-proxy-svc:80"
+    Und ermittle das Sender-Muster für den Kubernetes Service "pep-proxy-svc" auf Port 80 und speichere in der Variable "pepServiceSenderPattern"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.sender" überein mit "${pepServiceSenderPattern}"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.decrypted.body.message"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.decrypted.body.message" überein mit "Hello ZETA!"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"

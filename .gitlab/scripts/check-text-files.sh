@@ -17,9 +17,18 @@ git ls-files | (
       continue
     fi
 
-    if LC_ALL=C grep -q "$(printf '\r')" "${file}" 2>/dev/null; then
-      echo "CRLF: ${file}"
-      bad=1
+    # Preserve the pinned upstream schema's original bytes and checksum, and
+    # respect explicit CRLF checkout rules for Windows scripts. Read raw bytes
+    # so Git for Windows grep does not silently strip carriage returns.
+    if [ "${file}" != "docs/specifications/2.0.0-cc/schemas/upstream/afoListeSteckbrief_v2.xsd" ] &&
+        LC_ALL=C grep -Uq "$(printf '\r')" "${file}" 2>/dev/null; then
+      case "$(git check-attr eol -- "${file}")" in
+        *": eol: crlf") ;;
+        *)
+          echo "CRLF: ${file}"
+          bad=1
+          ;;
+      esac
     fi
 
     if ! iconv -f UTF-8 -t UTF-8 "${file}" >/dev/null 2>&1; then

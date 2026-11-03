@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info: {title: Dialect regression fixtures, version: '1'}
+paths: {}
+components:
+  schemas:
+    Nullable: {type: string, nullable: true}
+    NonNullable: {type: string, nullable: false}
+    EnumNullable: {type: string, nullable: true, enum: [allowed]}
+    EnumWithNull: {type: string, nullable: true, enum: [allowed, null]}
+    TypedComposition: {type: string, nullable: true, allOf: [{type: string}]}
+    WithoutType: {nullable: true, allOf: [{type: string}]}
+    RefSibling:
+      $ref: '#/components/schemas/NonNullable'
+      nullable: true
+    External:
+      $ref: external.yaml#/$defs/Nullable

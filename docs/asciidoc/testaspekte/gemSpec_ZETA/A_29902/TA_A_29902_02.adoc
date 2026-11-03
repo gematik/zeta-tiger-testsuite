@@ -1,0 +1,6 @@
+[#TA_A_29902_02]
+===== TA_A_29902_02 - Authorization Server – Verwaltung nur durch eingebuchten Client - Rollover nur mit gültigem eingebuchtem Client
+
+"Der Authorization Server MUSS für identitäts- und clientbezogene Verwaltungsoperationen (Änderung der E-Mail, **Schlüssel-Rollover**, Löschung von Clients) den Nachweis eines an diesem Fachdienst eingebuchten, gültigen Clients verlangen.
+
+**[<=]**"

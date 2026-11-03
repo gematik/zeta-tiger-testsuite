@@ -1,0 +1,6 @@
+[#TA_A_29843_01]
+===== TA_A_29843_01 - PDP Authorization Server, Zugriff auf andere Resource - Andere Resource und anderer Scope
+
+"Der Authorization Server MUSS Token Requests mit grant_type=refresh_token und Angabe der Parameter resource und scope verarbeiten, auch wenn das Refresh Token ursprünglich für **eine andere resource und einen anderen scope** beantragt wurde.
+
+**[<=]**"

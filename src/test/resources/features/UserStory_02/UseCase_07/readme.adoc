@@ -1,0 +1,135 @@
+[#UC_02_07]
+== UseCase_02_07: Push-Versand, Wiederholung und ungültige Pusher prüfen
+
+.UseCase_02_07
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Push-Versand, Wiederholung und ungültige Pusher prüfen
+
+| Akteur: | Resource Server mit berechtigtem Versandereignis
+
+| weitere Akteure: | ZETA Client, Notification Service, Push Gateway, Android-Client mit SDK, Push Provider
+
+| Auslöser: | Notifications werden bei erreichbarem oder fehlerhaftem Push Gateway zugestellt.
+
+| Kurzbeschreibung: |
+Betriebsart, registriertes Versandziel, exponentielle Wiederholungen und RejectedPushKeys werden getrennt geprüft.
+Die Android-Variante umfasst die Registrierung und Channel-Aktivierung eines Android-Clients sowie den verschlüsselten Versand bis zum Empfang und zur Entschlüsselung auf dem Endgerät.
+Die unverschlüsselte Batch-Variante umfasst den zulässigen Versandendpunkt, das Einstellen des Versands an abgelehnte Pushkeys und das Entfernen zugehöriger ungültiger Pusher. Die weiteren Varianten bleiben Prüfentwürfe für V2.0.0 CC.
+
+| Vorbedingung: |
+. Pusher sind durch den Client über das SDK registriert. Für die Empfängerauswahl- und Rejected-Varianten stehen mindestens zwei gültige Pushkeys, ein später ungültiger Key und getrennte registrierte/fremde Gateway-Ziele bereit.
+. Für die Android-Zustellung sind Android-Client, Notification Service, Push Gateway und Push Provider betriebsbereit; Push-Verschlüsselung und der Channel ``zeta`` sind aktiviert. Der Android-Client verfügt über eine authentisierte SDK-Sitzung und einen Push-Token.
+. Die Fehler- und Rejected-Varianten umfassen Nichterreichbarkeit des Gateways, Versandfehler und schema-konforme Einzel-/Batch-Antworten mit gemischten rejected-Ergebnissen. Notification-IDs, Batch-Items und Pushkeys sind eindeutig korrelierbar.
+. Die gewählte unverschlüsselte Betriebsart (Einzel oder Stapel) und verschlüsselter Stapelversand mit einem beziehungsweise mehreren Elementen sind vorab festgelegt. Unterstützt das Produkt beide unverschlüsselten Alternativen, werden beide geprüft; die AFO fordert nicht allein durch das Wort „oder“ beide Betriebsarten kumulativ. Basisintervall, Obergrenze und Jitter des Retry-Verfahrens sind vorab bekannt.
+. Für Wiederholungsvarianten sind die fachliche Gültigkeitsdauer der Ereignisse und eine gegebenenfalls implementierte zeitliche Abbruchregel bekannt. Der Hinweis zu A_27166 erlaubt den Abbruch nach einer gewissen Zeit wegen entfallender Ereignisrelevanz. Die Störung endet mit ausreichendem Abstand vor dieser Grenze, sodass mindestens ein nach dem Retry-Profil zulässiger Sendeversuch nach Wiederherstellung innerhalb des gültigen Zeitraums liegt; fehlt eine zeitliche Abbruchregel, ist keine feste Quellenfrist vorgegeben.
+. Warteschlange, Versandzeitpunkte und Pusherbestand sind lesend beobachtbar. Der Client kann über das SDK ein korreliertes Ereignis im Fachdienst auslösen. Der Fachdienst reicht es als Resource Server beim Notification Service ein und gibt dessen Annahme mit Notification-ID zurück.
+
+| Nebenbedingung: |
+Der Client registriert und verwaltet die Pusher über das SDK. Er löst die Ereignisse im Fachdienst aus, der die Resource-Server-Schnittstelle des Notification Service verwendet. SDK-, Fachdienst- und Gateway-Interaktionen sind anhand von Nutzer, Ereignismarkierung und Notification-ID eindeutig zugeordnet. Bei TLS-Verbindungen bleibt die Identität des beteiligten Produktakteurs erhalten.
+
+Im unverschlüsselten Batch-Profil sind zwei Pusher derselben App ohne Verschlüsselungsdaten mit aktiviertem Channel vorhanden. Die Gateway-Antwort behält die ID des tatsächlich versandten Batch-Items bei und lehnt genau einen Pushkey ab. Getrennte Varianten lehnen den Pushkey an der ersten beziehungsweise zweiten Geräteposition des versandten Items ab; die jeweils andere Geräteposition bleibt gültig. Der Notification Service entfernt dessen Pusher aus API und tatsächlichem Speicher; der gültige Nachbar bleibt erhalten. Ein unabhängig markiertes Folgeereignis wird erst nach bestätigter Entfernung ausgelöst und mit einer neuen Notification-ID angenommen. Es wird ausschließlich an den gültigen Nachbarn versandt. Die erfolgreiche Gateway-Antwort gehört zu diesem Folgeereignis; der Bestand bleibt unverändert.
+
+| Ablauf: |
+*Verschlüsselte Zustellung an Android*
+
+. Der Android-Client registriert seinen Push-Token mit einem ausschließlich für den Notification Service ausgestellten Zugriffstoken. Er ruft den Channel-Katalog ab und aktiviert den Channel ``zeta``.
+. Der Fachdienst meldet ein Ereignis für den authentisierten Nutzer des Android-Clients an den Notification Service.
+. Der Notification Service kodiert den Nachrichteninhalt als UTF-8 und verschlüsselt ihn mit AES/GCM. Er übermittelt ``Base64(IV || Ciphertext || Authentication Code)`` mit Ereignisreferenz, Push-Token, Schlüsselkennung und passendem Ableitungsmonat ``yyyy-MM`` ausschließlich über den verschlüsselten Batch-Endpunkt an das Push Gateway. Das ausgelöste Ereignis enthält für dieses Gerät genau einen Batch-Eintrag.
+. Das Gateway bestätigt dessen Annahme und leitet die Nachricht über den Push Provider an den Android-Client weiter. Der Android-Client entschlüsselt die Nachricht; Korrelation, Ereignistyp, Titel und Nachricht einschließlich Umlauten und Emoji entsprechen dem ausgelösten Ereignis.
+. Im vollständigen Zustellfenster erfolgt kein zusätzlicher Versand über einen Klartext- oder verschlüsselten Einzel-Endpunkt.
+
+*Ziel und Betriebsart*
+
+. Der Client löst über das SDK ein korreliertes Ereignis im Fachdienst aus. Der Fachdienst reicht die Notification beim Notification Service ein und gibt dessen Annahme-ID zurück. Der Notification Service versendet ausschließlich an die bei Registrierung hinterlegte data/url; das fremde Gateway-Ziel erhält keine Nachricht. Ein abweichender URL-Wert in einem späteren zulässigen Eingangsfeld darf diese URL nicht überschreiben oder den Versand umleiten. Existiert kein solches Feld, bleiben die Herkunft der Versandadresse aus der Registrierung und das tatsächlich kontaktierte Ziel nachvollziehbar.
+. Für die gewählte unverschlüsselte Betriebsart werden entweder POST /notify mit schema-konformem rejected[] (Einzelprofil) oder POST /notify/batch mit itembezogener BatchNotificationResponse (Stapelprofil) geprüft. Jede Batch-Antwort muss der richtigen Notification zugeordnet sein; gemischte Ergebnisse dürfen nicht auf den ganzen Batch übertragen werden. Unterstützt das Produkt beide Alternativen, werden beide separat ausgeführt; allein die Quellenalternative verlangt nicht beide kumulativ.
+. Ein und mehrere verschlüsselte Elemente werden ausschließlich per POST /notifyEncrypted/batch versandt. Ein verschlüsselter Einzel-Endpunkt wird nicht erfunden; der Einzelfall enthält genau ein Batch-Element.
+
+*Wiederholung bei Ausfall*
+
+. Das Push Gateway ist in getrennten Varianten nicht erreichbar oder meldet einen wiederholbaren Versandfehler. Der Notification Service puffert gemäß A_27166 die Notifications und wiederholt den Versand in exponentiell zunehmenden Intervallen gemäß tatsächlicher Basis, Obergrenze und Jitterregel. Die Wiederherstellung erfolgt innerhalb der bekannten fachlichen Gültigkeit und vor einem zulässigen zeitlichen Abbruch. Danach werden sämtliche noch gültigen ausstehenden Notifications versandt und aus dem offenen Bestand entfernt. Ein Abbruch wegen entfallender Ereignisrelevanz nach der bekannten zeitlichen Abbruchregel bleibt zulässig.
+
+*Abgelehnte Pushkeys*
+
+. In getrennten Varianten der unterstützten Einzel-/Batch-Betriebsarten meldet das Gateway einen ungültigen Key und lässt andere Keys gültig. Der Notification Service wertet RejectedPushKeys je Notification beziehungsweise Batch-Item aus. Ein neues Ereignis entsteht erst nach bestätigter Verarbeitung der Ablehnung: kein abgelehnter Key wird adressiert, gültige andere Pusher werden weiterhin bedient.
+. Der Notification Service entfernt nach der rejected-Verarbeitung genau die zugehörigen ungültigen Pusher aus API und tatsächlichem Speicher; gültige Nachbarn bleiben erhalten und weiter erreichbar. Ein bloß ausgebliebener Versand belegt keine Löschung.
+. Eine spätere Gateway-Antwort meldet ausdrücklich einen Pushkey einer früheren Notification, der nicht zum aktuellen Batch-Item gehört. Auch hier folgen Versandstopp und Entfernung des zugehörigen Pushers; Korrelation allein mit dem aktuellen Item wäre fehlerhaft.
+
+| Nachbedingung: |
+In der Android-Variante hat das Push Gateway den zum Ereignis gehörenden Versand für den registrierten Push-Token bestätigt; der adressierte Client hat die Push-Nachricht mit derselben Schlüsselkennung empfangen und entschlüsselt.
+In den Wiederholungs- und Rejected-Varianten sind offene Notifications nach Wiederherstellung abgearbeitet. Ungültige Pusher sind entfernt und werden nicht weiter bedient; gültige Pusher und Registrierungsziele bleiben korrekt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_25652_01>>
+* <<TA_A_25652_04>>
+* <<TA_A_25652_06>>
+* <<TA_A_29970_02>> (Entwurf; kein aktiver Szenario-Tag)
+* <<TA_A_29970_06>> (Entwurf; kein aktiver Szenario-Tag)
+* <<TA_A_29970_07>> (Entwurf; kein aktiver Szenario-Tag)
+* <<TA_A_29970_08>> (Entwurf; kein aktiver Szenario-Tag)
+* <<TA_A_29971_01>>
+* <<TA_A_29971_02>>
+* <<TA_A_29971_03>>
+* <<TA_A_29971_05>>
+* <<TA_A_29971_06>>
+* <<TA_A_29971_07>>
+* <<TA_A_29971_08>>
+* <<TA_A_29972_03>>
+* <<TA_A_29979_01>>
+
+|===
+
+[mermaid,uc-02-07-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as ZETA Client
+    participant A as Android-Client mit SDK
+    participant R as Fachdienst / Resource Server
+    participant N as Notification Service
+    participant P as Registriertes Push Gateway
+    participant I as Push Provider
+    alt Verschlüsselte Android-Zustellung
+        A->>N: Push-Token mit dienstspezifischem Zugriffstoken registrieren
+        A->>N: Channel-Katalog abrufen und Channel aktivieren
+        C->>R: Korreliertes Ereignis über SDK
+        R->>N: Notification für den Android-Nutzer
+        N-->>R: Annahme mit Notification-ID
+        N->>P: AES/GCM-verschlüsselter UTF-8-Inhalt als Base64 im Batch mit Ableitungsmonat
+        P-->>N: Erfolgreiche Annahme des Batch-Eintrags
+        P->>I: Zustellung an den registrierten Push-Token
+        I-->>A: Push-Nachricht
+        A->>A: Nutzdaten entschlüsseln
+    else Versandwiederholung und ungültige Pusher
+        C->>R: Korreliertes Ereignis über SDK
+        R->>N: Berechtigte Notification
+        N-->>R: Annahme mit Notification-ID
+        R-->>C: Annahme mit Notification-ID
+        N->>P: Passender Einzel- oder Batch-Endpunkt
+        alt Nicht verfügbar oder Versandfehler
+            N->>N: Puffern und exponentiell warten
+            N->>P: Wiederholung bis Versand möglich
+        end
+        P-->>N: Ergebnis mit rejected je Notification/Item
+        N->>N: Betroffene Pusher entfernen und Versand einstellen
+        C->>R: Neues Ereignis nach Antwortverarbeitung
+        R->>N: Neue Notification
+        N->>P: Nur noch gültige Pushkeys
+        Note over N,P: Auch Ablehnungen aus früheren Notifications berücksichtigen
+    end
+....
+
+ifdef::render_features[]
+[.lead]
+Feature-Dateien zu diesem Use Case
+
+[source]
+----
+include::android_push_zustellung.feature[]
+----
+
+[source]
+----
+include::abgelehnte_pusher_entfernen.feature[]
+----
+endif::[]

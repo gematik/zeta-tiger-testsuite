@@ -1,0 +1,102 @@
+[#UC_04_12]
+== UseCase_04_12: TOFU-Identität, Client-Faktoren und Geltungsbereich trennen
+
+.UseCase_04_12
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | TOFU-Identität, Client-Faktoren und Geltungsbereich trennen
+
+| Akteur: | Nutzer und Client-Instanzen über Testdriver/SDK
+
+| weitere Akteure: | Authorization Server, SMC-B, IDP, Testsuite mit lesendem Bestandsadapter
+
+| Auslöser: | Clients werden registriert, erneut authentisiert und berechtigt verwaltet.
+
+| Kurzbeschreibung: |
+Mobile TOFU-Identitäten erhalten einen gemeinsamen F1-Anker und getrennte F2-/Audience-Bindungen je Client. Stationäre und identitätslose Clients werden nach ihren eigenen Verfahren geprüft.
+Die Szenarien `identitaetsanker_f1.feature`, `oeffentlicher_instanzschluessel.feature` und `stationaerer_client_ohne_tofu.feature` prüfen die KVNR als TOFU-Anker und die F1-Bindung auf Identitätsebene, den öffentlichen Instanzschlüssel als F2 beziehungsweise den stationären SMC-B-Client ohne TOFU-Faktorpflicht. Die weiteren Aspekte bleiben Prüfentwürfe für V2.0.0 CC.
+
+| Vorbedingung: |
+. Zwei getrennte TI-Identitäten I1/I2 und zwei unabhängige mobile SDK-Kontexte C1/C2 für I1 mit getrennten Schlüsseln, Speichern und Audience-Berechtigungen sind verfügbar. Die Matrix wird für KVNR und Telematik-ID ausgeführt.
+. Die Identität wird aus gültiger Nutzerauthentisierung nach A_29903 abgeleitet. Registrierungen, E-Mail-Bestätigungen, Einbuchung und Verwaltungsnachweise sind regulär durchführbar.
+. Ein stationärer SMC-B-Client S und ein Client L ohne Nutzer-Identität nach A_29733 stehen mit jeweils gültigen eigenen Nachweisen bereit.
+. Ein lesender Adapter liefert autoritative Identitäts-/Client-/Audience-Zuordnungen ohne geheime Schlüssel. SDK-Instrumentierung und Code-/Datenflussreview machen die ausgehenden Registrierungs-/Rollover-Daten prüfbar.
+
+| Nebenbedingung: |
+Stimulation erfolgt über Testdriver/SDK und bei Bedarf Tiger an dessen Requests. Der F1-Fall prüft die Identitätsbindung über reguläre SDK-Abläufe und öffentliche Antworten. Für die weiteren Datenhaltungsprüfungen ist der Bestandsadapter erforderlich. Rollover ist mit allen anwendbaren Nachweisen aus A_29921 ff. auszuführen; die TOFU-Ausnahme ist keine allgemeine Sicherheitsausnahme.
+
+Der F1-Fall prüft zwei verschiedene KVNRs mit unterschiedlichen bestätigten E-Mail-Adressen. Nach beiden Erstregistrierungen folgen neue Registrierungen für beide Identitäten: ohne erneute Angabe einer E-Mail-Adresse, mit OTP an die jeweils bereits gebundene Adresse und erfolgreicher Einbuchung unter der richtigen KVNR. Bestehende Guard-Registrierungen bleiben erhalten.
+
+Der F2-Fall beginnt mit leerem SDK-Speicher und einer durch das SDK abgeschlossenen Registrierung. Die Client-ID aus der abschließenden Registrierungsantwort ordnet den gespeicherten öffentlichen F2 dem registrierten Client zu; der öffentliche Registrierungs-JWKS liefert den unabhängigen Vergleichswert. Beim anschließenden OIDC-Zugriff gehören Autorisierungscode-Grant und Tokenaustausch zu diesem Client; der Tokenaustausch verwendet den zuvor ausgestellten Nutzer-Access-Token. Der gespeicherte öffentliche F2 entspricht nach der Registrierung und nach dem Zugriff dem Registrierungs-JWKS und verifiziert die tatsächlich gesendete Besitzsignatur. Diese beiden Fälle beanspruchen weder F1-Änderung noch Rollover oder die vollständige Identifikatortyp-Matrix.
+
+| Ablauf: |
+*Mobile Bindung und Datenhaltung*
+
+. C1 wird an I1 gebunden, F1 verifiziert und C2 derselben Identität hinzugefügt. Die Testsuite weist F1/F2-Bindung und reguläre Faktorprüfung für mobile TOFU-Registrierungen mit KVNR und mit Telematik-ID nach; die Authentisierungsart allein ersetzt nicht die registrierte Clientklasse.
+. Die Testsuite übernimmt KVNR beziehungsweise Telematik-ID aus gültiger Nutzerauthentisierung nach A_29903 und vergleicht den fachlichen TI-Anker von I1 nach Erstregistrierung, Wiederanmeldung und Hinzufügen von C2. Beide Clients derselben Identität referenzieren denselben Anker; die fremde Identität I2 bleibt getrennt.
+. Die verifizierte E-Mail F1 bleibt am gemeinsamen fachlichen I1-Datensatz gebunden, auch wenn C2 hinzukommt. Folgeregistrierungen beider Identitäten bestätigen jeweils die bestehende E-Mail per OTP, ohne diese erneut anzugeben; die Antworten erhalten die richtige KVNR-/F1-Zuordnung. Persistenz-/Modellbelege ergänzen sichtbares Verhalten; ein zusätzlicher clientlokaler E-Mail-Cache darf nicht mit dem normativen Identitätsanker verwechselt werden.
+. Eine vollständig autorisierte F1-Änderung über C1 wird für C2 wirksam, ohne I2 zu verändern. Autoritativer Bestand und reguläre Nutzung bestätigen die Bindung auf Identitätsebene und dieselbe aktuelle F1-Bindung in beiden Clients.
+. Die Testsuite vergleicht die gespeicherten öffentlichen F2(C1)/F2(C2) unabhängig mit den öffentlichen Schlüsseln der betreffenden SDK-Kontexte; Signaturprüfung belegt den Besitz des jeweiligen privaten Schlüssels. Unterschiedliche Instanzschlüssel bleiben ihren Clients zugeordnet. Ein autorisierter Rollover von C1 verändert dessen F2, nicht F2(C2) oder den Identitätsanker.
+. C1 und C2 derselben Identität erhalten getrennt konfigurierte Audience-Berechtigungen. Autoritative Clientdaten sowie erlaubte und verweigerte tatsächliche Zugriffe belegen, dass C2 keine Berechtigung allein von C1 erbt; ein gemeinsam benutzter Identitätsdatensatz ersetzt diesen Nachweis nicht.
+. Die Testsuite untersucht ausgehende SDK-Payloads einschließlich Registrierungs- und Rollover-Pfaden auf private Schlüsselparameter. Instrumentierung und Code-/Datenflussreview prüfen auch serialisierte und abgeleitete Datenpfade; weder Netzwerkbeobachtung noch erfolglose Textsuche allein beweist die Nichtübertragung.
+
+*Andere Clientklassen*
+
+. Der stationäre Client S führt echten SMC-B-Token-Exchange mit gültiger SMC-B, DPoP und allen anwendbaren Attestierungsnachweisen aus. Eine zusätzliche TOFU-E-Mail-/Faktorverwaltung darf nicht verlangt werden; die Ausnahme befreit nicht von diesen eigenen Sicherheitsnachweisen.
+. Der identitätslose Client L registriert und authentisiert sich nach A_29733 ohne künstlichen TI-Identitäts-/F1-Datensatz, insbesondere ohne KVNR-/E-Mail-TOFU-Datensatz. Seine eigene Client-Authentisierung bleibt verpflichtend.
+. Für mobile TOFU-, stationäre SMC-B- und identitätslose Clients wird jeweils ein regulärer positiver Rollover mit allen Nachweisen nach A_29921 ff. ausgeführt und die wirksame neue Schlüsselbindung geprüft. Die TOFU-Ausnahmen dürfen keine Rollover-Ausnahme erzeugen.
+
+| Nachbedingung: |
+F1, F2, Audiences und TI-Anker sind auf der geforderten Ebene getrennt. Alle drei Clientklassen können mit den jeweils notwendigen Nachweisen rotieren; private Client-Schlüssel werden nicht an den AS übertragen.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29893_01>>
+* <<TA_A_29893_02>>
+* <<TA_A_29893_03>>
+* <<TA_A_29893_04>>
+* <<TA_A_29900_01>>
+* <<TA_A_29900_02>>
+* <<TA_A_29900_03>>
+* <<TA_A_29901_01>>
+* <<TA_A_29901_02>>
+* <<TA_A_29901_03>>
+* <<TA_A_29907_01>>
+* <<TA_A_29907_02>>
+
+|===
+
+[mermaid,uc-04-12-entwurf,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Mobile SDK-Kontexte C1 und C2
+    participant A as Authorization Server
+    participant T as Testsuite / Bestandsadapter
+    participant X as Stationärer oder identitätsloser Client
+    C->>A: Beide Clients an dieselbe TI-Identität binden
+    T->>A: Identitätsanker, F1 und getrennte F2/Audiences lesen
+    C->>A: Autorisierte F1-Änderung und Rollover von C1
+    T->>A: Gemeinsames F1 und unveränderten F2 von C2 prüfen
+    C->>A: Berechtigte und nicht berechtigte Ressourcenaufrufe
+    X->>A: Eigenes Authentisierungsverfahren ohne TOFU-Faktorpflicht
+    X->>A: Rollover mit anwendbaren Nachweisen
+    Note over C,A: Ausgehende SDK-Daten enthalten keinen privaten Instanzschlüssel
+....
+
+[.lead]
+Feature-Dateien zu den umgesetzten Teilaspekten:
+
+[source,gherkin]
+----
+include::identitaetsanker_f1.feature[]
+----
+
+[source,gherkin]
+----
+include::oeffentlicher_instanzschluessel.feature[]
+----
+
+[source,gherkin]
+----
+include::stationaerer_client_ohne_tofu.feature[]
+----

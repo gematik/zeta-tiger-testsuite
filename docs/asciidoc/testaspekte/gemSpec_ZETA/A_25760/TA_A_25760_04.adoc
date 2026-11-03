@@ -1,0 +1,6 @@
+[#TA_A_25760_04]
+===== TA_A_25760_04 - PDP Authorization Server - Gemeldete Access-Token-Lebensdauer in der Erfolgsantwort
+
+"Der PDP Authorization Server MUSS **eine OAuth2 Schnittstelle gemäß [RFC6749]** und [RFC7636] **implementieren.** Der Authorization Server MUSS am Token Endpunkt REFRESH_TOKEN entsprechend [RFC6749] ausstellen können. **[<=]**"
+
+Ein in der erfolgreichen Antwort am OAuth2-Token-Endpunkt ausgegebenes **expires_in entspricht der verbleibenden Lebensdauer des zugehörigen Access Tokens in Sekunden ab Erzeugung der Antwort** gemäß https://www.rfc-editor.org/rfc/rfc6749#section-5.1[RFC 6749, Abschnitt 5.1]. Dies gilt auch für erfolgreiche Extension Grants gemäß https://www.rfc-editor.org/rfc/rfc6749#section-4.5[Abschnitt 4.5]. Die Pflicht zur Ausgabe des Feldes in ZETA folgt gesondert aus <<A_29951>> und den formal validierenden Regeln von token-response.yaml.

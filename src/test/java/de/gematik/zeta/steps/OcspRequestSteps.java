@@ -30,8 +30,11 @@ import de.gematik.test.tiger.lib.TigerHttpClient;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
 import de.gematik.zeta.model.CertificateMaterial;
 import de.gematik.zeta.model.tls.TlsServerCertificates;
+import de.gematik.zeta.services.RecordedMessages;
 import de.gematik.zeta.services.TlsTestToolServiceFactory;
 import de.gematik.zeta.steps.tls.TlsTestToolCertificateFixtures;
+import io.cucumber.java.After;
+import io.cucumber.java.Before;
 import io.cucumber.java.de.Angenommen;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Given;
@@ -70,6 +73,10 @@ import org.bouncycastle.cert.ocsp.SingleResp;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Cucumber steps for validating OCSP request protocol evidence captured by RBEL.
@@ -83,6 +90,89 @@ public class OcspRequestSteps {
   private static final Duration MAX_OCSP_NEXT_UPDATE_WAIT = Duration.ofMinutes(2);
 
   private Instant lastVerifiedOcspNextUpdate;
+  private boolean restoreSmcbStatus;
+  private JsonNode originalMockConfiguration;
+  private JsonNode ownedMockConfiguration;
+  private JsonNode previousOwnedMockConfiguration;
+  private final Runnable discardSmcbCache;
+
+  /** Creates steps backed by the configured AS deployment. */
+  public OcspRequestSteps() {
+    this(() -> new DeploymentModificationSteps().restartDeployment(
+        TigerGlobalConfiguration.resolvePlaceholders("${zetaDeploymentConfig.authserver.podName}")));
+  }
+
+  /**
+   * Creates steps with an explicit cache invalidation operation.
+   *
+   * @param discardSmcbCache operation discarding cached SMC-B OCSP results
+   */
+  OcspRequestSteps(Runnable discardSmcbCache) {
+    this.discardSmcbCache = discardSmcbCache;
+  }
+
+  /** Enables restoration for the SMC-B OCSP status scenario. */
+  @Before("@smcb_ocsp_status")
+  public void enableSmcbStatusRestoration() {
+    restoreSmcbStatus = true;
+  }
+
+  /**
+   * Restores owned mock configuration and discards cached SMC-B status after partial failures.
+   *
+   * @throws Exception if restoration or deployment readiness cannot be confirmed
+   */
+  @After("@smcb_ocsp_status")
+  public void restoreSmcbStatusConfiguration() throws Exception {
+    if (originalMockConfiguration == null) {
+      return;
+    }
+    try {
+      var uri = mockAdminUri("mode");
+      var current = TigerHttpClient.givenDefaultSpec().get(mockAdminUri("config"));
+      Assertions.assertThat(current.statusCode()).isEqualTo(200);
+      var json = new ObjectMapper();
+      var actual = json.readTree(current.asByteArray());
+      Assertions.assertThat(configurationMatches(actual, ownedMockConfiguration)
+          || configurationMatches(actual, previousOwnedMockConfiguration))
+          .as("OCSP mock configuration still belongs to this scenario").isTrue();
+      var restored = TigerHttpClient.givenDefaultSpec().contentType("application/json")
+          .body(originalMockConfiguration.toString()).post(uri);
+      Assertions.assertThat(restored.statusCode()).isEqualTo(200);
+      var observed = json.readTree(restored.asByteArray());
+      for (var field : originalMockConfiguration.properties()) {
+        Assertions.assertThat(observed.get(field.getKey())).isEqualTo(field.getValue());
+      }
+    } finally {
+      discardSmcbCache.run();
+    }
+  }
+
+  /**
+   * Compares the mutable fields of an owned configuration with current state.
+   *
+   * @param actual observed configuration
+   * @param expected last attempted or previously confirmed configuration
+   * @return whether all owned fields still match
+   */
+  private static boolean configurationMatches(JsonNode actual, JsonNode expected) {
+    return expected != null && expected.properties().stream()
+        .allMatch(field -> field.getValue().equals(actual.get(field.getKey())));
+  }
+
+  /**
+   * Resolves a certificate-validation mock administration endpoint beneath its configured base.
+   *
+   * @param endpoint administration endpoint name
+   * @return configured administration URI
+   */
+  private URI mockAdminUri(String endpoint) {
+    var configured = TigerGlobalConfiguration.readStringOptional("zeta_cert_validation_mock_url")
+        .map(TigerGlobalConfiguration::resolvePlaceholders)
+        .orElseThrow(() -> new AssertionError("Missing configuration zeta_cert_validation_mock_url."));
+    return URI.create((configured.matches("^https?://.*") ? configured : "http://" + configured)
+        .replaceAll("/+$", "") + "/admin/" + endpoint);
+  }
 
   /**
    * Configures the certificate-validation mock to return the requested deterministic OCSP status.
@@ -93,7 +183,19 @@ public class OcspRequestSteps {
   @Given("the certificate validation mock uses mode {string}")
   public void certificateValidationMockUsesMode(String mode) {
     configureCertificateValidationMock(
-        mode, 0, 43_200, true, "normal", true, true, java.util.Set.of());
+        mode, 0, 43_200, "normal", true, true, java.util.Set.of());
+  }
+
+  /**
+   * Configures the mock to revoke only the supplied certificate serial number.
+   *
+   * @param certificate Base64 DER or PEM encoded certificate
+   */
+  @Angenommen("der Zertifikatsvalidierungs-Mock meldet nur das Zertifikat {tigerResolvedString} als widerrufen")
+  public void certificateValidationMockRevokesOnlyCertificate(String certificate) {
+    var leaf = CertificateMaterial.parseCertificate(certificate, "revoked certificate");
+    configureCertificateValidationMock("always_good", -5, 43_200, "normal", true, true,
+        java.util.Set.of(leaf.getSerialNumber().toString()));
   }
 
   /**
@@ -117,7 +219,6 @@ public class OcspRequestSteps {
           "always_good",
           0,
           43_200,
-          true,
           "normal",
           true,
           true,
@@ -144,30 +245,6 @@ public class OcspRequestSteps {
         mode,
         thisUpdateOffsetSeconds,
         nextUpdateOffsetSeconds,
-        true,
-        "normal",
-        true,
-        true,
-        java.util.Set.of());
-  }
-
-  /**
-   * Configures deterministic OCSP responses without {@code nextUpdate}.
-   *
-   * @param mode deterministic mock mode
-   * @param thisUpdateOffsetSeconds offset of {@code thisUpdate} from now
-   */
-  @Angenommen(
-      "der Zertifikatsvalidierungs-Mock verwendet den Modus {string} ohne NextUpdate mit ThisUpdate-Offset {int} Sekunden")
-  @Given(
-      "the certificate validation mock uses mode {string} without nextUpdate and with thisUpdate offset {int} seconds")
-  public void certificateValidationMockUsesNoNextUpdate(
-      String mode, int thisUpdateOffsetSeconds) {
-    configureCertificateValidationMock(
-        mode,
-        thisUpdateOffsetSeconds,
-        43_200,
-        false,
         "normal",
         true,
         true,
@@ -186,7 +263,7 @@ public class OcspRequestSteps {
       "the certificate validation mock uses mode {string} with OCSP response variant {string}")
   public void certificateValidationMockUsesResponseVariant(String mode, String responseVariant) {
     configureCertificateValidationMock(
-        mode, 0, 43_200, true, responseVariant, true, true, java.util.Set.of());
+        mode, 0, 43_200, responseVariant, true, true, java.util.Set.of());
   }
 
   /** Configures both revocation endpoints to be unavailable. */
@@ -194,7 +271,7 @@ public class OcspRequestSteps {
   @Given("the certificate validation mock provides neither OCSP nor CRL")
   public void certificateValidationMockProvidesNeitherOcspNorCrl() {
     configureCertificateValidationMock(
-        "always_good", 0, 43_200, true, "normal", false, false, java.util.Set.of());
+        "always_good", 0, 43_200, "normal", false, false, java.util.Set.of());
   }
 
   /**
@@ -229,7 +306,7 @@ public class OcspRequestSteps {
       Assertions.assertThat(encodedResponse)
           .as("certificate-validation mock OCSP response body")
           .isNotEmpty();
-      TlsTestToolServiceFactory.getInstance().updateOcspResponse(encodedResponse);
+      TlsTestToolServiceFactory.getSession().api().updateOcspResponse(encodedResponse);
     } catch (IOException | OCSPException e) {
       throw new AssertionError("Failed to prepare the stapled OCSP response.", e);
     }
@@ -275,7 +352,6 @@ public class OcspRequestSteps {
    * @param mode deterministic mock mode
    * @param thisUpdateOffsetSeconds offset of {@code thisUpdate} from now
    * @param nextUpdateOffsetSeconds offset of {@code nextUpdate} from now
-   * @param includeNextUpdate whether {@code nextUpdate} is emitted
    * @param responseVariant response variant name
    * @param ocspAvailable whether OCSP endpoints are available
    * @param crlAvailable whether CRL endpoints are available
@@ -285,7 +361,6 @@ public class OcspRequestSteps {
       String mode,
       int thisUpdateOffsetSeconds,
       int nextUpdateOffsetSeconds,
-      boolean includeNextUpdate,
       String responseVariant,
       boolean ocspAvailable,
       boolean crlAvailable,
@@ -297,30 +372,41 @@ public class OcspRequestSteps {
         .as("supported OCSP response variant")
         .isIn("normal", "invalid_signature", "wrong_signer", "mismatched_certificate");
 
-    var configuredUrl = TigerGlobalConfiguration.readStringOptional("zeta_cert_validation_mock_url")
-        .map(TigerGlobalConfiguration::resolvePlaceholders)
-        .orElseThrow(() -> new AssertionError("Missing configuration zeta_cert_validation_mock_url."));
-    var baseUrl = (configuredUrl.matches("^https?://.*") ? configuredUrl : "http://" + configuredUrl)
-        .replaceAll("/+$", "");
     var serializedRevokedSerials = revokedSerialNumbers.stream()
         .map(serial -> "\"" + serial + "\"")
         .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     var requestBody = String.format(
         "{\"mode\":\"%s\",\"thisUpdateOffsetSeconds\":%d,\"nextUpdateOffsetSeconds\":%d,"
-            + "\"includeNextUpdate\":%s,\"responseVariant\":\"%s\","
+            + "\"includeNextUpdate\":true,\"responseVariant\":\"%s\","
             + "\"ocspAvailable\":%s,\"crlAvailable\":%s,\"revokedSerialNumbers\":%s}",
         mode,
         thisUpdateOffsetSeconds,
         nextUpdateOffsetSeconds,
-        includeNextUpdate,
         responseVariant,
         ocspAvailable,
         crlAvailable,
         serializedRevokedSerials);
+    if (restoreSmcbStatus) {
+      try {
+        var json = new ObjectMapper();
+        if (originalMockConfiguration == null) {
+          var previous = TigerHttpClient.givenDefaultSpec().get(mockAdminUri("config"));
+          Assertions.assertThat(previous.statusCode()).isEqualTo(200);
+          var original = (ObjectNode) json.readTree(previous.asByteArray());
+          original.remove("seed");
+          originalMockConfiguration = original;
+          ownedMockConfiguration = original;
+        }
+        previousOwnedMockConfiguration = ownedMockConfiguration;
+        ownedMockConfiguration = json.readTree(requestBody);
+      } catch (JacksonException e) {
+        throw new AssertionError("Cannot retain OCSP mock configuration for restoration", e);
+      }
+    }
     var response = TigerHttpClient.givenDefaultSpec()
         .contentType("application/json")
         .body(requestBody)
-        .post(URI.create(baseUrl + "/admin/mode"));
+        .post(mockAdminUri("mode"));
 
     Assertions.assertThat(response.statusCode())
         .as("certificate-validation mock mode response status")
@@ -333,7 +419,7 @@ public class OcspRequestSteps {
     Assertions.assertThat(response.jsonPath().getInt("nextUpdateOffsetSeconds"))
         .isEqualTo(nextUpdateOffsetSeconds);
     Assertions.assertThat(response.jsonPath().getBoolean("includeNextUpdate"))
-        .isEqualTo(includeNextUpdate);
+        .isTrue();
     Assertions.assertThat(response.jsonPath().getString("responseVariant"))
         .isEqualTo(responseVariant);
     Assertions.assertThat(response.jsonPath().getBoolean("ocspAvailable"))
@@ -398,6 +484,83 @@ public class OcspRequestSteps {
         CertificateMaterial.parseCertificate(certificate, "certificate"),
         CertificateMaterial.parseCertificate(issuerCertificate, "issuer certificate"),
         "provided certificate");
+  }
+
+  /**
+   * Validates the signed status and validity interval of the selected OCSP response.
+   *
+   * @param certificate certificate whose status is expected
+   * @param issuerCertificate certificate issuer authorizing the responder
+   * @param status expected status, {@code good} or {@code revoked}
+   * @throws Exception if certificate or OCSP decoding or cryptographic verification fails
+   */
+  @Dann("die aktuelle OCSP-Antwort für Zertifikat {tigerResolvedString} mit Ausstellerzertifikat {tigerResolvedString} ist gültig und meldet {string}")
+  public void currentOcspResponseHasValidStatus(
+      String certificate, String issuerCertificate, String status) throws Exception {
+    var request = RbelMessageRetriever.getInstance().getCurrentRequest();
+    var messages = RecordedMessages.snapshot();
+    var response = new TimingGlue().findResponseForRequest(messages, request);
+    Assertions.assertThat(response).as("correlated OCSP response").isNotNull();
+    verifySignedStatus(currentResponseBody(),
+        CertificateMaterial.parseCertificate(certificate, "certificate"),
+        CertificateMaterial.parseCertificate(issuerCertificate, "issuer certificate"),
+        status, TimingGlue.responseReceivedAt(messages, response));
+  }
+
+  /**
+   * Checks a certificate-bound OCSP status, authorized signature and validity at receipt.
+   *
+   * @param bytes encoded OCSP response
+   * @param certificate expected certificate
+   * @param issuer certificate issuer
+   * @param status expected status, {@code good} or {@code revoked}
+   * @param received time the response was received
+   * @throws Exception if parsing or cryptographic verification fails
+   */
+  static void verifySignedStatus(byte[] bytes, X509Certificate certificate,
+      X509Certificate issuer, String status, Instant received) throws Exception {
+    Assertions.assertThat(status).isIn("good", "revoked");
+    var outer = new OCSPResp(bytes);
+    Assertions.assertThat(outer.getStatus()).as("OCSP response status").isZero();
+    Assertions.assertThat(outer.getResponseObject()).isInstanceOf(BasicOCSPResp.class);
+    var basic = (BasicOCSPResp) outer.getResponseObject();
+    var expected = buildCertificateId(certificate, issuer);
+    var matching = Arrays.stream(basic.getResponses())
+        .filter(item -> certificateIdsMatch(item.getCertID(), expected)).toList();
+    Assertions.assertThat(matching).as("certificate-bound OCSP status").hasSize(1);
+    var item = matching.getFirst();
+    Assertions.assertThat(item.getThisUpdate()).as("thisUpdate").isNotNull();
+    Assertions.assertThat(item.getThisUpdate().toInstant()).isBeforeOrEqualTo(received);
+    Assertions.assertThat(item.getNextUpdate()).as("nextUpdate").isNotNull();
+    Assertions.assertThat(item.getNextUpdate().toInstant()).isAfter(received);
+    if (status.equals("good")) {
+      Assertions.assertThat(item.getCertStatus()).as("GOOD status").isNull();
+    } else {
+      Assertions.assertThat(item.getCertStatus()).isInstanceOf(RevokedStatus.class);
+      Assertions.assertThat(((RevokedStatus) item.getCertStatus()).getRevocationTime().toInstant())
+          .isBeforeOrEqualTo(received);
+    }
+    var candidates = new ArrayList<X509Certificate>();
+    candidates.add(issuer);
+    for (var holder : basic.getCerts()) {
+      candidates.add(new org.bouncycastle.cert.jcajce.JcaX509CertificateConverter()
+          .getCertificate(holder));
+    }
+    boolean verified = false;
+    for (var signer : candidates) {
+      if (isAuthorizedOcspSigner(signer, issuer)) {
+        try {
+          signer.checkValidity(java.util.Date.from(received));
+          if (basic.isSignatureValid(new JcaContentVerifierProviderBuilder().build(signer))) {
+            verified = true;
+            break;
+          }
+        } catch (GeneralSecurityException | OCSPException | OperatorCreationException e) {
+          continue;
+        }
+      }
+    }
+    Assertions.assertThat(verified).as("authorized valid OCSP signature").isTrue();
   }
 
   /**
@@ -520,7 +683,7 @@ public class OcspRequestSteps {
           .as("certificate position in fixture chain")
           .isBetween(0, chain.size() - 2);
       var expectedCertificateId = buildCertificateId(chain.get(position), chain.get(position + 1));
-      var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+      var messages = RecordedMessages.snapshot();
       Assertions.assertThat(messages).as("recorded RBEL messages").isNotNull().isNotEmpty();
 
       var matchingRequests = messages.stream()
@@ -594,26 +757,6 @@ public class OcspRequestSteps {
         .isNotNull();
     Assertions.assertThat(response.getNextUpdate().toInstant())
         .as("nextUpdate of expired OCSP response")
-        .isBefore(Instant.now());
-  }
-
-  /**
-   * Verifies that the OCSP response omits {@code nextUpdate} and contains a past
-   * {@code thisUpdate} value.
-   */
-  @Dann("enthält die aktuelle OCSP-Antwort kein NextUpdate und ein vergangenes ThisUpdate")
-  @Then("the current OCSP response has no nextUpdate and a past thisUpdate")
-  public void currentOcspResponseHasNoNextUpdateAndPastThisUpdate() {
-    var matchingResponses = matchingSingleResponsesForCurrentRequest();
-    Assertions.assertThat(matchingResponses)
-        .as("OCSP response entries matching the current request")
-        .hasSize(1);
-    var response = matchingResponses.getFirst();
-    Assertions.assertThat(response.getNextUpdate())
-        .as("nextUpdate of OCSP response")
-        .isNull();
-    Assertions.assertThat(response.getThisUpdate().toInstant())
-        .as("thisUpdate of OCSP response")
         .isBefore(Instant.now());
   }
 
@@ -757,7 +900,7 @@ public class OcspRequestSteps {
    * @param request RBEL request element
    * @return OCSP request bytes if present
    */
-  private Optional<byte[]> extractOcspRequestBytes(RbelElement request) {
+  Optional<byte[]> extractOcspRequestBytes(RbelElement request) {
     return extractRequestBody(request)
         .filter(body -> body.length > 0)
         .or(() -> extractGetRequestOcspBody(request));
@@ -836,7 +979,7 @@ public class OcspRequestSteps {
       throw new AssertionError("No current OCSP request message found.");
     }
 
-    var messages = retriever.getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       throw new AssertionError("No recorded messages found for the current OCSP request.");
     }
@@ -850,7 +993,7 @@ public class OcspRequestSteps {
    * @return correlated raw response body
    */
   private byte[] responseBodyForRequest(RbelElement request) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     var response = new TimingGlue().findResponseForRequest(messages, request);
     if (response == null) {
       throw new AssertionError("No correlated OCSP response found for request " + request.getUuid() + ".");
@@ -1133,7 +1276,7 @@ public class OcspRequestSteps {
    * @param issuer issuer of the certificate whose status was requested
    * @return whether the signer is authorized for the issuer
    */
-  private boolean isAuthorizedOcspSigner(X509Certificate signer, X509Certificate issuer) {
+  private static boolean isAuthorizedOcspSigner(X509Certificate signer, X509Certificate issuer) {
     if (signer.equals(issuer)) {
       return true;
     }

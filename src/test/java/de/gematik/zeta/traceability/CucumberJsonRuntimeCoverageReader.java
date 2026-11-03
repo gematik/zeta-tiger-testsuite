@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,6 +43,9 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Fallback reader for Cucumber JSON files produced outside plugin event delivery.
+ *
+ * <p>Scenario status derivation includes step results and before/after hook results so a failed
+ * hook cannot be mistaken for an unexecuted scenario.</p>
  */
 @Slf4j
 final class CucumberJsonRuntimeCoverageReader {
@@ -53,8 +57,7 @@ final class CucumberJsonRuntimeCoverageReader {
   private final Map<String, Rollup> requirementStats;
   private final Map<String, Rollup> testAspectStats;
   private final Map<String, Set<FailureRecord>> runErrors;
-  private final Map<String, Set<String>> requirementScenarios;
-  private final Map<String, Set<String>> testAspectScenarios;
+  private final Map<String, ScenarioOutcome> scenarioOutcomes;
   private final Set<String> seenScenarioKeys;
   private final Rollup totalStats;
   private final Rollup untaggedStats;
@@ -65,8 +68,7 @@ final class CucumberJsonRuntimeCoverageReader {
    * @param requirementStats     requirement rollups
    * @param testAspectStats      test aspect rollups
    * @param runErrors            runtime errors
-   * @param requirementScenarios scenario names by requirement
-   * @param testAspectScenarios  scenario names by test aspect
+   * @param scenarioOutcomes    scenario outcomes
    * @param seenScenarioKeys     deduplication keys
    * @param totalStats           total scenario rollup
    * @param untaggedStats        untagged scenario rollup
@@ -74,16 +76,14 @@ final class CucumberJsonRuntimeCoverageReader {
   CucumberJsonRuntimeCoverageReader(Map<String, Rollup> requirementStats,
       Map<String, Rollup> testAspectStats,
       Map<String, Set<FailureRecord>> runErrors,
-      Map<String, Set<String>> requirementScenarios,
-      Map<String, Set<String>> testAspectScenarios,
       Set<String> seenScenarioKeys,
       Rollup totalStats,
-      Rollup untaggedStats) {
+      Rollup untaggedStats,
+      Map<String, ScenarioOutcome> scenarioOutcomes) {
     this.requirementStats = requirementStats;
     this.testAspectStats = testAspectStats;
     this.runErrors = runErrors;
-    this.requirementScenarios = requirementScenarios;
-    this.testAspectScenarios = testAspectScenarios;
+    this.scenarioOutcomes = scenarioOutcomes;
     this.seenScenarioKeys = seenScenarioKeys;
     this.totalStats = totalStats;
     this.untaggedStats = untaggedStats;
@@ -104,6 +104,7 @@ final class CucumberJsonRuntimeCoverageReader {
     }
     try (var paths = Files.list(outputDir)) {
       paths.filter(path -> path.getFileName().toString().endsWith(".json"))
+          .sorted()
           .forEach(this::readCucumberJson);
     } catch (IOException exception) {
       log.warn("Unable to read cucumber output from {} for runtime coverage fallback.",
@@ -160,17 +161,17 @@ final class CucumberJsonRuntimeCoverageReader {
     var scenarioName = element.path("name").asText("");
     var scenarioLine = element.path("line").isInt() ? element.path("line").asInt() : null;
     var tagNames = extractJsonTagNames(element.path("tags"));
-    var scenarioKey = RuntimeCoverageIds.buildScenarioKey(featureUri, scenarioName, scenarioLine,
-        tagNames);
-    if (!seenScenarioKeys.add(scenarioKey)) {
-      return;
-    }
+    var scenarioKey = RuntimeCoverageIds.buildScenarioKey(featureUri, scenarioName, scenarioLine);
     var status = deriveScenarioStatus(element);
     var requirementIds = new LinkedHashSet<String>();
     var testAspectIds = new LinkedHashSet<String>();
-    recordTagsFromJson(tagNames, status, requirementIds, testAspectIds);
-    recordScenarios(requirementScenarios, requirementIds, scenarioName);
-    recordScenarios(testAspectScenarios, testAspectIds, scenarioName);
+    RuntimeCoverageIds.resolveTags(tagNames, requirementIds, testAspectIds);
+    recordScenarioOutcome(featureUri, scenarioName, scenarioLine, status,
+        requirementIds, testAspectIds);
+    if (!seenScenarioKeys.add(scenarioKey)) {
+      return;
+    }
+    recordStats(status, requirementIds, testAspectIds);
     recordErrorFromJson(element, status, requirementIds, testAspectIds, featureUri);
   }
 
@@ -182,45 +183,64 @@ final class CucumberJsonRuntimeCoverageReader {
    */
   private Status deriveScenarioStatus(JsonNode element) {
     var steps = element.path("steps");
-    if (!steps.isArray() || steps.isEmpty()) {
-      return Status.SKIPPED;
-    }
+    final var hasSteps = steps.isArray() && !steps.isEmpty();
+    var sawFailure = false;
     var sawSkipped = false;
-    for (var step : steps) {
-      var status = step.path("result").path("status").asText();
-      if ("failed".equalsIgnoreCase(status)) {
-        return Status.FAILED;
+    var sawIncomplete = false;
+    for (var sectionName : List.of("before", "steps", "after")) {
+      var section = element.path(sectionName);
+      if (!section.isArray()) {
+        continue;
       }
-      if ("skipped".equalsIgnoreCase(status)) {
-        sawSkipped = true;
+      for (var entry : section) {
+        var status = parseJsonStatus(entry.path("result").path("status").asText());
+        if (status == Status.FAILED) {
+          sawFailure = true;
+        } else if (status == Status.SKIPPED) {
+          sawSkipped = true;
+        } else if (status != Status.PASSED) {
+          sawIncomplete = true;
+        }
       }
+    }
+    if (sawFailure) {
+      return Status.FAILED;
+    }
+    if (sawIncomplete) {
+      return Status.UNDEFINED;
+    }
+    if (!hasSteps) {
+      return Status.SKIPPED;
     }
     return sawSkipped ? Status.SKIPPED : Status.PASSED;
   }
 
   /**
-   * Record scenario results based on Cucumber JSON tags.
+   * Parse one status value using Cucumber's status values.
    *
-   * @param tagNames       scenario tag names
-   * @param status         derived scenario status
-   * @param requirementIds target set for requirement identifiers
-   * @param testAspectIds  target set for test aspect identifiers
+   * @param value status text from Cucumber JSON
+   * @return parsed status or undefined when the result is incomplete
    */
-  private void recordTagsFromJson(List<String> tagNames, Status status,
-      Set<String> requirementIds, Set<String> testAspectIds) {
-    for (var tagName : tagNames) {
-      var testAspectId = RuntimeCoverageIds.normalizeTag(tagName);
-      if (testAspectId.isBlank()) {
-        continue;
-      }
-      if (RuntimeCoverageIds.AFO_TAG.matcher(testAspectId).matches()) {
-        requirementIds.add(testAspectId);
-      } else if (RuntimeCoverageIds.TEST_ASPECT_TAG.matcher(testAspectId).matches()) {
-        testAspectIds.add(testAspectId);
-        RuntimeCoverageIds.resolveRequirementFromTestAspect(testAspectId)
-            .ifPresent(requirementIds::add);
-      }
+  private Status parseJsonStatus(String value) {
+    if (value == null || value.isBlank()) {
+      return Status.UNDEFINED;
     }
+    try {
+      return Status.valueOf(value.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException exception) {
+      return Status.UNDEFINED;
+    }
+  }
+
+  /**
+   * Record scenario counters for resolved traceability identifiers.
+   *
+   * @param status         derived scenario status
+   * @param requirementIds requirement identifiers
+   * @param testAspectIds  test aspect identifiers
+   */
+  private void recordStats(Status status,
+      Set<String> requirementIds, Set<String> testAspectIds) {
     totalStats.record(status);
     if (requirementIds.isEmpty() && testAspectIds.isEmpty()) {
       untaggedStats.record(status);
@@ -278,19 +298,22 @@ final class CucumberJsonRuntimeCoverageReader {
   }
 
   /**
-   * Extract the first step error from a failed scenario.
+   * Extract the first hook or step error from a failed scenario.
    *
    * @param element scenario JSON element
-   * @return compact step error
+   * @return compact hook or step error
    */
   private String extractStepError(JsonNode element) {
-    var steps = element.path("steps");
-    if (steps.isArray()) {
-      for (var step : steps) {
-        var stepError = step.path("result").path("error_message").asText();
-        if (!stepError.isBlank()) {
-          return summarizeJsonError(stepError, step.path("name").asText(""),
-              step.path("line").asInt(-1));
+    for (var sectionName : List.of("before", "steps", "after")) {
+      var section = element.path(sectionName);
+      if (!section.isArray()) {
+        continue;
+      }
+      for (var entry : section) {
+        var entryError = entry.path("result").path("error_message").asText();
+        if (!entryError.isBlank()) {
+          return summarizeJsonError(entryError, entry.path("name").asText(""),
+              entry.path("line").asInt(-1));
         }
       }
     }
@@ -366,19 +389,22 @@ final class CucumberJsonRuntimeCoverageReader {
   }
 
   /**
-   * Record one executed scenario name for all resolved requirement ids.
+   * Record one fallback JSON scenario outcome.
    *
-   * @param target   target scenario map
-   * @param ids      traceability identifiers
-   * @param scenario scenario name
+   * @param featureUri    feature URI
+   * @param scenarioName  scenario name
+   * @param scenarioLine  scenario line
+   * @param status        scenario status
+   * @param requirementIds requirement identifiers attached to the scenario
+   * @param testAspectIds test aspect identifiers attached to the scenario
    */
-  private void recordScenarios(Map<String, Set<String>> target, Set<String> ids,
-      String scenario) {
-    if (target == null || ids == null || ids.isEmpty() || scenario == null
-        || scenario.isBlank()) {
+  private void recordScenarioOutcome(String featureUri, String scenarioName, Integer scenarioLine,
+      Status status, Set<String> requirementIds, Set<String> testAspectIds) {
+    if (scenarioOutcomes == null) {
       return;
     }
-    ids.forEach(id -> target.computeIfAbsent(id, key -> ConcurrentHashMap.newKeySet())
-        .add(scenario.trim()));
+    var outcome = new ScenarioOutcome(featureUri, scenarioName, scenarioLine, status,
+        requirementIds, testAspectIds);
+    scenarioOutcomes.merge(outcome.key(), outcome, ScenarioOutcome::merge);
   }
 }

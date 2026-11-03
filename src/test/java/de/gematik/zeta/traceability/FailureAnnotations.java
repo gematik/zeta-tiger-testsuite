@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.traceability;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,18 +53,30 @@ record FailureAnnotations(List<FailureAnnotation> annotations) {
   }
 
   /**
+   * Return all loaded annotation rows.
+   *
+   * @return immutable annotation rows
+   */
+  List<FailureAnnotation> rows() {
+    return annotations;
+  }
+
+  /**
    * Find annotations for a requirement output row.
    *
    * @param requirementId requirement identifier
    * @param failures      failure records for the requirement
-   * @param scenarios     executed scenario names for the requirement
+   * @param outcomes      scenario outcomes with traceability identifiers
    * @return aggregate annotation summary
    */
   AnnotationSummary findForRequirement(String requirementId, Set<FailureRecord> failures,
-      Set<String> scenarios) {
+      Collection<ScenarioOutcome> outcomes) {
+    var scopedOutcomes = outcomes.stream()
+        .filter(outcome -> outcome.requirementIds().contains(requirementId))
+        .toList();
     return summarize(annotations.stream()
         .filter(FailureAnnotation::hasOutput)
-        .filter(annotation -> annotation.matchesRequirement(requirementId, failures, scenarios))
+        .filter(annotation -> annotation.matchesRequirement(requirementId, failures, scopedOutcomes))
         .toList());
   }
 
@@ -72,16 +85,18 @@ record FailureAnnotations(List<FailureAnnotation> annotations) {
    *
    * @param testAspectId  test aspect identifier
    * @param requirementId requirement identifier
-   * @param failures      failure records for the test aspect
-   * @param scenarios     executed scenario names for the test aspect
+   * @param outcomes      scenario outcomes with traceability identifiers
    * @return aggregate annotation summary
    */
   AnnotationSummary findForTestAspect(String testAspectId, String requirementId,
-      Set<FailureRecord> failures, Set<String> scenarios) {
+      Collection<ScenarioOutcome> outcomes) {
+    var scopedOutcomes = outcomes.stream()
+        .filter(outcome -> outcome.testAspectIds().contains(testAspectId))
+        .toList();
     return summarize(annotations.stream()
         .filter(FailureAnnotation::hasOutput)
-        .filter(annotation -> annotation.matchesTestAspect(testAspectId, requirementId, failures,
-            scenarios))
+        .filter(annotation -> annotation.matchesTestAspect(testAspectId, requirementId,
+            scopedOutcomes))
         .toList());
   }
 

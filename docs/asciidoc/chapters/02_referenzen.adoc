@@ -2,9 +2,9 @@
 
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_DS_Hersteller/gemSpec_DS_Hersteller_V1.7.0[Spezifikation Datenschutz- und Sicherheitsanforderungen der TI an Hersteller]: Version 1.7.0
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_PoPP_Service/gemSpec_PoPP_Service_V1.1.0[Spezifikation Proof of Patient Presence-Service]: Version 1.1.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/gemSpec_ZETA_V1.3.0[Spezifikation Zero Trust Access (ZETA)]: Version 1.3.0
-* https://gemspec.gematik.de/docs/gemKPT/gemKPT_Test/gemKPT_Test_V3.5.0[Testkonzept der TI]: Version 3.5.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Perf/gemSpec_Perf_V2.81.0[Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform]: Version 2.81.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.47.0[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur]: Version 2.47.0
-* https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.3.0-0_V1.0.0/[gemVZ_Afo_ZETA_Guard_V_1.3.0-0]: Version 1.0.0
+* Spezifikation Zero Trust Access (ZETA) (Entwurf V2.0.0 CC): Version 2.0.0_CC
+* https://gemspec.gematik.de/docs/gemKPT/gemKPT_Test/gemKPT_Test_V3.6.0[Testkonzept der TI]: Version 3.6.0
+* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Perf/gemSpec_Perf_V2.85.0[Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform]: Version 2.85.0
+* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.49.1[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur]: Version 2.49.1
+* Verzeichnis von Anforderungen ZETA Guard (lokal abgeleiteter CC-Entwurf): Version 1.0.0
 * https://openid.net/specs/openid-federation-1_0.html[OpenID Federation 1.0]: Entity Statements und OpenID Connect Relying Party Metadata

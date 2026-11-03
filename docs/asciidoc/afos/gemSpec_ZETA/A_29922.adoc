@@ -1,0 +1,4 @@
+[#A_29922]
+==== A_29922 - Authorization Server – Verschachtelte Signatur (Autorisierung und Anti-Substitution)
+
+Der Authorization Server MUSS für den Rollover eine verschachtelte JWS-Struktur verlangen, bei der die äußere Signatur mit dem bisherigen Schlüssel (Autorisierung) und die innere Signatur mit dem neuen Schlüssel (Nachweis der Kontrolle über den neuen Schlüssel) erfolgt. [<=]

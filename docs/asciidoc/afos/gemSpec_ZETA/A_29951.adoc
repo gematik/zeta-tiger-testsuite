@@ -1,0 +1,4 @@
+[#A_29951]
+==== A_29951 - PDP Authorization Server, Token Ausstellung
+
+Der Authorization Server MUSS die Token Response nach dem Schema [token-response.yaml] erstellen. [<=]

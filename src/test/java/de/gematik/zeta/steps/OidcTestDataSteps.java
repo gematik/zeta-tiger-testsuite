@@ -26,8 +26,10 @@ package de.gematik.zeta.steps;
 
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.NotificationKvnrPool;
 import de.gematik.zeta.services.TestDriverConfigurationService;
 import de.gematik.zeta.services.TestDriverConfigurationServiceFactory;
+import io.cucumber.java.After;
 import io.cucumber.java.de.Gegebensei;
 import io.cucumber.java.en.Given;
 import java.util.Objects;
@@ -40,7 +42,10 @@ import lombok.extern.slf4j.Slf4j;
 public class OidcTestDataSteps {
 
   private static final String EMAIL_DOMAIN_CONFIG_KEY = "oidcTestData.emailDomain";
+  private static final String KVNR_CONFIG_KEY = "oidcTestData.kvnr";
   private final TestDriverConfigurationService testDriverConfigurationService;
+  private final NotificationPusherCleanup notificationPusherCleanup;
+  private boolean driverResetRequired;
 
   /**
    * Creates OIDC test-data steps backed by the configured client testdriver.
@@ -55,8 +60,23 @@ public class OidcTestDataSteps {
    * @param testDriverConfigurationService service used to configure the testdriver identity
    */
   public OidcTestDataSteps(final TestDriverConfigurationService testDriverConfigurationService) {
+    this(testDriverConfigurationService, new NotificationPusherCleanup(testDriverConfigurationService));
+  }
+
+  OidcTestDataSteps(final TestDriverConfigurationService testDriverConfigurationService,
+                    final NotificationPusherCleanup notificationPusherCleanup) {
+    this.notificationPusherCleanup = notificationPusherCleanup;
     this.testDriverConfigurationService = Objects.requireNonNull(
         testDriverConfigurationService, "testDriverConfigurationService must not be null");
+  }
+
+  /**
+   * Generates and configures an OIDC identity using the default OIDC KVNR variable.
+   */
+  @Gegebensei("eine eindeutige, randomisierte KVNR")
+  @Given("a unique randomized KVNR")
+  public void generateUniqueRandomizedKvnr() {
+    generateUniqueRandomizedKvnr(KVNR_CONFIG_KEY);
   }
 
   /**
@@ -75,13 +95,54 @@ public class OidcTestDataSteps {
   @Gegebensei("eine eindeutige, randomisierte KVNR in der Variablen {tigerResolvedString}")
   @Given("a unique randomized KVNR in variable {tigerResolvedString}")
   public void generateUniqueRandomizedKvnr(String variableName) {
-    var emailDomain = TigerGlobalConfiguration.readStringOptional(EMAIL_DOMAIN_CONFIG_KEY)
+    final var emailDomain = TigerGlobalConfiguration.readStringOptional(EMAIL_DOMAIN_CONFIG_KEY)
         .map(TigerGlobalConfiguration::resolvePlaceholders)
         .orElseThrow(() -> new AssertionError(
             "The OIDC test email domain is not configured at " + EMAIL_DOMAIN_CONFIG_KEY + "."));
+    OidcScenarioContext.acquireDriver();
+    driverResetRequired = true;
     testDriverConfigurationService.reset();
     var kvnr = testDriverConfigurationService.setRandomKvnrEmail(emailDomain);
     TigerGlobalConfiguration.putValue(variableName, kvnr, ConfigurationValuePrecedence.TEST_CONTEXT);
     log.info("Configured randomized KVNR '{}' and correlated binding email in variable '{}'.", kvnr, variableName);
+  }
+
+  /** Restores the owned driver's default configuration; failed resets remain retryable. */
+  @After(value = "@reset_testdriver", order = Hooks.ORDER_RESET_OWNED_OIDC_DRIVER)
+  public void resetOwnedDriver() {
+    if (driverResetRequired) {
+      testDriverConfigurationService.reset();
+      driverResetRequired = false;
+    }
+  }
+
+  /**
+   * Reserves a notification identity using the default OIDC KVNR variable shared by JSON templates.
+   */
+  @Gegebensei("eine freie KVNR aus dem Notification-Pool")
+  @Given("a free KVNR from the notification pool")
+  public void reserveNotificationKvnr() {
+    reserveNotificationKvnr(KVNR_CONFIG_KEY);
+  }
+
+  /**
+   * Reserves a predefined notification identity and removes leftovers before the scenario starts.
+   * The registration is retained for reuse; the complete OIDC-flow tests use the random step instead.
+   *
+   * @param variableName Tiger variable receiving the reserved KVNR
+   */
+  @Gegebensei("eine freie KVNR aus dem Notification-Pool in der Variablen {tigerResolvedString}")
+  @Given("a free KVNR from the notification pool in variable {tigerResolvedString}")
+  public void reserveNotificationKvnr(String variableName) {
+    var emailDomain = TigerGlobalConfiguration.readStringOptional(EMAIL_DOMAIN_CONFIG_KEY)
+        .map(TigerGlobalConfiguration::resolvePlaceholders)
+        .orElseThrow(() -> new AssertionError("The OIDC test email domain is not configured."));
+    var pool = NotificationKvnrPool.configured();
+    OidcScenarioContext.acquireDriver();
+    var identity = pool.reserve(emailDomain);
+    OidcScenarioContext.register(pool, identity);
+    notificationPusherCleanup.clean(identity);
+    TigerGlobalConfiguration.putValue(variableName, identity.kvnr(), ConfigurationValuePrecedence.TEST_CONTEXT);
+    log.info("Reserved notification KVNR '{}' as '{}' in variable '{}'.", identity.kvnr(), identity.id(), variableName);
   }
 }

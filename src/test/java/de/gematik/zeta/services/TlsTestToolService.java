@@ -64,7 +64,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class TlsTestToolService {
 
   private static final String CONFIG_MULTIPART_FILENAME = "config";
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration PROCESS_COMPLETION_POLL_INTERVAL = Duration.ofMillis(100);
+  private static final Duration PROCESS_COMPLETION_TIMEOUT = Duration.ofSeconds(30);
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
 
   private final String baseUrl;
@@ -252,6 +253,12 @@ public class TlsTestToolService {
     return startProcess("/startAsTlsClient");
   }
 
+  /** Starts an authenticated client using the certificate uploaded via {@code /certificate}. */
+  public TlsToolStateResponse startAsTlsClient(boolean useClientCertificate) {
+    return startProcess("/startAsTlsClient?useClientCertificate=" + useClientCertificate);
+  }
+
+
   /**
    * Starts a process and tolerates a duplicated start request only when the service confirms that
    * the process is already running.
@@ -282,6 +289,23 @@ public class TlsTestToolService {
     }
   }
 
+  /** Completely resets configuration, credentials, logs and process state for exclusive reuse. */
+  public TlsToolStateResponse reset() {
+    var response = exchangeForJson("/reset", HttpMethod.POST, HttpEntity.EMPTY,
+        tools.jackson.databind.JsonNode.class);
+    if (!response.path("running").isBoolean() || response.path("running").asBoolean()
+        || !response.path("lastExitCode").isNull() || !response.path("startedAt").isNull()
+        || !response.path("stoppedAt").isNull()) {
+      throw new AssertionError("TLS tool reset did not return a complete clean idle state");
+    }
+    var state = objectMapper.treeToValue(response, TlsToolStateResponse.class);
+    if (state == null || state.running() || state.lastExitCode() != null
+        || state.startedAt() != null || state.stoppedAt() != null) {
+      throw new AssertionError("TLS tool reset did not return a clean idle state");
+    }
+    return state;
+  }
+
   /**
    * Stops the TLS test tool process.
    *
@@ -292,13 +316,172 @@ public class TlsTestToolService {
   }
 
   /**
-   * Reads the merged logs. The service stops the process first when required.
+   * Reads the merged logs after the TLS test tool process has completed.
    *
    * @return final plain text logs
    */
   public String getLogs() {
+    awaitProcessCompletion();
     var response = exchange("/logs", HttpMethod.GET, null, String.class);
     return response.getBody() == null ? "" : response.getBody();
+  }
+
+  /**
+   * Waits until the service reports that the TLS test tool process has completed.
+   *
+   * <p>Waits for final protocol evidence before retrieving logs. OpenSSL receive waits and the
+   * tool's configured wait-before-close can together consume ten seconds after the handshake;
+   * the completion budget also allows for the handshake and process cleanup. State polling keeps
+   * that wait bounded even when the service's logs endpoint waits for process exit.</p>
+   */
+  private void awaitProcessCompletion() {
+    var completionTimeout = getProcessCompletionTimeout();
+    var deadline = System.nanoTime() + completionTimeout.toNanos();
+    var pollingRequestFactory = DirectHttpClients.requestFactory(READ_TIMEOUT);
+    var pollingRestTemplate = new RestTemplate(pollingRequestFactory);
+    while (true) {
+      var remainingNanos = deadline - System.nanoTime();
+      if (remainingNanos <= 0) {
+        throw processCompletionTimeout(completionTimeout, null);
+      }
+      try {
+        configureCompletionPollTimeouts(pollingRequestFactory, Duration.ofNanos(remainingNanos));
+        if (!getStateForCompletionPoll(pollingRestTemplate).running()) {
+          return;
+        }
+      } catch (AssertionError e) {
+        var cause = e.getCause();
+        if (!isTransientCompletionPollFailure(cause)) {
+          throw e;
+        }
+        if (System.nanoTime() >= deadline) {
+          throw processCompletionTimeout(completionTimeout, cause);
+        }
+      }
+      var remainingBeforePause = deadline - System.nanoTime();
+      if (remainingBeforePause <= 0) {
+        throw processCompletionTimeout(completionTimeout, null);
+      }
+      pauseBeforeNextCompletionPoll(Duration.ofNanos(remainingBeforePause));
+    }
+  }
+
+  /**
+   * Reads process state with the completion polling HTTP client.
+   *
+   * @param pollingRestTemplate completion polling HTTP client
+   * @return state payload
+   */
+  private TlsToolStateResponse getStateForCompletionPoll(RestTemplate pollingRestTemplate) {
+    return exchangeForJson(pollingRestTemplate, "/state", HttpMethod.GET, null, TlsToolStateResponse.class);
+  }
+
+  /**
+   * Determines whether a failed process-state request can be retried safely within the budget.
+   *
+   * @param cause service request failure
+   * @return {@code true} for connection failures and temporary server errors
+   */
+  private static boolean isTransientCompletionPollFailure(Throwable cause) {
+    return cause instanceof ResourceAccessException
+        || (cause instanceof HttpStatusCodeException statusException
+            && statusException.getStatusCode().is5xxServerError());
+  }
+
+  /**
+   * Splits the remaining completion budget between the sequential connect and read phases.
+   *
+   * @param requestFactory polling request factory to configure
+   * @param remainingTimeout remaining process completion budget
+   */
+  private static void configureCompletionPollTimeouts(
+      SimpleClientHttpRequestFactory requestFactory,
+      Duration remainingTimeout) {
+    var requestBudget = roundUpToMilliseconds(remainingTimeout);
+    var halfBudget = requestBudget.dividedBy(2);
+    var connectTimeout = atLeastOneMillisecond(
+        halfBudget.compareTo(DirectHttpClients.CONNECT_TIMEOUT) < 0 ? halfBudget : DirectHttpClients.CONNECT_TIMEOUT);
+    var readTimeout = atLeastOneMillisecond(requestBudget.minus(connectTimeout));
+    requestFactory.setConnectTimeout(connectTimeout);
+    requestFactory.setReadTimeout(readTimeout);
+  }
+
+  /**
+   * Creates the assertion raised when the process completion budget is exhausted.
+   *
+   * @param completionTimeout configured completion timeout
+   * @param cause optional timeout cause
+   * @return process completion assertion
+   */
+  private static AssertionError processCompletionTimeout(Duration completionTimeout, Throwable cause) {
+    return new AssertionError(
+        "TLS test tool process did not complete within " + formatTimeout(completionTimeout) + ".", cause);
+  }
+
+  /**
+   * Formats a process completion timeout for an actionable error message.
+   *
+   * @param timeout timeout to format
+   * @return timeout expressed in whole seconds or milliseconds
+   */
+  private static String formatTimeout(Duration timeout) {
+    if (timeout.toMillis() % 1000 == 0) {
+      return timeout.toSeconds() + " seconds";
+    }
+    return timeout.toMillis() + " milliseconds";
+  }
+
+  /**
+   * Rounds a positive HTTP timeout up to the HTTP client's supported millisecond precision.
+   *
+   * @param timeout timeout to normalize
+   * @return timeout rounded up to at least one millisecond
+   */
+  private static Duration roundUpToMilliseconds(Duration timeout) {
+    var milliseconds = timeout.toMillis();
+    if (!timeout.minusMillis(milliseconds).isZero()) {
+      milliseconds++;
+    }
+    return Duration.ofMillis(Math.max(1, milliseconds));
+  }
+
+  /**
+   * Normalizes an HTTP timeout to at least one millisecond.
+   *
+   * @param timeout timeout to normalize
+   * @return timeout of at least one millisecond
+   */
+  private static Duration atLeastOneMillisecond(Duration timeout) {
+    return timeout.compareTo(Duration.ofMillis(1)) < 0 ? Duration.ofMillis(1) : timeout;
+  }
+
+  /**
+   * Returns the maximum time to wait for TLS test tool process completion.
+   *
+   * <p>This method can be overridden by tests to exercise timeout handling without waiting for the
+   * production timeout.</p>
+   *
+   * @return process completion timeout
+   */
+  protected Duration getProcessCompletionTimeout() {
+    return PROCESS_COMPLETION_TIMEOUT;
+  }
+
+  /**
+   * Pauses between process-state completion polls without exceeding the remaining timeout budget.
+   *
+   * @param remainingTimeout remaining process completion budget
+   */
+  private static void pauseBeforeNextCompletionPoll(Duration remainingTimeout) {
+    var pauseDuration = remainingTimeout.compareTo(PROCESS_COMPLETION_POLL_INTERVAL) < 0
+        ? remainingTimeout
+        : PROCESS_COMPLETION_POLL_INTERVAL;
+    try {
+      Thread.sleep(pauseDuration);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Interrupted while waiting for the TLS test tool process to complete.", e);
+    }
   }
 
   /**
@@ -319,7 +502,27 @@ public class TlsTestToolService {
    * @return deserialized response payload
    */
   private <T> T exchangeForJson(String path, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType) {
-    var response = exchange(path, method, requestEntity, String.class);
+    return exchangeForJson(restTemplate, path, method, requestEntity, responseType);
+  }
+
+  /**
+   * Executes a request with a specific HTTP client and deserializes its JSON response.
+   *
+   * @param client HTTP client
+   * @param path endpoint path relative to the service base URL
+   * @param method HTTP method
+   * @param requestEntity optional request entity
+   * @param responseType target response class
+   * @param <T> response payload type
+   * @return deserialized response payload
+   */
+  private <T> T exchangeForJson(
+      RestTemplate client,
+      String path,
+      HttpMethod method,
+      HttpEntity<?> requestEntity,
+      Class<T> responseType) {
+    var response = exchange(client, path, method, requestEntity, String.class);
     if (response.getBody() == null || response.getBody().isBlank()) {
       throw new AssertionError("TLS test tool service returned an empty response for " + method + " " + path + ".");
     }
@@ -391,9 +594,29 @@ public class TlsTestToolService {
    * @return raw HTTP response entity
    */
   private <T> ResponseEntity<T> exchange(String path, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType) {
+    return exchange(restTemplate, path, method, requestEntity, responseType);
+  }
+
+  /**
+   * Executes a request with a specific HTTP client against the TLS test tool service.
+   *
+   * @param client HTTP client
+   * @param path endpoint path relative to the service base URL
+   * @param method HTTP method
+   * @param requestEntity optional request entity
+   * @param responseType expected response class
+   * @param <T> response payload type
+   * @return raw HTTP response entity
+   */
+  private <T> ResponseEntity<T> exchange(
+      RestTemplate client,
+      String path,
+      HttpMethod method,
+      HttpEntity<?> requestEntity,
+      Class<T> responseType) {
     var uri = URI.create(baseUrl + path);
     try {
-      return restTemplate.exchange(uri, method, requestEntity, responseType);
+      return client.exchange(uri, method, requestEntity, responseType);
     } catch (HttpStatusCodeException e) {
       var body = e.getResponseBodyAsString();
       var detail = body.isBlank() ? "<empty body>" : body;
@@ -428,9 +651,7 @@ public class TlsTestToolService {
    * @return configured REST client
    */
   private static RestTemplate createRestTemplate() {
-    var requestFactory = new SimpleClientHttpRequestFactory();
-    requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
-    requestFactory.setReadTimeout(READ_TIMEOUT);
+    var requestFactory = DirectHttpClients.requestFactory(READ_TIMEOUT);
     return new RestTemplate(requestFactory);
   }
 

@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -227,7 +228,10 @@ public class SystemCommandService implements AutoCloseable {
     wslCommand.add(WSL);
     if (workDir != null && !workDir.isBlank()) {
       wslCommand.add(WSL_CHANGE_DIRECTORY_ARGUMENT);
-      wslCommand.add(adaptWindowsPathForWsl(workDir));
+      // WSL --cd requires an absolute path; repository configuration may be relative to the JVM.
+      var absoluteWorkDir = workDir.startsWith("/") || workDir.matches("^[A-Za-z]:[\\\\/].*")
+          ? workDir : Path.of(workDir).toAbsolutePath().normalize().toString();
+      wslCommand.add(adaptWindowsPathForWsl(absoluteWorkDir));
     }
     wslCommand.add(WSL_EXEC_ARGUMENT);
     command.stream()

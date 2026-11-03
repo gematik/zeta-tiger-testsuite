@@ -1,0 +1,4 @@
+[#A_29375]
+==== A_29375 - ZETA, Ablauf Dynamic Client Registration
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-DCR-für-stationäre-Clients unterstützen. [<=]

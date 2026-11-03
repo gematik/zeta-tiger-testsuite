@@ -1,0 +1,8 @@
+[#TA_A_29376_07]
+===== TA_A_29376_07 - ZETA, Ablauf Token Exchange mit Attestation - Attestierungstoken nach Hardwareattestierung ausgeben
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Attestation** unterstützen.
+
+**[<=]**"
+
+Abbildung 12, Schritte 14–15: Nach erfolgreicher **Hardwareattestierung wird zusätzlich ein signiertes zeta_attestation_token ausgegeben**.

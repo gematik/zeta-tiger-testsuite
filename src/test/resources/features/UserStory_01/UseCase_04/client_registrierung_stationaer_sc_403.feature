@@ -27,13 +27,14 @@
 @UseCase_01_04
 Funktionalität: Client-Registrierung stationär SC 403
 
-  @A_25661
+  @A_25661-01
   @A_26661
   @A_26662
-  @TA_A_25661_03
+  @TA_A_25661-01_03
   @TA_A_26661_13
   @TA_A_26662_01
   @normal
+  @MASVS-CODE
   @MASVS-AUTH
   Szenariogrundriss: Client-Registrierung wird wegen Client Policy (<Policy>) abgelehnt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -48,19 +49,20 @@ Funktionalität: Client-Registrierung stationär SC 403
     # Sicherstellen, dass die Manipulation im OPA Request angekommen ist
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.opa.decisionPath}"
     Und TGR prüfe aktueller Request stimmt im Knoten "<OpaInputField>" überein mit "<NeuerWert>"
-    # TA_A_25661_03: Manipulierte Policy Decision verweigert den Zugriff.
+    # TA_A_25661-01_03: Manipulierte Policy Decision verweigert den Zugriff.
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.result.allow" überein mit "false"
 
     # Registrierungs-/Token-Request muss mit 403 abgelehnt werden
     Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "access_denied"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
     # TA_A_26662_01 - ZETA Guard, HTTP Fehlerdetails
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
     Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.access_token"
     Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.refresh_token"
 
-    # TA_A_25661_03, TA_A_26661_13: Rückgabe an den Client ist 403 Forbidden.
+    # TA_A_25661-01_03, TA_A_26661_13: Rückgabe an den Client ist 403 Forbidden.
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
 
@@ -78,13 +80,13 @@ Funktionalität: Client-Registrierung stationär SC 403
       | scopes          | $.body.input.authorization_request.scopes.0           | invalid_scope_xyz            |
       | audience        | $.body.input.authorization_request.audience.0         | https://evil.example.com/api |
 
-  @A_25752
-  @TA_A_25752_01
+  @A_25752-01
+  @TA_A_25752-01_01
   @minor
-  Szenario: Client-Registrierung wird wegen Client Policy abgelehnt und begründet
+  @smb
+  Szenario: Token Request übernimmt die Ablehnungsgründe der Client Policy
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
 
-    # OPA Request manipulieren - eine ungültige Client-Eigenschaft setzen
     Und TGR setze lokale Variable "opaCondition" auf "isRequest && request.path =~ '.*${paths.opa.decisionPath}'"
     Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.input.client_registration_data.product_id" und Wert "unknown_product" und 1 Ausführungen
 
@@ -92,9 +94,15 @@ Funktionalität: Client-Registrierung stationär SC 403
 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.opa.decisionPath}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.input.client_registration_data.product_id" überein mit "unknown_product"
+    Und prüfe, dass genau 1 aufgezeichnete Anfragen den Pfad "${paths.opa.decisionPath}" haben
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.result.allow" überein mit "false"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.result.reasons" überein mit '(?s)\s*\{\s*".+'
+    Und TGR speichere Wert des Knotens "$.body.result.reasons" der aktuellen Antwort in der Variable "POLICY_REASONS"
 
-    Und TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
-    # TA_A_25752_01 - PDP Client-Registrierung - Nutzer über Hintergrund zur Ablehnung der Client-Registrierung informieren - Client-Eigenschaften
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.error_description"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error_description" überein mit ".*(Client product or version is not allowed|Produkt.*(ID|Kennung|Version|nicht zugelassen|nicht registriert|unbekannt)|Client[- ]?Eigenschaften).*"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "access_denied"
+    Und TGR speichere Wert des Knotens "$.body.reasons" der aktuellen Antwort in der Variable "RESPONSE_REASONS"
+    Und prüfe Knoten "${RESPONSE_REASONS}" enthält mindestens alle Kindknoten von "${POLICY_REASONS}"
+    Und prüfe Knoten "${POLICY_REASONS}" enthält mindestens alle Kindknoten von "${RESPONSE_REASONS}"

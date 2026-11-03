@@ -1,0 +1,4 @@
+[#A_29905]
+==== A_29905 - Authorization Server – Freischaltung erst nach E-Mail-Verifikation
+
+Klarstellend zum Statusmodell nach A_29658 (pending_verification/pending_user_binding) DARF der Authorization Server den vollen Berechtigungsumfang (Scope/Audiences) NICHT freigeben, bevor die E-Mail-Verifikation erfolgreich abgeschlossen ist. [<=]

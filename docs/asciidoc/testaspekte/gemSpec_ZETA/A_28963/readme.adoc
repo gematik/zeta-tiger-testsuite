@@ -1,6 +1,0 @@
-==== Testaspekte für die Anforderung A_28963
-
-Folgende Testaspekte testen <<A_28963>>.
-
-include::TA_A_28963_01.adoc[]
-

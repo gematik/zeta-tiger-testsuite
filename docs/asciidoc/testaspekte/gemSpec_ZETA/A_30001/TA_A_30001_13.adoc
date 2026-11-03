@@ -1,0 +1,8 @@
+[#TA_A_30001_13]
+===== TA_A_30001_13 - ZETA, Ablauf Token Revocation - Lokale Refresh Token löschen
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Revocation unterstützen.
+
+**[<=]**"
+
+In der referenzierten Abbildung und ihrer Erläuterung betrifft dieser Testaspekt die Schritte 10: **lokale Refresh Token löschen**.

@@ -1,0 +1,4 @@
+[#TA_A_29810_01]
+===== TA_A_29810_01 - Apple-Attestierung - App-Attest-Hardwarepfad
+
+"Der ZETA Client MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Apple-AppAttest** unterstützen. [<=]"

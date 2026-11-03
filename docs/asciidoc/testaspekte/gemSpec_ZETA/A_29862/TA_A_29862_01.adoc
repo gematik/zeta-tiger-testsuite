@@ -1,0 +1,8 @@
+[#TA_A_29862_01]
+===== TA_A_29862_01 - ZETA Client, zusätzlichen DPoP-Proof für den ASL-Endpunkt erzeugen
+
+"Der ZETA Client MUSS beim durchführen eines fachlichen Requests zum Resource Server **ein zusätzliches DPoP Token für den /ASL Endpunkt gemäß Tabelle Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server erzeugen** und im äußeren HTTP Request im DPoP Header verwenden.
+
+[<=]"
+
+Bei ASL-Terminierung am Resource Server gilt gemäß Tabelle 19 für den zusätzlichen Proof htm=POST und htu=https://<FQDN>/ASL; der FQDN folgt dem resource-Attribut des OAuth Protected Resource Well-known Dokuments.

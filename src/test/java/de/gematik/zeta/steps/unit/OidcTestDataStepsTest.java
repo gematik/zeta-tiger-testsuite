@@ -25,32 +25,106 @@
 package de.gematik.zeta.steps.unit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.services.TestDriverConfigurationService;
+import de.gematik.zeta.steps.Hooks;
+import de.gematik.zeta.steps.OidcScenarioContext;
 import de.gematik.zeta.steps.OidcTestDataSteps;
+import io.cucumber.java.After;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Unit tests for {@link OidcTestDataSteps}.
  */
 class OidcTestDataStepsTest {
 
+  @AfterEach
+  void releaseDriver() {
+    OidcScenarioContext.clear();
+  }
+
   /**
-   * Verifies that the generated KVNR is exposed in the requested variable.
+   * Verifies that the generated KVNR is exposed in the default OIDC test-data variable.
    */
   @Test
-  void generateUniqueRandomizedKvnrStoresKvnr() {
+  void generateUniqueRandomizedKvnrStoresKvnrInDefaultVariable() {
     var service = new FakeTestDriverConfigurationService();
     var steps = new OidcTestDataSteps(service);
     TigerGlobalConfiguration.putValue("oidcTestData.emailDomain", "mailgun.com");
 
-    steps.generateUniqueRandomizedKvnr("OIDC_KVNR");
+    steps.generateUniqueRandomizedKvnr();
 
-    assertEquals("X110411675", TigerGlobalConfiguration.readStringOptional("OIDC_KVNR").orElseThrow());
+    assertEquals(
+        "X110411675", TigerGlobalConfiguration.readStringOptional("oidcTestData.kvnr").orElseThrow());
     assertTrue(service.resetCalled);
     assertEquals("mailgun.com", service.emailDomain);
+  }
+
+  /**
+   * Verifies that the generated KVNR is exposed in the requested variable.
+   */
+  @Test
+  void generateUniqueRandomizedKvnrStoresKvnrInRequestedVariable() {
+    var service = new FakeTestDriverConfigurationService();
+    var steps = new OidcTestDataSteps(service);
+    TigerGlobalConfiguration.putValue("oidcTestData.emailDomain", "mailgun.com");
+
+    steps.generateUniqueRandomizedKvnr("CUSTOM_KVNR");
+
+    assertEquals(
+        "X110411675", TigerGlobalConfiguration.readStringOptional("CUSTOM_KVNR").orElseThrow());
+    assertTrue(service.resetCalled);
+    assertEquals("mailgun.com", service.emailDomain);
+  }
+
+  @Test
+  void ownedDriverResetRunsBeforeScenarioLockRelease() throws NoSuchMethodException {
+    var resetOrder = OidcTestDataSteps.class.getMethod("resetOwnedDriver")
+        .getAnnotation(After.class).order();
+    var clearOrder = Hooks.class.getMethod("clearScenarioLifecycleState")
+        .getAnnotation(After.class).order();
+
+    assertTrue(resetOrder > clearOrder,
+        "The shared OIDC driver must be reset before its scenario lock is released");
+  }
+
+  @Test
+  void resetDoesNotTouchAnUnownedDriver() {
+    var service = new FakeTestDriverConfigurationService();
+    new OidcTestDataSteps(service).resetOwnedDriver();
+    assertEquals(0, service.resetCalls);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void resetCoversPartialIdentityConfigurationAndIsIdempotent(boolean initialResetFails) {
+    var service = new FakeTestDriverConfigurationService();
+    service.failConfiguration = !initialResetFails;
+    service.resetFailures = initialResetFails ? 1 : 0;
+    var steps = new OidcTestDataSteps(service);
+    TigerGlobalConfiguration.putValue("oidcTestData.emailDomain", "mailgun.com");
+    assertThrows(IllegalStateException.class, steps::generateUniqueRandomizedKvnr);
+    steps.resetOwnedDriver();
+    steps.resetOwnedDriver();
+    assertEquals(2, service.resetCalls);
+  }
+
+  @Test
+  void failedResetIsReportedAndCanBeRetried() {
+    var service = new FakeTestDriverConfigurationService();
+    var steps = new OidcTestDataSteps(service);
+    TigerGlobalConfiguration.putValue("oidcTestData.emailDomain", "mailgun.com");
+    steps.generateUniqueRandomizedKvnr();
+    service.resetFailures = 1;
+    assertThrows(IllegalStateException.class, steps::resetOwnedDriver);
+    steps.resetOwnedDriver();
+    assertEquals(3, service.resetCalls);
   }
 
   /**
@@ -60,6 +134,9 @@ class OidcTestDataStepsTest {
 
     private boolean resetCalled;
     private String emailDomain;
+    private int resetCalls;
+    private int resetFailures;
+    private boolean failConfiguration;
 
     /**
      * Creates a fake client backed by placeholder endpoint URLs.
@@ -74,6 +151,11 @@ class OidcTestDataStepsTest {
     @Override
     public void reset() {
       resetCalled = true;
+      resetCalls++;
+      if (resetFailures > 0) {
+        resetFailures--;
+        throw new IllegalStateException("Reset unavailable");
+      }
     }
 
     /**
@@ -84,6 +166,9 @@ class OidcTestDataStepsTest {
      */
     @Override
     public String setRandomKvnrEmail(String configuredEmailDomain) {
+      if (failConfiguration) {
+        throw new IllegalStateException("Identity configuration failed");
+      }
       emailDomain = configuredEmailDomain;
       return "X110411675";
     }

@@ -24,6 +24,7 @@
 
 package de.gematik.zeta.traceability;
 
+import io.cucumber.messages.types.Envelope;
 import io.cucumber.plugin.ConcurrentEventListener;
 import io.cucumber.plugin.event.EventPublisher;
 import io.cucumber.plugin.event.Status;
@@ -40,7 +41,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -49,11 +49,15 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Collects runtime status for AFOs and test aspects based on scenario tags and writes CSV reports.
+ *
+ * <p>Scenario outcomes are aggregated across parallel driver instances before the annotation
+ * audit is written.</p>
  */
 @Slf4j
 public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
 
   private static final String DEFAULT_OUTPUT = "target/traceability/runtime_coverage.csv";
+  private static final String DEFAULT_SERENITY_OUTPUT = "target/site/serenity";
   private static final Path DEFAULT_FAILURE_ANNOTATIONS_CSV =
       Path.of("docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv");
   private static final String FAILURE_ANNOTATIONS_PROPERTY =
@@ -62,9 +66,8 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   private static final String REQUIREMENT_STATE_FILE = "runtime_coverage_state_afo.csv";
   private static final String TEST_ASPECT_STATE_FILE = "runtime_coverage_state_ta.csv";
   private static final String ERROR_STATE_FILE = "runtime_coverage_state_errors.csv";
-  private static final String SCENARIO_STATE_FILE = "runtime_coverage_state_scenarios.csv";
-  private static final String TEST_ASPECT_SCENARIO_STATE_FILE =
-      "runtime_coverage_state_ta_scenarios.csv";
+  private static final String SCENARIO_OUTCOME_STATE_FILE =
+      "runtime_coverage_state_scenario_outcomes.csv";
   private static final String META_STATE_FILE = "runtime_coverage_state_meta.csv";
   private static final String LOCK_FILE = "runtime_coverage.lock";
   private static final String RUN_COUNTER_FILE = "runtime_coverage_run_count.txt";
@@ -74,14 +77,15 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   private final Map<String, Rollup> requirementStats = new ConcurrentHashMap<>();
   private final Map<String, Rollup> testAspectStats = new ConcurrentHashMap<>();
   private final Map<String, Set<FailureRecord>> runErrors = new ConcurrentHashMap<>();
-  private final Map<String, Set<String>> requirementScenarios = new ConcurrentHashMap<>();
-  private final Map<String, Set<String>> testAspectScenarios = new ConcurrentHashMap<>();
+  private final Map<String, ScenarioOutcome> scenarioOutcomes = new ConcurrentHashMap<>();
   private final Set<String> seenScenarioKeys = ConcurrentHashMap.newKeySet();
   private final Rollup totalStats = new Rollup();
   private final Rollup untaggedStats = new Rollup();
   private final RuntimeCoverageCsvRepository csvRepository;
+  private final FailureAnnotations failureAnnotations;
   private final CucumberJsonRuntimeCoverageReader cucumberJsonReader;
   private final Path outputPath;
+  private final Path auditOutputDirectory;
 
   /**
    * Creates the plugin using the resolved default output location.
@@ -97,13 +101,13 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
    */
   public RuntimeCoveragePlugin(String outputPath) {
     this.outputPath = Path.of(outputPath);
+    auditOutputDirectory = resolveSerenityOutputDirectory();
     var catalog = new RuntimeCoverageCatalog();
-    var failureAnnotations = RuntimeCoverageCsvRepository.loadFailureAnnotations(
+    failureAnnotations = RuntimeCoverageCsvRepository.loadFailureAnnotations(
         resolveFailureAnnotationsPath());
     csvRepository = new RuntimeCoverageCsvRepository(catalog, failureAnnotations);
     cucumberJsonReader = new CucumberJsonRuntimeCoverageReader(requirementStats, testAspectStats,
-        runErrors, requirementScenarios, testAspectScenarios, seenScenarioKeys, totalStats,
-        untaggedStats);
+        runErrors, seenScenarioKeys, totalStats, untaggedStats, scenarioOutcomes);
     registerRunInstance();
   }
 
@@ -174,6 +178,18 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   }
 
   /**
+   * Resolve the directory in which Serenity and audit artifacts are written.
+   *
+   * @return Serenity output directory
+   */
+  private static Path resolveSerenityOutputDirectory() {
+    var serenityDir = Optional.ofNullable(System.getProperty("serenity.outputDirectory"))
+        .filter(value -> !value.isBlank())
+        .orElseGet(RuntimeCoveragePlugin::loadSerenityOutputDirectory);
+    return Path.of(serenityDir == null ? DEFAULT_SERENITY_OUTPUT : serenityDir);
+  }
+
+  /**
    * Update the shared run counter and return the new value.
    *
    * @param counterPath counter file path
@@ -215,23 +231,19 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
    * @param errorStatePath       error state file path
    * @param metaStatePath        meta state file path
    * @param counterPath          run counter file path
+   * @throws IOException when a state file cannot be removed
    */
   private static void cleanupStateFiles(Path requirementStatePath,
       Path testAspectStatePath,
       Path errorStatePath,
       Path metaStatePath,
-      Path counterPath) {
-    try {
-      Files.deleteIfExists(requirementStatePath.resolveSibling(SCENARIO_STATE_FILE));
-      Files.deleteIfExists(requirementStatePath.resolveSibling(TEST_ASPECT_SCENARIO_STATE_FILE));
-      Files.deleteIfExists(requirementStatePath);
-      Files.deleteIfExists(testAspectStatePath);
-      Files.deleteIfExists(errorStatePath);
-      Files.deleteIfExists(metaStatePath);
-      Files.deleteIfExists(counterPath);
-    } catch (IOException exception) {
-      log.warn("Unable to delete runtime coverage state files.", exception);
-    }
+      Path counterPath) throws IOException {
+    Files.deleteIfExists(requirementStatePath.resolveSibling(SCENARIO_OUTCOME_STATE_FILE));
+    Files.deleteIfExists(requirementStatePath);
+    Files.deleteIfExists(testAspectStatePath);
+    Files.deleteIfExists(errorStatePath);
+    Files.deleteIfExists(metaStatePath);
+    Files.deleteIfExists(counterPath);
   }
 
   /**
@@ -264,22 +276,10 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   }
 
   /**
-   * Merge per-run string-set state into the shared state map.
-   *
-   * @param target    target string sets
-   * @param additions string sets to add
-   */
-  private static void mergeStringSets(Map<String, Set<String>> target,
-      Map<String, Set<String>> additions) {
-    if (additions == null || additions.isEmpty()) {
-      return;
-    }
-    additions.forEach((key, value) -> target.computeIfAbsent(key, ignored -> new LinkedHashSet<>())
-        .addAll(value));
-  }
-
-  /**
    * Register the plugin handlers with the Cucumber event publisher.
+   *
+   * <p>The final-message handler is appended after all formatters have registered their handlers.
+   * It runs after they close their JSON outputs.</p>
    *
    * @param publisher event publisher provided by Cucumber
    */
@@ -287,7 +287,8 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   public void setEventPublisher(EventPublisher publisher) {
     log.debug("Runtime coverage plugin registered (output: {}).", outputPath);
     publisher.registerHandlerFor(TestCaseFinished.class, this::handleTestCaseFinished);
-    publisher.registerHandlerFor(TestRunFinished.class, this::handleTestRunFinished);
+    publisher.registerHandlerFor(TestRunFinished.class, event ->
+        publisher.registerHandlerFor(Envelope.class, this::handleTestRunFinished));
   }
 
   /**
@@ -315,44 +316,18 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
     var scenarioKey = RuntimeCoverageIds.buildScenarioKey(
         testCase.getUri() == null ? null : testCase.getUri().toString(),
         testCase.getName(),
-        testCase.getLocation() == null ? null : testCase.getLocation().getLine(),
-        tags);
+        testCase.getLocation() == null ? null : testCase.getLocation().getLine());
     seenScenarioKeys.add(scenarioKey);
-
     var requirementIds = new LinkedHashSet<String>();
     var testAspectIds = new LinkedHashSet<String>();
-    resolveTags(tags, requirementIds, testAspectIds);
+    RuntimeCoverageIds.resolveTags(tags, requirementIds, testAspectIds);
+    recordScenarioOutcome(testCase, status, requirementIds, testAspectIds);
     if (status != Status.PASSED && status != Status.SKIPPED) {
       var error = RuntimeCoverageIds.summarizeError(event);
       var feature = testCase.getUri() == null ? "" : testCase.getUri().toString();
       requirementIds.forEach(id -> addError(id, error, testAspectIds, feature, testCase.getName()));
     }
-    recordScenarios(requirementScenarios, requirementIds, testCase.getName());
-    recordScenarios(testAspectScenarios, testAspectIds, testCase.getName());
-
     recordStats(status, requirementIds, testAspectIds);
-  }
-
-  /**
-   * Resolve AFO and TA identifiers from Cucumber tags.
-   *
-   * @param tags           Cucumber tags
-   * @param requirementIds target set for requirement identifiers
-   * @param testAspectIds  target set for test aspect identifiers
-   */
-  private void resolveTags(List<String> tags, Set<String> requirementIds, Set<String> testAspectIds) {
-    tags.stream()
-        .filter(Objects::nonNull)
-        .forEach(tagName -> {
-          var testAspectId = RuntimeCoverageIds.normalizeTag(tagName);
-          if (RuntimeCoverageIds.AFO_TAG.matcher(testAspectId).matches()) {
-            requirementIds.add(testAspectId);
-          } else if (RuntimeCoverageIds.TEST_ASPECT_TAG.matcher(testAspectId).matches()) {
-            testAspectIds.add(testAspectId);
-            RuntimeCoverageIds.resolveRequirementFromTestAspect(testAspectId)
-                .ifPresent(requirementIds::add);
-          }
-        });
   }
 
   /**
@@ -386,11 +361,14 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   }
 
   /**
-   * Finalizes the aggregated output when the test run finishes.
+   * Finalizes the aggregated output after formatters consume the final message.
    *
-   * @param event test run finished event
+   * @param event Cucumber message envelope
    */
-  private void handleTestRunFinished(TestRunFinished event) {
+  private void handleTestRunFinished(Envelope event) {
+    if (event.getTestRunFinished().isEmpty()) {
+      return;
+    }
     log.debug("Runtime coverage test run finished. Requirements: {}, test aspects: {}, errors: {}.",
         requirementStats.size(), testAspectStats.size(), countErrors(runErrors));
     mergeAndWriteCsv();
@@ -453,26 +431,36 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
     mergeErrors(mergedErrors, runErrors);
     csvRepository.writeErrors(errorStatePath, mergedErrors);
 
-    var scenarioStatePath = outputDir.resolve(SCENARIO_STATE_FILE);
-    var mergedScenarios = csvRepository.readStringSetState(scenarioStatePath);
-    mergeStringSets(mergedScenarios, requirementScenarios);
-    csvRepository.writeStringSetState(scenarioStatePath, mergedScenarios);
-
-    var testAspectScenarioStatePath = outputDir.resolve(TEST_ASPECT_SCENARIO_STATE_FILE);
-    var mergedTestAspectScenarios = csvRepository.readStringSetState(testAspectScenarioStatePath);
-    mergeStringSets(mergedTestAspectScenarios, testAspectScenarios);
-    csvRepository.writeStringSetState(testAspectScenarioStatePath, mergedTestAspectScenarios);
+    var scenarioOutcomeStatePath = outputDir.resolve(SCENARIO_OUTCOME_STATE_FILE);
+    var mergedScenarioOutcomes = csvRepository.readScenarioOutcomes(scenarioOutcomeStatePath);
+    mergeScenarioOutcomes(mergedScenarioOutcomes, scenarioOutcomes);
+    csvRepository.writeScenarioOutcomes(scenarioOutcomeStatePath, mergedScenarioOutcomes);
 
     var mergedMeta = csvRepository.readState(metaStatePath);
     mergeState(mergedMeta, buildMetaStats());
     csvRepository.writeState(metaStatePath, mergedMeta);
 
     csvRepository.writeCsv(outputPath, mergedRequirements, mergedTestAspects, mergedErrors,
-        mergedScenarios, mergedMeta);
+        mergedMeta, mergedScenarioOutcomes.values());
+    writeRuntimeFailureAnnotationAudit(mergedScenarioOutcomes);
     csvRepository.writeTestAspectCsv(outputDir.resolve(TEST_ASPECT_OUTPUT_FILE), mergedTestAspects,
-        mergedErrors, mergedTestAspectScenarios);
+        mergedErrors, mergedScenarioOutcomes.values());
     csvRepository.writeMetaCsv(outputDir.resolve(META_OUTPUT_FILE), mergedMeta);
     log.info("Runtime coverage CSV written to {}", outputPath);
+  }
+
+  /**
+   * Evaluate and persist the failure annotation audit for the merged scenario outcomes.
+   *
+   * @param mergedScenarioOutcomes scenario outcomes aggregated from all active driver instances
+   * @throws IOException when an audit artifact cannot be written
+   */
+  private void writeRuntimeFailureAnnotationAudit(
+      Map<String, ScenarioOutcome> mergedScenarioOutcomes) throws IOException {
+    var audit = RuntimeFailureAnnotationAudit.evaluate(failureAnnotations,
+        mergedScenarioOutcomes.values());
+    RuntimeFailureAnnotationAudit.write(auditOutputDirectory, audit);
+    log.info("Runtime failure annotation audit: {}", RuntimeFailureAnnotationAudit.summary(audit));
   }
 
   /**
@@ -496,11 +484,23 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   private void registerRunInstance() {
     try {
       var outputDir = resolveOutputDir();
+      var requirementStatePath = outputDir.resolve(REQUIREMENT_STATE_FILE);
+      var testAspectStatePath = outputDir.resolve(TEST_ASPECT_STATE_FILE);
+      var errorStatePath = outputDir.resolve(ERROR_STATE_FILE);
+      var metaStatePath = outputDir.resolve(META_STATE_FILE);
       var lockPath = outputDir.resolve(LOCK_FILE);
       var counterPath = outputDir.resolve(RUN_COUNTER_FILE);
       try (var channel = FileChannel.open(lockPath,
           StandardOpenOption.CREATE, StandardOpenOption.WRITE);
           var ignored = channel.lock()) {
+        if (readRunCounter(counterPath) == 0) {
+          cleanupStateFiles(requirementStatePath, testAspectStatePath, errorStatePath,
+              metaStatePath, counterPath);
+          Files.deleteIfExists(auditOutputDirectory.resolve(
+              RuntimeFailureAnnotationAudit.REPORT_FILE));
+          Files.deleteIfExists(auditOutputDirectory.resolve(
+              RuntimeFailureAnnotationAudit.STATUS_FILE));
+        }
         updateRunCounter(counterPath, 1);
       }
     } catch (IOException exception) {
@@ -509,19 +509,23 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
   }
 
   /**
-   * Record one executed scenario name for all resolved traceability ids.
+   * Record one scenario outcome for the exact end-of-run annotation audit.
    *
-   * @param target   target scenario map
-   * @param ids      traceability identifiers
-   * @param scenario scenario name
+   * @param testCase finished Cucumber test case
+   * @param status   scenario status
+   * @param requirementIds requirement identifiers attached to the scenario
+   * @param testAspectIds test aspect identifiers attached to the scenario
    */
-  private void recordScenarios(Map<String, Set<String>> target, Set<String> ids, String scenario) {
-    if (target == null || ids == null || ids.isEmpty() || scenario == null
-        || scenario.isBlank()) {
+  private void recordScenarioOutcome(io.cucumber.plugin.event.TestCase testCase, Status status,
+      Set<String> requirementIds, Set<String> testAspectIds) {
+    if (testCase == null) {
       return;
     }
-    ids.forEach(id -> target.computeIfAbsent(id, key -> ConcurrentHashMap.newKeySet())
-        .add(scenario.trim()));
+    var feature = testCase.getUri() == null ? "" : testCase.getUri().toString();
+    var line = testCase.getLocation() == null ? null : testCase.getLocation().getLine();
+    var outcome = new ScenarioOutcome(feature, testCase.getName(), line, status,
+        requirementIds, testAspectIds);
+    scenarioOutcomes.merge(outcome.key(), outcome, ScenarioOutcome::merge);
   }
 
   /**
@@ -540,6 +544,20 @@ public final class RuntimeCoveragePlugin implements ConcurrentEventListener {
     }
     runErrors.computeIfAbsent(requirementId, key -> ConcurrentHashMap.newKeySet())
         .add(new FailureRecord(error.trim(), testAspectIds, feature, scenario));
+  }
+
+  /**
+   * Merge scenario outcomes from one driver into the shared state.
+   *
+   * @param target    shared scenario outcomes
+   * @param additions outcomes observed by one driver
+   */
+  private static void mergeScenarioOutcomes(Map<String, ScenarioOutcome> target,
+      Map<String, ScenarioOutcome> additions) {
+    if (additions == null || additions.isEmpty()) {
+      return;
+    }
+    additions.forEach((key, value) -> target.merge(key, value, ScenarioOutcome::merge));
   }
 
   /**

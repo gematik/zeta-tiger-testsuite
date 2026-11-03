@@ -25,8 +25,12 @@
 package de.gematik.zeta.traceability;
 
 import io.cucumber.plugin.event.TestCaseFinished;
+import java.net.URI;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -53,6 +57,26 @@ final class RuntimeCoverageIds {
   }
 
   /**
+   * Resolve requirement and test aspect identifiers from Cucumber tags.
+   *
+   * @param tags Cucumber tags
+   * @param requirementIds target requirement identifiers
+   * @param testAspectIds target test aspect identifiers
+   */
+  static void resolveTags(Collection<String> tags, Set<String> requirementIds,
+      Set<String> testAspectIds) {
+    tags.stream().filter(Objects::nonNull).forEach(tag -> {
+      var id = normalizeTag(tag);
+      if (AFO_TAG.matcher(id).matches()) {
+        requirementIds.add(id);
+      } else if (TEST_ASPECT_TAG.matcher(id).matches()) {
+        testAspectIds.add(id);
+        resolveRequirementFromTestAspect(id).ifPresent(requirementIds::add);
+      }
+    });
+  }
+
+  /**
    * Resolve the AFO id from a TA identifier.
    *
    * @param testAspectId test aspect identifier
@@ -74,7 +98,7 @@ final class RuntimeCoverageIds {
       return "";
     }
     var trimmed = tagName.trim();
-    return (trimmed.startsWith("@") ? trimmed.substring(1) : trimmed).toUpperCase();
+    return (trimmed.startsWith("@") ? trimmed.substring(1) : trimmed).toUpperCase(Locale.ROOT);
   }
 
   /**
@@ -84,7 +108,7 @@ final class RuntimeCoverageIds {
    * @return upper-case normalized identifier
    */
   static String normalizeId(String value) {
-    return defaultString(value).trim().toUpperCase();
+    return defaultString(value).trim().toUpperCase(Locale.ROOT);
   }
 
   /**
@@ -111,8 +135,15 @@ final class RuntimeCoverageIds {
    */
   static String normalizePath(String value) {
     var normalized = defaultString(value).trim().replace('\\', '/');
+    if (normalized.startsWith("classpath:")) {
+      normalized = normalized.substring("classpath:".length());
+    }
     if (normalized.startsWith("file:")) {
-      normalized = normalized.substring("file:".length());
+      try {
+        return Path.of(URI.create(normalized)).toString().replace('\\', '/');
+      } catch (IllegalArgumentException exception) {
+        normalized = normalized.substring("file:".length());
+      }
     }
     while (normalized.startsWith("//")) {
       normalized = normalized.substring(1);
@@ -130,9 +161,12 @@ final class RuntimeCoverageIds {
   static boolean pathMatches(String expected, String actual) {
     var normalizedExpected = normalizePath(expected);
     var normalizedActual = normalizePath(actual);
+    if (normalizedExpected.isBlank() || normalizedActual.isBlank()) {
+      return false;
+    }
     return Objects.equals(normalizedExpected, normalizedActual)
-        || normalizedActual.endsWith(normalizedExpected)
-        || normalizedExpected.endsWith(normalizedActual);
+        || normalizedActual.endsWith("/" + normalizedExpected)
+        || normalizedExpected.endsWith("/" + normalizedActual);
   }
 
   /**
@@ -145,6 +179,9 @@ final class RuntimeCoverageIds {
   static boolean scenarioNameMatches(String expected, String actual) {
     var normalizedExpected = defaultString(expected).trim();
     var normalizedActual = defaultString(actual).trim();
+    if (normalizedExpected.isBlank() || normalizedActual.isBlank()) {
+      return false;
+    }
     return Objects.equals(normalizedExpected, normalizedActual)
         || scenarioTemplateMatches(normalizedExpected, normalizedActual)
         || scenarioTemplateMatches(normalizedActual, normalizedExpected);
@@ -172,6 +209,24 @@ final class RuntimeCoverageIds {
     pattern.append(Pattern.quote(template.substring(previousEnd)));
     pattern.append("$");
     return Pattern.compile(pattern.toString()).matcher(candidate).matches();
+  }
+
+  /**
+   * Normalize a feature path for event/JSON deduplication.
+   *
+   * @param value raw feature URI or path
+   * @return absolute normalized path, or the normalized value when it is not a local path
+   */
+  private static String normalizeScenarioKeyPath(String value) {
+    var normalized = normalizePath(value);
+    if (normalized.isBlank()) {
+      return normalized;
+    }
+    try {
+      return Path.of(normalized).toAbsolutePath().normalize().toString().replace('\\', '/');
+    } catch (InvalidPathException exception) {
+      return normalized;
+    }
   }
 
   /**
@@ -230,19 +285,13 @@ final class RuntimeCoverageIds {
    * @param uri  feature URI
    * @param name scenario name
    * @param line scenario line
-   * @param tags scenario tags
    * @return stable scenario key
    */
-  static String buildScenarioKey(String uri, String name, Integer line, List<String> tags) {
-    var normalizedUri = uri == null ? "" : uri.trim();
-    var normalizedName = name == null ? "" : name.trim();
+  static String buildScenarioKey(String uri, String name, Integer line) {
+    var normalizedUri = normalizeScenarioKeyPath(uri);
+    var normalizedName = defaultString(name).trim();
     var normalizedLine = line == null ? "" : Integer.toString(line);
-    var normalizedTags = tags == null ? "" : tags.stream()
-        .filter(Objects::nonNull)
-        .map(RuntimeCoverageIds::normalizeTag)
-        .sorted()
-        .collect(Collectors.joining("|"));
-    return normalizedUri + "#" + normalizedLine + "#" + normalizedName + "#" + normalizedTags;
+    return normalizedUri + "#" + normalizedLine + "#" + normalizedName;
   }
 
   /**

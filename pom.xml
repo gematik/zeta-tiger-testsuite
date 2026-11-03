@@ -32,12 +32,12 @@
   <parent>
     <groupId>de.gematik.test</groupId>
     <artifactId>tiger-starter-parent</artifactId>
-    <version>4.4.0</version>
+    <version>4.4.3</version>
     <relativePath/>
   </parent>
   <groupId>de.gematik.zeta</groupId>
   <artifactId>testsuite</artifactId>
-  <version>1.3.0</version>
+  <version>2.0.0</version>
 
   <!-- Projektlizenzinformationen -->
   <licenses>
@@ -88,7 +88,7 @@
                   <goal>pnpm</goal>
                 </goals>
                 <configuration>
-                  <arguments>install --prefer-frozen-lockfile --dir ${project.basedir}/docs
+                  <arguments>install --frozen-lockfile --dir ${project.basedir}/docs
                     --modules-dir ../target/node_modules --store-dir ../target/pnpm-store
                   </arguments>
                   <installDirectory>${project.build.directory}</installDirectory>
@@ -120,6 +120,11 @@
                   <backend>html5</backend>
                   <outputDirectory>${project.build.directory}/docs/html</outputDirectory>
                   <sourceDocumentName>Testplan_ZETA.adoc</sourceDocumentName>
+                  <logHandler>
+                    <failIf>
+                      <severity>ERROR</severity>
+                    </failIf>
+                  </logHandler>
                   <attributes>
                     <revnumber>${project.version}</revnumber>
                     <revdate>${maven.build.timestamp}</revdate>
@@ -137,7 +142,7 @@
             <configuration>
               <attributes>
                 <mmdc>${mmdc.cmd}</mmdc>
-                <puppeteer-config>docs/puppeteer-config.json</puppeteer-config>
+                <mermaid-puppeteer-config>${project.basedir}/docs/puppeteer-config.json</mermaid-puppeteer-config>
               </attributes>
               <requires>
                 <require>asciidoctor-diagram</require>
@@ -152,7 +157,7 @@
 
     </profile>
 
-    <!-- Kleines OS-Profil: Windows-spezifisches mmdc (überschreibt Property aus generate-documentation) -->
+    <!-- Windows-Launcher verwendet Mavens Node.js und Puppeteer über eine Pipe. -->
     <profile>
       <id>os-windows</id>
       <activation>
@@ -161,7 +166,7 @@
         </os>
       </activation>
       <properties>
-        <mmdc.cmd>${project.build.directory}\\node_modules\\.bin\\mmdc.cmd</mmdc.cmd>
+        <mmdc.cmd>${project.basedir}/docs/scripts/mmdc.cmd</mmdc.cmd>
       </properties>
     </profile>
 
@@ -169,6 +174,22 @@
       <id>proxy</id>
       <properties>
         <profile.argline>-DPROFILE=proxy</profile.argline>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>oidc</id>
+      <properties>
+        <profile.argline>-DPROFILE=oidc</profile.argline>
+        <cucumber.filter.tags>not @Ignore and not @smb</cucumber.filter.tags>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>oidc-proxy</id>
+      <properties>
+        <profile.argline>-DPROFILE=oidc-proxy</profile.argline>
+        <cucumber.filter.tags>not @Ignore and not @smb</cucumber.filter.tags>
       </properties>
     </profile>
 
@@ -306,33 +327,31 @@
   </profiles>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
     <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
     <skip.unit.tests>true</skip.unit.tests>
+    <!-- MCLEAN-93: older Clean versions can follow Windows junctions into source directories. -->
+    <version.maven.clean>3.5.0</version.maven.clean>
     <!-- Tiger's published starter exposes Failsafe/Exec directly. These remaining build
          versions mirror Tiger 4.4's BOM because imported-BOM properties are not inherited. -->
-    <version.maven.jar>3.5.0</version.maven.jar>
+    <version.maven.jar>3.5.1</version.maven.jar>
     <version.maven.compiler>3.15.0</version.maven.compiler>
-    <version.maven.enforcer>3.6.2</version.maven.enforcer>
+    <version.maven.enforcer>3.6.3</version.maven.enforcer>
     <version.mojo.license>2.7.1</version.mojo.license>
     <version.maven.checkstyle>3.6.0</version.maven.checkstyle>
-    <version.license.maven.plugin>5.0.0</version.license.maven.plugin>
+    <version.license.maven.plugin>5.1.2</version.license.maven.plugin>
     <version.maven.versions>2.21.0</version.maven.versions>
     <version.asciidoctor.maven.plugin>3.2.0</version.asciidoctor.maven.plugin>
-    <version.asciidoctorj.diagram>3.0.1</version.asciidoctorj.diagram>
-    <version.frontend.maven.plugin>2.0.0</version.frontend.maven.plugin>
+    <version.asciidoctorj.diagram>3.2.1</version.asciidoctorj.diagram>
+    <version.frontend.maven.plugin>2.0.2</version.frontend.maven.plugin>
     <version.nimbus.jose.jwt>10.9</version.nimbus.jose.jwt>
-    <version.node>v26.1.0</version.node>
-    <version.pnpm>11.0.9</version.pnpm>
-    <version.checkstyle>13.4.2</version.checkstyle>
-    <version.allure>2.34.0</version.allure>
-    <version.tyrus>2.2.2</version.tyrus>
+    <version.node>v24.20.0</version.node>
+    <version.pnpm>11.25.0</version.pnpm>
+    <version.checkstyle>14.1.0</version.checkstyle>
+    <version.allure>2.35.4</version.allure>
     <version.commons.csv>1.14.1</version.commons.csv>
-    <version.serenity.cli>5.3.10</version.serenity.cli>
-    <!-- Forward the optional tag selector into the Failsafe fork. An empty
-         value keeps the default Cucumber behaviour (no tag filtering). -->
-    <cucumber.filter.tags></cucumber.filter.tags>
+    <version.serenity.cli>5.3.11</version.serenity.cli>
+    <cucumber.filter.tags>not @Ignore and not @oidc</cucumber.filter.tags>
     <allure.results.directory>target/allure-results</allure.results.directory>
     <cucumber.plugin>
       io.cucumber.core.plugin.TigerSerenityReporterPlugin,json:target/cucumber-parallel/main.json,junit:target/cucumber-parallel/cucumber.xml,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,de.gematik.zeta.traceability.RuntimeCoveragePlugin
@@ -405,6 +424,11 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>tools.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-cbor</artifactId>
+      <scope>test</scope>
+    </dependency>
 
     <!-- WebSocket Dependencies -->
     <dependency>
@@ -415,12 +439,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-messaging</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.glassfish.tyrus.bundles</groupId>
-      <artifactId>tyrus-standalone-client</artifactId>
-      <version>${version.tyrus}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -471,34 +489,9 @@
           <version>${version.asciidoctor.maven.plugin}</version>
         </plugin>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-enforcer-plugin</artifactId>
-          <version>${version.maven.enforcer}</version>
-        </plugin>
-        <plugin>
           <groupId>com.mycila</groupId>
           <artifactId>license-maven-plugin</artifactId>
           <version>${version.license.maven.plugin}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-checkstyle-plugin</artifactId>
-          <version>${version.maven.checkstyle}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>versions-maven-plugin</artifactId>
-          <version>${version.maven.versions}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>${version.maven.failsafe}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>${version.maven.compiler}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -509,10 +502,19 @@
     </pluginManagement>
 
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>${version.maven.clean}</version>
+        <configuration>
+          <followSymLinks>false</followSymLinks>
+        </configuration>
+      </plugin>
       <!-- Enforcer: Java/Maven-Versionen und Konsistenz prüfen -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${version.maven.enforcer}</version>
         <executions>
           <execution>
             <id>enforce</id>
@@ -533,7 +535,7 @@
         </executions>
       </plugin>
 
-      <!-- Traceability artefacts for Serenity -->
+      <!-- Test plan tables, diagrams and documentation checks -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -556,7 +558,7 @@
             </configuration>
           </execution>
           <execution>
-            <id>run-docs-script-tests</id>
+            <id>generate-doc-includes</id>
             <phase>${traceability.phase}</phase>
             <goals>
               <goal>exec</goal>
@@ -569,12 +571,28 @@
                 <argument>run</argument>
                 <argument>--project</argument>
                 <argument>${project.basedir}/docs/scripts</argument>
-                <argument>python</argument>
-                <argument>-m</argument>
-                <argument>unittest</argument>
-                <argument>discover</argument>
-                <argument>-s</argument>
-                <argument>${project.basedir}/docs/scripts/tests</argument>
+                <argument>generate-doc-includes</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>check-masvs-scenario-tags</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>tag-masvs-scenarios</argument>
+                <argument>--mapping-csv</argument>
+                <argument>${project.basedir}/docs/masvs_mapping.csv</argument>
+                <argument>--check</argument>
               </arguments>
             </configuration>
           </execution>
@@ -616,6 +634,45 @@
               </arguments>
             </configuration>
           </execution>
+          <execution>
+            <id>run-docs-script-tests</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>pytest</argument>
+                <argument>${project.basedir}/docs/scripts/tests</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>check-zeta-design</id>
+            <phase>${traceability.phase}</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${traceability.skip}</skip>
+              <executable>${traceability.executable}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>--project</argument>
+                <argument>${project.basedir}/docs/scripts</argument>
+                <argument>python</argument>
+                <argument>-m</argument>
+                <argument>testsuite_docs.design_checks</argument>
+              </arguments>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
@@ -652,6 +709,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${version.maven.checkstyle}</version>
         <dependencies>
           <dependency>
             <groupId>com.puppycrawl.tools</groupId>
@@ -667,6 +725,8 @@
           <failOnViolation>true</failOnViolation>
           <failsOnError>true</failsOnError>
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <!-- Generated Tiger drivers are build output; check only the maintained sources. -->
+          <excludeGeneratedSources>true</excludeGeneratedSources>
           <linkXRef>false</linkXRef>
           <violationSeverity>warning</violationSeverity>
         </configuration>
@@ -675,11 +735,13 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
+        <version>${version.maven.versions}</version>
       </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <version>${version.maven.failsafe}</version>
         <configuration>
           <skipTests>${skip.unit.tests}</skipTests>
           <argLine>${profile.argline}</argLine>
@@ -689,6 +751,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>${version.maven.compiler}</version>
         <configuration>
           <release>${maven.compiler.release}</release>
           <annotationProcessorPaths>

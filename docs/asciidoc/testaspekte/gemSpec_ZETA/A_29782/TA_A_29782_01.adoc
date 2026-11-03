@@ -1,0 +1,4 @@
+[#TA_A_29782_01]
+===== TA_A_29782_01 - Apple-Schlüsselgenerierung - Secure Enclave mit App Attest und Besitznachweis
+
+"Der ZETA Client für Apple Betriebssysteme MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Schlüsselgenerierung-Apple** unterstützen. [<=]"

@@ -1,0 +1,6 @@
+[#TA_A_29893_03]
+===== TA_A_29893_03 - Authorization Server – Geltungsbereich des TOFU-Faktormodells (mobile Clients) - Client ohne Nutzer-Identität ohne TOFU-Faktorpflicht
+
+"Der Authorization Server MUSS das TOFU-Faktormodell dieses Kapitels ausschließlich auf mobile Client-Registrierungen anwenden, die im TOFU-Verfahren an eine TI-Identität (KVNR oder Telematik ID) gebunden werden. Für stationäre Clients mit Authentisierung per SMC-B Token Exchange (vgl. A_25762-01) sowie für **Clients ohne Nutzer-Identität** (vgl. A_29733) gelten die faktorgebundenen Anforderungen NICHT; deren Absicherung erfolgt gemäß den dort genannten Verfahren. Der Schlüssel-Rollover (A_29921 ff.) gilt clientübergreifend.
+
+**[<=]**"

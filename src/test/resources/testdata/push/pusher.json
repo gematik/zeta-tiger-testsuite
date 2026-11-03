@@ -1,0 +1,12 @@
+{
+  "pushkey": "${testdata.notificationService.pusher.pushkey}",
+  "appId": "${testdata.notificationService.pusher.appId}",
+  "appDisplayName": "${testdata.notificationService.pusher.appDisplayName}",
+  "deviceDisplayName": "${testdata.notificationService.pusher.deviceDisplayName}",
+  "profileTag": "${testdata.notificationService.pusher.profileTag}",
+  "lang": "${testdata.notificationService.pusher.lang}",
+  "data": {
+    "url": "${testdata.notificationService.pusher.url}",
+    "format": "${testdata.notificationService.pusher.format}"
+  }
+}

@@ -1,0 +1,4 @@
+[#A_29925]
+==== A_29925 - Authorization Server – Invalidierung des bisherigen Schlüssels
+
+Der Authorization Server MUSS den bisherigen Schlüssel nach Ablauf des Übergangszeitraums vollständig invalidieren und aus dem Schlüsselmaterial des Clients entfernen. [<=]

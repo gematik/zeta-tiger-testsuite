@@ -2,7 +2,7 @@
 === Menge: Komponenten des ZETA Guard
 
 Die Menge enthält die Komponenten des ZETA Guard.
-Quelle: https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/gemSpec_ZETA_V1.3.0[Spezifikation Zero Trust Access (ZETA)], Abschnitt 3 "Einordnung in die TI 2.0",
+Quelle: Spezifikation Zero Trust Access (ZETA) (Entwurf V2.0.0 CC), Abschnitt 3 "Einordnung in die TI 2.0",
 Abbildung 2 "Zero Trust-Architektur der TI 2.0".
 
 // tag::M_ZETA_GUARD_KOMPONENTEN[]

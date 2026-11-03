@@ -1,0 +1,4 @@
+[#A_29935]
+==== A_29935 - Authorization Server – Benachrichtigung bei Client-Löschung
+
+Der Authorization Server MUSS bei der Löschung eines Clients die gebundene E-Mail (F1) der Identität benachrichtigen (vgl. Notification Service A_25652, Push A_25735-01, Nutzerinformation A_25750). [<=]

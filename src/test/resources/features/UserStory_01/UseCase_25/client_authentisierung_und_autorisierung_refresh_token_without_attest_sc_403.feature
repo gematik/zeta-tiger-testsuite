@@ -33,7 +33,6 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
   @TA_A_25660_06
   @TA_A_27725-01_17
   @MASVS-AUTH
-  @MASVS-RESILIENCE
   Szenario: Refresh Token wird bei negativer Policy Decision abgelehnt (Negativtest)
     Gegeben sei TGR setze lokale Variable "accessTokenTtl" auf "5"
     # WICHTIG: expires_in Manipulation MUSS VOR dem ersten Token-Request aktiviert werden!
@@ -77,3 +76,54 @@ Funktionalität: Client Authentisierung und Autorisierung Refresh Token without 
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.jaeger.jaegerTracesSearchPathPattern}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"
+
+  @A_29849
+  @TA_A_29849_01
+  @TA_A_29849_02
+  Szenariogrundriss: Client authentifiziert nach terminierter Session ohne weiteren Refresh erneut (<terminationError>)
+    Gegeben sei TGR setze lokale Variable "accessTokenTtl" auf "5"
+    Und TGR setze lokale Variable "refreshTokenTtl" auf "300"
+    Und TGR setze lokale Variable "accessTokenExpiryWait" auf "!{${accessTokenTtl} + 2}"
+    Und TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
+    Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${refreshTokenTtl}" und 1 Ausführungen
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "$.body.refresh_token" der aktuellen Antwort in der Variable "initialRefreshToken"
+    Und TGR speichere Wert des Knotens "$.body.refresh_token.body.exp" der aktuellen Antwort in der Variable "initialSessionExpiry"
+    Und TGR speichere Wert des Knotens "$.body.access_token.body.exp" der aktuellen Antwort in der Variable "initialAccessTokenExpiry"
+
+    Und warte "${accessTokenExpiryWait}" Sekunden
+    Und validiere, dass der Zeitstempel "${initialAccessTokenExpiry}" in der Vergangenheit liegt
+    Und validiere, dass der Zeitstempel "${initialSessionExpiry}" in der Zukunft liegt
+    Und TGR lösche aufgezeichnete Nachrichten
+
+    Und TGR setze lokale Variable "rejectedRefreshCondition" auf "isResponse && request.path == '${paths.guard.tokenEndpointPath}' && 'grant_type=${oauth_parameters.grant_type.refreshToken}' =~ request.bodyAsString.split('&')"
+    Und Setze im TigerProxy für die Nachricht "${rejectedRefreshCondition}" die Manipulation auf Feld "$.responseCode" und Wert "403" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${rejectedRefreshCondition}" die Manipulation auf Feld "$.body" und Wert "!{file('src/test/resources/mocks/<errorBody>')}" und 1 Ausführungen
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "${oauth_parameters.grant_type.refreshToken}" übereinstimmt
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.refresh_token" überein mit "^\Q${initialRefreshToken}\E$"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "403"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "<terminationError>"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.access_token"
+    Und TGR prüfe aktuelle Antwort enthält nicht Knoten "$.body.refresh_token"
+
+    Dann TGR finde die nächste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    Und prüfe, dass genau 2 aufgezeichnete Anfragen den Pfad "${paths.guard.tokenEndpointPath}" haben
+
+    Dann TGR finde die nächste Anfrage mit dem Pfad "${paths.guard.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    Beispiele:
+      | terminationError      | errorBody                               |
+      | session_terminated    | zeta-error-403-session-terminated.json    |
+      | refresh_token_revoked | zeta-error-403-refresh-token-revoked.json |

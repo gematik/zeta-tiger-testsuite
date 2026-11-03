@@ -25,8 +25,10 @@
 package de.gematik.zeta.steps;
 
 import de.gematik.rbellogger.data.RbelElement;
+import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.lib.rbel.RbelMessageRetriever;
+import de.gematik.zeta.services.RecordedMessages;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.de.Wenn;
@@ -38,6 +40,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cucumber helper step definitions.
@@ -47,7 +50,31 @@ import org.assertj.core.api.Assertions;
 @Slf4j
 public class HelperSteps {
 
-  private final TimingGlue timingGlue = new TimingGlue();
+  private static final ObjectMapper JSON = new ObjectMapper();
+
+  /**
+   * Retains the previous RAT when the server did not rotate it during a metadata update.
+   *
+   * @param response complete JSON update response
+   * @param variable variable holding the current RAT
+   */
+  @Und(
+      "übernimm ein rotiertes Registration Access Token aus {tigerResolvedString} in Variable"
+          + " {string}, falls vorhanden")
+  public void captureRotatedRegistrationAccessToken(String response, String variable) {
+    var metadata = JSON.readTree(response);
+    if (metadata == null || !metadata.isObject()) {
+      throw new AssertionError("Client metadata response must be a JSON object");
+    }
+    var token = metadata.get("registration_access_token");
+    if (token != null) {
+      if (!token.isString() || token.asString().isBlank()) {
+        throw new AssertionError("Returned registration_access_token must be a nonempty string");
+      }
+      TigerGlobalConfiguration.putValue(
+          variable, token.asString(), ConfigurationValuePrecedence.TEST_CONTEXT);
+    }
+  }
 
   /**
    * Validates that a string is strictly Base64-URL encoded (RFC 4648 Section 5). Base64-URL uses '-' and '_' instead of '+' and '/' used in
@@ -110,61 +137,6 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or equal to the specified value.
-   *
-   * @param rbelPath the RBEL path to the attribute in the request
-   * @param value    the value to compare against; the attribute is considered valid if it does not exist or equal to this value
-   */
-  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder gleich {tigerResolvedString}")
-  @Then("current request the attribute {tigerResolvedString} does not exist or is equal {tigerResolvedString}")
-  public void variableDoesNotExistOrIsEqual(String rbelPath, String value) {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    var currentRequest = rbelMessageRetriever.getCurrentRequest();
-    if (currentRequest == null) {
-      throw new AssertionError("No current request message found!");
-    }
-    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
-      return;
-    }
-
-    String optionalValue = rbelMessageRetriever
-        .findElementsInCurrentRequest(rbelPath)
-        .stream()
-        .map(RbelElement::getRawStringContent)
-        .filter(Objects::nonNull)
-        .map(String::trim)
-        .collect(Collectors.joining());
-
-    Assertions
-        .assertThat(optionalValue.trim())
-        .as("Node value %s should not exist or be equal to '%s'", optionalValue, value)
-        .isEqualTo(value);
-  }
-
-  /**
-   * Checks that the currently selected request has no correlated response yet.
-   */
-  @Dann("prüfe, dass die aktuelle Anfrage noch keine Antwort hat")
-  @Then("verify the current request has no response yet")
-  public void verifyCurrentRequestHasNoResponseYet() {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    var currentRequest = rbelMessageRetriever.getCurrentRequest();
-    if (currentRequest == null) {
-      throw new AssertionError("No current request message found!");
-    }
-
-    var messages = rbelMessageRetriever.getMessageHistory().getMessages();
-    if (messages == null || messages.isEmpty()) {
-      return;
-    }
-
-    var response = timingGlue.findResponseForRequest(messages, currentRequest);
-    Assertions.assertThat(response)
-        .as("Current request %s unexpectedly already has a recorded response", currentRequest.getUuid())
-        .isNull();
-  }
-
-  /**
    * Verifies that no recorded request has a path equal to or matching the given pattern.
    *
    * @param pathPattern the request path or regular expression that must not occur in the recorded request history
@@ -172,7 +144,7 @@ public class HelperSteps {
   @Dann("prüfe, dass keine aufgezeichnete Anfrage den Pfad {tigerResolvedString} hat")
   @Then("verify no recorded request has path {tigerResolvedString}")
   public void verifyNoRecordedRequestHasPath(String pathPattern) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       return;
     }
@@ -199,7 +171,7 @@ public class HelperSteps {
   @Dann("prüfe, dass genau {int} aufgezeichnete Anfragen den Pfad {tigerResolvedString} haben")
   @Then("verify exactly {int} recorded requests have path {tigerResolvedString}")
   public void verifyRecordedRequestCountForPath(int expectedCount, String pathPattern) {
-    var messages = RbelMessageRetriever.getInstance().getMessageHistory().getMessages();
+    var messages = RecordedMessages.snapshot();
     if (messages == null || messages.isEmpty()) {
       Assertions
           .assertThat(0)
@@ -219,6 +191,36 @@ public class HelperSteps {
         .assertThat(matchingPaths)
         .as("Recorded request paths matching '%s'", pathPattern)
         .hasSize(expectedCount);
+  }
+
+  /**
+   * Checks the correlated HTTP status of every matching request in the recorded history.
+   *
+   * @param method HTTP request method
+   * @param pathPattern exact path or full path regular expression
+   * @param statusPattern regular expression for each permitted HTTP response status
+   * @throws AssertionError if no request matches, an answer is missing or its status differs
+   */
+  @Dann("prüfe, dass alle aufgezeichneten {tigerResolvedString} Anfragen mit Pfad"
+      + " {tigerResolvedString} mit HTTP {tigerResolvedString} beantwortet wurden")
+  public void verifyRecordedResponseStatuses(String method, String pathPattern, String statusPattern) {
+    var messages = RecordedMessages.snapshot();
+    var requests = messages.stream()
+        .filter(message -> message.findElement("$.method")
+            .map(RbelElement::getRawStringContent).filter(method::equals).isPresent())
+        .filter(message -> extractPathValues(message).stream()
+            .anyMatch(path -> path.equals(pathPattern) || path.matches(pathPattern)))
+        .toList();
+    Assertions.assertThat(requests).as("Recorded %s requests to %s", method, pathPattern)
+        .isNotEmpty();
+    var timing = new TimingGlue();
+    Assertions.assertThat(requests).allSatisfy(request -> {
+      var response = timing.findResponseForRequest(messages, request);
+      Assertions.assertThat(response).as("Response to request %s", request.getUuid()).isNotNull();
+      Assertions.assertThat(response.findRbelPathMembers("$.responseCode"))
+          .as("HTTP status of request %s", request.getUuid()).singleElement()
+          .satisfies(code -> Assertions.assertThat(code.getRawStringContent()).matches(statusPattern));
+    });
   }
 
   /**
@@ -344,38 +346,6 @@ public class HelperSteps {
   }
 
   /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or not equal to the specified value.
-   *
-   * @param rbelPath the RBEL path to the attribute in the request
-   * @param value    the value to compare against; the attribute is considered valid if it does not exist or is not equal to this value
-   */
-  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder ungleich {tigerResolvedString}")
-  @Then("current request the attribute {tigerResolvedString} does not exist or is not equal {tigerResolvedString}")
-  public void variableDoesNotExistOrIsNotEqual(String rbelPath, String value) {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    var currentRequest = rbelMessageRetriever.getCurrentRequest();
-    if (currentRequest == null) {
-      throw new AssertionError("No current request message found!");
-    }
-    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
-      return;
-    }
-
-    String optionalValue = rbelMessageRetriever
-        .findElementsInCurrentRequest(rbelPath)
-        .stream()
-        .map(RbelElement::getRawStringContent)
-        .filter(Objects::nonNull)
-        .map(String::trim)
-        .collect(Collectors.joining());
-
-    Assertions
-        .assertThat(optionalValue.trim())
-        .as("Node value %s should not exist or not be equal to '%s'", optionalValue, value)
-        .isNotEqualTo(value);
-  }
-
-  /**
    * Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp earlier than the current
    * time.
    *
@@ -406,38 +376,6 @@ public class HelperSteps {
         .assertThat(Long.parseLong(optionalValue.trim()))
         .as("Node value %s should not exist or be earlier then '%s'", optionalValue, value)
         .isLessThan(value);
-  }
-
-  /**
-   * Checks if the current request's attribute at the given RBEL path does either not exist or has a timestamp later than the current time.
-   *
-   * @param rbelPath the RBEL path to the attribute (typically a timestamp) in the request
-   */
-  @Dann("prüfe aktuelle Anfrage der Knoten {tigerResolvedString} ist nicht vorhanden oder später als jetzt")
-  @Then("current request the attribute {tigerResolvedString} does not exist or is later then now")
-  public void variableDoesNotExistOrIsLater(String rbelPath) {
-    var rbelMessageRetriever = RbelMessageRetriever.getInstance();
-    var currentRequest = rbelMessageRetriever.getCurrentRequest();
-    if (currentRequest == null) {
-      throw new AssertionError("No current request message found!");
-    }
-    if (currentRequest.findRbelPathMembers(rbelPath).isEmpty()) {
-      return;
-    }
-
-    String optionalValue = rbelMessageRetriever
-        .findElementsInCurrentRequest(rbelPath)
-        .stream()
-        .map(RbelElement::getRawStringContent)
-        .filter(Objects::nonNull)
-        .map(String::trim)
-        .collect(Collectors.joining());
-
-    long value = Instant.now().getEpochSecond();
-    Assertions
-        .assertThat(Long.parseLong(optionalValue.trim()))
-        .as("Node value %s should not exist or be later then '%s'", optionalValue, value)
-        .isGreaterThan(value);
   }
 
   /**

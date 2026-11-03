@@ -1,0 +1,52 @@
+2026-10-03T20:57:20.655Z	HIGH	Network(TlsTestTool.cpp:325)	TCP/IP connection from 127.0.0.1:55750 received.
+2026-10-03T20:57:20.655Z	MEDIUM	mbedTLS(ssl_srv.c:2266)	server hello, chosen version: [3:3]
+2026-10-03T20:57:20.655Z	HIGH	TLS(TlsLogFilter.cpp:216)	ServerHello.cipher_suite=c0 2b
+2026-10-03T20:57:20.655Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.655Z	HIGH	mbedTLS(ssl_srv.c:2465)	<= write server hello
+2026-10-03T20:57:20.655Z	HIGH	TLS(TlsLogFilter.cpp:194)	ServerHello message transmitted.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	dumping 'output record sent to network' (460 bytes)
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0000:  16 03 03 01 c7 0b 00 01 c3 00 01 c0 00 01 bd 30  ...............0
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0010:  82 01 b9 30 82 01 60 a0 03 02 01 02 02 14 2f c8  ...0..`......./.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0020:  59 2a 64 f8 b5 5b d6 8d b6 ef a9 a2 d9 75 d7 ab  Y*d..[.......u..
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0030:  c2 e1 30 0a 06 08 2a 86 48 ce 3d 04 03 02 30 0f  ..0...*.H.=...0.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0040:  31 0d 30 0b 06 03 55 04 03 0c 04 67 6f 6f 64 30  1.0...U....good0
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0050:  1e 17 0d 32 36 31 30 30 33 32 30 35 37 31 32 5a  ...261003205712Z
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0060:  17 0d 32 36 31 30 30 34 32 30 35 37 31 32 5a 30  ..261004205712Z0
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0070:  0f 31 0d 30 0b 06 03 55 04 03 0c 04 67 6f 6f 64  .1.0...U....good
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0080:  30 59 30 13 06 07 2a 86 48 ce 3d 02 01 06 08 2a  0Y0...*.H.=....*
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0090:  86 48 ce 3d 03 01 07 03 42 00 04 58 34 aa 8f 1f  .H.=....B..X4...
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00a0:  41 ce fa f4 02 35 1a 38 41 a8 d0 b6 b0 1c 32 ca  A....5.8A.....2.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00b0:  ac b3 75 f4 cd 61 73 1d 17 05 2a 77 8c bb 35 90  ..u..as...*w..5.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00c0:  71 4e 5e 4f b8 81 8d 5f d7 55 6e 24 16 32 3d 37  qN^O..._.Un$.2=7
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00d0:  47 71 ab 77 ff 2e c5 e3 5d b7 7f a3 81 99 30 81  Gq.w....].....0.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00e0:  96 30 1d 06 03 55 1d 0e 04 16 04 14 31 ed a1 a2  .0...U......1...
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	00f0:  e8 dc 02 5f 32 77 92 a0 61 54 87 76 90 4c e3 f4  ..._2w..aT.v.L..
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0100:  30 1f 06 03 55 1d 23 04 18 30 16 80 14 31 ed a1  0...U.#..0...1..
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0110:  a2 e8 dc 02 5f 32 77 92 a0 61 54 87 76 90 4c e3  ...._2w..aT.v.L.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0120:  f4 30 14 06 03 55 1d 11 04 0d 30 0b 82 09 6c 6f  .0...U....0...lo
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0130:  63 61 6c 68 6f 73 74 30 0f 06 03 55 1d 13 01 01  calhost0...U....
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0140:  ff 04 05 30 03 01 01 ff 30 0e 06 03 55 1d 0f 01  ...0....0...U...
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0150:  01 ff 04 04 03 02 02 84 30 1d 06 03 55 1d 25 04  ........0...U.%.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0160:  16 30 14 06 08 2b 06 01 05 05 07 03 01 06 08 2b  .0...+.........+
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0170:  06 01 05 05 07 03 02 30 0a 06 08 2a 86 48 ce 3d  .......0...*.H.=
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0180:  04 03 02 03 47 00 30 44 02 20 52 e7 88 dc c4 fe  ....G.0D. R.....
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	0190:  b4 8c c4 6a 57 16 9c b6 91 f2 a4 84 6e 60 af 21  ...jW.......n`.!
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	01a0:  09 15 1a 18 1d 21 aa ee 5d 9b 02 20 5b b6 6f dc  .....!..].. [.o.
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	01b0:  77 0f 13 44 fd ae 87 de bc 98 5c 3f 94 e6 13 1e  w..D......\?....
+2026-10-03T20:57:20.655Z	LOW	mbedTLS(ssl_tls.c:2851)	01c0:  c8 7f 2d 36 f7 d5 aa ce b1 ab b5 b9              ..-6........
+2026-10-03T20:57:20.655Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.655Z	HIGH	mbedTLS(ssl_tls.c:4186)	<= write certificate
+2026-10-03T20:57:20.655Z	HIGH	TLS(TlsLogFilter.cpp:194)	Certificate message transmitted.
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_srv.c:3057)	<= write server key exchange
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_srv.c:2653)	<= write certificate request
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.658Z	HIGH	mbedTLS(ssl_srv.c:3085)	<= write server hello done
+2026-10-03T20:57:20.678Z	HIGH	TLS(TlsLogFilter.cpp:76)	Certificate.certificate_list[0]=30 82 01 b9 30 82 01 60 a0 03 02 01 02 02 14 2f c8 59 2a 64 f8 b5 5b d6 8d b6 ef a9 a2 d9 75 d7 ab c2 e1 30 0a 06 08 2a 86 48 ce 3d 04 03 02 30 0f 31 0d 30 0b 06 03 55 04 03 0c 04 67 6f 6f 64 30 1e 17 0d 32 36 31 30 30 33 32 30 35 37 31 32 5a 17 0d 32 36 31 30 30 34 32 30 35 37 31 32 5a 30 0f 31 0d 30 0b 06 03 55 04 03 0c 04 67 6f 6f 64 30 59 30 13 06 07 2a 86 48 ce 3d 02 01 06 08 2a 86 48 ce 3d 03 01 07 03 42 00 04 58 34 aa 8f 1f 41 ce fa f4 02 35 1a 38 41 a8 d0 b6 b0 1c 32 ca ac b3 75 f4 cd 61 73 1d 17 05 2a 77 8c bb 35 90 71 4e 5e 4f b8 81 8d 5f d7 55 6e 24 16 32 3d 37 47 71 ab 77 ff 2e c5 e3 5d b7 7f a3 81 99 30 81 96 30 1d 06 03 55 1d 0e 04 16 04 14 31 ed a1 a2 e8 dc 02 5f 32 77 92 a0 61 54 87 76 90 4c e3 f4 30 1f 06 03 55 1d 23 04 18 30 16 80 14 31 ed a1 a2 e8 dc 02 5f 32 77 92 a0 61 54 87 76 90 4c e3 f4 30 14 06 03 55 1d 11 04 0d 30 0b 82 09 6c 6f 63 61 6c 68 6f 73 74 30 0f 06 03 55 1d 13 01 01 ff 04 05 30 03 01 01 ff 30 0e 06 03 55 1d 0f 01 01 ff 04 04 03 02 02 84 30 1d 06 03 55 1d 25 04 16 30 14 06 08 2b 06 01 05 05 07 03 01 06 08 2b 06 01 05 05 07 03 02 30 0a 06 08 2a 86 48 ce 3d 04 03 02 03 47 00 30 44 02 20 52 e7 88 dc c4 fe b4 8c c4 6a 57 16 9c b6 91 f2 a4 84 6e 60 af 21 09 15 1a 18 1d 21 aa ee 5d 9b 02 20 5b b6 6f dc 77 0f 13 44 fd ae 87 de bc 98 5c 3f 94 e6 13 1e c8 7f 2d 36 f7 d5 aa ce b1 ab b5 b9 
+2026-10-03T20:57:20.683Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.683Z	HIGH	mbedTLS(ssl_tls.c:4495)	<= write change cipher spec
+2026-10-03T20:57:20.725Z	HIGH	mbedTLS(ssl_tls.c:2861)	<= write record
+2026-10-03T20:57:20.725Z	HIGH	mbedTLS(ssl_tls.c:5110)	<= write finished
+2026-10-03T20:57:20.725Z	HIGH	TLS(TlsSession.cpp:434)	Handshake successful.
+2026-10-03T20:57:20.726Z	HIGH	TLS(TlsTestTool.cpp:252)	Application data received: 50 4f 53 54 20 2f 70 75 73 68 2f 76 31 2f 6e 6f 74 69 66 79 2f 62 61 74 63 68 20 48 54 54 50 2f 31 2e 31 0d 0a 48 6f 73 74 3a 20 6c 6f 63 61 6c 68 6f 73 74 0d 0a 43 6f 6e 74 65 6e 74 2d 4c 65 6e 67 74 68 3a 20 34 32 0d 0a 43 6f 6e 6e 65 63 74 69 6f 6e 3a 20 63 6c 6f 73 65 0d 0a 0d 0a 42 45 47 49 4e 2d 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 2d 45 4e 44 

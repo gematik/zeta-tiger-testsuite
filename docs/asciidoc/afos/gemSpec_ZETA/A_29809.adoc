@@ -1,0 +1,4 @@
+[#A_29809]
+==== A_29809 - ZETA Client, Ablauf Android Attestierung
+
+Der ZETA Client MUSS den Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Android-Attestation unterstützen. [<=]

@@ -1,0 +1,4 @@
+[#A_29940]
+==== A_29940 - Authorization Server – OOB-Löschung als Notfallpfad
+
+Der Authorization Server MUSS einen außerordentlichen Löschpfad bereitstellen, wenn ein Nutzer alle online verfügbaren Faktoren (F1, F2) verloren hat und eine Selbst-Recovery nicht mehr möglich ist. Der Prozess DARF NICHT Zugriff gewähren, ein Token ausstellen oder einen Faktor neu binden. [<=]

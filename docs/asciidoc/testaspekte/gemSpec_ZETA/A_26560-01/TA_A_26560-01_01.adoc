@@ -1,0 +1,4 @@
+[#TA_A_26560-01_01]
+===== TA_A_26560-01_01 - PEP HTTP Proxy - Statische Weiterleitungskonfiguration
+
+Der PEP HTTP Proxy MUSS **eine Konfigurationsschnittstelle bereitstellen, über die ein statisches Mapping von externen Request-URLs (FQDNs und Request-Pfade) auf die internen Ziel-URLs der Resource Server konfiguriert werden kann.** Der PEP HTTP Proxy MUSS es ermöglichen, für jede dieser statisch konfigurierten Routen zwingend eine erwartete logische Audience zu hinterlegen. Diese logische Audience entspricht dem aud-Wert, den die Policy Engine für die zugehörige Zielressource vergibt. Das Routing an die internen Resource Server DARF NICHT rein dynamisch auf Basis des ausgelesenen aud-Claims des Access Tokens ohne vordefinierte Pfad-Zuordnung erfolgen. [<=]

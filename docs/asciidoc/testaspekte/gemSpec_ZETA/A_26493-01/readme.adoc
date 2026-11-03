@@ -1,5 +1,0 @@
-==== Testaspekte für die Anforderung A_26493-01
-
-Folgende Testaspekte testen <<A_26493-01>>.
-
-include::TA_A_26493-01_01.adoc[]

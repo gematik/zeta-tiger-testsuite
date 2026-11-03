@@ -30,6 +30,7 @@ import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.And;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
@@ -37,13 +38,10 @@ import javax.security.auth.x500.X500Principal;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.bouncycastle.asn1.ASN1Encodable;
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DLSequence;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.isismtt.x509.AdmissionSyntax;
 import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.style.BCStyle;
@@ -77,6 +75,21 @@ public class SmcbSteps {
   }
 
   /**
+   * Exposes the certificate's admission identifier as a scalar for Tiger assertions.
+   *
+   * @param certificate Base64-encoded SMC-B certificate
+   * @param variable scalar variable receiving the nonempty Telematik-ID
+   */
+  @Dann("speichere die Telematik-ID aus SMC-B Zertifikat {tigerResolvedString} in Variable {string}")
+  public void storeSmcbTelematikId(String certificate, String variable) {
+    var id = extractSmcbInfo(certificate).telematikId;
+    if (id == null || id.isBlank()) {
+      throw new AssertionError("SMC-B certificate must contain a nonempty Telematik-ID in its admission extension");
+    }
+    TigerGlobalConfiguration.putValue(variable, id, ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
+
+  /**
    * Data container for extracted certificate information.
    *
    * <p>This class holds values parsed from an SMC-B (Smartcard for Medical Practices)
@@ -86,7 +99,7 @@ public class SmcbSteps {
   @Data
   @NoArgsConstructor  // Default Constructor
   @AllArgsConstructor  // Optional: Full Constructor
-  private static class CertificateInfo {
+  static class CertificateInfo {
     /** The Telematik ID associated with the certificate. */
     @JsonProperty("telematikId")
     String telematikId;
@@ -114,7 +127,7 @@ public class SmcbSteps {
    * @param certificate The Base64-encoded certificate string.
    * @return A {@link CertificateInfo} object containing parsed certificate details.
    */
-  private static CertificateInfo extractSmcbInfo(String certificate) {
+  static CertificateInfo extractSmcbInfo(String certificate) {
     try {
       byte[] certBytes = Base64.getDecoder().decode(certificate);
       CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -180,54 +193,26 @@ public class SmcbSteps {
         return;
       }
 
-      try (ASN1InputStream asn1In = new ASN1InputStream(new ByteArrayInputStream(extValue))) {
-        ASN1Object obj1 = asn1In.readObject();
-
-        if (obj1 instanceof ASN1OctetString) {
-          byte[] realExtValue = ((ASN1OctetString) obj1).getOctets();
-          try (ASN1InputStream asn1In2 = new ASN1InputStream(new ByteArrayInputStream(realExtValue))) {
-            Object seqObj = asn1In2.readObject();
-
-            if (seqObj instanceof ASN1Sequence admissionData) {
-
-              while (admissionData.size() == 1) {
-                admissionData = (ASN1Sequence) admissionData.getObjectAt(0);
-              }
-
-              info.professionId = parseAdmissionData(admissionData, 1);
-              info.telematikId = parseAdmissionData(admissionData, 2);
-            }
-          }
-        }
-      }
+      extractAdmissionValues(extValue, info);
     } catch (Exception e) {
       throw new AssertionError("Could not extract TelematikID from the given SMC-B certificate.");
     }
   }
 
-  /**
-   * Parses a specific value from an ASN.1 admission data sequence.
-   *
-   * <p>This helper function traverses nested ASN.1 sequences to extract the string value
-   * associated with the given field index.</p>
-   *
-   * @param admissionData The ASN.1 sequence containing admission information.
-   * @param index The index of the element to extract.
-   * @return The string representation of the specified ASN.1 element, or an empty string if unavailable.
-   */
-  private static String parseAdmissionData(ASN1Sequence admissionData, int index) {
-    if (admissionData.size() == 3) {
-      ASN1Encodable regNumEnc = admissionData.getObjectAt(index);
-
-      if (regNumEnc != null) {
-        while (regNumEnc instanceof DLSequence) {
-          regNumEnc = ((DLSequence) regNumEnc).getObjectAt(0);
-        }
-
-        return regNumEnc.toASN1Primitive().toString();
+  /** Decodes optional Admission/ProfessionInfo fields by their ASN.1 types, not field count. */
+  static void extractAdmissionValues(byte[] extension, CertificateInfo info) throws IOException {
+    var value = ASN1OctetString.getInstance(extension).getOctets();
+    var admission = AdmissionSyntax.getInstance(ASN1Primitive.fromByteArray(value));
+    info.professionId = "";
+    info.telematikId = "";
+    for (var entry : admission.getContentsOfAdmissions()) {
+      for (var profession : entry.getProfessionInfos()) {
+        var identifiers = profession.getProfessionOIDs();
+        info.professionId = identifiers.length == 0 ? "" : identifiers[0].getId();
+        var registrationNumber = profession.getRegistrationNumber();
+        info.telematikId = registrationNumber == null ? "" : registrationNumber;
+        return;
       }
     }
-
-    return "";
   }
 }

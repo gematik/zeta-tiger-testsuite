@@ -4,255 +4,31 @@ Auf Basis der folgenden Versionen der Dokumente findet die Gestaltung und Abdeck
 
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_DS_Hersteller/gemSpec_DS_Hersteller_V1.7.0[Spezifikation Datenschutz- und Sicherheitsanforderungen der TI an Hersteller], Kurzbezeichnung: gemSpec_DS_Hersteller, Version: 1.7.0
 * https://gemspec.gematik.de/docs/gemSpec/gemSpec_PoPP_Service/gemSpec_PoPP_Service_V1.1.0[Spezifikation Proof of Patient Presence-Service], Kurzbezeichnung: gemSpec_PoPP_Service, Version: 1.1.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/gemSpec_ZETA_V1.3.0[Spezifikation Zero Trust Access (ZETA)], Kurzbezeichnung: gemSpec_ZETA, Version: 1.3.0
-* https://gemspec.gematik.de/docs/gemKPT/gemKPT_Test/gemKPT_Test_V3.5.0[Testkonzept der TI], Kurzbezeichnung: gemKPT_Test, Version: 3.5.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Perf/gemSpec_Perf_V2.81.0[Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform], Kurzbezeichnung: gemSpec_Perf, Version: 2.81.0
-* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.47.0[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur], Kurzbezeichnung: gemSpec_Krypt, Version: 2.47.0
+* Spezifikation Zero Trust Access (ZETA) (Entwurf V2.0.0 CC), Kurzbezeichnung: gemSpec_ZETA, Version: 2.0.0_CC
+* https://gemspec.gematik.de/docs/gemKPT/gemKPT_Test/gemKPT_Test_V3.6.0[Testkonzept der TI], Kurzbezeichnung: gemKPT_Test, Version: 3.6.0
+* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Perf/gemSpec_Perf_V2.85.0[Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform], Kurzbezeichnung: gemSpec_Perf, Version: 2.85.0
+* https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/gemSpec_Krypt_V2.49.1[Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur], Kurzbezeichnung: gemSpec_Krypt, Version: 2.49.1
 
-Hierbei wurden die folgenden abzuprüfenden Anforderungen laut https://gemspec.gematik.de/docs/gemVZ/gemVZ_Afo_ZETA_Guard/gemVZ_Afo_ZETA_Guard_V_1.3.0-0_V1.0.0/[Verzeichnis von Anforderungen: Zero Trust Access (ZETA) Guard] identifiziert:
+Hierbei wurden die folgenden abzuprüfenden Anforderungen laut Verzeichnis von Anforderungen ZETA Guard (lokal abgeleiteter CC-Entwurf) identifiziert:
 
 === Anforderungen gemVZ AFO ZETA Guard (Produkttest 3.1.1)
 
-==== Testkonzept der TI (gemKPT_Test V3.5.0)
+==== Testkonzept der TI (gemKPT_Test V3.6.0)
 
-include::gemKPT_Test/A_27438.adoc[]
+include::gemKPT_Test/readme.adoc[]
 
-include::gemKPT_Test/TIP1-A_6519.adoc[]
+==== Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur (gemSpec_Krypt V2.49.1)
 
-include::gemKPT_Test/TIP1-A_6519-01.adoc[]
+include::gemSpec_Krypt/readme.adoc[]
 
-==== Übergreifende Spezifikation Verwendung kryptographischer Algorithmen in der Telematikinfrastruktur (gemSpec_Krypt V2.47.0)
+==== Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform (gemSpec_Perf V2.85.0)
 
-include::gemSpec_Krypt/A_18464.adoc[]
-
-include::gemSpec_Krypt/A_21275-01.adoc[]
-
-include::gemSpec_Krypt/GS-A_5526.adoc[]
-
-include::gemSpec_Krypt/GS-A_5542.adoc[]
-
-==== Übergreifende Spezifikation Performance und Mengengerüst TI-Plattform (gemSpec_Perf V2.81.0)
-
-include::gemSpec_Perf/A_28782.adoc[]
+include::gemSpec_Perf/readme.adoc[]
 
 ==== Spezifikation Proof of Patient Presence-Service (gemSpec_PoPP_Service V1.1.0)
 
-include::gemSpec_PoPP_Service/A_26450.adoc[]
+include::gemSpec_PoPP_Service/readme.adoc[]
 
-include::gemSpec_PoPP_Service/A_26452.adoc[]
+==== Spezifikation Zero Trust Access (ZETA) (gemSpec_ZETA V2.0.0_CC)
 
-include::gemSpec_PoPP_Service/A_27015.adoc[]
-
-include::gemSpec_PoPP_Service/A_27016-01.adoc[]
-
-==== Spezifikation Zero Trust Access (ZETA) (gemSpec_ZETA V1.3.0)
-
-include::gemSpec_ZETA/A_25337.adoc[]
-
-include::gemSpec_ZETA/A_25338-01.adoc[]
-
-include::gemSpec_ZETA/A_25340-01.adoc[]
-
-include::gemSpec_ZETA/A_25432-01.adoc[]
-
-include::gemSpec_ZETA/A_25434.adoc[]
-
-include::gemSpec_ZETA/A_25644-01.adoc[]
-
-include::gemSpec_ZETA/A_25645-01.adoc[]
-
-include::gemSpec_ZETA/A_25649.adoc[]
-
-include::gemSpec_ZETA/A_25650.adoc[]
-
-include::gemSpec_ZETA/A_25651.adoc[]
-
-include::gemSpec_ZETA/A_25652.adoc[]
-
-include::gemSpec_ZETA/A_25656.adoc[]
-
-include::gemSpec_ZETA/A_25657.adoc[]
-
-include::gemSpec_ZETA/A_25660.adoc[]
-
-include::gemSpec_ZETA/A_25661.adoc[]
-
-include::gemSpec_ZETA/A_25662.adoc[]
-
-include::gemSpec_ZETA/A_25663.adoc[]
-
-include::gemSpec_ZETA/A_25665.adoc[]
-
-include::gemSpec_ZETA/A_25669-01.adoc[]
-
-include::gemSpec_ZETA/A_25733.adoc[]
-
-include::gemSpec_ZETA/A_25735-01.adoc[]
-
-include::gemSpec_ZETA/A_25738.adoc[]
-
-include::gemSpec_ZETA/A_25739-02.adoc[]
-
-include::gemSpec_ZETA/A_25752.adoc[]
-
-include::gemSpec_ZETA/A_25758.adoc[]
-
-include::gemSpec_ZETA/A_25760.adoc[]
-
-include::gemSpec_ZETA/A_25761.adoc[]
-
-include::gemSpec_ZETA/A_25762-01.adoc[]
-
-include::gemSpec_ZETA/A_25766.adoc[]
-
-include::gemSpec_ZETA/A_25767.adoc[]
-
-include::gemSpec_ZETA/A_25768.adoc[]
-
-include::gemSpec_ZETA/A_25782.adoc[]
-
-include::gemSpec_ZETA/A_25783-01.adoc[]
-
-include::gemSpec_ZETA/A_25784.adoc[]
-
-include::gemSpec_ZETA/A_25785.adoc[]
-
-include::gemSpec_ZETA/A_25786.adoc[]
-
-include::gemSpec_ZETA/A_25788.adoc[]
-
-include::gemSpec_ZETA/A_25789.adoc[]
-
-include::gemSpec_ZETA/A_26195.adoc[]
-
-include::gemSpec_ZETA/A_26281-01.adoc[]
-
-include::gemSpec_ZETA/A_26477.adoc[]
-
-include::gemSpec_ZETA/A_26486-01.adoc[]
-
-include::gemSpec_ZETA/A_26487.adoc[]
-
-include::gemSpec_ZETA/A_26488.adoc[]
-
-include::gemSpec_ZETA/A_26489-01.adoc[]
-
-include::gemSpec_ZETA/A_26490.adoc[]
-
-include::gemSpec_ZETA/A_26491.adoc[]
-
-include::gemSpec_ZETA/A_26492-02.adoc[]
-
-include::gemSpec_ZETA/A_26493-01.adoc[]
-
-include::gemSpec_ZETA/A_26560.adoc[]
-
-include::gemSpec_ZETA/A_26561.adoc[]
-
-include::gemSpec_ZETA/A_26585-01.adoc[]
-
-include::gemSpec_ZETA/A_26586.adoc[]
-
-include::gemSpec_ZETA/A_26587-01.adoc[]
-
-include::gemSpec_ZETA/A_26589-01.adoc[]
-
-include::gemSpec_ZETA/A_26590-02.adoc[]
-
-include::gemSpec_ZETA/A_26639.adoc[]
-
-include::gemSpec_ZETA/A_26640.adoc[]
-
-include::gemSpec_ZETA/A_26641.adoc[]
-
-include::gemSpec_ZETA/A_26661.adoc[]
-
-include::gemSpec_ZETA/A_26662.adoc[]
-
-include::gemSpec_ZETA/A_26666-01.adoc[]
-
-include::gemSpec_ZETA/A_26668-02.adoc[]
-
-include::gemSpec_ZETA/A_26669-01.adoc[]
-
-include::gemSpec_ZETA/A_26944.adoc[]
-
-include::gemSpec_ZETA/A_26964-01.adoc[]
-
-include::gemSpec_ZETA/A_26972-02.adoc[]
-
-include::gemSpec_ZETA/A_26973-01.adoc[]
-
-include::gemSpec_ZETA/A_26974-01.adoc[]
-
-include::gemSpec_ZETA/A_26988.adoc[]
-
-include::gemSpec_ZETA/A_27007.adoc[]
-
-include::gemSpec_ZETA/A_27260.adoc[]
-
-include::gemSpec_ZETA/A_27261.adoc[]
-
-include::gemSpec_ZETA/A_27264.adoc[]
-
-include::gemSpec_ZETA/A_27265.adoc[]
-
-include::gemSpec_ZETA/A_27266.adoc[]
-
-include::gemSpec_ZETA/A_27379-01.adoc[]
-
-include::gemSpec_ZETA/A_27401.adoc[]
-
-include::gemSpec_ZETA/A_27492-02.adoc[]
-
-include::gemSpec_ZETA/A_27496.adoc[]
-
-include::gemSpec_ZETA/A_27725-01.adoc[]
-
-include::gemSpec_ZETA/A_27727-01.adoc[]
-
-include::gemSpec_ZETA/A_27798.adoc[]
-
-include::gemSpec_ZETA/A_27802-02.adoc[]
-
-include::gemSpec_ZETA/A_27867-01.adoc[]
-
-include::gemSpec_ZETA/A_28144.adoc[]
-
-include::gemSpec_ZETA/A_28420-01.adoc[]
-
-include::gemSpec_ZETA/A_28421-01.adoc[]
-
-include::gemSpec_ZETA/A_28422.adoc[]
-
-include::gemSpec_ZETA/A_28425-01.adoc[]
-
-include::gemSpec_ZETA/A_28426.adoc[]
-
-include::gemSpec_ZETA/A_28431.adoc[]
-
-include::gemSpec_ZETA/A_28432.adoc[]
-
-include::gemSpec_ZETA/A_28439.adoc[]
-
-include::gemSpec_ZETA/A_28440.adoc[]
-
-include::gemSpec_ZETA/A_28464.adoc[]
-
-include::gemSpec_ZETA/A_28465.adoc[]
-
-include::gemSpec_ZETA/A_28525-01.adoc[]
-
-include::gemSpec_ZETA/A_28527.adoc[]
-
-include::gemSpec_ZETA/A_28796.adoc[]
-
-include::gemSpec_ZETA/A_28798.adoc[]
-
-include::gemSpec_ZETA/A_28808.adoc[]
-
-include::gemSpec_ZETA/A_28837.adoc[]
-
-include::gemSpec_ZETA/A_28868.adoc[]
-
-include::gemSpec_ZETA/A_28963.adoc[]
+include::gemSpec_ZETA/readme.adoc[]

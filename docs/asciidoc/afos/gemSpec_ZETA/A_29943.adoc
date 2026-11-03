@@ -1,0 +1,4 @@
+[#A_29943]
+==== A_29943 - Authorization Server – Veto durch überlebenden Faktor
+
+Der Authorization Server MUSS während der Einspruchsfrist den Abbruch der geplanten Löschung durch den Proof-of-Possession eines noch eingebuchten Clients (F2) zulassen. Ein Veto allein durch Kontrolle der gebundenen E-Mail (F1) ist NICHT vorgesehen. Verfügt der Nutzer über keinen eingebuchten Client mehr, MUSS er zunächst ein Gerät neu registrieren (Folgeregistrierung mit erneuter Verifikation der gebundenen E-Mail F1, A_29910) und kann anschließend mit diesem Client das Veto einlegen. [<=]

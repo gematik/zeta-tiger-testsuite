@@ -1,0 +1,4 @@
+[#A_29733]
+==== A_29733 - ZETA, Ablauf OAuth Client Authentifizierung ohne Nutzer
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-OAuth-Client-Authentifizierung-ohne-Nutzer unterstützen. [<=]

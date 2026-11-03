@@ -26,9 +26,15 @@ package de.gematik.zeta.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.Payload;
+import com.nimbusds.jose.crypto.ECDSASigner;
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.JwtVariant;
+import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
 import java.io.IOException;
@@ -40,7 +46,10 @@ import java.security.KeyFactory;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECPublicKeySpec;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -62,6 +71,31 @@ public class JwtSteps {
 
   private final SignatureVerificationSteps signatureVerificationSteps =
       new SignatureVerificationSteps();
+
+  /**
+   * Signs a JSON payload with an existing ES256 JWT header and a PEM private key.
+   *
+   * @param payload JSON claims object
+   * @param original compact JWT providing the unchanged JOSE header
+   * @param privateKey PEM signing key
+   * @param variable destination configuration variable
+   * @throws ParseException if the original JWT is malformed
+   * @throws JOSEException if signing fails
+   */
+  @Dann("signiere Payload {tigerResolvedString} mit Header aus JWT {tigerResolvedString} "
+      + "und privatem Schlüssel {tigerResolvedString} und speichere in Variable {string}")
+  @And("sign payload {tigerResolvedString} with header from JWT {tigerResolvedString} "
+      + "and private key {tigerResolvedString} and store in variable {string}")
+  public void signJwtPayload(String payload, String original, String privateKey, String variable)
+      throws ParseException, JOSEException {
+    var header = JWSObject.parse(original).getHeader();
+    assertThat(header.getAlgorithm()).isEqualTo(JWSAlgorithm.ES256);
+    assertThat(new ObjectMapper().readTree(payload).isObject()).as("JWT claims object").isTrue();
+    var signed = new JWSObject(header, new Payload(payload));
+    signed.sign(new ECDSASigner(loadEcPrivateKey(privateKey)));
+    TigerGlobalConfiguration.putValue(variable, signed.serialize(),
+        ConfigurationValuePrecedence.TEST_CONTEXT);
+  }
 
   /**
    * Extracts the compact Access Token from a raw {@code Authorization} header and stores it in a Tiger variable.
@@ -293,11 +327,8 @@ public class JwtSteps {
           parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header").has("alg"))
           .as("JWT alg header must be absent")
           .isFalse();
-      case DUPLICATE_ALG_HEADERS -> assertThat(
-          countRootObjectFieldNameOccurrences(
-              decodeBase64UrlSegment(parts[0], "header"), "alg", "JOSE header"))
-          .as("JWT root-level alg header occurrence count")
-          .isGreaterThanOrEqualTo(2);
+      case DUPLICATE_ALG_HEADERS -> throw new AssertionError(
+          "Duplicate alg headers require explicit ordered algorithm values");
       case RESIGN_CORRECT_KEY -> {
         assertThat(parts).as("JWT variant '%s'", variant.token()).hasSize(3);
         assertThat(parseJsonObject(decodeBase64UrlSegment(parts[0], "header"), "JOSE header")
@@ -318,6 +349,34 @@ public class JwtSteps {
             .contains(".");
       }
       default -> throw new AssertionError("Unknown JWT variant " + variant.token());
+    }
+  }
+
+  /**
+   * Verifies a JWT variant with its explicit manipulation parameter.
+   *
+   * @param variant expected JWT variant
+   * @param jwt intercepted compact JWT
+   * @param parameter manipulation value, a JSON string array for duplicate algorithms
+   */
+  @Und("prüfe die JWT-Variante {jwtVariant} in {tigerResolvedString} mit Parameter {tigerResolvedString} ist lokal strukturell angewendet")
+  @And("check JWT variant {jwtVariant} in {tigerResolvedString} with parameter {tigerResolvedString} is structurally applied locally")
+  public void verifyJwtVariantIsStructurallyApplied(
+      JwtVariant variant, String jwt, String parameter) {
+    if (variant != JwtVariant.DUPLICATE_ALG_HEADERS) {
+      variant.manipulationValue(parameter);
+      verifyJwtVariantIsStructurallyApplied(variant, jwt);
+      return;
+    }
+    try {
+      var expected = JwtVariant.parseDuplicateAlgorithms(parameter);
+      var parts = normalizePossiblyFormEncodedJwt(jwt).split("\\.", -1);
+      assertThat(parts).as("Compact JWS segments").hasSize(3);
+      assertThat(rootObjectStringFieldValues(decodeBase64UrlSegment(parts[0], "header"), "alg"))
+          .as("JWT root-level alg values in wire order")
+          .containsExactlyElementsOf(expected);
+    } catch (IllegalArgumentException e) {
+      throw new AssertionError("Invalid ordered algorithm parameter", e);
     }
   }
 
@@ -385,40 +444,30 @@ public class JwtSteps {
   }
 
   /**
-   * Counts field-name occurrences directly on the root JSON object, ignoring nested objects and arrays.
+   * Returns string values of a root field in their serialized order, retaining duplicates.
    *
-   * @param rawJson     raw JSON object text
-   * @param fieldName   field name to count on the root object
-   * @param description human-readable description for error messages
-   * @return number of root-object field-name occurrences
+   * @param rawJson raw JSON object text
+   * @param fieldName root field name
+   * @return field values in wire order
    */
-  private int countRootObjectFieldNameOccurrences(String rawJson, String fieldName,
-      String description) {
+  private List<String> rootObjectStringFieldValues(String rawJson, String fieldName) {
+    var values = new ArrayList<String>();
     try (JsonParser parser = new ObjectMapper().createParser(rawJson)) {
-      var firstToken = parser.nextToken();
-      if (firstToken != JsonToken.START_OBJECT) {
-        throw new AssertionError(description + " must be a JSON object.");
-      }
-
-      var objectDepth = 1;
-      var count = 0;
-      while (objectDepth > 0) {
-        var token = parser.nextToken();
-        if (token == null) {
-          throw new AssertionError(description + " JSON object ended unexpectedly.");
+      assertThat(parser.nextToken()).isEqualTo(JsonToken.START_OBJECT);
+      while (parser.nextToken() != JsonToken.END_OBJECT) {
+        assertThat(parser.currentToken()).isEqualTo(JsonToken.PROPERTY_NAME);
+        var name = parser.currentName();
+        parser.nextToken();
+        if (fieldName.equals(name)) {
+          assertThat(parser.currentToken()).isEqualTo(JsonToken.VALUE_STRING);
+          values.add(parser.getString());
         }
-        if (token == JsonToken.PROPERTY_NAME && objectDepth == 1
-            && fieldName.equals(parser.currentName())) {
-          count++;
-        } else if (token == JsonToken.START_OBJECT) {
-          objectDepth++;
-        } else if (token == JsonToken.END_OBJECT) {
-          objectDepth--;
-        }
+        parser.skipChildren();
       }
-      return count;
+      assertThat(parser.nextToken()).isNull();
+      return values;
     } catch (JacksonException e) {
-      throw new AssertionError("Failed to parse " + description + " as JSON object.", e);
+      throw new AssertionError("Failed to parse JOSE header as JSON object.", e);
     }
   }
 
@@ -446,7 +495,7 @@ public class JwtSteps {
    * @param privateKeyPem PKCS#8 or SEC1 PEM encoded private key, or raw PKCS#8 Base64 key content
    * @return parsed EC private key
    */
-  private ECPrivateKey loadEcPrivateKey(String privateKeyPem) {
+  ECPrivateKey loadEcPrivateKey(String privateKeyPem) {
     var normalizedPem = normalizePrivateKeyPem(privateKeyPem);
 
     try (var pemParser = new PEMParser(new StringReader(normalizedPem))) {

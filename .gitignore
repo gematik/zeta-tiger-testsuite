@@ -344,20 +344,23 @@ pyrightconfig.json
 docs/node_modules
 
 # Traceability artefacts
+# Include indexes are rebuilt from the maintained documents for the test plan.
+/docs/asciidoc/afos/*/readme.adoc
+/docs/asciidoc/testaspekte/**/readme.adoc
 docs/asciidoc/diagrams/traceability-*.mmd
 docs/asciidoc/tables/features_table.adoc
 docs/asciidoc/tables/traceability_matrix.adoc
-
-# Generated Markdown narratives for Serenity
-/docs/asciidoc/tables/product_gap_table.adoc
-/docs/asciidoc/diagrams/product-gap-summary.mmd
-/docs/asciidoc/tables/product_gap_summary.adoc
 
 # Generated reports for docker
 reports/
 
 # TLS session key logs (sensitive, local only)
 /tlsSecretFile.txt
+
+# Sanitized native TLS logs used as parser test inputs.
+!/src/test/resources/tls-test-tool/evidence/mbedtls12/*.log
+
+.codex/
 
 .jenkins
 .githubignore
@@ -369,4 +372,5 @@ docs/scripts/src/testsuite_docs/fetch_youtrack_testaspects.py
 .gitlab-ci.yml
 docs/asciidoc/tables/source/runtime_failure_annotations.internal.csv
 AGENTS.md
-
+.agents/
+.codex/

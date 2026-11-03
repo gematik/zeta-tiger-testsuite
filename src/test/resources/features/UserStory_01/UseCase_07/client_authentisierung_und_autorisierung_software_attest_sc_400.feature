@@ -28,15 +28,12 @@
 Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
 
   @A_25767
-  @A_26661
-  @A_27007
   @A_28963
   @TA_A_25767_02
-  @TA_A_26661_02
-  @TA_A_27007_02
   @TA_A_28963_01
   @MASVS-CRYPTO
   @MASVS-AUTH
+  @smb
   Szenariogrundriss: DPoP JWT Manipulation Test - Token Request - 1 (<JwtField>)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "sessionTtl" auf "15"
@@ -80,27 +77,28 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und berechne JKT aus JWT Header JWK "${manipulatedDpopJwt}" und speichere in Variable "manipulatedDpopJkt"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.dpop_key.jkt" überein mit "${manipulatedDpopJkt}"
     Und TGR speichere Wert des Knotens "$.body.subject_token.body.nonce" der aktuellen Anfrage in der Variable "subjectTokenNonce"
-    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.nonce}" <NonceVergleich> mit "${subjectTokenNonce}"
+    Und TGR prüfe aktueller Request <NonceKnotenPruefung> "${headers.dpop.body.nonce}" <NonceVergleich> mit "\Q${subjectTokenNonce}\E"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     # iat in der Vergangenheit (2023-12-01)
     # iat in der Zukunft (2050-01-01)
     Beispiele: Manipulationen
-      | JwtField   | NeuerWert               | NonceVergleich   |
-      | header.typ | JWT                     | überein           |
-      | body.nonce | 1234567                 | nicht überein     |
-      | header.alg | HS256                   | überein           |
-      | header.alg | RS999                   | überein           |
-      | body.iat   | 1701432000              | überein           |
-      | body.iat   | 2524608000              | überein           |
-      | body.htm   | GET                     | überein           |
-      | body.htu   | https://wrong.url/token | überein           |
+      | JwtField   | NeuerWert               | NonceKnotenPruefung | NonceVergleich       |
+      | header.typ | JWT                     | stimmt im Knoten    | überein              |
+      | body.nonce | 1234567                 | im Knoten           | stimmt nicht überein |
+      | header.alg | HS256                   | stimmt im Knoten    | überein              |
+      | header.alg | RS999                   | stimmt im Knoten    | überein              |
+      | body.iat   | 1701432000              | stimmt im Knoten    | überein              |
+      | body.iat   | 2524608000              | stimmt im Knoten    | überein              |
+      | body.htm   | GET                     | stimmt im Knoten    | überein              |
+      | body.htu   | https://wrong.url/token | stimmt im Knoten    | überein              |
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenario: ZETA Guard verwirft einen DPoP Proof mit Header-Algorithmus none am Token-Endpunkt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -117,35 +115,47 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und prüfe die JWT-Variante alg_none in "${manipulatedDpopJwt}" ist lokal strukturell angewendet
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_28963
   @TA_A_28963_01
+  @MASVS-AUTH
   @MASVS-CRYPTO
-  Szenario: ZETA Guard verwirft einen DPoP Proof mit fremdem JWK und unveränderter Signatur am Token-Endpunkt
+  @smb
+  Szenario: ZETA Guard verwirft einen DPoP Proof mit beschädigter Signatur und unverändertem JWK am Token-Endpunkt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR speichere Wert des Knotens "${headers.dpop.header.jwk.x}" der aktuellen Anfrage in der Variable "foreignTokenRequestDpopJwkX"
-    Und TGR setze lokale Variable "pathCondition" auf ".*${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "validTokenRequestDpopJwt"
+    Und verifiziere ES256 Signatur von DPoP JWT "${validTokenRequestDpopJwt}"
+    Und TGR setze lokale Variable "pathCondition" auf "message.path =~ '.*${paths.guard.tokenEndpointPath}' && message.body.grant_type =~ '.*token-exchange'"
 
-    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "header.jwk.x" auf Wert "${foreignTokenRequestDpopJwkX}" für Pfad "${pathCondition}" und 1 Ausführungen
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "variant.name" auf Wert "signature_bit_flip" für Pfad "${pathCondition}" und 1 Ausführungen
     Und TGR lösche aufgezeichnete Nachrichten
 
-    # Nach reset verwendet der Client ein neues DPoP Keypair; der eingesetzte fremde JWK-Anteil passt damit nicht mehr zur Signatur.
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
-    Und TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "${headers.dpop.header.jwk.x}" der mit "${foreignTokenRequestDpopJwkX}" übereinstimmt
+    Und Alle Manipulationen im TigerProxy werden gestoppt
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedTokenRequestDpopJwt"
     Und prüfe die JWT-Variante invalid_signature in "${manipulatedTokenRequestDpopJwt}" hat lokal die erwartete Signaturintegrität
+    Und berechne JKT aus JWT Header JWK "${manipulatedTokenRequestDpopJwt}" und speichere in Variable "manipulatedTokenRequestDpopJkt"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.dpop_key.jkt" überein mit "${manipulatedTokenRequestDpopJkt}"
+    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "signatureTestSubjectToken"
+    Und verifiziere die ES256 Signatur des JWT "${signatureTestSubjectToken}"
+    Und TGR speichere Wert des Knotens "$.body.subject_token.body.nonce" der aktuellen Anfrage in der Variable "signatureTestSubjectNonce"
+    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.nonce}" überein mit "\Q${signatureTestSubjectNonce}\E"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenariogrundriss: ZETA Guard verwirft einen DPoP Proof ohne Pflicht-Claim <Claim> am Token-Endpunkt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -169,7 +179,7 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und verifiziere ES256 Signatur von DPoP JWT "${manipulatedDpopJwt}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     Beispiele: Fehlende Pflicht-Claims
       | Claim |
@@ -180,15 +190,12 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
 
   # TODO: Bei Bedarf später nach erwarteten ResponseCodes aufsplitten und in passende UseCases verteilen.
   @A_25767
-  @A_26661
-  @A_27007
   @A_28963
   @TA_A_25767_02
-  @TA_A_26661_02
-  @TA_A_27007_02
   @TA_A_28963_01
   @MASVS-CRYPTO
   @MASVS-AUTH
+  @smb
   Szenariogrundriss: DPoP JWT Manipulation Test - Token Request - 2 (<JwtField>)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "sessionTtl" auf "15"
@@ -233,27 +240,29 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und berechne JKT aus JWT Header JWK "${manipulatedDpopJwt}" und speichere in Variable "manipulatedDpopJkt"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.dpop_key.jkt" überein mit "${manipulatedDpopJkt}"
     Und TGR speichere Wert des Knotens "$.body.subject_token.body.nonce" der aktuellen Anfrage in der Variable "subjectTokenNonce"
-    Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.nonce}" <NonceVergleich> mit "${subjectTokenNonce}"
+    Und TGR prüfe aktueller Request <NonceKnotenPruefung> "${headers.dpop.body.nonce}" <NonceVergleich> mit "\Q${subjectTokenNonce}\E"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     # iat in der Vergangenheit (2023-12-01)
     # iat in der Zukunft (2050-01-01)
     Beispiele: Manipulationen
-      | JwtField   | NeuerWert               | NonceVergleich   |
-      | header.typ | JWD                     | überein           |
-      | header.alg | RS256                   | überein           |
-      | body.nonce | invalidNonceValue123    | nicht überein     |
-      | body.iat   | 1701432000              | überein           |
-      | body.iat   | 2524608000              | überein           |
-      | body.htm   | DELETE                  | überein           |
-      | body.htu   | https://wrong.url/token | überein           |
+      | JwtField   | NeuerWert               | NonceKnotenPruefung | NonceVergleich       |
+      | header.typ | JWD                     | stimmt im Knoten    | überein              |
+      | header.alg | RS256                   | stimmt im Knoten    | überein              |
+      | body.nonce | invalidNonceValue123    | im Knoten           | stimmt nicht überein |
+      | body.iat   | 1701432000              | stimmt im Knoten    | überein              |
+      | body.iat   | 2524608000              | stimmt im Knoten    | überein              |
+      | body.htm   | DELETE                  | stimmt im Knoten    | überein              |
+      | body.htu   | https://wrong.url/token | stimmt im Knoten    | überein              |
 
   @A_28963
   @TA_A_28963_01
   @minor
+  @MASVS-AUTH
   @MASVS-CRYPTO
+  @smb
   Szenariogrundriss: ZETA Guard verwirft einen fehlerhaften oder nicht akzeptierten DPoP Proof am Token-Endpunkt (<Variante>)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "sessionTtl" auf "15"
@@ -283,43 +292,46 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und warte "${sessionExpiryWait}" Sekunden
     Und validiere, dass der Zeitstempel "${session_expiry}" in der Vergangenheit liegt
 
-    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "variant.name" auf Wert "<Variante>" mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" die Variante <Variante> mit Parameter '<Parameter>' mit privatem Schlüssel "${dpopKey}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
     Und TGR lösche aufgezeichnete Nachrichten
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
-    Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" ist lokal strukturell angewendet
+    Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" mit Parameter '<Parameter>' ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" hat lokal die erwartete Signaturintegrität
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     Beispiele: manipulierte JWT-Varianten
-      | Variante                           |
-      | two_segments                       |
-      | invalid_header_base64url           |
-      | invalid_payload_base64url          |
-      | invalid_signature_base64url        |
-      | invalid_header_json                |
-      | invalid_header_json_unquoted_keys  |
-      | invalid_payload_json               |
-      | invalid_payload_json_unquoted_keys |
-      | unsupported_alg                    |
-      | missing_alg                        |
-      | duplicate_alg_headers              |
-      | invalid_signature                  |
-      | jwe_like_five_segments             |
-      | nested_cty_jwt_invalid_inner       |
+      | Variante                           | Parameter         |
+      | two_segments                       |                   |
+      | invalid_header_base64url           |                   |
+      | invalid_payload_base64url          |                   |
+      | invalid_signature_base64url        |                   |
+      | invalid_header_json                |                   |
+      | invalid_header_json_unquoted_keys  |                   |
+      | invalid_payload_json               |                   |
+      | invalid_payload_json_unquoted_keys |                   |
+      | unsupported_alg                    |                   |
+      | missing_alg                        |                   |
+      | duplicate_alg_headers              | ["ES256","RS999"] |
+      | invalid_signature                  |                   |
+      | jwe_like_five_segments             |                   |
+      | nested_cty_jwt_invalid_inner       |                   |
 
-  @A_27802-02
-  @TA_A_27802-02_01
-  @TA_A_27802-02_02
+  @A_27802-03
   @A_28963
+  @TA_A_27802-03_01
+  @TA_A_27802-03_02
   @TA_A_28963_01
+  @MASVS-AUTH
+  @MASVS-CODE
   @MASVS-CRYPTO
-  Szenariogrundriss: ZETA Guard verwirft einen DPoP Proof mit nicht unterstütztem JOSE Header am Token-Endpunkt (<Variante>)
+  @smb
+  Szenariogrundriss: ZETA Guard prüft einen DPoP Proof mit unbekannter JOSE-Erweiterung am Token-Endpunkt (<Variante>)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "sessionTtl" auf "15"
     Und TGR setze lokale Variable "sessionExpiryWait" auf "!{${sessionTtl} + 2}"
@@ -352,28 +364,39 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR lösche aufgezeichnete Nachrichten
 
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "<SuchKnoten>" der mit "<SuchWert>" übereinstimmt
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "${headers.dpop.header.root}.<HeaderParameter>" der mit "<HeaderWert>" übereinstimmt
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
     Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "manipulatedDpopJwt"
     Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${manipulatedDpopJwt}" hat lokal die erwartete Signaturintegrität
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
-    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und TGR prüfe aktueller Request <CritPruefung> Knoten "${headers.dpop.header.root}.crit"
+    Und berechne JKT aus JWT Header JWK "${manipulatedDpopJwt}" und speichere in Variable "manipulatedDpopJkt"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.dpop_key.jkt" überein mit "${manipulatedDpopJkt}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.<AntwortFeld>"
+    Und TGR prüfe aktuelle Antwort im Knoten "$.body" stimmt als "JSON_SCHEMA" überein mit:
+      """
+      {
+        "type": "object",
+        "if": { "required": ["error"] },
+        "then": { "$ref": "classpath:schemas/v_2_0/schemas/zeta-error.yaml" }
+      }
+      """
 
     @normal
     Beispiele: unknown_header_parameter
-      | Variante                 | SuchKnoten                                               | SuchWert          |
-      | unknown_header_parameter | $.header.[~'DPoP'].header.unknown_guard_parameter       | unsupported       |
+      | Variante                 | HeaderParameter             | HeaderWert        | CritPruefung  | ResponseCode | AntwortFeld  |
+      | unknown_header_parameter | unknown_guard_parameter     | unsupported       | enthält nicht | 200          | access_token |
 
     @normal
     Beispiele: unsupported_crit
-      | Variante                 | SuchKnoten                                               | SuchWert          |
-      | unsupported_crit         | $.header.[~'DPoP'].header.unsupported_guard_parameter   | requested-by-crit |
+      | Variante                 | HeaderParameter             | HeaderWert        | CritPruefung  | ResponseCode | AntwortFeld  |
+      | unsupported_crit         | unsupported_guard_parameter | requested-by-crit | enthält       | 400          | error        |
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
   Szenario: ZETA Guard verwirft doppelte DPoP Header am Token-Endpunkt
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
@@ -385,12 +408,14 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und prüfe aktuelle Anfrage enthält den Header "DPoP" 2 mal
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
+  @smb
   Szenario: ZETA Guard verwirft einen DPoP Proof mit privatem JWK Anteil am Token-Endpunkt
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "sessionTtl" auf "15"
@@ -435,12 +460,14 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.body.dpop_key.jkt" überein mit "${initialDpopJkt}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_28963
   @TA_A_28963_01
   @normal
+  @MASVS-AUTH
   @MASVS-CRYPTO
+  @smb
   Szenario: ZETA Guard verwirft am Token-Endpunkt die Wiederverwendung desselben jti
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
     Und TGR setze lokale Variable "refreshTokenTtl" auf "15"
@@ -485,77 +512,88 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request stimmt im Knoten "${headers.dpop.body.jti}" überein mit "${tokenReplayJti}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   # TODO: Dieser Szenariogrundriss bündelt Varianten mit unterschiedlichen erwarteten Statuscodes.
   # Eine spätere Aufteilung nach Zielstatuscode und passendem UseCase sollte geprüft werden.
-  @A_27802-02
-  @TA_A_27802-02_01
-  @TA_A_27802-02_02
+  @A_27802-03
+  @TA_A_27802-03_01
+  @TA_A_27802-03_02
+  @MASVS-AUTH
+  @MASVS-CODE
   @MASVS-CRYPTO
+  @smb
   Szenariogrundriss: ZETA Guard verwirft fehlerhafte Client Assertion JWT Varianten (<Variante>)
+    Wenn TGR setze lokale Variable "accessTokenTtl" auf "1"
+    Und TGR setze lokale Variable "sessionTtl" auf "15"
+    Und TGR setze lokale Variable "sessionExpiryWait" auf "!{${sessionTtl} + 2}"
+    Und TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
+    Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${sessionTtl}" und 1 Ausführungen
+
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
-    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.tokenEndpointPath}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.access_token.body.exp"
+    Und TGR speichere Wert des Knotens "$.body.access_token.body.exp" der aktuellen Antwort in der Variable "access_token_expiry"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_token.body.exp"
+    Und TGR speichere Wert des Knotens "$.body.refresh_token.body.exp" der aktuellen Antwort in der Variable "session_expiry"
+
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
     Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
     Und TGR speichere Wert des Knotens "$.body.client_private_key" der aktuellen Antwort in der Variable "CLIENT_PRIVATE_KEY"
-    Und TGR setze lokale Variable "tokenRequestCondition" auf ".*${paths.guard.tokenEndpointPath}"
+    Und TGR setze lokale Variable "tokenRequestCondition" auf "message.path =~ '.*${paths.guard.tokenEndpointPath}' && message.body.grant_type =~ '.*token-exchange'"
 
-    # RFC 7519, Abschnitt 7.2:
-    # - Punkt-separierte JWT-Serialisierung
-    # - base64url-decodierbarer und JSON-parsbarer Header
-    # - JWS/JWE-Unterscheidung und verschachteltes JWT via cty=JWT
-    # - base64url-decodierbare und interpretierbare Claims-Menge
-    #
-    # RFC 7515, Abschnitt 5.2:
-    # - decodierbare JWS-Segmente
-    # - doppelte / unbekannte / kritische Header-Parameter
-    # - vorhandenes und akzeptables alg
-    # - Signaturprüfung über den Signing Input
-    Dann Setze im TigerProxy für JWT in "$.body.client_assertion" das Feld "variant.name" auf Wert "<Variante>" mit privatem Schlüssel "${CLIENT_PRIVATE_KEY}" für Pfad "${tokenRequestCondition}" und 1 Ausführungen und ersetze JWK
+    Und warte "${sessionExpiryWait}" Sekunden
+    Und validiere, dass der Zeitstempel "${access_token_expiry}" in der Vergangenheit liegt
+    Und validiere, dass der Zeitstempel "${session_expiry}" in der Vergangenheit liegt
+
+    Dann Setze im TigerProxy für JWT in "$.body.client_assertion" die Variante <Variante> mit Parameter '<Parameter>' mit privatem Schlüssel "${CLIENT_PRIVATE_KEY}" für Pfad "${tokenRequestCondition}" und 1 Ausführungen und ersetze JWK
 
     Und TGR lösche aufgezeichnete Nachrichten
-    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
 
     Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
     Und TGR speichere Wert des Knotens "$.body.client_assertion" der aktuellen Anfrage in der Variable "MANIPULATED_CLIENT_ASSERTION"
-    Und prüfe die JWT-Variante <Variante> in "${MANIPULATED_CLIENT_ASSERTION}" ist lokal strukturell angewendet
+    Und prüfe die JWT-Variante <Variante> in "${MANIPULATED_CLIENT_ASSERTION}" mit Parameter '<Parameter>' ist lokal strukturell angewendet
     Und prüfe die JWT-Variante <Variante> in "${MANIPULATED_CLIENT_ASSERTION}" hat lokal die erwartete Signaturintegrität
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "<ResponseCode>"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
-    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.error_description"
-    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error_description" nicht überein mit ".*client_id parameter does not match sub claim.*"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
     Beispiele: JWT und JWS Fehlervarianten
-      | Variante                           | ResponseCode |
-      | two_segments                       | 400          |
-      | invalid_header_base64url           | 400          |
-      | invalid_header_json                | 400          |
-      | invalid_header_json_unquoted_keys  | 400          |
-      | jwe_like_five_segments             | 400          |
-      | nested_cty_jwt_invalid_inner       | 400          |
-      | invalid_payload_base64url          | 400          |
-      | invalid_payload_json               | 400          |
-      | invalid_payload_json_unquoted_keys | 400          |
-      | unknown_header_parameter           | 400          |
-      | invalid_signature_base64url        | 400          |
-      | unsupported_crit                   | 400          |
-      | unsupported_alg                    | 400          |
-      | duplicate_alg_headers              | 400          |
-      | missing_alg                        | 400          |
-      | invalid_signature                  | 401          |
+      | Variante                           | ResponseCode | Parameter         |
+      | two_segments                       | 400          |                   |
+      | invalid_header_base64url           | 400          |                   |
+      | invalid_header_json                | 400          |                   |
+      | invalid_header_json_unquoted_keys  | 400          |                   |
+      | jwe_like_five_segments             | 400          |                   |
+      | nested_cty_jwt_invalid_inner       | 400          |                   |
+      | invalid_payload_base64url          | 400          |                   |
+      | invalid_payload_json               | 400          |                   |
+      | invalid_payload_json_unquoted_keys | 400          |                   |
+      | invalid_signature_base64url        | 400          |                   |
+      | unsupported_crit                   | 400          |                   |
+      | unsupported_alg                    | 400          |                   |
+      | duplicate_alg_headers              | 400          | ["ES256","RS999"] |
+      | missing_alg                        | 400          |                   |
+      | invalid_signature                  | 401          |                   |
 
   # TODO: Dieser Szenariogrundriss bündelt Varianten mit unterschiedlichen erwarteten Statuscodes.
   # Eine spätere Aufteilung nach Zielstatuscode und passendem UseCase sollte geprüft werden.
   @A_27725-01
-  @A_27802-02
-  @TA_A_27802-02_01
-  @TA_A_27802-02_02
+  @A_27802-03
+  @TA_A_27802-03_01
+  @TA_A_27802-03_02
+  @MASVS-AUTH
+  @MASVS-CODE
   @MASVS-CRYPTO
-  @MASVS-RESILIENCE
   Szenariogrundriss: Client Assertion JWT Manipulation Test - Token Request (<JwtField>)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     # Löse Generieren des Client Key aus
@@ -590,7 +628,7 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
     Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.data.0.traceID"
 
-    # A_27802-02 - ZETA Guard, JWT Prüfung
+    # A_27802-03 - ZETA Guard, JWT Prüfung
     # - Header:
     # -- Algorithmus (alg)
     # - Payload:
@@ -614,6 +652,7 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
   @A_25649
   @TA_A_25649_01
   @MASVS-AUTH
+  @smb
   Szenario: Neue Session ohne neue Attestation (Negativtest)
     # TTL-Werte als Variablen definieren (in Sekunden)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "30"
@@ -671,10 +710,11 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.client_assertion.body.client_statement"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
-  @A_26661
-  @TA_A_26661_02
+  @A_26662
+  @TA_A_26662_01
+  @smb
   Szenario: Neue Session mit client_statement als String wird abgelehnt (Negativtest)
     # TTL-Werte als Variablen definieren (in Sekunden)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "30"
@@ -721,12 +761,15 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_assertion.body.client_statement" überein mit "{}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
   @A_25644-01
   @TA_A_25644-01_03
+  @MASVS-RESILIENCE
   @MASVS-AUTH
   @tpm_environment
+  @Ignore
+  @smb
   Szenario: TPM Attestation - ungültige Quote wird abgelehnt (Negativtest)
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
     Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.discover}"
@@ -746,12 +789,14 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
 
 
   @A_25644-01
   @TA_A_25644-01_05
+  @MASVS-RESILIENCE
   @MASVS-AUTH
+  @smb
   Szenario: Plattformwechsel nach Ablauf des Refresh Tokens wird abgelehnt (Negativtest)
     # TTL-Werte als Variablen definieren (in Sekunden)
     Wenn TGR setze lokale Variable "accessTokenTtl" auf "5"
@@ -800,4 +845,233 @@ Funktionalität: Client Authentisierung und Autorisierung Software-Attest SC 400
     Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
     Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
     Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
-    Und validiere "${body}" gegen Schema "schemas/v_1_0/zeta-error.yaml"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
+
+
+  @A_25645-01
+  @A_25661-01
+  @A_26662
+  @TA_A_25645-01_01
+  @TA_A_25661-01_08
+  @TA_A_26662_01
+  @A_26661
+  @TA_A_26661_02
+  @A_27007
+  @TA_A_27007_02
+  @normal
+  @MASVS-CODE
+  @MASVS-AUTH
+  @smb
+  Szenariogrundriss: ZETA Guard verweigert Token Exchange bei falschem <Binding> Binding im Subject Token
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und lade SMC-B Keystore des ZETA Deployments in Variablen mit Präfix "SMCB_CERT"
+    Und TGR setze lokale Variable "tokenExchangeCondition" auf ".*${paths.guard.tokenEndpointPath}"
+    Und Setze im TigerProxy für JWT in "$.body.subject_token" das Feld "<JwtField>" auf Wert "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" mit privatem Schlüssel "${SMCB_CERT.prv_pem}" für Pfad "${tokenExchangeCondition}" und 1 Ausführungen
+    Und TGR lösche aufgezeichnete Nachrichten
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.subject_token.<JwtField>" der mit "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" übereinstimmt
+    Und TGR speichere Wert des Knotens "$.body.client_id" der aktuellen Anfrage in der Variable "SUBJECT_BINDING_CLIENT"
+    Dann TGR finde die erste Nachricht mit Knoten "$.body.client_id" der mit "\Q${SUBJECT_BINDING_CLIENT}\E" übereinstimmt
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "201"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.path" überein mit ".*\Q${paths.guard.registerEndpointPath}\E"
+    Und TGR speichere Wert des Knotens "$.body.jwks" der aktuellen Anfrage in der Variable "LEGACY_SUBJECT_BINDING_JWKS"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.subject_token.<JwtField>" der mit "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" übereinstimmt
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_id" überein mit "\Q${SUBJECT_BINDING_CLIENT}\E"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "dpopJwt"
+    Und verifiziere ES256 Signatur von DPoP JWT "${dpopJwt}"
+    Und berechne JKT aus JWT Header JWK "${dpopJwt}" und speichere in Variable "dpopJkt"
+    Und TGR speichere Wert des Knotens "$.body.client_assertion" der aktuellen Anfrage in der Variable "clientAssertionJwt"
+    Und verifiziere die ES256 Signatur des JWT "${clientAssertionJwt}"
+    Und berechne JKT aus JWT Header JWK "${clientAssertionJwt}" und speichere in Variable "clientAssertionJkt"
+    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "manipulatedSubjectToken"
+    Und verifiziere die ES256 Signatur des JWT "${manipulatedSubjectToken}"
+    Und TGR prüfe aktueller Request im Knoten "$.body.subject_token.<JwtField>" stimmt nicht überein mit "\Q<ErwarteterJkt>\E"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.<UnveraendertesBindingField>" überein mit "<UnveraenderterJkt>"
+    Und der SMC-B-Exchange enthält ausschließlich den Fehler <IsolierterFehler> bei registriertem JWKS "${LEGACY_SUBJECT_BINDING_JWKS}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "invalid_grant"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+
+    Beispiele: subject_token_bindings
+      | Binding    | JwtField            | ErwarteterJkt          | UnveraendertesBindingField | UnveraenderterJkt       | IsolierterFehler |
+      | DPoP Key   | body.dpop_key.jkt   | ${dpopJkt}             | body.client_key.jkt        | ${clientAssertionJkt}   | dpop_key         |
+      | Client Key | body.client_key.jkt | ${clientAssertionJkt}  | body.dpop_key.jkt          | ${dpopJkt}              | client_key       |
+
+  @A_25645-01
+  @A_25661-01
+  @A_26662
+  @TA_A_25645-01_01
+  @TA_A_25661-01_08
+  @TA_A_26662_01
+  @normal
+  @MASVS-CODE
+  @MASVS-AUTH
+  @smb
+  Szenario: ZETA Guard verweigert Token Exchange mit DPoP Key aus vorheriger Client-Session
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.helloZetaPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
+    Und TGR speichere Wert des Knotens "${body.client.storage.dpop_private_key}" der aktuellen Antwort in der Variable "attackerDpopKey"
+
+    Wenn TGR setze lokale Variable "tokenExchangeCondition" auf "message.path =~ '.*${paths.guard.tokenEndpointPath}' && message.body.grant_type =~ '.*token-exchange'"
+    Dann Setze im TigerProxy für JWT in "${headers.dpop.strict}" das Feld "body.jti" auf Wert "attacker-session-token-jti" mit privatem Schlüssel "${attackerDpopKey}" für Pfad "${tokenExchangeCondition}" und 1 Ausführungen und ersetze JWK
+    Und TGR lösche aufgezeichnete Nachrichten
+
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.registerEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "201"
+    Und TGR speichere Wert des Knotens "$.body.jwks" der aktuellen Anfrage in der Variable "LEGACY_BINDING_JWKS"
+    Dann TGR finde die letzte Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "${headers.dpop.body.jti}" der mit "attacker-session-token-jti" übereinstimmt
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
+    Und TGR speichere Wert des Knotens "${headers.dpop.root}" der aktuellen Anfrage in der Variable "dpopJwt"
+    Und verifiziere ES256 Signatur von DPoP JWT "${dpopJwt}"
+    Und berechne JKT aus JWT Header JWK "${dpopJwt}" und speichere in Variable "attackerDpopJkt"
+    Und TGR speichere Wert des Knotens "$.body.subject_token" der aktuellen Anfrage in der Variable "subjectToken"
+    Und verifiziere die ES256 Signatur des JWT "${subjectToken}"
+    Und TGR prüfe aktueller Request im Knoten "$.body.subject_token.body.dpop_key.jkt" stimmt nicht überein mit "\Q${attackerDpopJkt}\E"
+    Und der SMC-B-Exchange enthält ausschließlich den Fehler dpop_key bei registriertem JWKS "${LEGACY_BINDING_JWKS}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.body.error" überein mit "invalid_grant"
+    Und TGR speichere Wert des Knotens "$.body" der aktuellen Antwort in der Variable "body"
+    Und validiere "${body}" gegen Schema "schemas/v_2_0/schemas/zeta-error.yaml"
+
+  @A_25661-01
+  @TA_A_25661-01_15
+  @require_kubectl
+  @normal
+  @MASVS-CODE
+  @MASVS-AUTH
+  @smb
+  Szenario: ZETA Guard fordert bei fehlender DPoP-Nonce eine neue Nonce an
+    Wenn TGR setze lokale Variable "accessTokenTtl" auf "5"
+    Und TGR setze lokale Variable "sessionTtl" auf "15"
+    Und TGR setze lokale Variable "sessionExpiryWait" auf "!{${sessionTtl} + 2}"
+    Und TGR setze lokale Variable "opaCondition" auf "isResponse && request.path =~ '.*${paths.opa.decisionPath}'"
+    Dann Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.access_token" und Wert "${accessTokenTtl}" und 1 Ausführungen
+    Und Setze im TigerProxy für die Nachricht "${opaCondition}" die Manipulation auf Feld "$.body.result.ttl.refresh_token" und Wert "${sessionTtl}" und 1 Ausführungen
+
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR lösche aufgezeichnete Nachrichten
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.guard.registerEndpointPath}"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "201"
+    Und TGR speichere Wert des Knotens "$.body.jwks" der aktuellen Anfrage in der Variable "CC_CHALLENGE_JWKS"
+    Und TGR speichere Wert des Knotens "$.body.client_id" der aktuellen Antwort in der Variable "CC_CHALLENGE_CLIENT"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.client_id" überein mit "\Q${CC_CHALLENGE_CLIENT}\E"
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "200"
+    Und der SMC-B-Exchange verwendet gültige unabhängige Nachweise und eine gültige Client-Assertion zum registrierten JWKS "${CC_CHALLENGE_JWKS}"
+    Und TGR speichere Wert des Knotens "$.body.subject_token.header.x5c.0" der aktuellen Anfrage in der Variable "CC_CHALLENGE_SMCB_CERT"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.access_token"
+    Und TGR prüfe aktuelle Antwort enthält Knoten "$.body.refresh_token"
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
+    Und TGR speichere Wert des Knotens "${body.client.storage.dpop_private_key}" der aktuellen Antwort in der Variable "CC_CHALLENGE_DPOP_KEY"
+
+    Und warte "${sessionExpiryWait}" Sekunden
+    Und TGR setze lokale Variable "tokenExchangeCondition" auf "message.path =~ '.*${paths.guard.tokenEndpointPath}' && message.body.grant_type =~ '.*token-exchange'"
+    Und Entferne im TigerProxy für JWT in "${headers.dpop.root}" das Feld "body.nonce" mit privatem Schlüssel "${CC_CHALLENGE_DPOP_KEY}" für Pfad "${tokenExchangeCondition}" und behalte den JWT-Header
+    Und TGR lösche aufgezeichnete Nachrichten
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.subject_token.header.x5c.0" überein mit "\Q${CC_CHALLENGE_SMCB_CERT}\E"
+    Und warte "3" Sekunden
+    Und prüfe, dass keine aufgezeichnete Anfrage den Pfad "${paths.opa.decisionPath}" hat
+    Und alle aufgezeichneten SMC-B-Exchanges für Client "${CC_CHALLENGE_CLIENT}" mit JWKS "${CC_CHALLENGE_JWKS}" und isoliertem Fehler dpop_nonce_missing liefern Status 400 und Fehler use_dpop_nonce ohne Tokens
+    Und Alle Manipulationen im TigerProxy werden gestoppt
+
+  @A_25644-01
+  @A_25661-01
+  @TA_A_25661-01_12
+  @TA_A_25644-01_05
+  @normal
+  @MASVS-CODE
+  @MASVS-RESILIENCE
+  @MASVS-AUTH
+  @smb
+  Szenario: Software Attestation (Linux) - fehlende nonce wird abgelehnt (Negativtest)
+    Gegeben sei TGR sende eine leere GET Anfrage an "${paths.client.reset}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.discover}"
+    Und TGR sende eine leere GET Anfrage an "${paths.client.register}"
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.storage}"
+    Dann TGR finde die letzte Anfrage mit dem Pfad "${paths.client.storagePath}"
+    Und TGR speichere Wert des Knotens "$.body.client_private_key" der aktuellen Antwort in der Variable "CLIENT_PRIVATE_KEY"
+    Und TGR setze lokale Variable "pathCondition" auf "message.path =~ '.*${paths.guard.tokenEndpointPath}' && message.body.grant_type =~ '.*token-exchange'"
+
+    # Entfernt die Posture-Nonce auch dann, wenn zukünftige SDK-Versionen sie mitsenden.
+    # Ist das Feld bereits abwesend, bleibt es abwesend; die Assertion wird neu signiert.
+    Dann Entferne im TigerProxy für JWT in "$.body.client_assertion" das Feld "body.client_statement.posture.nonce" mit privatem Schlüssel "${CLIENT_PRIVATE_KEY}" für Pfad "${pathCondition}" und 1 Ausführungen und ersetze JWK
+    Und TGR lösche aufgezeichnete Nachrichten
+
+    Wenn TGR sende eine leere GET Anfrage an "${paths.client.helloZeta}"
+    Und Alle Manipulationen im TigerProxy werden gestoppt
+
+    # Die einmalige Manipulation trifft den ersten Token-Exchange; SDK-Retries nicht auswählen.
+    Dann TGR finde die erste Anfrage mit Pfad "${paths.guard.tokenEndpointPath}" und Knoten "$.body.grant_type" der mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}" übereinstimmt
+    Und TGR prüfe aktueller Request enthält nicht Knoten "$.body.client_assertion.body.client_statement.posture.nonce"
+    Und TGR prüfe aktueller Request stimmt im Knoten "$.body.grant_type" überein mit "!{urlEncoded('${oauth_parameters.grant_type.tokenExchange}')}"
+    Und TGR speichere Wert des Knotens "$.body.client_assertion" der aktuellen Anfrage in der Variable "MANIPULATED_CLIENT_ASSERTION"
+    Und verifiziere die ES256 Signatur des JWT "${MANIPULATED_CLIENT_ASSERTION}" mit öffentlichem Schlüssel aus privatem Schlüssel "${CLIENT_PRIVATE_KEY}"
+
+    # Software-Posture und Linux-Produkt-ID am tatsächlich manipulierten Token-Request nachweisen.
+    Und TGR prüfe aktuelle Anfrage im Knoten "$.body.client_assertion.body.client_statement" stimmt als "JSON_SCHEMA" überein mit:
+      """
+      {
+        "type": "object",
+        "required": ["platform", "posture_type", "posture"],
+        "properties": {
+          "platform": { "const": "linux" },
+          "posture_type": { "const": "software" },
+          "posture": {
+            "allOf": [
+              { "$ref": "classpath:schemas/v_2_0/schemas/posture-software.yaml" }
+            ],
+            "required": ["platform_product_id"],
+            "properties": {
+              "platform_product_id": {
+                "allOf": [
+                  { "$ref": "classpath:schemas/v_2_0/schemas/product-id-linux.yaml" }
+                ],
+                "required": ["platform"],
+                "properties": {
+                  "platform": { "const": "linux" }
+                }
+              }
+            }
+          }
+        }
+      }
+      """
+
+    Und TGR prüfe aktuelle Antwort stimmt im Knoten "$.responseCode" überein mit "400"
+    Und TGR prüfe aktuelle Antwort im Knoten "$.body" stimmt als "JSON_SCHEMA" überein mit:
+      """
+      {
+        "allOf": [
+          { "$ref": "classpath:schemas/v_2_0/schemas/zeta-error.yaml" }
+        ],
+        "properties": {
+          "error": { "const": "invalid_request" },
+          "access_token": false,
+          "refresh_token": false,
+          "id_token": false,
+          "zeta_attestation_token": false
+        }
+      }
+      """

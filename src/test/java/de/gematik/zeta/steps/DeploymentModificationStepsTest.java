@@ -296,19 +296,19 @@ class DeploymentModificationStepsTest {
   }
 
   /**
-   * Verifies that a stale ConfigMap backup deletion failure stops the scenario before modifying deployment state.
+   * Verifies that a pre-existing backup is preserved and prevents deployment modification.
    */
   @Test
-  void configMapBackupPreparationFailsBeforeModificationWhenStaleBackupCannotBeDeleted() {
+  void configMapBackupPreparationPreservesPreExistingBackup() {
     resetScenarioState();
     configurePoppTokenValidityStep();
-    var service = new BackupPreparationService(true, 1);
+    var service = new BackupPreparationService(true, 0);
     var steps = new DeploymentModificationSteps(service);
 
     var error = assertThrows(AssertionError.class, () -> steps.setPoppTokenValidity("300s"));
 
-    assertTrue(error.getMessage().contains("Could not delete pre-existing ConfigMap backup"));
-    assertEquals(1, service.deleteConfigMapBackupCalls);
+    assertTrue(error.getMessage().contains("Preserving pre-existing ConfigMap backup"));
+    assertEquals(0, service.deleteConfigMapBackupCalls);
     assertEquals(0, service.setPoppTokenValidityCalls);
     assertFalse(Hooks.getCapturedConfigMapBackups().contains("pep-test-nginx-conf"));
   }
@@ -418,6 +418,29 @@ class DeploymentModificationStepsTest {
       setPoppTokenValidityCalls++;
       var commandResult = new CommandResult(List.of("kubectl"), 0, "", "");
       return new KubectlPatchCommandResult(commandResult, "");
+    }
+  }
+
+  @Test
+  void completesAllRegisteredObservationsWhenOneLogReadFails() throws Exception {
+    var service = org.mockito.Mockito.mock(ZetaDeploymentModificationService.class);
+    org.mockito.Mockito.when(service.executeKubectlCommand(org.mockito.ArgumentMatchers.eq(false),
+        org.mockito.ArgumentMatchers.<String>anyList()))
+        .thenThrow(new IllegalStateException("first pod unavailable"))
+        .thenReturn(new CommandResult(List.of(), 0, "second job completed", ""));
+    try (var config = org.mockito.Mockito.mockStatic(
+        de.gematik.zeta.services.ZetaDeploymentConfiguration.class);
+        var report = org.mockito.Mockito.mockStatic(
+            de.gematik.test.tiger.lib.reports.SerenityReportUtils.class)) {
+      config.when(de.gematik.zeta.services.ZetaDeploymentConfiguration::getNamespace)
+          .thenReturn("test-namespace");
+      var steps = new DeploymentModificationSteps(service);
+      steps.rememberContainerCompletion("ns", "first", "first job completed");
+      steps.rememberContainerCompletion("ns", "second", "second job completed");
+      assertThrows(AssertionError.class, steps::awaitRegisteredContainerCompletions);
+      org.mockito.Mockito.verify(service, org.mockito.Mockito.times(2))
+          .executeKubectlCommand(org.mockito.ArgumentMatchers.eq(false),
+              org.mockito.ArgumentMatchers.<String>anyList());
     }
   }
 

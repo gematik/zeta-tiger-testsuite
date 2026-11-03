@@ -1,0 +1,4 @@
+[#A_29999]
+==== A_29999 - PDP Authorization Server - Antwortverhalten ohne Token-Enumeration
+
+Der Authorization Server MUSS auf einen erfolgreich client-authentifizierten Revocation-Request unabhängig davon, ob das übergebene Token gültig, bereits ungültig oder unbekannt ist, mit 200 OK antworten (RFC 7009 §2.2), um Rückschlüsse auf die Existenz von Token zu verhindern. [<=]

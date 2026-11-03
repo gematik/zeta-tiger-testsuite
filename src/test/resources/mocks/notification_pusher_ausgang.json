@@ -1,0 +1,11 @@
+{
+  "pushkey": "zeta-testsuite-notification-auth",
+  "appId": "${testdata.notificationService.pusher.appId}",
+  "appDisplayName": "Notification-Test Ausgangszustand",
+  "deviceDisplayName": "ZETA Notification-Test",
+  "lang": "de",
+  "data": {
+    "url": "https://${zeta_base_url}/push-gateway/push/v1/",
+    "format": "event_id_only"
+  }
+}

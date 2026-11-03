@@ -1,0 +1,4 @@
+[#A_30003]
+==== A_30003 - PEP HTTP Proxy, keine Mehrfachnutzung der DPoP Proof Token
+
+Der HTTP Proxy MUSS anhand des claims jti im DPoP Proof durchsetzen, dass schon verwendete DPoP Proofs nicht noch einmal genutzt werden können. [<=]

@@ -109,6 +109,44 @@ public final class TlsLogParser {
   }
 
   /**
+   * Requires one transmitted ServerHello followed by a received fatal protocol-version alert.
+   *
+   * @param fullLog complete server-side log of one TCP connection
+   * @param version expected ServerHello version, either 1.0 or 1.1
+   * @throws AssertionError if the transcript does not identify the expected exchange
+   */
+  public static void assertVersionRejectionAfterServerHello(String fullLog, String version) {
+    Assertions.assertThat(version).isIn("1.0", "1.1");
+    Assertions.assertThat(fullLog).isNotBlank()
+        .doesNotContain("Handshake successful", "Valid Finished message received.");
+    var connections = Pattern.compile("TCP/IP connection from [^\\r\\n]+ received\\.")
+        .matcher(fullLog).results().toList();
+    Assertions.assertThat(connections).hasSize(1);
+    fullLog = fullLog.substring(connections.getFirst().end());
+    var serverHellos = Pattern.compile("ServerHello message transmitted\\.")
+        .matcher(fullLog).results().toList();
+    Assertions.assertThat(serverHellos).hasSize(1);
+    var versions = Pattern.compile("ServerHello\\.server_version=([0-9a-fA-F]{2})[ \\t]+([0-9a-fA-F]{2})\\b")
+        .matcher(fullLog).results().toList();
+    Assertions.assertThat(versions).hasSize(1);
+    Assertions.assertThat(versions.getFirst().group(1)).isEqualTo("03");
+    Assertions.assertThat(versions.getFirst().group(2)).isEqualTo("1.0".equals(version) ? "01" : "02");
+    var alerts = Pattern.compile("Alert message (received|transmitted)\\.")
+        .matcher(fullLog).results().toList();
+    for (int index = 0; index < alerts.size(); index++) {
+      var alert = alerts.get(index);
+      int end = index + 1 < alerts.size() ? alerts.get(index + 1).start() : fullLog.length();
+      if ("received".equals(alert.group(1)) && alert.start() > serverHellos.getFirst().end()
+          && alert.start() > versions.getFirst().end()
+          && hasFatalAlertDescription(fullLog.substring(alert.end(), end), "46")) {
+        return;
+      }
+    }
+    throw new AssertionError("No received fatal protocol_version alert after the transmitted TLS "
+        + version + " ServerHello in the same connection");
+  }
+
+  /**
    * Checks whether a TLS log phase contains the given alert description paired with a fatal alert level.
    *
    * @param logPhase      TLS log phase to inspect

@@ -1,0 +1,4 @@
+[#TA_A_29810_02]
+===== TA_A_29810_02 - Apple-Attestierung - Software-Fallback
+
+"Der ZETA Client MUSS den **Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Apple-AppAttest** unterstützen. [<=]"

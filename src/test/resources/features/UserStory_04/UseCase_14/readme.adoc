@@ -1,0 +1,72 @@
+[#UC_04_14]
+== UseCase_04_14: Apple-Client-Statement mit frischer Nonce erstellen
+
+.UseCase_04_14
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* |
+Apple-Client-Statement mit frischer Nonce erstellen
+
+| Akteur: |
+ZETA Client auf Apple
+
+| weitere Akteure: |
+Apple OS, Secure Enclave, PDP Authorization Server
+
+| Auslöser: |
+Der Client benötigt ein aktuelles client-statement.
+
+| Kurzbeschreibung: |
+Der Client bezieht eine Nonce und erstellt das Statement entweder mit Hardware-Evidence und Klartext-Posture oder im Software-Fallback.
+
+| Vorbedingung: |
+Der Client besitzt sein Instanzschlüsselpaar. Im Hardwarepfad steht der bereits erzeugte Attestierungsschlüssel zur Verfügung; Betriebssystem und Sicherheitskomponente sind erreichbar.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der Client sendet GET /nonce an den PDP Authorization Server und erhält die Nonce.
+. Im Hardwarepfad ermittelt der Client über das Betriebssystem die Posture-Daten (SIP, Gatekeeper, OS-Version und Secure Boot) und erhält sie im Klartext zurück.
+. Er berechnet clientDataHash = SHA-256(Nonce || Posture-Daten || PuK.Client.Sig) und ruft DCAppAttest.generateAssertion(keyId: Handle_PrK.AK.Sig, clientDataHash) auf. Das Betriebssystem veranlasst die Signatur in der Sicherheitskomponente und gibt die Signatur und Authenticator Data als dc_assertion an den Client zurück.
+. Der Client erstellt das client-statement mit dc_assertion (CBOR mit Signatur und authenticatorData einschließlich Counter) sowie den Posture-Daten im Klartext.
+. Im alternativen Software-Fallback erstellt der Client nach dem Nonce-Bezug das client-statement mit ungesicherten OS- und Primärsystemdaten.
+
+| Nachbedingung: |
+Das Statement wird im aktuellen Vorgang nach dem Nonce-Bezug erstellt. Im Hardwarepfad ist die Evidence an Nonce, Posture und Client-Schlüssel gebunden; im Softwarepfad enthält das Statement die ungesicherten OS-/PS-Daten.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29810_01>>
+* <<TA_A_29810_02>>
+
+|===
+
+[mermaid,uc-04-14-ablauf,svg]
+....
+sequenceDiagram
+participant C as ZETA Client
+    participant O as Apple OS
+    participant H as Secure Enclave
+    participant A as Authorization Server
+    C->>A: GET /nonce
+    A-->>C: Nonce
+    alt Hardwareattestierung
+        C->>O: Posture ermitteln
+        O-->>C: Posture-Daten im Klartext
+        C->>C: clientDataHash aus Nonce, Posture und Client-Public-Key
+        C->>O: DCAppAttest.generateAssertion(keyId: Handle_PrK.AK.Sig, clientDataHash)
+        O->>H: clientDataHash mit AK signieren
+        H-->>O: Signatur und Authenticator Data
+        O-->>C: Signatur und Authenticator Data als dc_assertion
+        C->>C: client-statement mit Evidence und Klartext-Posture
+    else Software-Fallback
+        C->>C: client-statement mit ungesicherten OS- und PS-Daten
+    end
+....
+
+ifdef::render_features[]
+[source]
+----
+include::../UseCase_13/software_fallback.feature[]
+----
+endif::[]

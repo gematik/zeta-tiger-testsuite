@@ -35,8 +35,10 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.SignedJWT;
 import de.gematik.zeta.model.CertificateMaterial;
+import io.cucumber.java.de.Dann;
 import io.cucumber.java.de.Und;
 import io.cucumber.java.en.And;
+import io.cucumber.java.en.Then;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -69,10 +71,43 @@ public class SignatureVerificationSteps {
       java.util.regex.Pattern.compile("([\\{,]\\s*)([A-Za-z_][A-Za-z0-9_-]*)\\s*:");
 
   /**
+   * Confirms an isolated claim mutation in the actual serialized JWTs.
+   *
+   * @param original successful control token
+   * @param changed observed manipulated token
+   * @param claim sole claim permitted to change or disappear
+   * @throws ParseException if either token is malformed
+   */
+  @Und("die JWTs {tigerResolvedString} und {tigerResolvedString} unterscheiden sich ausschließlich im Claim {string}")
+  @And("the JWTs {tigerResolvedString} and {tigerResolvedString} differ only in claim {string}")
+  public void verifyOnlyClaimChanged(String original, String changed, String claim)
+      throws ParseException {
+    var control = SignedJWT.parse(original);
+    var variant = SignedJWT.parse(changed);
+    assertThat(variant.getHeader().toJSONObject()).as("Unchanged JOSE header")
+        .isEqualTo(control.getHeader().toJSONObject());
+    var expected = new java.util.HashMap<>(control.getJWTClaimsSet().getClaims());
+    var actual = new java.util.HashMap<>(variant.getJWTClaimsSet().getClaims());
+    assertThat(expected).as("Claim exists in control").containsKey(claim);
+    assertThat(actual.get(claim)).as("Declared claim actually changed")
+        .isNotEqualTo(expected.get(claim));
+    expected.remove(claim);
+    actual.remove(claim);
+    assertThat(actual).as("All other JWT claims").isEqualTo(expected);
+  }
+
+  /**
    * Verifies the ES256 signature of a JWT using embedded key material from the JOSE header.
    *
-   * <p>If the header contains {@code jwk}, the EC public key is extracted from that JWK. Otherwise,
-   * the first {@code x5c} certificate is parsed and its EC public key is used.</p>
+   * <p>If the header contains {@code jwk}, only that JWK's EC public key is used. Any simultaneous
+   * {@code x5c} certificate chain is ignored, and its key is not compared with the JWK. Failure to
+   * extract the JWK key or verify its signature does not trigger a fallback to {@code x5c}.
+   * Only when {@code jwk} is absent is the first {@code x5c} certificate parsed and its EC public key
+   * used.</p>
+   *
+   * <p>Successful verification with an embedded JWK does not establish that the signature belongs
+   * to an embedded certificate. {@link #verifyJwtSignatureFromX5c(String)} always verifies against
+   * the first {@code x5c} certificate, regardless of an additional {@code jwk}.</p>
    *
    * @param jwt compact serialized JWT
    */
@@ -123,6 +158,22 @@ public class SignatureVerificationSteps {
   }
 
   /**
+   * Verifies an ES256 JWT exclusively with the public key from its first x5c certificate.
+   *
+   * <p>An additional {@code jwk} header is ignored.</p>
+   *
+   * @param jwt compact serialized JWT with a nonempty x5c certificate chain
+   */
+  @Dann("verifiziere die ES256 Signatur des JWT {tigerResolvedString} mit Zertifikat aus x5c[0]")
+  @Then("verify the ES256 signature of the JWT {tigerResolvedString} with certificate from x5c[0]")
+  public void verifyJwtSignatureFromX5c(String jwt) {
+    assertEs256(parseSignedJwt(jwt));
+    assertThat(hasCryptographicallyValidEs256SignatureWithEmbeddedCertificate(jwt))
+        .as("JWT signature must verify with public key from x5c[0]")
+        .isTrue();
+  }
+
+  /**
    * Verifies the ES256 signature of a JWT using the EC key referenced by {@code kid}.
    *
    * @param jwt      compact serialized JWT with a {@code kid} header
@@ -140,6 +191,27 @@ public class SignatureVerificationSteps {
         .isNotBlank();
 
     verifyJwtSignature(signedJwt, findEcPublicKeyByKid(keyStore, kid), kid);
+  }
+
+  /**
+   * Verifies signatures of present compact JWT fields in a JSON object.
+   *
+   * @param fields comma-separated JSON field names
+   * @param json JSON object containing optional compact JWTs
+   * @param keyStore trusted public JWKS
+   */
+  @Dann("verifiziere die ES256-Signaturen der vorhandenen JWT-Felder {string} "
+      + "in JSON {tigerResolvedString} mit KeyStore {tigerResolvedString}")
+  @And("verify the ES256 signatures of the present JWT fields {string} "
+      + "in JSON {tigerResolvedString} with keystore {tigerResolvedString}")
+  public void verifyPresentJwtSignatures(String fields, String json, String keyStore) {
+    var object = JSON.readTree(json);
+    for (var name : fields.split(",")) {
+      var field = name.trim();
+      if (object.has(field)) {
+        verifyJwtSignatureFromKid(object.get(field).asString(), keyStore);
+      }
+    }
   }
 
   /**

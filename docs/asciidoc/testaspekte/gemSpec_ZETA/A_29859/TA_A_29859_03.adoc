@@ -1,0 +1,14 @@
+[#TA_A_29859_03]
+===== TA_A_29859_03 - ZETA Client, Behandlung von Step-Up-Fehlermeldungen - Interaktiven Step-Up dem Fachclient melden
+
+"Empfängt der ZETA Client eine HTTP-Fehlerantwort mit HTTP-Statuscode 401 und zeta-error-origin: pep, bei der das Step-up über den WWW-Authenticate-Header error="insufficient_user_authentication" gemäß [RFC9470] oder error="insufficient_scope" signalisiert wird, MUSS der ZETA Client den Fall als Step-up erkennen und dabei das geforderte Niveau acr_values und oder scopes sowie ggf. max_age aus dem WWW-Authenticate-Header übernehmen und folgende Schritte durchführen:
+
+Fehlererkennung: Den Fehler als dedizierten Step-Up-Fehler identifizieren (und nicht als regulären Verbindungs- oder Token-Fehler).
+
+Initiierung des Upgrades: Die Prozedur zum Erlangen eines neuen Access Tokens mit erforderlichem Sicherheitsniveau (z. B. durch erneute Authentifizierung mit den geforderten Parametern) einleiten.
+
+Fachclient-Interaktion: Kann das SDK den Step-Up-Prozess nicht vollautomatisch im Hintergrund durchführen (z. B. weil eine Benutzerinteraktion für die Multi-Faktor-Authentifizierung nötig ist), MUSS der ZETA Client dem aufrufenden Fach-Client **eine spezifische Exception bzw. ein definiertes Fehlerobjekt zurückgeben, das den Step-Up-Bedarf signalisiert**.
+
+Retry-Option: Nach erfolgreicher Durchführung des Step-Ups MUSS der ZETA Client die Möglichkeit bieten, den ursprünglichen Request mit dem neuen, höherwertigen Access Token zu wiederholen.
+
+**[<=]**"

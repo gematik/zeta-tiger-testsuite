@@ -33,7 +33,6 @@ import static de.gematik.zeta.services.PrometheusQuerySupport.parsePositiveInteg
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.zeta.Metric;
 import de.gematik.zeta.services.PrometheusQueryService;
-import io.cucumber.datatable.DataTable;
 import io.cucumber.java.de.Dann;
 import io.cucumber.java.en.Then;
 import java.io.IOException;
@@ -85,124 +84,6 @@ public class PrometheusChartSteps {
   }
 
   /**
-   * Renders a generic Prometheus range-query chart from a data table.
-   *
-   * <p>The table must contain {@code name} and {@code query} columns. Each query should return a
-   * single time series; if it returns multiple series they are rendered with label details appended
-   * to the configured name.</p>
-   *
-   * @param title chart and attachment title
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param stepSeconds Prometheus query resolution in seconds
-   * @param seriesTable table with {@code name} and {@code query} columns
-   */
-  @Dann("hänge Prometheus-Diagramm {string} für Fenster {tigerResolvedString} Sekunden und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus chart {string} for window {tigerResolvedString} seconds and step {tigerResolvedString} seconds")
-  public void attachPrometheusChart(
-      String title,
-      String windowSeconds,
-      String stepSeconds,
-      DataTable seriesTable) {
-    var rows = seriesTable.asMaps(String.class, String.class);
-    if (rows.isEmpty()) {
-      throw new IllegalArgumentException("Prometheus chart table must contain at least one row");
-    }
-
-    var queries = rows.stream()
-        .map(row -> new ChartQuery(
-            requireTableValue(row, "name"),
-            TigerGlobalConfiguration.resolvePlaceholders(requireTableValue(row, "query"))))
-        .toList();
-    attachChartFromQueries(title, windowSeconds, stepSeconds, queries);
-  }
-
-  /**
-   * Renders one configured Prometheus chart from a YAML definition.
-   *
-   * @param chartId chart id under the YAML {@code charts} node
-   * @param configPath YAML file path or classpath resource
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Diagramm {string} aus YAML {string}, Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus chart {string} from YAML {string}, window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds and step {tigerResolvedString} seconds")
-  public void attachPrometheusChartFromYaml(
-      String chartId,
-      String configPath,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var config = readYamlConfig(configPath);
-    attachConfiguredChart(config, chartId, windowSeconds, rollupSeconds, stepSeconds);
-  }
-
-  /**
-   * Renders all Prometheus charts listed in a YAML group definition.
-   *
-   * @param groupId group id under the YAML {@code groups} node
-   * @param configPath YAML file path or classpath resource
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Diagrammgruppe {string} aus YAML {string}, Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus chart group {string} from YAML {string}, window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds and step {tigerResolvedString} seconds")
-  public void attachPrometheusChartGroupFromYaml(
-      String groupId,
-      String configPath,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var config = readYamlConfig(configPath);
-    var group = config.path("groups").path(groupId);
-    if (!group.isArray() || group.isEmpty()) {
-      throw new IllegalArgumentException("Prometheus chart group '" + groupId + "' is missing or empty in " + configPath);
-    }
-    for (var chartId : group) {
-      attachConfiguredChart(config, chartId.asText(), windowSeconds, rollupSeconds, stepSeconds);
-    }
-  }
-
-  /**
-   * Renders all Prometheus charts listed in a reusable YAML chart set.
-   *
-   * @param setId set id under the YAML {@code sets} node
-   * @param titlePrefix dynamic title prefix for all generated charts
-   * @param configPath YAML file path or classpath resource
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Diagrammset {string} mit Titelpräfix {string} aus YAML {string}, "
-      + "Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden "
-      + "und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus chart set {string} with title prefix {string} from YAML {string}, "
-      + "window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds "
-      + "and step {tigerResolvedString} seconds")
-  public void attachPrometheusChartSetFromYaml(
-      String setId,
-      String titlePrefix,
-      String configPath,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var config = readYamlConfig(configPath);
-    var set = config.path("sets").path(setId);
-    if (!set.isObject()) {
-      throw new IllegalArgumentException("Prometheus chart set '" + setId + "' is missing in " + configPath);
-    }
-    var charts = set.path("charts");
-    if (!charts.isArray() || charts.isEmpty()) {
-      throw new IllegalArgumentException("Prometheus chart set '" + setId + "' must define at least one chart");
-    }
-    var rollup = parsePositiveInteger(rollupSeconds, "rollupSeconds");
-    for (var chart : charts) {
-      attachChartSetItem(config, setId, chart, titlePrefix, windowSeconds, rollup, stepSeconds);
-    }
-  }
-
-  /**
    * Renders all Prometheus charts from a reusable YAML profile for one or more targets.
    *
    * @param profileId profile id under the YAML {@code profiles} node
@@ -243,169 +124,6 @@ public class PrometheusChartSteps {
         attachProfileChartItem(config, profileId, chart, target, titlePrefix, windowSeconds, rollup, stepSeconds);
       }
     }
-  }
-
-  /**
-   * Renders a latency chart with avg, p90, p95 and p99 lines for one service/span pair.
-   *
-   * @param title chart and attachment title
-   * @param serviceName Prometheus {@code service_name} label value
-   * @param spanName Prometheus {@code span_name} label value
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling histogram window in seconds for each chart point
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Latenzdiagramm {string} für Service {string}, Span {string}, "
-      + "Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden "
-      + "und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus latency chart {string} for service {string}, span {string}, "
-      + "window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds "
-      + "and step {tigerResolvedString} seconds")
-  public void attachPrometheusLatencyChart(
-      String title,
-      String serviceName,
-      String spanName,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var resolvedServiceName = TigerGlobalConfiguration.resolvePlaceholders(serviceName);
-    var resolvedSpanName = TigerGlobalConfiguration.resolvePlaceholders(spanName);
-    var rollup = parsePositiveInteger(rollupSeconds, "rollupSeconds") + "s";
-    var matcher = labelMatcher(resolvedServiceName, resolvedSpanName, null);
-    var queries = List.of(
-        new ChartQuery("avg", histogramLatencyQuery(
-            resolvedServiceName,
-            resolvedSpanName,
-            rollup,
-            Metric.avg()), "ms"),
-        new ChartQuery("p90", histogramQuantileQuery(0.90d, matcher, rollup), "ms"),
-        new ChartQuery("p95", histogramQuantileQuery(0.95d, matcher, rollup), "ms"),
-        new ChartQuery("p99", histogramQuantileQuery(0.99d, matcher, rollup), "ms"));
-    attachChartFromQueries(title + " (ms)", windowSeconds, stepSeconds, queries);
-  }
-
-  /**
-   * Renders a request-rate chart for several span names of one service.
-   *
-   * @param title chart and attachment title
-   * @param serviceName Prometheus {@code service_name} label value
-   * @param spanNames comma-separated Prometheus {@code span_name} label values
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling count window in seconds for each chart point
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Ratendiagramm {string} für Service {string}, Spans {string}, "
-      + "Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden "
-      + "und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus rate chart {string} for service {string}, spans {string}, window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds and step {tigerResolvedString} seconds")
-  public void attachPrometheusRateChart(
-      String title,
-      String serviceName,
-      String spanNames,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var rollup = parsePositiveInteger(rollupSeconds, "rollupSeconds");
-    var countExpression = combinedCountExpression(serviceName, spanNames, rollup + "s", null);
-    var query = "(" + countExpression + ") / " + rollup;
-    attachChartFromQueries(title + " (req/s)", windowSeconds, stepSeconds, List.of(new ChartQuery("rate", query, "req/s")));
-  }
-
-  /**
-   * Renders an error-rate chart for several span names of one service.
-   *
-   * @param title chart and attachment title
-   * @param serviceName Prometheus {@code service_name} label value
-   * @param spanNames comma-separated Prometheus {@code span_name} label values
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling count window in seconds for each chart point
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  @Dann("hänge Prometheus-Fehlerratendiagramm {string} für Service {string}, Spans {string}, "
-      + "Fenster {tigerResolvedString} Sekunden, Rollup {tigerResolvedString} Sekunden "
-      + "und Schritt {tigerResolvedString} Sekunden an")
-  @Then("attach Prometheus error-rate chart {string} for service {string}, spans {string}, "
-      + "window {tigerResolvedString} seconds, rollup {tigerResolvedString} seconds "
-      + "and step {tigerResolvedString} seconds")
-  public void attachPrometheusErrorRateChart(
-      String title,
-      String serviceName,
-      String spanNames,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var rollup = parsePositiveInteger(rollupSeconds, "rollupSeconds") + "s";
-    var errorExpression = combinedCountExpression(
-        serviceName,
-        spanNames,
-        rollup,
-        "zeta_test_status_code=\"STATUS_CODE_ERROR\"");
-    var totalExpression = combinedCountExpression(serviceName, spanNames, rollup, null);
-    var query = "100 * (" + errorExpression + ") / clamp_min((" + totalExpression + "), 1)";
-    attachChartFromQueries(title + " (%)", windowSeconds, stepSeconds, List.of(new ChartQuery("error rate", query, "%")));
-  }
-
-  /**
-   * Resolves a configured chart by id and attaches it.
-   *
-   * @param config parsed YAML configuration
-   * @param chartId chart id under {@code charts}
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  private void attachConfiguredChart(
-      JsonNode config,
-      String chartId,
-      String windowSeconds,
-      String rollupSeconds,
-      String stepSeconds) {
-    var chart = config.path("charts").path(chartId);
-    if (!chart.isObject()) {
-      throw new IllegalArgumentException("Prometheus chart '" + chartId + "' is missing in YAML configuration");
-    }
-    var title = textValue(chart, "title", chartId);
-    var scale = ChartScale.from(textValue(chart, "scale", "raw"));
-    var seriesNode = chart.path("series");
-    if (!seriesNode.isArray() || seriesNode.isEmpty()) {
-      throw new IllegalArgumentException("Prometheus chart '" + chartId + "' must define at least one series");
-    }
-    var rollup = parsePositiveInteger(rollupSeconds, "rollupSeconds");
-    var queries = new ArrayList<ChartQuery>();
-    for (var series : seriesNode) {
-      queries.add(buildConfiguredQuery(config, chartId, chart, series, rollup));
-    }
-    attachChartFromQueries(title, windowSeconds, stepSeconds, queries, scale);
-  }
-
-  /**
-   * Resolves one chart-set item and attaches the generated chart.
-   *
-   * @param config parsed YAML configuration
-   * @param setId parent set id for error reporting
-   * @param chart YAML chart item
-   * @param titlePrefix dynamic title prefix
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @param stepSeconds Prometheus query resolution in seconds
-   */
-  private void attachChartSetItem(
-      JsonNode config,
-      String setId,
-      JsonNode chart,
-      String titlePrefix,
-      String windowSeconds,
-      int rollupSeconds,
-      String stepSeconds) {
-    var targetId = requiredText(chart, "target", setId);
-    var type = requiredText(chart, "type", setId);
-    var target = target(config, targetId, setId);
-    var title = chart.hasNonNull("title")
-        ? textValue(chart, "title", "")
-        : buildChartSetTitle(titlePrefix, target, type);
-    var queries = buildChartSetQueries(config, setId, chart, target, type, rollupSeconds);
-    var scale = ChartScale.from(textValue(chart, "scale", defaultChartScale(type)));
-    attachChartFromQueries(title, windowSeconds, stepSeconds, queries, scale);
   }
 
   /**
@@ -546,18 +264,6 @@ public class PrometheusChartSteps {
    *
    * @param titlePrefix dynamic title prefix
    * @param target inherited target node
-   * @param type chart type
-   * @return chart title
-   */
-  private String buildChartSetTitle(String titlePrefix, JsonNode target, String type) {
-    return buildChartSetTitle(titlePrefix, target, YAML.createObjectNode(), type);
-  }
-
-  /**
-   * Builds a default chart title for a chart-set item.
-   *
-   * @param titlePrefix dynamic title prefix
-   * @param target inherited target node
    * @param chart YAML chart item
    * @param type chart type
    * @return chart title
@@ -584,84 +290,6 @@ public class PrometheusChartSteps {
    */
   private String defaultChartScale(String type) {
     return "correlation".equals(type) ? "normalized" : "raw";
-  }
-
-  /**
-   * Builds one chart query from a YAML series definition.
-   *
-   * @param config parsed YAML configuration
-   * @param chartId parent chart id for error messages
-   * @param chart YAML chart node
-   * @param series YAML series node
-   * @param rollupSeconds rolling window in seconds for generated PromQL expressions
-   * @return chart query
-   */
-  private ChartQuery buildConfiguredQuery(
-      JsonNode config,
-      String chartId,
-      JsonNode chart,
-      JsonNode series,
-      int rollupSeconds) {
-    var name = requiredText(series, "name", chartId);
-    if (series.hasNonNull("query")) {
-      return new ChartQuery(
-          name,
-          TigerGlobalConfiguration.resolvePlaceholders(requiredText(series, "query", chartId)),
-          textValue(series, "unit", ""));
-    }
-
-    var type = requiredText(series, "type", chartId);
-    var service = inheritedText(config, chart, series, "service", "service", chartId);
-    var rollup = rollupSeconds + "s";
-    return switch (type) {
-      case "rate" -> {
-        var countExpression = combinedCountExpression(
-            service,
-            inheritedText(config, chart, series, "spans", "spans", chartId),
-            rollup,
-            null);
-        yield new ChartQuery(name, "(" + countExpression + ") / " + rollupSeconds, "req/s");
-      }
-      case "error_rate" -> {
-        var spans = inheritedText(config, chart, series, "spans", "spans", chartId);
-        var errorExpression = combinedCountExpression(
-            service,
-            spans,
-            rollup,
-            "zeta_test_status_code=\"STATUS_CODE_ERROR\"");
-        var totalExpression = combinedCountExpression(service, spans, rollup, null);
-        yield new ChartQuery(name, "100 * (" + errorExpression + ") / clamp_min((" + totalExpression + "), 1)", "%");
-      }
-      case "latency_avg" -> {
-        var resolvedService = TigerGlobalConfiguration.resolvePlaceholders(service);
-        var resolvedSpan = TigerGlobalConfiguration.resolvePlaceholders(
-            inheritedText(config, chart, series, "span", "latencySpan", chartId));
-        yield new ChartQuery(
-            name,
-            histogramLatencyQuery(resolvedService, resolvedSpan, rollup, Metric.avg()),
-            "ms");
-      }
-      case "latency_p90" -> latencyQuantileQuery(
-          name,
-          service,
-          inheritedText(config, chart, series, "span", "latencySpan", chartId),
-          0.90d,
-          rollup);
-      case "latency_p95" -> latencyQuantileQuery(
-          name,
-          service,
-          inheritedText(config, chart, series, "span", "latencySpan", chartId),
-          0.95d,
-          rollup);
-      case "latency_p99" -> latencyQuantileQuery(
-          name,
-          service,
-          inheritedText(config, chart, series, "span", "latencySpan", chartId),
-          0.99d,
-          rollup);
-      default -> throw new IllegalArgumentException(
-          "Prometheus chart '" + chartId + "' contains unsupported series type '" + type + "'");
-    };
   }
 
   /**
@@ -824,22 +452,6 @@ public class PrometheusChartSteps {
     } catch (IOException e) {
       throw new IllegalArgumentException("Failed to read Prometheus chart YAML: " + resolvedPath, e);
     }
-  }
-
-  /**
-   * Executes all configured queries, renders one SVG chart and attaches it to the report.
-   *
-   * @param title chart and attachment title
-   * @param windowSeconds chart time range in seconds ending at now
-   * @param stepSeconds Prometheus query resolution in seconds
-   * @param queries chart series queries
-   */
-  private void attachChartFromQueries(
-      String title,
-      String windowSeconds,
-      String stepSeconds,
-      List<ChartQuery> queries) {
-    attachChartFromQueries(title, windowSeconds, stepSeconds, queries, ChartScale.RAW);
   }
 
   /**
@@ -1282,21 +894,6 @@ public class PrometheusChartSteps {
   }
 
   /**
-   * Reads a required data-table value.
-   *
-   * @param row data-table row
-   * @param key column name
-   * @return non-blank cell value
-   */
-  private String requireTableValue(Map<String, String> row, String key) {
-    var value = row.get(key);
-    if (value == null || value.isBlank()) {
-      throw new IllegalArgumentException("Prometheus chart table column '" + key + "' must not be blank");
-    }
-    return value;
-  }
-
-  /**
    * Reads a required text value from a YAML node.
    *
    * @param node YAML object node
@@ -1561,16 +1158,6 @@ public class PrometheusChartSteps {
    * @param unit displayed value unit
    */
   private record ChartQuery(String name, String query, String unit) {
-
-    /**
-     * Creates a chart query without a value unit.
-     *
-     * @param name chart series name
-     * @param query PromQL expression
-     */
-    private ChartQuery(String name, String query) {
-      this(name, query, "");
-    }
   }
 
   /**

@@ -1,0 +1,6 @@
+[#TA_A_29380_01]
+===== TA_A_29380_01 - ASL-Terminierung am PEP
+
+"Der ZETA Guard und der ZETA Client MÜSSEN den **Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL** unterstützen. **[<=]**"
+
+Prüffokus: **ASL-Terminierung am PEP** im Ablauf der Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL.

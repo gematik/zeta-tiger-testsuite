@@ -1,0 +1,4 @@
+[#A_29374]
+==== A_29374 - ZETA, Ablauf Service Discovery
+
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Service-Discovery unterstützen. [<=]

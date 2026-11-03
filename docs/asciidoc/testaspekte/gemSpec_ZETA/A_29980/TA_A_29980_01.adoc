@@ -1,0 +1,6 @@
+[#TA_A_29980_01]
+===== TA_A_29980_01 - Notification Service – mTLS-Authentisierung des Resource Servers - Beide RS-Operationen mittels technischem Nutzer authentisieren
+
+"Der Notification Service MUSS **alle Aufrufe des Resource Servers (getActiveChannels, submitNotification)** über gegenseitiges TLS (mTLS) mit einem technischen Nutzer authentisieren, das Client-Zertifikat des Resource Servers prüfen und Verbindungen mit fehlendem oder ungültigem Zertifikat ablehnen (401).
+
+**[<=]**"

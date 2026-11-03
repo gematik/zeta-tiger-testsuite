@@ -1,0 +1,4 @@
+[#A_29741]
+==== A_29741 - PDP Policy Engine, Verwendung der Signer-Keys des Provisioning Images
+
+Die ZETA Guard Policy Engine MUSS die im Verzeichnis /policy-engine-bundle-keys/ bereitgestellten Schlüssel nutzen, um die Signaturen geladener Policy Bundles zu verifizieren: Unter /policy-engine-bundle-keys/ca/ abgelegte CA-Zertifikate dienen als Vertrauensanker für die ausstellenden Instanzen. Unter /policy-engine-bundle-keys/signers/ abgelegte Zertifikate definieren die explizit autorisierten Signaturschlüssel für die Freigabe von OPA-Policies. [<=]

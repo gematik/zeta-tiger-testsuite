@@ -4,10 +4,6 @@ set -eu
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR is required}"
 : "${ZETA_BASE_URL:?ZETA_BASE_URL is required}"
 : "${ZETA_K8S_NAMESPACE:?ZETA_K8S_NAMESPACE is required}"
-: "${ZETA_PROXY_URL:?ZETA_PROXY_URL is required}"
-: "${OPENSEARCH_URL:?OPENSEARCH_URL is required}"
-: "${PROMETHEUS_URL:?PROMETHEUS_URL is required}"
-: "${ZETA_TLS_TEST_TOOL_SERVICE_URL:?ZETA_TLS_TEST_TOOL_SERVICE_URL is required}"
 
 kube_dir="${CI_PROJECT_DIR}/.kube"
 kubeconfig="${kube_dir}/config"
@@ -71,7 +67,9 @@ start_port_forward() {
 start_port_forward tiger-proxy 9999 9999
 start_port_forward opensearch 9200 9200
 start_port_forward prometheus 9090 9090
+start_port_forward jaeger 16686 16686
 start_port_forward zeta-tls-test-tool-service 9012 80
+start_port_forward zeta-cert-validation-mock 9013 80
 
 # shellcheck disable=SC2086 # Maven and Tiger options are intentionally word-split.
 mvn ${MAVEN_CLI_OPTS} -Pproxy \
@@ -83,8 +81,4 @@ mvn ${MAVEN_CLI_OPTS} -Pproxy \
   -Dtiger.lib.rbelAnsiColors=false \
   "-Dzeta_base_url=${ZETA_BASE_URL}" \
   "-Dzeta_k8s_namespace=${ZETA_K8S_NAMESPACE}" \
-  "-Dzeta_proxy_url=${ZETA_PROXY_URL}" \
-  "-Dopensearch_url=${OPENSEARCH_URL}" \
-  "-Dprometheus_url=${PROMETHEUS_URL}" \
-  "-Dzeta_tls_test_tool_service_url=${ZETA_TLS_TEST_TOOL_SERVICE_URL}" \
   verify

@@ -1,0 +1,78 @@
+[#UC_02_13]
+== UseCase_02_13: Persistenzschutz der Nachrichten-Historie
+
+.UseCase_02_13
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | Persistenzschutz der Nachrichten-Historie
+
+| Akteur: | Authentisierter Nutzer über ZETA Client Modul / SDK
+
+| weitere Akteure: | Fachdienst / Resource Server, Notification Service in VAU, HSM, Datenspeicher
+
+| Auslöser: | Der Notification Service speichert Historiendaten oder stellt sie für einen berechtigten Abruf wieder her.
+
+| Kurzbeschreibung: |
+Die nach A_29973 für Historiendaten ausdrücklich übernommenen Schutzpflichten aus A_29959 werden an den tatsächlichen Historien-Schreib- und Lesepfaden untersucht: at-rest-Verschlüsselung, Envelope-Verarbeitung, HSM-Grenze, Kryptokonformität und VAU-Grenze. Der UseCase ist ein Entwurf ohne ausführbare Szenarien.
+
+| Vorbedingung: |
+. Die Historie ist aktiviert; der Notification Service läuft in der für den Schutz nach A_29959 vorgesehenen VAU-/HSM-Betriebsart. Nutzer, Pusher, aktiver Channel und dienstspezifische Autorisierung werden über das SDK hergestellt. Der Client kann ein markiertes Fachdienstereignis auslösen und seine Historiennachricht über das SDK wieder abrufen.
+. Historiendatensätze einschließlich zugehöriger Indizes, Kopien und versiegelter Schlüsselreferenzen sind lesend beobachtbar. Die Zuordnung zur erzeugten Nachricht steht unabhängig von ihrer Speicherrepräsentation fest.
+. Für die tatsächliche Historienverarbeitung sind VAU-Schreib-/Lesepfade, DEK-Verwendung und HsmProxyService.Encrypt/Decrypt mit der jeweiligen Schlüsselgeneration korrelierbar. HSM-Schlüsselattribute, Exportberechtigungen und relevante Schnittstellenverträge sind zugänglich; die Beobachtung erfordert keinen Export produktiver Schlüssel.
+. Das kryptographische Profil nennt tatsächliche Verfahren, Schlüssellängen, Nonce-/IV-Handhabung und Mengengrenzen samt zugehöriger normativer Stelle in gemSpec_Krypt. Die Implementierung und ihr Build sind den beobachteten Pfaden eindeutig zugeordnet; unabhängige kryptographische Kontrollvektoren und die für den jeweiligen Schutz erforderlichen Komponentenbelege stehen bereit.
+
+| Nebenbedingung: |
+Jeder Schutzaspekt wird aus eigenem Ausgangszustand durch eine SDK-ausgelöste Speicherung und einen berechtigten Wiederabruf veranlasst. Ein erfolgreicher API-Abruf allein beweist weder Verschlüsselung noch die HSM-/VAU-Grenze. Die Schlüsselhaltung verwendet die bestehende NS-Schlüsselverwaltung nach A_29958 einschließlich Erzeugung in der VAU, ausschließlich versiegelter Persistenz, flüchtiger Cachehaltung und sicherem Verwerfen bei Beendigung beziehungsweise Rotation. Der Historien-DEK bleibt in diesen Nachweispfaden identifizierbar. Eigene Registrierungen und Historiendaten werden nach jedem Lauf bereinigt; Produkt-Schlüsselmaterial wird nicht zur Beobachtung offengelegt.
+
+| Ablauf: |
+*Verschlüsselung vor Persistierung*
+
+. Der Client löst eine neue Nachricht mit unabhängig bekanntem Inhalt und identifier aus. Der NS übernimmt die Historiendaten und verschlüsselt sie vor dem Speicherschreibvorgang. Der tatsächliche Historienbestand enthält weder den Nachrichteninhalt noch ungeschützte Historiendaten im Klartext. Ein berechtigter SDK-Abruf stellt die ursprüngliche Nachricht vollständig wieder her.
+
+*Envelope-Verarbeitung und HSM-Grenze*
+
+. In einem eigenen Lauf verwendet der NS einen DEK für die Historiendaten. HsmProxyService.Encrypt versiegelt diesen DEK mit dem im HSM gehaltenen KEK; die Persistenz enthält die zugehörige versiegelte Schlüsselrepräsentation. Bei einer späteren Wiederherstellung wird genau diese Repräsentation über Decrypt innerhalb der VAU entsiegelt und für den passenden Historienabruf verwendet. Daten- und Schlüsselgeneration bleiben zugeordnet.
+. Ein weiterer Lauf untersucht für den tatsächlich verwendeten Historien-KEK die HSM-Haltung und fehlende Exportmöglichkeit. HSM-Attribute, aktive Berechtigungen, Schnittstellen und die zugehörigen VAU-Pfade belegen gemeinsam, dass der KEK das HSM nicht verlässt. Ein lediglich erfolgreicher Encrypt-/Decrypt-Aufruf genügt hierfür nicht.
+
+*Kryptographische Konformität und VAU-Grenze*
+
+. Ein eigener Schreib-/Leselauf vergleicht die tatsächlich eingesetzten Verfahren und Schlüssellängen mit dem normativen Kryptoprofil. Nonce-/IV-Handhabung und Mengenbegrenzung werden anhand der tatsächlichen Historienverschlüsselung, unabhängiger Kontrollvektoren und der wirksamen Begrenzungs-/Rotationspfade untersucht. Die zulässigen Parameter und Grenzen werden nicht aus der beobachteten Implementierung als Sollwert übernommen.
+. In einem getrennten Lauf verarbeitet der NS Historiendaten mit dem entwrappten DEK. Die Massen-Ver- und -Entschlüsselung erfolgt ausschließlich innerhalb der VAU. Die tatsächlich ausgeführten Pfade und ihre Speichergrenzen werden zu den korrelierten Historien-Schreib-/Lesevorgängen zugeordnet; eine außerhalb der VAU erfolgende Verarbeitung wäre auch bei verschlüsselter Persistenz unzulässig.
+. Die Historien-Schreib-/Lesepfade verwenden die Schlüsselverwaltung nach A_29958 unverändert: DEK-Erzeugung in der VAU, keine unversiegelte Persistenz, flüchtige Klartextkopien ausschließlich innerhalb der VAU und sicheres Verwerfen bei kontrollierter Beendigung sowie bei Schlüsselrotation. Die gemeinsamen Schlüsselhaltungs- und Verwerfungsnachweise werden einschließlich des für die Historie verwendeten DEK geführt.
+
+| Nachbedingung: |
+Die Historiendaten sind vor Persistierung verschlüsselt und für berechtigte Nutzer vollständig lesbar. Envelope-Verarbeitung, ausschließliche HSM-Haltung des KEK, zulässige Kryptoparameter und ausschließliche VAU-Verarbeitung sind jeweils gesondert belegt. Die bestehende Schlüsselhaltung nach A_29958 bleibt auch für den Historien-DEK wirksam. Eigene Daten und Registrierungen sind bereinigt.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29973_04>>
+* <<TA_A_29973_07>>
+* <<TA_A_29973_08>>
+* <<TA_A_29973_09>>
+* <<TA_A_29973_10>>
+
+|===
+
+[mermaid,uc-02-13-historienpersistenz,svg]
+....
+sequenceDiagram
+    autonumber
+    participant C as Authentisierter Client / SDK
+    participant R as Fachdienst / Resource Server
+    participant V as Notification Service in VAU
+    participant H as HSM über HsmProxyService
+    participant D as Datenspeicher
+    C->>R: Neues Versandereignis
+    R->>V: Notification für aktivierte Historie
+    V->>V: DEK erzeugen und Historiendaten verschlüsseln
+    V->>H: Encrypt zum Versiegeln des Historien-DEK
+    H-->>V: Versiegelter DEK
+    V->>D: Verschlüsselte Historiendaten und versiegelten DEK speichern
+    C->>V: Berechtigter Historienabruf über SDK
+    D-->>V: Geschützte Daten und versiegelter DEK
+    V->>H: Decrypt zum Entsiegeln des zugeordneten DEK
+    H-->>V: DEK innerhalb der VAU wiederherstellen
+    V->>V: Historiendaten ausschließlich in der VAU entschlüsseln
+    V-->>C: Ursprüngliche Nachricht
+    Note over V,H: KEK verbleibt ausschließlich im HSM
+    Note over V,D: Kryptoprofil und Schlüsselhaltung gelten auf beiden Datenpfaden
+....

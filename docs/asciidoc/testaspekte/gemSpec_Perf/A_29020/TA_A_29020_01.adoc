@@ -1,0 +1,6 @@
+[#TA_A_29020_01]
+===== TA_A_29020_01 - Performance - Telemetriedatenlieferung - Lieferung ZETA Guard HTTP Proxy - Lieferung jeder ausgeführten Operation
+
+"Der Produkttyp MUSS **für jede ausgeführte Operation die Betriebsdaten (Traces)** mit Traceparametern gemäß der Tabelle "Tab_gemSpec_Perf_Trace_HTTPSpanParameter_Telemetriedatenlieferung" in einer Telemetriedatenlieferung an den Telemetriedaten-Service senden. Das Senden der Telemetriedaten SOLL asynchron erfolgen, um die Performance der Operation nicht negativ zu beeinflussen.
+
+**[<=]**"

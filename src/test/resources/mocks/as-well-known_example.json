@@ -4,6 +4,8 @@
   "nonce_endpoint": "https://auth-server.example.de/nonce",
   "registration_endpoint": "https://auth-server.example.de/register",
   "token_endpoint": "https://auth-server.example.de/token",
+  "redirection_endpoint": "https://auth-server.example.de/callback",
+  "revocation_endpoint": "https://auth-server.example.de/revoke",
   "jwks_uri": "https://auth-server.example.de/jwks",
   "scopes_supported": [
     "openid",

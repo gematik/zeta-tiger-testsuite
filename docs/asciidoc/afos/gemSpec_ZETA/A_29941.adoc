@@ -1,0 +1,4 @@
+[#A_29941]
+==== A_29941 - Authorization Server – IDP-unabhängiger, hochassuranter Identitätsnachweis
+
+Der Authorization Server MUSS für die OOB-Löschung einen vom sektoralen IDP unabhängigen Identitätsnachweis auf hohem Vertrauensniveau verlangen. Ein Nachweis auf niedrigerem Niveau DARF NICHT akzeptiert werden. [<=]

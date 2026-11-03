@@ -25,35 +25,40 @@
 package de.gematik.zeta.services;
 
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.zeta.services.DirectWebSocketClient.Connection;
+import java.io.EOFException;
+import java.net.SocketException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.WebSocketHttpHeaders;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.handler.AbstractWebSocketHandler;
+import org.springframework.messaging.simp.stomp.ConnectionLostException;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 
 /**
- * Maintains a pool of raw WebSocket connections for load and capacity scenarios.
+ * Maintains a bounded pool of WebSocket connections with established STOMP sessions.
  */
 @Slf4j
 public class WebSocketLoadService implements AutoCloseable {
 
-  private static final int CONNECT_TIMEOUT_SECONDS = 10;
   private static final int MAX_OPEN_CONCURRENCY = 25;
 
   private final WebSocketClientFactory clientFactory;
-  private final List<WebSocketSession> sessions = Collections.synchronizedList(new ArrayList<>());
+  private final List<LoadConnection> sessions = Collections.synchronizedList(new ArrayList<>());
   private final List<String> failures = Collections.synchronizedList(new ArrayList<>());
+  private long setupDeadline;
 
   /**
    * Creates a load service with the default WebSocket client factory.
@@ -72,35 +77,58 @@ public class WebSocketLoadService implements AutoCloseable {
   }
 
   /**
-   * Opens the requested number of raw WebSocket connections against the given endpoint.
+   * Opens WebSocket and STOMP consecutively per connection with at most 25 concurrent workers.
    *
    * <p>Existing connections are closed first so each call starts from a clean state.</p>
    *
    * @param url the target WebSocket URL, including Tiger placeholders if needed
    * @param connectionCount the number of connections to open
+   * @throws AssertionError if the requested capacity is not reached or setup cannot complete
    */
-  public void openConnections(String url, int connectionCount) {
+  public void openStompConnections(String url, int connectionCount) {
     if (connectionCount <= 0) {
       throw new AssertionError("WebSocket connection count must be > 0");
     }
 
     close();
+    int setupTimeout = TigerGlobalConfiguration.readIntegerOptional("websocket.loadSetupTimeoutSeconds").orElse(180);
+    if (setupTimeout <= 0) {
+      throw new IllegalArgumentException("websocket.loadSetupTimeoutSeconds must be > 0");
+    }
+    setupDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(setupTimeout);
 
     var resolvedUrl = TigerGlobalConfiguration.resolvePlaceholders(url).trim();
-    SslConfigurationService.configureForTesting();
 
     log.info("Opening {} WebSocket connections to {}", connectionCount, resolvedUrl);
 
     var executor = Executors.newFixedThreadPool(Math.min(MAX_OPEN_CONCURRENCY, connectionCount));
+    boolean completed = false;
     try {
-      List<Future<ConnectionAttempt>> attempts = new ArrayList<>(connectionCount);
-      for (int index = 0; index < connectionCount; index++) {
-        final int connectionIndex = index + 1;
-        attempts.add(executor.submit(() -> openSingleConnection(resolvedUrl, connectionIndex)));
+      int nextConnectionIndex = 1;
+      while (getOpenConnectionCount() < connectionCount) {
+        int missing = connectionCount - getOpenConnectionCount();
+        log.info("Opening {} missing WebSocket connections for a pool of {}", missing, connectionCount);
+        List<Future<Boolean>> attempts = new ArrayList<>(missing);
+        for (int index = 0; index < missing; index++) {
+          final int connectionIndex = nextConnectionIndex++;
+          attempts.add(executor.submit(() -> openWithRetries(resolvedUrl, connectionIndex)));
+        }
+        if (!collectAttempts(attempts)) {
+          throw new AssertionError("Expected " + connectionCount + " open WebSocket connections after setup but found "
+              + getOpenConnectionCount() + ". Recent failures: " + getRecentFailures(10));
+        }
       }
-      collectAttempts(attempts);
+      completed = true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("STOMP pool setup interrupted", e);
+    } catch (ExecutionException | TimeoutException e) {
+      throw new AssertionError("STOMP pool setup failed or exceeded its total budget", e);
     } finally {
       shutdownExecutor(executor);
+      if (!completed) {
+        closeConnections();
+      }
     }
 
     log.info(
@@ -110,14 +138,13 @@ public class WebSocketLoadService implements AutoCloseable {
   }
 
   /**
-   * Returns the number of currently open WebSocket sessions.
+   * Returns the number of transports whose STOMP sessions are still connected.
    *
    * @return the number of sessions that are still open
    */
   public int getOpenConnectionCount() {
     synchronized (sessions) {
-      sessions.removeIf(session -> session == null || !session.isOpen());
-      return sessions.size();
+      return (int) sessions.stream().filter(LoadConnection::isOpen).count();
     }
   }
 
@@ -140,9 +167,7 @@ public class WebSocketLoadService implements AutoCloseable {
    */
   public List<String> getRecentFailures(int maxEntries) {
     synchronized (failures) {
-      return failures.stream()
-          .limit(Math.max(0, maxEntries))
-          .toList();
+      return failures.stream().limit(Math.max(0, maxEntries)).toList();
     }
   }
 
@@ -151,70 +176,143 @@ public class WebSocketLoadService implements AutoCloseable {
    */
   @Override
   public void close() {
-    synchronized (sessions) {
-      for (var session : sessions) {
-        closeQuietly(session);
-      }
-      sessions.clear();
-    }
-
+    closeConnections();
     synchronized (failures) {
       failures.clear();
     }
   }
 
+  /** Closes successful connections and any transport still owned by the factory. */
+  private void closeConnections() {
+    synchronized (sessions) {
+      for (var session : sessions) {
+        closeQuietly(session.transport());
+      }
+      sessions.clear();
+    }
+    clientFactory.close();
+  }
+
   /**
-   * Opens a single raw WebSocket connection.
+   * Opens one connection, retrying transient failures within the original setup budget.
    *
    * @param resolvedUrl the already resolved WebSocket URL
    * @param connectionIndex the 1-based connection index for diagnostics
-   * @return the connection attempt result
+   * @return whether the connection was established; false indicates a non-retryable failure
+   * @throws InterruptedException if a worker is interrupted while opening or waiting to retry
    */
-  private ConnectionAttempt openSingleConnection(String resolvedUrl, int connectionIndex) {
-    try {
-      var session = clientFactory.createRawClient()
-          .execute(new NoOpWebSocketHandler(), new WebSocketHttpHeaders(), URI.create(resolvedUrl))
-          .get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+  private boolean openWithRetries(String resolvedUrl, int connectionIndex) throws InterruptedException {
+    for (int attempt = 1; System.nanoTime() < setupDeadline; attempt++) {
+      Connection session = null;
+      boolean retained = false;
+      long started = System.nanoTime();
+      String stage = "WebSocket upgrade";
+      var protocolError = new AtomicReference<String>();
+      try {
+        session = awaitHandshake(clientFactory.createRawClient()
+            .open(URI.create(resolvedUrl), WebSocketClientFactory.STOMP_PROTOCOLS));
+        stage = "STOMP handshake";
+        final var transport = session;
+        var stomp = awaitHandshake(clientFactory.connectStomp(session, new StompSessionHandlerAdapter() {
+          @Override
+          public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
+            return byte[].class;
+          }
 
-      if (session == null || !session.isOpen()) {
-        return ConnectionAttempt.failure(
-            String.format("connection #%d did not stay open", connectionIndex));
+          @Override
+          public void handleFrame(StompHeaders headers, Object payload) {
+            protocolError.set(headers.toString());
+            transport.close();
+          }
+
+          @Override
+          public void handleTransportError(StompSession stompSession, Throwable error) {
+            log.warn("STOMP load connection #{} transport failed: {}", connectionIndex, error.toString());
+          }
+        }));
+        if (!session.isOpen() || !stomp.isConnected()) {
+          throw new ConnectionLostException("Connection closed before pool registration");
+        }
+        sessions.add(new LoadConnection(session, stomp));
+        retained = true;
+        return true;
+      } catch (ExecutionException | TimeoutException | RuntimeException e) {
+        failures.add("connection #" + connectionIndex + " attempt " + attempt + " " + stage
+            + " failed after " + Duration.ofNanos(System.nanoTime() - started).toMillis()
+            + "ms: " + rootCauseMessage(e)
+            + (protocolError.get() == null ? "" : "; STOMP ERROR=" + protocolError.get()));
+        if (protocolError.get() != null || !isRetryable(e)) {
+          return false;
+        }
+      } finally {
+        if (!retained) {
+          closeQuietly(session);
+        }
       }
+      long remaining = setupDeadline - System.nanoTime();
+      if (remaining > 0) {
+        TimeUnit.NANOSECONDS.sleep(Math.min(remaining, TimeUnit.MILLISECONDS.toNanos(250)));
+      }
+    }
+    return false;
+  }
 
-      return ConnectionAttempt.success(session);
-    } catch (ExecutionException e) {
-      return ConnectionAttempt.failure(
-          String.format("connection #%d failed: %s", connectionIndex, rootCauseMessage(e)));
-    } catch (TimeoutException e) {
-      return ConnectionAttempt.failure(
-          String.format(
-              "connection #%d timed out after %d seconds",
-              connectionIndex,
-              CONNECT_TIMEOUT_SECONDS));
-    } catch (Exception e) {
-      return ConnectionAttempt.failure(
-          String.format("connection #%d failed: %s", connectionIndex, rootCauseMessage(e)));
+  /**
+   * Limits a handshake by its own timeout and the remaining overall setup budget.
+   *
+   * @param handshake asynchronous handshake to await and cancel on failure
+   * @param <T> handshake result type
+   * @return completed handshake result
+   * @throws InterruptedException if the worker is interrupted
+   * @throws ExecutionException if the handshake failed
+   * @throws TimeoutException if either time limit expires
+   */
+  private <T> T awaitHandshake(CompletableFuture<T> handshake)
+      throws InterruptedException, ExecutionException, TimeoutException {
+    try {
+      return handshake.get(Math.max(0, Math.min(setupDeadline - System.nanoTime(),
+          TimeUnit.SECONDS.toNanos(WebSocketConfiguration.loadConnectionTimeoutSeconds()))), TimeUnit.NANOSECONDS);
+    } catch (InterruptedException | ExecutionException | TimeoutException | RuntimeException e) {
+      handshake.cancel(true);
+      throw e;
     }
   }
 
   /**
-   * Collects completed connection attempts and updates the internal success/failure state.
+   * Accepts only timeouts and identifiable socket failures for setup retries.
+   *
+   * @param error failed handshake cause
+   * @return whether another bounded attempt may be made
+   */
+  private boolean isRetryable(Throwable error) {
+    var cause = error;
+    while (cause.getCause() != null) {
+      cause = cause.getCause();
+    }
+    return cause instanceof TimeoutException || cause instanceof java.net.http.HttpTimeoutException
+        || cause instanceof SocketException || cause instanceof EOFException
+        || cause instanceof ConnectionLostException;
+  }
+
+  /**
+   * Waits for all workers within the original setup budget.
    *
    * @param attempts the submitted connection attempts
+   * @return whether all workers established a connection
+   * @throws InterruptedException if the pool owner is interrupted
+   * @throws ExecutionException if a worker fails unexpectedly
+   * @throws TimeoutException if the setup budget expires
    */
-  private void collectAttempts(List<Future<ConnectionAttempt>> attempts) {
+  private boolean collectAttempts(List<Future<Boolean>> attempts)
+      throws InterruptedException, ExecutionException, TimeoutException {
+    boolean connected = true;
     for (var attemptFuture : attempts) {
-      try {
-        var attempt = attemptFuture.get();
-        if (attempt.session() != null) {
-          sessions.add(attempt.session());
-        } else if (attempt.failureMessage() != null) {
-          failures.add(attempt.failureMessage());
-        }
-      } catch (Exception e) {
-        failures.add("connection attempt collection failed: " + rootCauseMessage(e));
-      }
+      connected &= attemptFuture.get(Math.max(0, setupDeadline - System.nanoTime()), TimeUnit.NANOSECONDS);
     }
+    if (System.nanoTime() >= setupDeadline) {
+      throw new TimeoutException("STOMP pool setup exceeded its total budget");
+    }
+    return connected;
   }
 
   /**
@@ -224,13 +322,18 @@ public class WebSocketLoadService implements AutoCloseable {
    */
   private void shutdownExecutor(ExecutorService executor) {
     executor.shutdownNow();
+    boolean interrupted = Thread.interrupted();
     try {
       if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
         log.warn("WebSocket connection executor did not terminate cleanly.");
       }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+      interrupted = true;
       log.warn("Interrupted while waiting for WebSocket executor shutdown.");
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -239,13 +342,13 @@ public class WebSocketLoadService implements AutoCloseable {
    *
    * @param session the session to close
    */
-  private void closeQuietly(WebSocketSession session) {
+  private void closeQuietly(Connection session) {
     if (session == null || !session.isOpen()) {
       return;
     }
 
     try {
-      session.close(CloseStatus.NORMAL);
+      session.close();
     } catch (Exception e) {
       log.warn("Failed to close WebSocket session cleanly: {}", e.getMessage());
     }
@@ -270,50 +373,15 @@ public class WebSocketLoadService implements AutoCloseable {
   }
 
   /**
-   * No-op handler for raw WebSocket connections that only keeps the session alive.
-   */
-  private static final class NoOpWebSocketHandler extends AbstractWebSocketHandler {
-
-    /**
-     * Logs transport errors on the background connections.
-     *
-     * @param session the affected session
-     * @param exception the reported transport error
-     */
-    @Override
-    public void handleTransportError(
-        @NonNull WebSocketSession session,
-        @NonNull Throwable exception) {
-      log.warn("WebSocket transport error on session {}: {}", session.getId(), exception.getMessage());
-    }
-  }
-
-  /**
-   * Captures the outcome of a single connection attempt.
+   * Holds a transport and its successfully negotiated STOMP session.
    *
-   * @param session the opened session, if successful
-   * @param failureMessage the failure description, if unsuccessful
+   * @param transport underlying WebSocket connection
+   * @param stomp negotiated STOMP session
    */
-  private record ConnectionAttempt(WebSocketSession session, String failureMessage) {
-
-    /**
-     * Creates a successful connection attempt result.
-     *
-     * @param session the opened session
-     * @return the success result
-     */
-    private static ConnectionAttempt success(WebSocketSession session) {
-      return new ConnectionAttempt(session, null);
-    }
-
-    /**
-     * Creates a failed connection attempt result.
-     *
-     * @param failureMessage the diagnostic failure text
-     * @return the failure result
-     */
-    private static ConnectionAttempt failure(String failureMessage) {
-      return new ConnectionAttempt(null, failureMessage);
+  private record LoadConnection(Connection transport, StompSession stomp) {
+    /** Returns true only while both protocol layers remain connected. */
+    private boolean isOpen() {
+      return transport.isOpen() && stomp.isConnected();
     }
   }
 }

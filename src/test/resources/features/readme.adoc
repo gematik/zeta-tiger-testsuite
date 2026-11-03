@@ -24,4 +24,6 @@ include::UserStory_02/readme.adoc[]
 
 include::UserStory_03/readme.adoc[]
 
+include::UserStory_04/readme.adoc[]
+
 :leveloffset: -1

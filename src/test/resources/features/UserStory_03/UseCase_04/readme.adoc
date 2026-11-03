@@ -1,0 +1,80 @@
+[#UC_03_04]
+== UseCase_03_04: OIDC-Codes einlösen und ZETA Token beziehen
+
+.UseCase_03_04
+[cols="1,1a",options="autowidth"]
+|===
+| *Titel:* | OIDC-Codes einlösen und ZETA Token beziehen
+
+| Akteur: |
+ZETA Client
+
+| weitere Akteure: |
+PDP Authorization Server als OIDC Relying Party, sektoraler IDP, PDP Policy Engine
+
+| Auslöser: |
+Der Client erhält AUTH_CODE_IDP und state_as aus der erfolgreichen Nutzerauthentisierung.
+
+| Kurzbeschreibung: |
+Der innere Code wird am Redirection-Endpunkt des Authorization Servers eingelöst. Der anschließend ausgestellte äußere Code führt je nach Policy und Attestierung zur ZETA-Tokenantwort oder zur dargestellten Ablehnung.
+
+| Vorbedingung: |
+. Service Discovery, Client-Registrierung, äußerer und innerer PAR sowie Nutzerauthentisierung sind abgeschlossen. Die zugehörigen PKCE-Verifier, State-Werte und registrierten Redirect-URIs gehören zu diesem Ablauf.
+. Der Authorization Server kann den sektoralen IDP per mTLS erreichen. Für die erlaubenden Varianten liegt Hardware- beziehungsweise Softwareattestierung vor.
+. Im Ablehnungspfad sind die Credentials technisch gültig; die Policy Engine trifft die negative Entscheidung.
+
+| Nebenbedingung: |
+Keine zusätzlichen Nebenbedingungen.
+
+| Ablauf: |
+. Der Client folgt der 302-Weiterleitung des IDP und sendet GET an den aus den AS-Metadaten ermittelten Redirection-Endpunkt mit code=AUTH_CODE_IDP und state=state_as. Der Pfad oidc_redirect_uri wird diesem Endpunkt zugeordnet.
+. Der Authorization Server sendet per mTLS mit self_signed_tls_client_auth POST /token an den sektoralen IDP: grant_type=authorization_code, code=AUTH_CODE_IDP, code_verifier=code_verifier_as, client_id und redirect_uri=oidc_redirect_uri.
+. Nach der Verarbeitung des Codes und des inneren PKCE-Verifiers antwortet der IDP mit 200 OK und id_token als ECDH-ES/A256GCM-verschlüsseltem, ES256-signiertem Token sowie access_token, token_type=Bearer und expires_in.
+. Der Authorization Server verarbeitet das ID Token und seine Claims, erzeugt AUTH_CODE_AS und antwortet dem Client mit 302 Found und Location: app_redirect_uri?code=AUTH_CODE_AS&state=state_app.
+. Der Client erzeugt DPoP-Schlüsselpaar und Proof. Er ordnet den Pfad app_redirect_uri dem Token-Endpunkt des Authorization Servers zu und sendet dort POST /token mit DPoP-Proof, grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, redirect_uri=app_redirect_uri und der mit PrK.Client.Sig signierten client_assertion.
+. Nach Verarbeitung von äußerem PKCE, DPoP und Client Assertion übergibt der Authorization Server die Identitäts-Claims, Posture und den Kontext per POST /v1/data/authz an die Policy Engine und erhält deren Entscheidung.
+. Bei Policy allow und Hardwareattestierung liefert er 200 OK mit Access Token, Refresh Token, zg_att_token, token_type=DPoP und expires_in.
+. Bei Policy allow und Softwareattestierung liefert er 200 OK mit Access Token, Refresh Token, token_type=DPoP und expires_in, ohne Hardware-Attestation-Token.
+. Bei Policy deny liefert er 403 Forbidden mit einem JSON-Objekt, dessen Feld reasons die Ablehnungsgründe als Liste enthält.
+
+| Nachbedingung: |
+Die erlaubenden Pfade stellen dem Client die zugehörigen DPoP-gebundenen ZETA Token zur Verfügung. Im Hardwarepfad kommt zg_att_token hinzu. Der Ablehnungspfad endet mit 403 und reasons. Innere und äußere Codes sowie ihre Rücksprünge bleiben ihren jeweiligen Flows zugeordnet.
+
+| Abgedeckte Testaspekte: |
+* <<TA_A_29672_01>>
+* <<TA_A_29672_02>>
+* <<TA_A_29672_03>>
+
+|===
+
+[mermaid,uc-03-04-ablauf,svg]
+....
+sequenceDiagram
+participant C as ZETA Client
+    participant A as Authorization Server
+    participant I as Sektoraler IDP
+    participant P as Policy Engine
+    C->>A: GET Redirection-Endpunkt (AUTH_CODE_IDP, state_as)
+    A->>I: POST /token mit mTLS, innerem Code und PKCE
+    I-->>A: 200 OK, verschlüsseltes ID Token und Bearer Token
+    A->>A: ID Token verarbeiten, äußeren Code erzeugen
+    A-->>C: 302 app_redirect_uri (AUTH_CODE_AS, state_app)
+    C->>C: DPoP-Schlüsselpaar und Proof erzeugen
+    C->>A: POST /token mit äußerem Code, PKCE, Client Assertion und DPoP
+    A->>P: POST /v1/data/authz (Identität, Posture, Kontext)
+    P-->>A: Policy Decision
+    alt allow mit Hardwareattestierung
+        A-->>C: 200 OK, Access Token, Refresh Token, zg_att_token, DPoP, expires_in
+    else allow mit Softwareattestierung
+        A-->>C: 200 OK, Access Token, Refresh Token, DPoP, expires_in
+    else deny
+        A-->>C: 403 Forbidden, reasons
+    end
+....
+
+ifdef::render_features[]
+[source]
+----
+include::oidc_token_bezug.feature[]
+----
+endif::[]

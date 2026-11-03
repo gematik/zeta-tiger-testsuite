@@ -1,0 +1,4 @@
+[#A_29810]
+==== A_29810 - ZETA Client, Ablauf Apple OS Attestierung
+
+Der ZETA Client MUSS den Ablauf gemäß Abbildung Abb-ZETA-Client-Statement-mit-Apple-AppAttest unterstützen. [<=]

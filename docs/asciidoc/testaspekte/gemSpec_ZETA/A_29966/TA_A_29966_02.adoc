@@ -1,0 +1,4 @@
+[#TA_A_29966_02]
+===== TA_A_29966_02 - Notification Service – unbekannter Nutzer bei der Channel-Abfrage
+
+"Ein Nutzer ist dem Notification Service nur bekannt, solange für ihn mindestens ein registriertes Gerät (Pusher) existiert; die Channel-/Pusher-Daten werden ausschließlich geräte-/pushkey-gebunden gehalten (kein eigenständiger Nutzer-Datensatz ohne Gerät). Ist für den adressierten Identifikator kein Gerät registriert, MUSS der Notification Service den Nutzer als unbekannt behandeln und **GET /users/{userId}/channels mit 404 (USER_NOT_FOUND) beantworten**; ein terminaler Status no_registered_devices wird nicht verwendet. **[<=]**"

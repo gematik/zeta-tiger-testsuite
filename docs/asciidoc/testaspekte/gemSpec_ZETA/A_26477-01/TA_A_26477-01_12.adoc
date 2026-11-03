@@ -1,0 +1,8 @@
+[#TA_A_26477-01_12]
+===== TA_A_26477-01_12 - PEP HTTP Proxy - PoPP Token Validierung - Schlüsselbezug zur PoPP-Signaturprüfung
+
+"[...]
+Der HTTP Proxy MUSS ein **vorhandenes und noch gültiges JWKS des PoPP Servers verwenden oder das JWKS des PoPP Servers herunterladen, um anhand der im JWKS enthaltenen Schlüssel die Signatur des PoPP Token zu prüfen**.
+
++++[...]+++
+**[<=]"**

@@ -18,14 +18,13 @@ Ein MA einer LEI fordert eine Ressource über den ZETA Client an.
 
 | Kurzbeschreibung: |
 Der ZETA Client sendet eine Anfrage mit einem Access Token für eine geschützte Ressource an den PEP HTTP Proxy.
-Das verwendete Access Token oder der DPoP Nachweis ist jedoch ungültig, sodass der PEP HTTP Proxy ``401 Unauthorized``
-zurückgibt und der Zugriff verweigert wird.
+Der PEP HTTP Proxy verweigert die Anfrage mit ``401 Unauthorized`` bei ungültigen Authentisierungsnachweisen oder wenn eine durch erneute Autorisierung erfüllbare Scope-/acr-Anforderung der Route fehlt. Ein aud-Mismatch wird separat mit HTTP 403 in UseCase_01_17 geprüft.
 
 | Vorbedingung: |
 Der ZETA Client ist registriert, authentisiert und autorisiert (``Access Token`` liegt vor).
 
 | Nebenbedingung: |
-Die vom ZETA Client verwendeten Token sind jedoch abgelaufen oder nicht mehr gültig.
+Je Variante ist genau ein Nachweis ungültig oder es fehlt ein erreichbarer erforderlicher Scope. Die Scope-Variante verwendet ein sonst gültiges Token und eine unveränderte, ausreichend hohe Authentifizierungsstärke; ein erfolgreicher Kontrollaufruf belegt die Erreichbarkeit des Scopes.
 
 | Ablauf: |
 1. MA startet den Abruf einer geschützten Ressource über den ZETA Client.
@@ -36,24 +35,31 @@ Die vom ZETA Client verwendeten Token sind jedoch abgelaufen oder nicht mehr gü
 - ``DPoP: ... (DPoP Token)``
 4. Der PEP HTTP Proxy prüft die übermittelten Token und eine der Prüfungen schlägt fehl.
 5. Der PEP HTTP Proxy antwortet mit ``401 Unauthorized`` und verweist auf den fehlerhaften Nachweis.
+Für die Scope-Variante enthält WWW-Authenticate den Fehler insufficient_scope und den erforderlichen scope-Wert. Bei zusätzlichem acr-Bedarf hat insufficient_user_authentication Vorrang (geplante Variante).
 6. Der ZETA Client informiert den MA, dass die Authentisierungsdaten fehlerhaft sind.
 
+. Eine frische Kontrollauthentisierung belegt das für die existierende Route erforderliche und erreichbare Niveau sowie den Scope. Danach werden zwei gültig signierte, DPoP-gebundene Varianten des SDK-Ressourcenaufrufs geprüft: nur acr zu niedrig sowie acr zu niedrig und Scope unzureichend. Beide müssen HTTP 401 mit insufficient_user_authentication, zutreffenden acr_values und gegebenenfalls konfiguriertem max_age auslösen; die zweite Variante belegt ausdrücklich den Vorrang gegenüber insufficient_scope. Die bisherige reine Scope-Kontrolle bleibt erhalten.
+
+Der bestehende Fachdienst-Fehlerfall prüft die unveränderte Weitergabe von HTTP 401 ohne zeta-error-origin über den PEP bis zum Fachclient. Vor der Negativphase werden die erfolgreiche Kontrollantwort des PEP und die des Resource Servers im Recorder bestätigt; damit kann eine verspätet eingelesene Kontrollantwort nicht als Referenz des Negativfalls ausgewählt werden. Anschließend werden Status, Fehlerbytes und Marker-Header an allen drei Stellen verglichen. Die vorhandenen Kontrollen auf genau einen Ressourcenaufruf und ausbleibenden Token-Refresh bleiben erhalten.
+
 | Nachbedingung: |
-Der Ressourcenzugriff wurde abgewiesen. Der MA muss eine erneute Authentisierung durchführen.
+Der Ressourcenzugriff wurde abgewiesen. In den PEP-Negativfällen ist je Fehler eine erneute Authentisierung oder eine Autorisierung mit dem geforderten Scope erforderlich. Im Fachdienst-Fehlerfall erreicht die unveränderte Fehlerantwort den Fachclient ohne PEP-spezifische Fehlerbehandlung.
 
 | Abgedeckte Testaspekte: |
+* <<TA_A_28525-02_03>>
 * <<TA_A_25663_01>>
-* <<TA_A_25733_02>>
 * <<TA_A_25767_02>>
 * <<TA_A_26661_01>>
 * <<TA_A_26661_19>>
 * <<TA_A_27007_19>>
 * <<TA_A_27725-01_31>>
-* <<TA_A_27802-02_01>>
-* <<TA_A_27802-02_02>>
-* <<TA_A_28525-01_01>>
-* <<TA_A_28525-01_02>>
+* <<TA_A_27802-03_01>>
+* <<TA_A_27802-03_02>>
+* <<TA_A_28525-02_01>>
+* <<TA_A_28525-02_02>>
 * <<TA_A_28963_01>>
+* <<TA_A_29850_01>>
+* <<TA_A_29853_01>>
 
 |===
 [#usecase_01_16_sequence]

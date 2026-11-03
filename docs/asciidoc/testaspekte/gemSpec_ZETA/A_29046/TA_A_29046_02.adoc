@@ -1,0 +1,14 @@
+[#TA_A_29046_02]
+===== TA_A_29046_02 - ZETA Guard, spezifische Prüfungen für TI-Zertifikate - Zertifikatsgültigkeit
+
+"Der ZETA Guard MUSS bei der Prüfung von Signaturen mit TI-Zertifikaten zusätzlich folgende Prüfungen durchführen:
+
+Integrität der Nachricht: Hash-Überprüfung: Sicherstellen, dass die Nachricht nicht manipuliert wurde.
+
+**Ablaufdatum des Zertifikats: Sicherstellen, dass das Zertifikat noch gültig ist.**
+
+Widerrufsstatus des Zertifikats (OCSP): Prüfen, ob das Zertifikat nicht widerrufen wurde. Die OCSP Response wird für eine konfigurierbare Dauer zwischengespeichert, um zu häufige OCSP Anfragen zu verhindern. Die Dauer soll der Gültigkeitsdauer des Refresh Token entsprechen.
+
+Vertrauenswürdigkeit der Zertifikatskette: Sicherstellen, dass die Kette zu einer vertrauenswürdigen Root-CA führt.
+
+**[<=]**"

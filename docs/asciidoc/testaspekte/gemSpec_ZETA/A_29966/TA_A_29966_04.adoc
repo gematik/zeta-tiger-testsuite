@@ -1,0 +1,6 @@
+[#TA_A_29966_04]
+===== TA_A_29966_04 - Notification Service – keine Persistierung ohne aktiven Channel
+
+Der folgende Auszug aus A_29966 bezieht sich auf den terminalen Status `no_active_channel`, den der Notification Service bereits in der 202-Antwort zurückgibt, wenn der adressierte Channel auf keinem registrierten Gerät des Nutzers aktiviert (`enabled`) ist.
+
+"In diesem terminalen Fall MUSS der Status synchron in der Antwort übermittelt werden; **eine Persistierung eines Notification-Datensatzes oder ein nachgelagertes Status-Update DARF dabei NICHT erfolgen** – eine ggf. zurückgegebene notification_id wird nur transient erzeugt. **[<=]**"

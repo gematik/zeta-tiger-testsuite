@@ -1,0 +1,4 @@
+[#A_29897]
+==== A_29897 - Authorization Server – Keine Faktoränderung allein aus IDP
+
+Der Authorization Server DARF NICHT eine Änderung oder Neubindung eines Faktors allein auf Basis einer IDP-Authentisierung zulassen. [<=]

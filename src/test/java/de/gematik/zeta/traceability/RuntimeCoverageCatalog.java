@@ -29,52 +29,117 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
+import java.util.TreeMap;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 /**
- * Loads product and test-aspect catalogues needed by runtime coverage output.
+ * Loads requirement and test-aspect catalogues needed by runtime coverage output.
  */
-@Slf4j
 final class RuntimeCoverageCatalog {
 
-  private static final Path PRODUCT_STATUS_CSV =
-      Path.of("docs/asciidoc/tables/source/product_implementation.csv");
+  private static final Path REQUIREMENT_CATALOGUE = Path.of(
+      "docs/specifications/2.0.0-cc/derived/gemVZ_Afo_ZETA_Guard_V_2.0.0-0_V1.0.0.xml");
+  private static final String PRODUCT_TEST_PROCEDURE =
+      "Festlegungen zur funktionalen Eignung \"Produkttest/Produktübergreifender Test\"";
+  private static final Path REQUIREMENTS_ROOT = Path.of("docs/asciidoc/afos");
   private static final Path TEST_ASPECTS_ROOT = Path.of("docs/asciidoc/testaspekte");
 
-  private final Map<String, ProductInfo> productInfo = new LinkedHashMap<>();
+  private final Map<String, String> requirementTitles = new TreeMap<>();
   private final Map<String, TestAspectInfo> testAspectCatalog = new LinkedHashMap<>();
 
   /**
    * Create and load the runtime coverage catalogues.
    */
   RuntimeCoverageCatalog() {
-    loadProductInfo();
-    loadTestAspectCatalog();
+    this(REQUIREMENT_CATALOGUE, REQUIREMENTS_ROOT, TEST_ASPECTS_ROOT);
   }
 
   /**
-   * Return all known product requirement identifiers.
+   * Load runtime coverage catalogues from the given directories.
    *
-   * @return product ids
+   * @param requirementCatalogue requirement XML catalogue
+   * @param requirementsRoot maintained requirement directory
+   * @param testAspectsRoot test-aspect catalogue directory
    */
-  Set<String> productIds() {
-    return productInfo.keySet();
+  RuntimeCoverageCatalog(Path requirementCatalogue, Path requirementsRoot, Path testAspectsRoot) {
+    loadRequirementCatalogue(requirementCatalogue);
+    loadRequirementCatalog(requirementsRoot);
+    loadTestAspectCatalog(testAspectsRoot);
   }
 
   /**
-   * Return product metadata for the given requirement.
+   * Load product-test requirement identifiers and titles from the XML catalogue.
+   *
+   * @param catalogue requirement XML file
+   * @throws UncheckedIOException if the catalogue cannot be read
+   * @throws IllegalStateException if the XML cannot be parsed
+   */
+  private void loadRequirementCatalogue(Path catalogue) {
+    try {
+      var factory = DocumentBuilderFactory.newInstance();
+      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+      var document = factory.newDocumentBuilder().parse(catalogue.toFile());
+      var requirements = document.getElementsByTagName("requirement");
+      for (var index = 0; index < requirements.getLength(); index++) {
+        var requirement = (Element) requirements.item(index);
+        if (childText(requirement, "testProcedure").contains(PRODUCT_TEST_PROCEDURE)) {
+          var id = requirement.getAttribute("id");
+          if (id.isBlank()) {
+            throw new IllegalStateException("Missing requirement id in " + catalogue);
+          }
+          requirementTitles.put(id, childText(requirement, "title"));
+        }
+      }
+      if (requirementTitles.isEmpty()) {
+        throw new IllegalStateException("No product-test requirements in " + catalogue);
+      }
+    } catch (IOException exception) {
+      throw new UncheckedIOException("Unable to read requirement catalogue " + catalogue, exception);
+    } catch (ParserConfigurationException | SAXException exception) {
+      throw new IllegalStateException("Unable to parse requirement catalogue " + catalogue, exception);
+    }
+  }
+
+  /**
+   * Return the trimmed text of a catalogue child element.
+   *
+   * @param parent catalogue element
+   * @param name child element name
+   * @return text, or an empty string if absent
+   */
+  private static String childText(Element parent, String name) {
+    var child = parent.getElementsByTagName(name).item(0);
+    return child == null ? "" : child.getTextContent().strip();
+  }
+
+  /**
+   * Return all known requirement identifiers.
+   *
+   * @return requirement ids
+   */
+  Set<String> requirementIds() {
+    return requirementTitles.keySet();
+  }
+
+  /**
+   * Return the title for the given requirement.
    *
    * @param id requirement id
-   * @return product metadata or null
+   * @return requirement title, or empty if no title is available
    */
-  ProductInfo productInfo(String id) {
-    return productInfo.get(id);
+  Optional<String> requirementTitle(String id) {
+    return Optional.ofNullable(requirementTitles.get(id)).filter(title -> !title.isBlank());
   }
 
   /**
@@ -127,88 +192,73 @@ final class RuntimeCoverageCatalog {
   }
 
   /**
-   * Count implemented test aspects for the given requirement.
+   * Count test aspects with recorded scenario results for the given requirement.
    *
    * @param requirementId     requirement id
    * @param mergedTestAspects merged test aspect state
-   * @return implemented test aspect count or null if the catalog is empty
+   * @return test aspects with results or null if the catalog is empty
    */
-  Integer computeTestAspectImplementedCount(String requirementId,
+  Integer computeTestAspectReportedCount(String requirementId,
       Map<String, Rollup> mergedTestAspects) {
     if (testAspectCatalog.isEmpty()) {
       return null;
     }
-    var implemented = 0;
+    var reported = 0;
     for (var info : testAspectCatalog.values()) {
       if (!Objects.equals(requirementId, info.requirementId())) {
         continue;
       }
       var rollup = mergedTestAspects.getOrDefault(info.id(), Rollup.empty());
       if (rollup.total() > 0) {
-        implemented++;
+        reported++;
       }
     }
-    return implemented;
+    return reported;
   }
 
   /**
-   * Load product implementation metadata from the CSV used by the test plan.
+   * Load requirement identifiers and titles from Asciidoc files.
+   *
+   * @param root requirement catalogue directory
    */
-  private void loadProductInfo() {
-    if (!Files.exists(PRODUCT_STATUS_CSV)) {
-      log.info("Product status CSV not found at {}, runtime coverage will omit product metadata.",
-          PRODUCT_STATUS_CSV);
+  private void loadRequirementCatalog(Path root) {
+    if (!Files.exists(root)) {
       return;
     }
-    try (var reader = Files.newBufferedReader(PRODUCT_STATUS_CSV, StandardCharsets.UTF_8);
-        var parser = CSVFormat.DEFAULT.builder()
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .get()
-            .parse(reader)) {
-      var headerFields = new ArrayList<>(parser.getHeaderMap().keySet());
-      if (headerFields.isEmpty()) {
-        return;
-      }
-      headerFields.set(0, RuntimeCoverageIds.stripBom(headerFields.getFirst()));
-      var requirementIndex = RuntimeCoverageCsvRepository.indexOf(headerFields, "Anforderung");
-      var titleIndex = RuntimeCoverageCsvRepository.indexOf(headerFields, "Titel");
-      var implementedIndex = RuntimeCoverageCsvRepository.indexOf(headerFields, "umgesetzt");
-      var hintIndex = RuntimeCoverageCsvRepository.indexOf(headerFields, "Hinweis");
-
-      for (var record : parser) {
-        var requirement = RuntimeCoverageCsvRepository.getField(record, requirementIndex);
-        if (requirement == null || requirement.isBlank()) {
-          continue;
-        }
-        productInfo.put(requirement, new ProductInfo(
-            requirement,
-            RuntimeCoverageIds.defaultString(RuntimeCoverageCsvRepository.getField(record,
-                titleIndex)),
-            RuntimeCoverageIds.defaultString(RuntimeCoverageCsvRepository.getField(record,
-                implementedIndex)),
-            RuntimeCoverageIds.defaultString(RuntimeCoverageCsvRepository.getField(record,
-                hintIndex))));
-      }
+    try (var paths = Files.walk(root)) {
+      paths.filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().endsWith(".adoc"))
+          .filter(path -> !path.getFileName().toString().equalsIgnoreCase("readme.adoc"))
+          .sorted()
+          .forEach(path -> {
+            var id = RuntimeCoverageIds.stripAdocSuffix(path.getFileName().toString());
+            var title = readTitle(path, id);
+            if (!title.isBlank() || !requirementTitles.containsKey(id)) {
+              requirementTitles.put(id, title);
+            }
+          });
     } catch (IOException exception) {
-      throw new UncheckedIOException("Unable to read product implementation CSV", exception);
+      throw new UncheckedIOException("Unable to read requirement catalog", exception);
     }
   }
 
   /**
    * Load the test aspect catalog from generated Asciidoc files.
+   *
+   * @param root test-aspect catalogue directory
    */
-  private void loadTestAspectCatalog() {
-    if (!Files.exists(TEST_ASPECTS_ROOT)) {
+  private void loadTestAspectCatalog(Path root) {
+    if (!Files.exists(root)) {
       return;
     }
-    try (var paths = Files.walk(TEST_ASPECTS_ROOT)) {
+    try (var paths = Files.walk(root)) {
       paths.filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().startsWith("TA_"))
           .filter(path -> path.getFileName().toString().endsWith(".adoc"))
+          .sorted()
           .forEach(path -> {
             var id = RuntimeCoverageIds.stripAdocSuffix(path.getFileName().toString());
-            var title = readTestAspectTitle(path, id);
+            var title = readTitle(path, id);
             var requirementId = RuntimeCoverageIds.resolveRequirementFromTestAspect(id).orElse("");
             testAspectCatalog.put(id, new TestAspectInfo(id, title, requirementId));
           });
@@ -218,13 +268,13 @@ final class RuntimeCoverageCatalog {
   }
 
   /**
-   * Extract the test aspect title from its Asciidoc header.
+   * Extract a catalogue title from its Asciidoc header.
    *
-   * @param path test-aspect Asciidoc path
-   * @param id   test-aspect id
+   * @param path Asciidoc path
+   * @param id catalogue entry id
    * @return title or empty string
    */
-  private static String readTestAspectTitle(Path path, String id) {
+  private static String readTitle(Path path, String id) {
     try (var reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
       String line;
       for (var i = 0; i < 5 && (line = reader.readLine()) != null; i++) {
@@ -233,7 +283,7 @@ final class RuntimeCoverageCatalog {
         }
       }
     } catch (IOException exception) {
-      throw new UncheckedIOException("Unable to read test aspect title from " + path, exception);
+      throw new UncheckedIOException("Unable to read catalogue title from " + path, exception);
     }
     return "";
   }
